@@ -48,9 +48,13 @@ table td {
 
 	.control-box .control-button {
 		font-size: 2.1vh;
-		margin: 0.1vh;
-		padding: 0.1vh;
+		margin: 0.3vh;
+		padding: 0.3vh;
 		border: 0.1vh solid #666;
+	}
+
+	.control-button.hide-mobile, .control-text.hide-mobile {
+		display: none;
 	}
 
 	.control-box .date-shown td, .control-box .date-controls td {
@@ -89,35 +93,27 @@ table td {
 }
 
 .date-controls {
-	color: white;
-	background-color: rgba(255, 255, 255, .05);
-	position: absolute;
-	top: 10vh;
-	left: 0;
-	width: 10vw;
-	height: 10vh;
 }
 
 .control-text {
 	display: inline-block;
 	margin: 3px;
 	padding: 3px;
-	font-size: 10px;
-	font-family: Calibri;
+	font-size: 7px;
+	font-family: Verdana;
 	color: #CCC;
 }
 
 .control-button {
-	display: inline-block;
 	margin: 3px;
 	padding: 3px;
-	font-size: 10px;
-	font-weight: bold;
-	font-family: Calibri;
+	font-size: 7px;
+	font-family: Verdana;
 	color: #AAA;
 	background-color: #333;
 	border: 1px solid #666;
 	cursor: pointer;
+	max-width: 75px;
 }
 
 .control-button:hover {
@@ -277,7 +273,7 @@ table td {
 	color: white;
 	transform: translate(-50%, -100%);
 	font-size: 2px;
-	font-family: Calibri;
+	font-family: Verdana;
 }
 
 .star-mag {
@@ -285,7 +281,7 @@ table td {
 	color: white;
 	transform: translate(-50%, -150%);
 	font-size: 2px;
-	font-family: Calibri;
+	font-family: Verdana;
 }
 
 .star-disc {
