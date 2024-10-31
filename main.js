@@ -193,9 +193,9 @@ Vue.component('a-line', {
 Vue.component('the-sky', {
 	template: '' +
 		'<div class="the-sky">' +
-			'<div class="control-box">' +
+			'<div class="control-box no-select">' +
 				'<div>' +
-					'<table class="date-shown">' +
+					'<table class="date-shown no-select">' +
 						'<tr style="font-size: 10px;">' +
 							'<td class="control-cell" @click.stop="$root.dateTime += (60 * 60 * 1000)">&#9650;</td>' +
 							'<td class="control-cell" @click.stop="$root.dateTime += (60 * 1000)">&#9650;</td>' +
@@ -247,10 +247,10 @@ Vue.component('the-sky', {
 										'<div class="control-button" @click.stop="$root.dateTime = 1734811224715">Shortest Noon</div>' +
 										'<div class="control-button" @click.stop="$root.dateTime = 1734828424715">Shortest SS</div>' +
 										'<br>' +*/
-										'<div class="control-button" :class="{ on: $root.useSymbols, }" @click.stop="$root.useSymbols = !$root.useSymbols">Symbols</div>' +
-										'<div class="control-button" :class="{ on: $root.showShader, }" @click.stop="$root.showShader = !$root.showShader">Shader</div>' +
+										//'<div class="control-button" :class="{ on: $root.useSymbols, }" @click.stop="$root.useSymbols = !$root.useSymbols">Symbols</div>' +
+										'<div class="control-button" :class="{ on: $root.showShader, }" @click.stop="$root.showShader = !$root.showShader">Horizon</div>' +
 										'<div class="control-button" :class="{ on: $root.visibleSkyUp, }" @click.stop="$root.visibleSkyUp = !$root.visibleSkyUp">Sky Up</div>' +
-										'<div class="control-button" :class="{ on: $root.showLasers, }" @click.stop="$root.showLasers = !$root.showLasers">Lasers</div>' +
+										'<div class="control-button" :class="{ on: $root.showLasers, }" @click.stop="$root.showLasers = !$root.showLasers">Finders</div>' +
 										'<div class="control-button" :class="{ on: $root.showLines, }" @click.stop="$root.showLines = !$root.showLines">Const.</div>' +
 										'<div class="control-button" :class="{ on: $root.showAspects, }" @click.stop="$root.showAspects = !$root.showAspects">Aspects</div>' +
 										'<div class="control-button" :class="{ on: $root.showDivisions, }" @click.stop="$root.showDivisions = !$root.showDivisions">Divisions</div>' +
@@ -660,10 +660,10 @@ var app = new Vue({
 	    dateTime: new Date().getTime(),
 	    savedDateTime: null,
     	sunZs: [],
-	    stepIncrement: 10000000,
+	    stepIncrement: 100000,
 	    clockID: -1,
-	    showShader: false,
-	    visibleSkyUp: false,
+	    showShader: true,
+	    visibleSkyUp: true,
 	    useSymbols: false,
 	    showLasers: false,
 	    showButtons: false,
