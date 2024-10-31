@@ -231,12 +231,14 @@ Vue.component('the-sky', {
 									'<div class="control-button" style="min-width: 0; " v-if="!$root.showButtons" @click.stop="$root.showButtons = true;">&#9650;</div>' +
 									'<div class="control-button" style="min-width: 0; " v-if="$root.showButtons" @click.stop="$root.showButtons = false;">&#9660;</div>' +
 									'<div class="buttons-container" v-if="$root.showButtons" style=" white-space: nowrap;">' +
-										'<div class="control-text">Speed: {{ $root.stepIncrement / 100000 }}</div>' +
-										'<div class="control-button" style="min-width: 0" @click.stop="$root.stepIncrementUp">+</div>' +
-										'<div class="control-button" style="min-width: 0" @click.stop="$root.stepIncrementDown">-</div>' +
+										'<div>' +
+											'<div class="speed-control-button" @click.stop="$root.stepIncrementDown">-</div>' +
+											'<div class="control-text">Speed: {{ $root.stepIncrement / 100000 }}</div>' +
+											'<div class="speed-control-button" @click.stop="$root.stepIncrementUp">+</div>' +
+										'</div>' +
 										//'<div class="control-button" @click.stop="$root.dateTime = new Date().getTime()">Now</div>' +
 										//'<div class="control-button" @click.stop="$root.dateTime = 304017323563">BD</div>' +
-										'<div class="control-button" @click.stop="$root.saveDateTime">Save</div>' +
+										//'<div class="control-button" @click.stop="$root.saveDateTime">Save</div>' +
 										//'<div class="control-button" @click.stop="$root.dateTime = $root.sessionStorage.getItem(\'savedTime\') ? parseInt($root.sessionStorage.getItem(\'savedTime\')) : 0;">Load</div>' +
 										/*'<div class="control-button" @click.stop="$root.dateTime = 1718973664715">Longest SR</div>' +
 										'<div class="control-button" @click.stop="$root.dateTime = 1718996414715">Longest Noon</div>' +

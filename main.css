@@ -123,13 +123,26 @@ table td {
 	font-family: Verdana;
 	color: #AAA;
 	//background: linear-gradient(to right, #333, #333 50%, rgba(0, 0, 0, 0));
-	/*border: 1px solid #666;
-	border-right: unset;*/
+	//border: 1px solid #666;
 	cursor: pointer;
 	width: 50px;
 	border-image: linear-gradient(to right, #AAA 0%, rgba(0, 0, 0, 0) 100%) 1;
 	border-width: 1px;
 	border-style: solid;
+	border-left: unset;
+	border-right: unset;
+	border-bottom: unset;
+}
+
+.speed-control-button {
+	display: inline;
+	font-size: 12px;
+	font-family: Verdana;
+	margin: 3px;
+	padding: 3px;
+	color: #CCC;
+	cursor: pointer;
+	background-color: #333;
 }
 
 .control-button:hover {
