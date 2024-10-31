@@ -37,7 +37,7 @@ table td {
 
 @media (orientation: portrait) {
 	#sky-viewer {
-		//transform: scale(2);
+		transform: scale(2);
 	}
 	.control-box {
 		position: fixed;
@@ -83,7 +83,6 @@ table td {
 
 .date-shown {
 	color: white;
-	background-color: rgba(255, 255, 255, .05);
 	position: absolute;
 	top: 0px;
 	left: 0px;
@@ -141,7 +140,6 @@ table td {
 	position:absolute;
 	height: 100vh;
 	width: 100vw;
-	transform: scale(2);
 	transform-origin: bottom right;
 	z-index: 1;
 }
