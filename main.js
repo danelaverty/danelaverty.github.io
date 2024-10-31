@@ -194,7 +194,45 @@ Vue.component('the-sky', {
 	template: '' +
 		'<div class="the-sky">' +
 			'<div class="control-box no-select">' +
-				'<div>' +
+				'<table><tr><td style="vertical-align: top;">' +
+				'<div class="date-controls">' +
+					'<div class="control-button" v-if="!$root.visibleSkyUp" @click.stop="$root.visibleSkyUp = true; $root.showShader = true; $root.stepIncrement = 100000;">View</div>' +
+					'<div class="control-button on" v-if="$root.visibleSkyUp" @click.stop="$root.visibleSkyUp = false; $root.showShader = false; $root.stepIncrement = 10000000;">View</div>' +
+					'<div class="control-button" @click.stop="$root.runClock" v-if="$root.clockID == -1">GO</div>' +
+					'<div class="control-button on" @click.stop="$root.stopClock" v-if="$root.clockID != -1">STOP</div>' +
+					'<div class="control-button" v-if="!$root.showButtons" @click.stop="$root.showButtons = true;">&#9650;</div>' +
+					'<div class="control-button" v-if="$root.showButtons" @click.stop="$root.showButtons = false;">&#9660;</div>' +
+					'<div class="buttons-container" v-if="$root.showButtons" style=" white-space: nowrap;">' +
+						'<div>' +
+							'<div class="speed-control-button" @click.stop="$root.stepIncrementDown">-</div>' +
+							'<div class="control-text">Speed: {{ $root.stepIncrement / 100000 }}</div>' +
+							'<div class="speed-control-button" @click.stop="$root.stepIncrementUp">+</div>' +
+						'</div>' +
+						//'<div class="control-button" @click.stop="$root.dateTime = new Date().getTime()">Now</div>' +
+						//'<div class="control-button" @click.stop="$root.dateTime = 304017323563">BD</div>' +
+						//'<div class="control-button" @click.stop="$root.saveDateTime">Save</div>' +
+						//'<div class="control-button" @click.stop="$root.dateTime = $root.sessionStorage.getItem(\'savedTime\') ? parseInt($root.sessionStorage.getItem(\'savedTime\')) : 0;">Load</div>' +
+						/*'<div class="control-button" @click.stop="$root.dateTime = 1718973664715">Longest SR</div>' +
+						'<div class="control-button" @click.stop="$root.dateTime = 1718996414715">Longest Noon</div>' +
+						'<div class="control-button" @click.stop="$root.dateTime = 1719000014715">Longest 1:00</div>' +
+						'<div class="control-button" @click.stop="$root.dateTime = 1719027564715">Longest SS</div>' +
+						'<br>' +
+						'<div class="control-button" @click.stop="$root.dateTime = 1734794724715">Shortest SR</div>' +
+						'<div class="control-button" @click.stop="$root.dateTime = 1734811224715">Shortest Noon</div>' +
+						'<div class="control-button" @click.stop="$root.dateTime = 1734828424715">Shortest SS</div>' +
+						'<br>' +*/
+						'<div class="control-button" :class="{ on: $root.useSymbols, }" @click.stop="$root.useSymbols = !$root.useSymbols">Symbols</div>' +
+						'<div class="control-button" :class="{ on: $root.showShader, }" @click.stop="$root.showShader = !$root.showShader">Horizon</div>' +
+						'<div class="control-button" :class="{ on: $root.visibleSkyUp, }" @click.stop="$root.visibleSkyUp = !$root.visibleSkyUp">Sky Up</div>' +
+						'<div class="control-button" :class="{ on: $root.showLasers, }" @click.stop="$root.showLasers = !$root.showLasers">Finders</div>' +
+						'<div class="control-button" :class="{ on: $root.showLines, }" @click.stop="$root.showLines = !$root.showLines">Const.</div>' +
+						'<div class="control-button" :class="{ on: $root.showAspects, }" @click.stop="$root.showAspects = !$root.showAspects">Aspects</div>' +
+						'<div class="control-button" :class="{ on: $root.showDivisions, }" @click.stop="$root.showDivisions = !$root.showDivisions">Divisions</div>' +
+						'<div class="control-button" :class="{ on: $root.showAngles, }" @click.stop="$root.showAngles = !$root.showAngles">Angles</div>' +
+					'</div>' + 
+				'</div>' +
+				'</td><td style="vertical-align: top;">' +
+				'<div style="display: inline-block;">' +
 					'<table class="date-shown no-select">' +
 						'<tr style="font-size: 10px;">' +
 							'<td class="control-cell" @click.stop="$root.dateTime += (60 * 60 * 1000)">&#9650;</td>' +
@@ -221,48 +259,9 @@ Vue.component('the-sky', {
 							'<td class="control-cell" @click.stop="$root.dateTime -= (24 * 60 * 60 * 1000)">&#9660;</td>' +
 							'<td class="control-cell" @click.stop="decrementYear">&#9660;</td>' +
 						'</tr>' +
-						'<tr>' +
-							'<td colspan="99" style="text-align: left;">' +
-								'<div class="date-controls">' +
-									'<div class="control-button" v-if="!$root.visibleSkyUp" style="min-width: 0; " @click.stop="$root.visibleSkyUp = true; $root.showShader = true; $root.stepIncrement = 100000;">View</div>' +
-									'<div class="control-button on" v-if="$root.visibleSkyUp" style="min-width: 0; " @click.stop="$root.visibleSkyUp = false; $root.showShader = false; $root.stepIncrement = 10000000;">View</div>' +
-									'<div class="control-button" style="min-width: 0; " @click.stop="$root.runClock" v-if="$root.clockID == -1">GO</div>' +
-									'<div class="control-button on" style="min-width: 0" @click.stop="$root.stopClock" v-if="$root.clockID != -1">GO</div>' +
-									'<div class="control-button" style="min-width: 0; " v-if="!$root.showButtons" @click.stop="$root.showButtons = true;">&#9650;</div>' +
-									'<div class="control-button" style="min-width: 0; " v-if="$root.showButtons" @click.stop="$root.showButtons = false;">&#9660;</div>' +
-									'<div class="buttons-container" v-if="$root.showButtons" style=" white-space: nowrap;">' +
-										'<div>' +
-											'<div class="speed-control-button" @click.stop="$root.stepIncrementDown">-</div>' +
-											'<div class="control-text">Speed: {{ $root.stepIncrement / 100000 }}</div>' +
-											'<div class="speed-control-button" @click.stop="$root.stepIncrementUp">+</div>' +
-										'</div>' +
-										//'<div class="control-button" @click.stop="$root.dateTime = new Date().getTime()">Now</div>' +
-										//'<div class="control-button" @click.stop="$root.dateTime = 304017323563">BD</div>' +
-										//'<div class="control-button" @click.stop="$root.saveDateTime">Save</div>' +
-										//'<div class="control-button" @click.stop="$root.dateTime = $root.sessionStorage.getItem(\'savedTime\') ? parseInt($root.sessionStorage.getItem(\'savedTime\')) : 0;">Load</div>' +
-										/*'<div class="control-button" @click.stop="$root.dateTime = 1718973664715">Longest SR</div>' +
-										'<div class="control-button" @click.stop="$root.dateTime = 1718996414715">Longest Noon</div>' +
-										'<div class="control-button" @click.stop="$root.dateTime = 1719000014715">Longest 1:00</div>' +
-										'<div class="control-button" @click.stop="$root.dateTime = 1719027564715">Longest SS</div>' +
-										'<br>' +
-										'<div class="control-button" @click.stop="$root.dateTime = 1734794724715">Shortest SR</div>' +
-										'<div class="control-button" @click.stop="$root.dateTime = 1734811224715">Shortest Noon</div>' +
-										'<div class="control-button" @click.stop="$root.dateTime = 1734828424715">Shortest SS</div>' +
-										'<br>' +*/
-										'<div class="control-button" :class="{ on: $root.useSymbols, }" @click.stop="$root.useSymbols = !$root.useSymbols">Symbols</div>' +
-										'<div class="control-button" :class="{ on: $root.showShader, }" @click.stop="$root.showShader = !$root.showShader">Horizon</div>' +
-										'<div class="control-button" :class="{ on: $root.visibleSkyUp, }" @click.stop="$root.visibleSkyUp = !$root.visibleSkyUp">Sky Up</div>' +
-										'<div class="control-button" :class="{ on: $root.showLasers, }" @click.stop="$root.showLasers = !$root.showLasers">Finders</div>' +
-										'<div class="control-button" :class="{ on: $root.showLines, }" @click.stop="$root.showLines = !$root.showLines">Const.</div>' +
-										'<div class="control-button" :class="{ on: $root.showAspects, }" @click.stop="$root.showAspects = !$root.showAspects">Aspects</div>' +
-										'<div class="control-button" :class="{ on: $root.showDivisions, }" @click.stop="$root.showDivisions = !$root.showDivisions">Divisions</div>' +
-										'<div class="control-button" :class="{ on: $root.showAngles, }" @click.stop="$root.showAngles = !$root.showAngles">Angles</div>' +
-									'</div>' + 
-								'</div>' +
-							'</td>' +
-						'</tr>' +
 					'</table>' +
 				'</div>' +
+				'</td></tr></table>' +
 			'</div>' +
 			'<div id="sky-viewer" class="sky-viewer" ' +
 				'>' +
