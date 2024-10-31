@@ -51,6 +51,7 @@ table td {
 		margin: 0.3vh;
 		padding: 0.3vh;
 		border: 0.1vh solid #666;
+		width: 11vw;
 	}
 
 	.control-button.hide-mobile, .control-text.hide-mobile {
@@ -113,7 +114,7 @@ table td {
 	background-color: #333;
 	border: 1px solid #666;
 	cursor: pointer;
-	max-width: 75px;
+	width: 75px;
 }
 
 .control-button:hover {
