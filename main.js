@@ -247,7 +247,7 @@ Vue.component('the-sky', {
 										'<div class="control-button" @click.stop="$root.dateTime = 1734811224715">Shortest Noon</div>' +
 										'<div class="control-button" @click.stop="$root.dateTime = 1734828424715">Shortest SS</div>' +
 										'<br>' +*/
-										//'<div class="control-button" :class="{ on: $root.useSymbols, }" @click.stop="$root.useSymbols = !$root.useSymbols">Symbols</div>' +
+										'<div class="control-button" :class="{ on: $root.useSymbols, }" @click.stop="$root.useSymbols = !$root.useSymbols">Symbols</div>' +
 										'<div class="control-button" :class="{ on: $root.showShader, }" @click.stop="$root.showShader = !$root.showShader">Horizon</div>' +
 										'<div class="control-button" :class="{ on: $root.visibleSkyUp, }" @click.stop="$root.visibleSkyUp = !$root.visibleSkyUp">Sky Up</div>' +
 										'<div class="control-button" :class="{ on: $root.showLasers, }" @click.stop="$root.showLasers = !$root.showLasers">Finders</div>' +

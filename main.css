@@ -62,6 +62,7 @@ table td {
 		/*border: 0.1vh solid #666;
 		border-right: unset;*/
 		width: 7vw;
+		border-width: 0.1vh;
 	}
 
 	.control-button.hide-mobile, .control-text.hide-mobile {
@@ -121,11 +122,14 @@ table td {
 	font-size: 7px;
 	font-family: Verdana;
 	color: #AAA;
-	background: linear-gradient(to right, #333, #333 50%, rgba(0, 0, 0, 0));
+	//background: linear-gradient(to right, #333, #333 50%, rgba(0, 0, 0, 0));
 	/*border: 1px solid #666;
 	border-right: unset;*/
 	cursor: pointer;
 	width: 50px;
+	border-image: linear-gradient(to right, #AAA 0%, rgba(0, 0, 0, 0) 100%) 1;
+	border-width: 1px;
+	border-style: solid;
 }
 
 .control-button:hover {
@@ -134,7 +138,6 @@ table td {
 
 .control-button.on {
 	color: white;
-	background: linear-gradient(to right, #666, #666 50%, rgba(0, 0, 0, 0));
 }
 
 .date-shown td {
@@ -209,7 +212,7 @@ table td {
 	position: absolute;
 	color: white;
 	transform: translate(-50%, -100%);
-	font-size: 14px;
+	font-size: 18px;
 	font-family: "Palatino Linotype";
 	//font-style: italic;
 }
@@ -227,7 +230,7 @@ table td {
 	position: absolute;
 	color: white;
 	transform: translate(-50%, -150%);
-	font-size: 10px;
+	font-size: 14px;
 	font-family: "Palatino Linotype";
 }
 
@@ -241,7 +244,7 @@ table td {
 .planet-name.node {
 	top: 1px;
 	line-height: 8px;
-	font-size: 8px;
+	font-size: 11px;
 	text-align: center;
 }
 
@@ -276,7 +279,7 @@ table td {
 	position: absolute;
 	color: white;
 	transform: translate(-50%, -150%);
-	font-size: 7px;
+	font-size: 10px;
 	font-family: "Palatino Linotype";
 	//font-style: italic;
 }
