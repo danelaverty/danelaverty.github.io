@@ -6391,6 +6391,9 @@ var app = new Vue({
     mounted: function() {
 	    var $root = this.$root;
 	    //this.runClock();
+	    let vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+	    let vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+	    window.scroll({ top: .5 * vh, left: .5 * vw, });
 	    setTimeout(function() { 
 		    if (typeof $root.sessionStorage.getItem('savedDateTimes') == 'undefined' || $root.sessionStorage.getItem('savedDateTimes') == null) {
 			    $root.sessionStorage.setItem('savedDateTimes', JSON.stringify({}));
