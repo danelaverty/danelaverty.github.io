@@ -53,6 +53,7 @@ table td {
 		height: 1vh;
 		width: 1vw;
 		z-index: 2;
+		white-space: nowrap;
 	}
 
 	.control-box .control-button {
@@ -70,7 +71,7 @@ table td {
 	}
 
 	.control-box .date-shown td, .control-box .date-controls td {
-		font-size: 3.1vh;
+		font-size: 2.6vh;
 	}
 
 	.control-box .date-shown td.dst-indicator {
@@ -82,6 +83,10 @@ table td {
 		padding: 0.1vh;
 		font-size: 2.1vh;
 	}
+
+	.control-box .date-controls {
+		min-width: 18vw;
+	}
 }
 
 @media (orientation: landscape) {
@@ -90,6 +95,7 @@ table td {
 		height: 1px;
 		width: 1px;
 		z-index: 2;
+		white-space: nowrap;
 	}
 
 	.control-box .date-shown td.dst-indicator {
@@ -99,12 +105,14 @@ table td {
 
 .date-shown {
 	color: white;
-	position: absolute;
+	/*position: absolute;
 	top: 0px;
-	left: 0px;
+	left: 0px;*/
 }
 
 .date-controls {
+	display: inline-block;
+	min-width: 120px;
 }
 
 .control-text {
