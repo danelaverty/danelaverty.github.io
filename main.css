@@ -66,6 +66,10 @@ table td {
 		border-width: 0.1vh;
 	}
 
+	.control-box .speed-control-button {
+		font-size: 2.1vh;
+	}
+
 	.control-button.hide-mobile, .control-text.hide-mobile {
 		display: none;
 	}
