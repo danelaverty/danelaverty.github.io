@@ -1,0 +1,372 @@
+html {
+	box-sizing: border-box;
+	font-family: Verdana, sans-serif;
+	font-size: 14px;
+	margin: 0;
+	padding: 0;
+	background-color: #000000;
+	//overflow: hidden;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+html::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+html {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+body, div {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+h1 {
+	color: red;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table td {
+	padding: 0;
+	margin: 0;
+}
+
+@media (orientation: portrait) {
+	#sky-viewer {
+		transform: scale(2);
+	}
+	.control-box {
+		position: fixed;
+		height: 1vh;
+		width: 1vw;
+		z-index: 2;
+	}
+
+	.control-box .control-button {
+		font-size: 2.1vh;
+		margin: 0.1vh;
+		padding: 0.1vh;
+		border: 0.1vh solid #666;
+	}
+
+	.control-box .date-shown td, .control-box .date-controls td {
+		font-size: 3.1vh;
+	}
+
+	.control-box .date-shown td.dst-indicator {
+		font-size: 1.3vh;
+	}
+
+	.control-box .control-text {
+		margin: 0.1vh;
+		padding: 0.1vh;
+		font-size: 2.1vh;
+	}
+}
+
+@media (orientation: landscape) {
+	.control-box {
+		position: fixed;
+		height: 1px;
+		width: 1px;
+		z-index: 2;
+	}
+
+	.control-box .date-shown td.dst-indicator {
+		font-size: 10px;
+	}
+}
+
+.date-shown {
+	color: white;
+	background-color: rgba(255, 255, 255, .05);
+	position: absolute;
+	top: 0px;
+	left: 0px;
+}
+
+.date-controls {
+	color: white;
+	background-color: rgba(255, 255, 255, .05);
+	position: absolute;
+	top: 10vh;
+	left: 0;
+	width: 10vw;
+	height: 10vh;
+}
+
+.control-text {
+	display: inline-block;
+	margin: 3px;
+	padding: 3px;
+	font-size: 10px;
+	font-family: Calibri;
+	color: #CCC;
+}
+
+.control-button {
+	display: inline-block;
+	margin: 3px;
+	padding: 3px;
+	font-size: 10px;
+	font-weight: bold;
+	font-family: Calibri;
+	color: #AAA;
+	background-color: #333;
+	border: 1px solid #666;
+	cursor: pointer;
+}
+
+.control-button:hover {
+	color: #FFF;
+}
+
+.control-button.on {
+	background-color: #555;
+}
+
+.date-shown td {
+	text-align: center;
+}
+
+.control-cell {
+	cursor: pointer;
+}
+
+.sky-viewer {
+	position:absolute;
+	height: 100vh;
+	width: 100vw;
+	transform: scale(1);
+	z-index: 1;
+}
+
+.the-center {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+}
+
+.the-earth {
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	background-color: #4488BB;
+	position: absolute;
+	transform: translate(-50%, -50%);
+}
+
+.the-constellations-circle {
+	width: 500px;
+	height: 500px;
+	border-radius: 50%;
+	border: 1px solid rgba(255, 255, 255, .5);
+	position: absolute;
+	transform: translate(-50%, -50%);
+}
+
+.planet-circle {
+	border-radius: 50%;
+	border: 1px solid rgba(255, 255, 255, .5);
+	position: absolute;
+	transform: translate(-50%, -50%);
+}
+
+.planet-circle.minor {
+	border: 1px solid rgba(255, 255, 255, .2);
+}
+
+.constellation-divider {
+	width: 1px;
+	height: 500px;
+	border-left: 1px solid rgba(255, 255, 255, .2);
+	position: absolute;
+	transform: translate(-50%, -50%);
+}
+
+.a-planet {
+	position: absolute;
+	height: 300px;
+}
+
+.a-star {
+	position: absolute;
+}
+
+.constellation-name {
+	position: absolute;
+	color: white;
+	transform: translate(-50%, -100%);
+	font-size: 14px;
+	font-family: "Palatino Linotype";
+	//font-style: italic;
+}
+
+.constellation-symbol {
+	position: absolute;
+	color: white;
+	transform: translate(-50%, -100%);
+	font-size: 14px;
+	font-family: "Palatino Linotype";
+	//font-style: italic;
+}
+
+.planet-name {
+	position: absolute;
+	color: white;
+	transform: translate(-50%, -150%);
+	font-size: 10px;
+	font-family: "Palatino Linotype";
+}
+
+.planet-symbol {
+	position: absolute;
+	color: white;
+	transform: translate(-50%, -150%);
+	font-size: 10px;
+}
+
+.planet-name.node {
+	top: 1px;
+	line-height: 8px;
+	font-size: 8px;
+	text-align: center;
+}
+
+.planet-name.minor {
+	transform: translate(-50%, -100%);
+	font-size: 8px;
+	font-style: italic;
+}
+
+.planet-disc {
+	position: absolute;
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	background-color: #4488BB;
+	transform: translate(-50%, -50%);
+	font-size: 7px;
+	overflow: hidden;
+}
+
+.moon-shader {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	background-color: white;
+	//border-left: 2px solid #555;
+	left: 50%;
+	transform-origin: center left;
+}
+
+.star-name {
+	position: absolute;
+	color: white;
+	transform: translate(-50%, -150%);
+	font-size: 7px;
+	font-family: "Palatino Linotype";
+	//font-style: italic;
+}
+
+.star-id {
+	position: absolute;
+	color: white;
+	transform: translate(-50%, -100%);
+	font-size: 2px;
+	font-family: Calibri;
+}
+
+.star-mag {
+	position: absolute;
+	color: white;
+	transform: translate(-50%, -150%);
+	font-size: 2px;
+	font-family: Calibri;
+}
+
+.star-disc {
+	position: absolute;
+	border-radius: 50%;
+	transform: translate(-50%, -50%);
+}
+
+.a-constellation {
+	color: white;
+	position: absolute;
+	height: 500px;
+}
+
+.shader-container {
+	position: absolute;
+	width: calc(5000px / 2);
+	height: 5000px;
+	//background-color: rgba(0, 0, 0, .5);
+	transform-origin: center left;
+	overflow: hidden;
+}
+
+.visible-ecliptic-shader {
+	position: absolute;
+	width: 5000px;
+	height: 5000px;
+	background-color: rgba(0, 0, 0, .5);
+	transform-origin: bottom center;
+}
+
+.planet-laser {
+	width: 1px;
+	height: 2000px;
+	position: absolute;
+	border-left: 1px solid white;
+	transform-origin: top left;
+}
+
+.planet-laser.Conjunct {
+	border-left: 1px solid red;
+}
+
+.planet-laser.Opposition {
+	border-left: 1px solid orange;
+}
+
+.planet-laser.Trine {
+	border-left: 1px solid yellow;
+}
+
+.planet-laser.Square {
+	border-left: 1px solid lightGreen;
+}
+
+.planet-laser.Sextile {
+	border-left: 1px solid magenta;
+	top: 1px;
+}
+
+.shader-caption {
+	position: absolute;
+	bottom: 0;
+	left: 55%;
+	color: #AAA;
+	transform: rotate(180deg);
+	font-size: 10px;
+	font-family: "Palatino Linotype";
+}
+
+.a-line {
+	position: absolute;
+}
+
+.the-visible-line {
+	position: absolute;
+	width: 1px;
+	background-color: rgba(255, 255, 255, .3);
+	transform-origin: top left;
+}
