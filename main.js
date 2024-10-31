@@ -196,8 +196,8 @@ Vue.component('the-sky', {
 			'<div class="control-box no-select">' +
 				'<table><tr><td style="vertical-align: top;">' +
 				'<div class="date-controls">' +
-					'<div class="control-button" v-if="!$root.visibleSkyUp" @click.stop="$root.visibleSkyUp = true; $root.showShader = true; $root.stepIncrement = 100000;">View</div>' +
-					'<div class="control-button on" v-if="$root.visibleSkyUp" @click.stop="$root.visibleSkyUp = false; $root.showShader = false; $root.stepIncrement = 10000000;">View</div>' +
+					'<div class="control-button" v-if="!$root.visibleSkyUp" @click.stop="$root.visibleSkyUp = true; $root.showShader = true; $root.stepIncrement = 100000;">Space</div>' +
+					'<div class="control-button on" v-if="$root.visibleSkyUp" @click.stop="$root.visibleSkyUp = false; $root.showShader = false; $root.stepIncrement = 10000000;">Earth</div>' +
 					'<div class="control-button" @click.stop="$root.runClock" v-if="$root.clockID == -1">GO</div>' +
 					'<div class="control-button on" @click.stop="$root.stopClock" v-if="$root.clockID != -1">STOP</div>' +
 					'<div class="control-button" v-if="!$root.showButtons" @click.stop="$root.showButtons = true;">&#9650;</div>' +
