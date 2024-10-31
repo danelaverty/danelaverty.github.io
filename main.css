@@ -105,6 +105,7 @@ table td {
 
 .date-shown {
 	color: white;
+	background-color: rgba(0, 0, 0, .8);
 	/*position: absolute;
 	top: 0px;
 	left: 0px;*/
@@ -113,6 +114,7 @@ table td {
 .date-controls {
 	display: inline-block;
 	min-width: 120px;
+	background-color: rgba(0, 0, 0, .8);
 }
 
 .control-text {
