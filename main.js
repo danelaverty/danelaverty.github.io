@@ -43,7 +43,7 @@ Vue.component('a-planet', {
 				'<div class="planet-symbol" v-if="$root.useSymbols" :class="{ node: planet.name == \'NN\' || planet.name == \'SN\', }">{{ planet.symbol }}</div>' +
 				'<div class="planet-disc" ' +
 					':id="planet.name + \'-domal-dignity\'" ' +
-					'v-if="planet.name == planetSign.planet || planet.name == planetSign.secondaryPlanet" ' +
+					'v-if="$root.showDignities && (planet.name == planetSign.planet || planet.name == planetSign.secondaryPlanet)" ' +
 					':style="{ ' +
 						'backgroundColor: \'yellow\', ' +
 						'width: planet.size * 1.5 + \'px\', ' +
@@ -227,8 +227,10 @@ Vue.component('the-sky', {
 						'<div class="control-button" :class="{ on: $root.visibleSkyUp, }" @click.stop="$root.visibleSkyUp = !$root.visibleSkyUp">Sky Up</div>' +
 						'<div class="control-button" :class="{ on: $root.showLasers, }" @click.stop="$root.showLasers = !$root.showLasers">Finders</div>' +
 						'<div class="control-button" :class="{ on: $root.showLines, }" @click.stop="$root.showLines = !$root.showLines">Const.</div>' +
+						'<div class="control-button" :class="{ on: $root.showTropical, }" @click.stop="$root.showTropical = !$root.showTropical">Tropical</div>' +
 						'<div class="control-button" :class="{ on: $root.showAspects, }" @click.stop="$root.showAspects = !$root.showAspects">Aspects</div>' +
 						'<div class="control-button" :class="{ on: $root.showDivisions, }" @click.stop="$root.showDivisions = !$root.showDivisions">Divisions</div>' +
+						'<div class="control-button" :class="{ on: $root.showDignities, }" @click.stop="$root.showDignities = !$root.showDignities">Dignities</div>' +
 						'<div class="control-button" :class="{ on: $root.showAngles, }" @click.stop="$root.showAngles = !$root.showAngles">Angles</div>' +
 					'</div>' + 
 				'</div>' +
@@ -275,19 +277,37 @@ Vue.component('the-sky', {
 					'>' +
 					'<div class="the-earth"></div>' +
 					//'<div class="the-constellations-circle"></div>' +
-					'<div class="the-ecliptic"></div>' +
-					'<div class="constellation-divider"' + 
-						'v-if="$root.showDivisions" ' +
-						'v-for="(constellation, i) in $root.theZodiac" ' +
-						':style="{ transform: \'translate(-50%, -50%) rotate(\' + (i * (-360 / 12) + 360 / 24) + \'deg)\', }" ' +
-					'></div>' +
-					'<div ' +
-						'v-for="(constellation, i) in $root.theZodiac" ' +
-						'class="a-constellation" ' +
-						':style="{ transform: \'translate(-50%, -50%) rotate(\' + (i * (-360 / 12)) + \'deg)\', }" ' +
-						'>' +
-						'<div class="constellation-name" v-if="!$root.useSymbols">{{ constellation.name }}</div>' +
-						'<div class="constellation-symbol" v-if="$root.useSymbols">{{ constellation.symbol }}</div>' +
+					'<div class="sideral" v-if="!$root.showTropical">' +
+						'<div class="the-ecliptic"></div>' +
+						'<div class="constellation-divider"' + 
+							'v-if="$root.showDivisions" ' +
+							'v-for="(constellation, i) in $root.theZodiac" ' +
+							':style="{ transform: \'translate(-50%, -50%) rotate(\' + (i * (-360 / 12) + 360 / 24) + \'deg)\', }" ' +
+						'></div>' +
+						'<div ' +
+							'v-for="(constellation, i) in $root.theZodiac" ' +
+							'class="a-constellation" ' +
+							':style="{ transform: \'translate(-50%, -50%) rotate(\' + (i * (-360 / 12)) + \'deg)\', }" ' +
+							'>' +
+							'<div class="constellation-name" v-if="!$root.useSymbols">{{ constellation.name }}</div>' +
+							'<div class="constellation-symbol" v-if="$root.useSymbols">{{ constellation.symbol }}</div>' +
+						'</div>' +
+					'</div>' +
+					'<div class="tropical" v-if="$root.showTropical">' +
+						'<div class="the-ecliptic"></div>' +
+						'<div class="constellation-divider"' + 
+							'v-if="$root.showDivisions" ' +
+							'v-for="(constellation, i) in $root.theZodiac" ' +
+							':style="{ transform: \'translate(-50%, -50%) rotate(\' + (24.2 + i * (-360 / 12) + 360 / 24) + \'deg)\', }" ' +
+						'></div>' +
+						'<div ' +
+							'v-for="(constellation, i) in $root.theZodiac" ' +
+							'class="a-constellation" ' +
+							':style="{ transform: \'translate(-50%, -50%) rotate(\' + (24.2 + i * (-360 / 12)) + \'deg)\', }" ' +
+							'>' +
+							'<div class="constellation-name" v-if="!$root.useSymbols">{{ constellation.name }}</div>' +
+							'<div class="constellation-symbol" v-if="$root.useSymbols">{{ constellation.symbol }}</div>' +
+						'</div>' +
 					'</div>' +
 					'<div class="planet-circle major" ' +
 						'v-for="(planet, i) in $root.thePlanets" ' +
@@ -673,6 +693,8 @@ var app = new Vue({
 	    useSymbols: false,
 	    showLasers: false,
 	    showButtons: false,
+	    showDignities: false,
+	    showTropical: false,
 	    showLines: false,
 	    showAspects: false,
 	    showDivisions: false,
@@ -895,14 +917,31 @@ var app = new Vue({
 		    { id: 'a15', con: 'RA', name: '15', ra: 15, dec: 40, mag: -2, ci: 0, },
 		    { id: 'a18', con: 'RA', name: '18', ra: 18, dec: 40, mag: -2, ci: 0, },
 		    { id: 'a21', con: 'RA', name: '21', ra: 21, dec: 40, mag: -2, ci: 0, },*/
-		    'q0': { id: 'q0', con: 'EQU', name: 'Q0', ra: 0, dec: 0, mag: -2, ci: 0, },
-		    'q3': { id: 'q3', con: 'EQU', name: 'Q3', ra: 3, dec: 0, mag: -2, ci: 0, },
-		    'q6': { id: 'q6', con: 'EQU', name: 'Q6', ra: 6, dec: 0, mag: -2, ci: 0, },
-		    'q9': { id: 'q9', con: 'EQU', name: 'Q9', ra: 9, dec: 0, mag: -2, ci: 0, },
-		    'q12': { id: 'q12', con: 'EQU', name: 'Q12', ra: 12, dec: 0, mag: -2, ci: 0, },
-		    'q15': { id: 'q15', con: 'EQU', name: 'Q15', ra: 15, dec: 0, mag: -2, ci: 0, },
-		    'q18': { id: 'q18', con: 'EQU', name: 'Q18', ra: 18, dec: 0, mag: -2, ci: 0, },
-		    'q21': { id: 'q21', con: 'EQU', name: 'Q21', ra: 21, dec: 0, mag: -2, ci: 0, },
+		    'q0': { id: 'q0', con: 'EQU', name: '0', ra: 0, dec: 0, mag: 0, ci: 0, },
+		    'q1': { id: 'q1', con: 'EQU', name: '1', ra: 1, dec: 0, mag: 0, ci: 0, },
+		    'q2': { id: 'q2', con: 'EQU', name: '2', ra: 2, dec: 0, mag: 0, ci: 0, },
+		    'q3': { id: 'q3', con: 'EQU', name: '3', ra: 3, dec: 0, mag: 0, ci: 0, },
+		    'q4': { id: 'q4', con: 'EQU', name: '4', ra: 4, dec: 0, mag: 0, ci: 0, },
+		    'q5': { id: 'q5', con: 'EQU', name: '5', ra: 5, dec: 0, mag: 0, ci: 0, },
+		    'q6': { id: 'q6', con: 'EQU', name: '6', ra: 6, dec: 0, mag: 0, ci: 0, },
+		    'q7': { id: 'q7', con: 'EQU', name: '7', ra: 7, dec: 0, mag: 0, ci: 0, },
+		    'q8': { id: 'q8', con: 'EQU', name: '8', ra: 8, dec: 0, mag: 0, ci: 0, },
+		    'q9': { id: 'q9', con: 'EQU', name: '9', ra: 9, dec: 0, mag: 0, ci: 0, },
+		    'q10': { id: 'q10', con: 'EQU', name: '10', ra: 10, dec: 0, mag: 0, ci: 0, },
+		    'q11': { id: 'q11', con: 'EQU', name: '11', ra: 11, dec: 0, mag: 0, ci: 0, },
+		    'q12': { id: 'q12', con: 'EQU', name: '12', ra: 12, dec: 0, mag: 0, ci: 0, },
+		    'q13': { id: 'q13', con: 'EQU', name: '13', ra: 13, dec: 0, mag: 0, ci: 0, },
+		    'q14': { id: 'q14', con: 'EQU', name: '14', ra: 14, dec: 0, mag: 0, ci: 0, },
+		    'q15': { id: 'q15', con: 'EQU', name: '15', ra: 15, dec: 0, mag: 0, ci: 0, },
+		    'q16': { id: 'q16', con: 'EQU', name: '16', ra: 16, dec: 0, mag: 0, ci: 0, },
+		    'q17': { id: 'q17', con: 'EQU', name: '17', ra: 17, dec: 0, mag: 0, ci: 0, },
+		    'q18': { id: 'q18', con: 'EQU', name: '18', ra: 18, dec: 0, mag: 0, ci: 0, },
+		    'q19': { id: 'q19', con: 'EQU', name: '19', ra: 19, dec: 0, mag: 0, ci: 0, },
+		    'q20': { id: 'q20', con: 'EQU', name: '20', ra: 20, dec: 0, mag: 0, ci: 0, },
+		    'q21': { id: 'q21', con: 'EQU', name: '21', ra: 21, dec: 0, mag: 0, ci: 0, },
+		    'q22': { id: 'q22', con: 'EQU', name: '22', ra: 22, dec: 0, mag: 0, ci: 0, },
+		    'q23': { id: 'q23', con: 'EQU', name: '23', ra: 23, dec: 0, mag: 0, ci: 0, },
+		    'q24': { id: 'q24', con: 'EQU', name: '24', ra: 24, dec: 0, mag: 0, ci: 0, },
 		    'e0': { id: 'e0', con: 'ECL', name: '0', ra: 0, dec: -23.45 * Math.cos((6/24 + 0/24) * 2 * Math.PI), mag: 0, ci: 0, },
 		    'e1': { id: 'e1', con: 'ECL', name: '1', ra: 1, dec: -23.45 * Math.cos((6/24 + 1/24) * 2 * Math.PI), mag: 0, ci: 0, },
 		    'e2': { id: 'e2', con: 'ECL', name: '2', ra: 2, dec: -23.45 * Math.cos((6/24 + 2/24) * 2 * Math.PI), mag: 0, ci: 0, },

@@ -70,7 +70,7 @@ table td {
 
 	.control-box .speed-control-button {
 		font-size: 2.1vh;
-		width: 3vw;
+		width: 4vw;
 	}
 
 	.control-button.hide-mobile, .control-text.hide-mobile {
@@ -225,6 +225,17 @@ table td {
 	transform: translate(-50%, -50%);
 }
 
+.tropical .the-ecliptic {
+	border: 1px solid rgba(255, 0, 215, .3);
+}
+
+.tropical .constellation-divider {
+	border-left: 1px solid rgba(255, 0, 215, .2);
+}
+
+.tropical .constellation-name {
+	color: rgba(255, 0, 215, 1);
+}
 .planet-circle {
 	border-radius: 50%;
 	border: 1px solid rgba(255, 255, 255, .5);
@@ -255,7 +266,7 @@ table td {
 
 .constellation-name {
 	position: absolute;
-	color: white;
+	color: rgba(255, 215, 0, 1);
 	transform: translate(-50%, -100%);
 	font-size: 18px;
 	font-family: "Palatino Linotype";
