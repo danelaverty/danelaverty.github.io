@@ -193,7 +193,9 @@ Vue.component('a-line', {
 
 Vue.component('the-sky', {
 	template: '' +
-		'<div class="the-sky">' +
+		'<div class="the-sky" ' +
+			'@click.stop="$root.showButtons = false;" ' +
+			'>' +
 			'<div class="control-box no-select">' +
 				'<table style="width: 100%"><tr><td style="vertical-align: top;">' +
 				'<div class="date-controls">' +
