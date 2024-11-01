@@ -36,7 +36,7 @@ Vue.component('a-planet', {
 			':id="planet.name + \'-container\'" ' +
 			':style="{ ' +
 				'transform: planetTransform, ' +
-				'height: (100 + 32 * planet.order) + \'px\', ' +
+				'height: (this.$root.toEcliptic ? 600 : (100 + 32 * planet.order)) + \'px\', ' +
 				'}" ' +
 			'>' +
 				'<div class="planet-name" v-if="!$root.useSymbols" :class="{ node: planet.name == \'NN\' || planet.name == \'SN\', }">{{ planet.name }}</div>' +
@@ -232,6 +232,7 @@ Vue.component('the-sky', {
 						'<div class="control-button" :class="{ on: $root.showDivisions, }" @click.stop="$root.showDivisions = !$root.showDivisions">Divisions</div>' +
 						'<div class="control-button" :class="{ on: $root.showDignities, }" @click.stop="$root.showDignities = !$root.showDignities">Dignities</div>' +
 						'<div class="control-button" :class="{ on: $root.showAngles, }" @click.stop="$root.showAngles = !$root.showAngles">Angles</div>' +
+						'<div class="control-button" :class="{ on: $root.toEcliptic, }" @click.stop="$root.toEcliptic = !$root.toEcliptic">To Ecliptic</div>' +
 					'</div>' + 
 				'</div>' +
 				'</td><td style="vertical-align: top; text-align: right;">' +
@@ -310,6 +311,7 @@ Vue.component('the-sky', {
 						'</div>' +
 					'</div>' +
 					'<div class="planet-circle major" ' +
+						'v-if="!$root.toEcliptic" ' +
 						'v-for="(planet, i) in $root.thePlanets" ' +
 						':style="{ ' +
 							'height: (100 + 32 * planet.order) + \'px\', ' +
@@ -699,6 +701,7 @@ var app = new Vue({
 	    showAspects: false,
 	    showDivisions: false,
 	    showAngles: false,
+	    toEcliptic: false,
 	    theZodiac: [
 		{ name: 'Aries', symbol: String.fromCodePoint(0x2648), planet: 'Mars', }, 
 		{ name: 'Taurus', symbol: String.fromCodePoint(0x2649), planet: 'Venus', }, 
