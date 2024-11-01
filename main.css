@@ -54,6 +54,7 @@ table td {
 		width: 1vw;
 		z-index: 2;
 		white-space: nowrap;
+		touch-action: none;
 	}
 
 	.control-box .control-button {
@@ -64,10 +65,12 @@ table td {
 		border-right: unset;*/
 		width: 7vw;
 		border-width: 0.1vh;
+		touch-action: none;
 	}
 
 	.control-box .speed-control-button {
 		font-size: 2.1vh;
+		width: 2vw;
 	}
 
 	.control-button.hide-mobile, .control-text.hide-mobile {
@@ -79,6 +82,7 @@ table td {
 	}
 
 	.control-box .date-shown td.dst-indicator {
+		touch-action: none;
 		font-size: 1.3vh;
 	}
 
@@ -86,6 +90,7 @@ table td {
 		margin: 0.1vh;
 		padding: 0.1vh;
 		font-size: 2.1vh;
+		touch-action: none;
 	}
 
 	.control-box .date-controls {
@@ -110,6 +115,7 @@ table td {
 .date-shown {
 	color: white;
 	background-color: rgba(0, 0, 0, .8);
+	touch-action: none;
 	/*position: absolute;
 	top: 0px;
 	left: 0px;*/
@@ -181,6 +187,7 @@ table td {
 	width: 100vw;
 	transform-origin: bottom right;
 	z-index: 1;
+	touch-action: pan-x pan-y;
 }
 
 .the-center {
