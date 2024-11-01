@@ -216,6 +216,15 @@ table td {
 	transform: translate(-50%, -50%);
 }
 
+.the-ecliptic {
+	width: 600px;
+	height: 600px;
+	border-radius: 50%;
+	border: 1px solid rgba(255, 215, 0, .3);
+	position: absolute;
+	transform: translate(-50%, -50%);
+}
+
 .planet-circle {
 	border-radius: 50%;
 	border: 1px solid rgba(255, 255, 255, .5);
@@ -229,8 +238,8 @@ table td {
 
 .constellation-divider {
 	width: 1px;
-	height: 500px;
-	border-left: 1px solid rgba(255, 255, 255, .2);
+	height: 600px;
+	border-left: 1px solid rgba(255, 215, 0, .2);
 	position: absolute;
 	transform: translate(-50%, -50%);
 }
@@ -323,8 +332,8 @@ table td {
 .star-id {
 	position: absolute;
 	color: white;
-	transform: translate(-50%, -100%);
-	font-size: 2px;
+	transform: translate(-50%, 100%);
+	font-size: 7px;
 	font-family: Verdana;
 }
 
@@ -369,7 +378,7 @@ table td {
 	width: 1px;
 	height: 2000px;
 	position: absolute;
-	border-left: 1px solid white;
+	border-left: 1px solid rgba(255, 255, 255, .6);
 	transform-origin: top left;
 }
 
