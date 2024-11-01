@@ -194,10 +194,10 @@ Vue.component('the-sky', {
 	template: '' +
 		'<div class="the-sky">' +
 			'<div class="control-box no-select">' +
-				'<table><tr><td style="vertical-align: top;">' +
+				'<table style="width: 100%"><tr><td style="vertical-align: top;">' +
 				'<div class="date-controls">' +
-					'<div class="control-button" v-if="!$root.visibleSkyUp" @click.stop="$root.visibleSkyUp = true; $root.showShader = true; $root.stepIncrement = 100000;">Space</div>' +
-					'<div class="control-button on" v-if="$root.visibleSkyUp" @click.stop="$root.visibleSkyUp = false; $root.showShader = false; $root.stepIncrement = 10000000;">Earth</div>' +
+					'<div class="control-button on" v-if="!$root.visibleSkyUp" @click.stop="$root.visibleSkyUp = true; $root.showShader = true; $root.stepIncrement = 100000;">Space&nbsp;View</div>' +
+					'<div class="control-button on" v-if="$root.visibleSkyUp" @click.stop="$root.visibleSkyUp = false; $root.showShader = false; $root.stepIncrement = 10000000;">Earth&nbsp;View</div>' +
 					'<div class="control-button" @click.stop="$root.runClock" v-if="$root.clockID == -1">GO</div>' +
 					'<div class="control-button on" @click.stop="$root.stopClock" v-if="$root.clockID != -1">STOP</div>' +
 					'<div class="control-button" v-if="!$root.showButtons" @click.stop="$root.showButtons = true;">&#9650;</div>' +
@@ -205,9 +205,9 @@ Vue.component('the-sky', {
 					'<div class="buttons-container" v-if="$root.showButtons" style=" white-space: nowrap;">' +
 						'<div>' +
 							'<div class="speed-control-button" @click.stop="$root.stepIncrementDown">-</div>' +
-							'<div class="control-text">Speed: {{ $root.stepIncrement / 100000 }}</div>' +
 							'<div class="speed-control-button" @click.stop="$root.stepIncrementUp">+</div>' +
 						'</div>' +
+						'<div class="control-text">Speed: {{ $root.stepIncrement / 100000 }}</div>' +
 						//'<div class="control-button" @click.stop="$root.dateTime = new Date().getTime()">Now</div>' +
 						//'<div class="control-button" @click.stop="$root.dateTime = 304017323563">BD</div>' +
 						//'<div class="control-button" @click.stop="$root.saveDateTime">Save</div>' +
@@ -231,29 +231,29 @@ Vue.component('the-sky', {
 						'<div class="control-button" :class="{ on: $root.showAngles, }" @click.stop="$root.showAngles = !$root.showAngles">Angles</div>' +
 					'</div>' + 
 				'</div>' +
-				'</td><td style="vertical-align: top;">' +
+				'</td><td style="vertical-align: top; text-align: right;">' +
 				'<div style="display: inline-block;">' +
 					'<table class="date-shown no-select">' +
-						'<tr style="font-size: 10px;">' +
-							'<td class="control-cell" @click.stop="$root.dateTime += (60 * 60 * 1000)">&#9650;</td>' +
-							'<td class="control-cell" @click.stop="$root.dateTime += (60 * 1000)">&#9650;</td>' +
+						'<tr class="control-row">' +
+							'<td class="control-cell" style="text-align: right;" @click.stop="$root.dateTime += (60 * 60 * 1000)">&#9650;</td>' +
+							'<td class="control-cell" style="text-align: right;" @click.stop="$root.dateTime += (60 * 1000)">&#9650;</td>' +
 							'<td></td>' +
 							'<td class="control-cell" @click.stop="incrementMonth">&#9650;</td>' +
 							'<td class="control-cell" @click.stop="$root.dateTime += (24 * 60 * 60 * 1000)">&#9650;</td>' +
 							'<td class="control-cell" @click.stop="incrementYear">&#9650;</td>' +
 						'</tr>' +
 						'<tr style="font-size: 16px;">' +
-							'<td><span v-show="$root.dateShown.getHours() < 10">0</span>{{ $root.dateShown.getHours() }}:</td>' +
+							'<td>{{ $root.dateShown.getHours() == 0 ? 12 : ($root.dateShown.getHours() > 12 ? $root.dateShown.getHours() - 12 : $root.dateShown.getHours()) }}:</td>' +
 							'<td><span v-show="$root.dateShown.getMinutes() < 10">0</span>{{ $root.dateShown.getMinutes() }}</td>' +
 							'<td>{{ $root.dateShown.getHours() >= 12 ? \'PM\' : \'AM\' }}&nbsp;</td>' +
 							'<td><span v-show="$root.dateShown.getMonth() < 9">0</span>{{ $root.dateShown.getMonth() + 1 }}/</td>' +
 							'<td><span v-show="$root.dateShown.getDate() < 10">0</span>{{ $root.dateShown.getDate() }}/</td>' +
 							'<td>{{ $root.dateShown.getFullYear() }}&nbsp;</td>' +
-							'<td class="dst-indicator">{{ $root.isDST ? \'(DST)\' : \'\' }} </td>' +
+							'<td class="dst-indicator" :style="{ color: $root.isDST ? \'white\' : \'black\', }">(DST)</td>' +
 						'</tr>' +
-						'<tr class="control-row" style="font-size: 10px;">' +
-							'<td class="control-cell" @click.stop="$root.dateTime -= (60 * 60 * 1000)">&#9660;</td>' +
-							'<td class="control-cell" @click.stop="$root.dateTime -= (60 * 1000)">&#9660;</td>' +
+						'<tr class="control-row">' +
+							'<td class="control-cell" style="text-align: right;" @click.stop="$root.dateTime -= (60 * 60 * 1000)">&#9660;</td>' +
+							'<td class="control-cell" style="text-align: right;" @click.stop="$root.dateTime -= (60 * 1000)">&#9660;</td>' +
 							'<td></td>' +
 							'<td class="control-cell" @click.stop="decrementMonth">&#9660;</td>' +
 							'<td class="control-cell" @click.stop="$root.dateTime -= (24 * 60 * 60 * 1000)">&#9660;</td>' +
@@ -687,7 +687,7 @@ var app = new Vue({
 		{ name: 'Pisces', symbol: String.fromCodePoint(0x2653), planet: 'Jupiter', secondaryPlanet: 'Neptune', }, 
 	    ],
 	    thePlanets: [
-		{ order: 1, name: 'Moon', symbol: String.fromCodePoint(0x263D), size: 20, color: '#555' }, 
+		{ order: 1, name: 'Moon', symbol: String.fromCodePoint(0x263D), size: 20, color: 'white' }, 
 		{ order: 2, name: 'Mercury', symbol: String.fromCodePoint(0x263F), size: 10, color: 'gray' }, 
 		{ order: 3, name: 'Venus', symbol: String.fromCodePoint(0x2640), size: 10, color: 'orange' }, 
 		{ order: 4, name: 'Sun', symbol: String.fromCodePoint(0x2609), size: 20, color: 'yellow' }, 
