@@ -58,7 +58,7 @@ table td {
 	}
 
 	.control-box .control-button {
-		font-size: 2.1vh;
+		font-size: 2.5vh;
 		margin: 0.3vh;
 		padding: 0.3vh;
 		/*border: 0.1vh solid #666;
@@ -69,7 +69,7 @@ table td {
 	}
 
 	.control-box .speed-control-button {
-		font-size: 2.1vh;
+		font-size: 2.5vh;
 		width: 4vw;
 	}
 
@@ -131,7 +131,7 @@ table td {
 .control-text {
 	margin: 3px;
 	padding: 3px;
-	font-size: 7px;
+	font-size: 8px;
 	font-family: Verdana;
 	color: #CCC;
 }
@@ -139,7 +139,7 @@ table td {
 .control-button {
 	margin: 3px;
 	padding: 3px;
-	font-size: 10px;
+	font-size: 12px;
 	font-family: Verdana;
 	color: #AAA;
 	//background: linear-gradient(to right, #333, #333 50%, rgba(0, 0, 0, 0));
@@ -221,6 +221,14 @@ table td {
 	transform: translate(-50%, -50%);
 }
 
+.the-ecliptic-flat {
+	width: 840px;
+	height: 1px;
+	border-top: 1px solid rgba(255, 215, 0, .3);
+	position: absolute;
+	transform: translate(-50%, -300px);
+}
+
 .the-ecliptic {
 	width: 600px;
 	height: 600px;
@@ -234,8 +242,12 @@ table td {
 	border: 1px solid rgba(255, 0, 215, .3);
 }
 
-.tropical .constellation-divider {
-	border-left: 1px solid rgba(255, 0, 215, .2);
+.tropical .the-ecliptic-flat {
+	border-top: 1px solid rgba(255, 0, 215, .3);
+}
+
+.tropical .constellation-divider, .tropical .constellation-divider-flat {
+	border-left: 1px solid rgba(255, 0, 215, .4);
 }
 
 .tropical .constellation-name {
@@ -255,9 +267,17 @@ table td {
 .constellation-divider {
 	width: 1px;
 	height: 600px;
-	border-left: 1px solid rgba(255, 215, 0, .2);
+	border-left: 1px solid rgba(255, 215, 0, .4);
 	position: absolute;
 	transform: translate(-50%, -50%);
+}
+
+.constellation-divider-flat {
+	width: 1px;
+	height: 700px;
+	border-left: 1px solid rgba(255, 215, 0, .4);
+	position: absolute;
+	top: 0;
 }
 
 .a-planet {
@@ -278,6 +298,10 @@ table td {
 	//font-style: italic;
 }
 
+.constellation-name.small {
+	font-size: 12px;
+}
+
 .constellation-symbol {
 	position: absolute;
 	color: white;
@@ -293,6 +317,10 @@ table td {
 	transform: translate(-50%, -150%);
 	font-size: 14px;
 	font-family: "Palatino Linotype";
+}
+
+.planet-name.small {
+	font-size: 10px;
 }
 
 .planet-symbol {
@@ -438,4 +466,55 @@ table td {
 	width: 1px;
 	background-color: rgba(255, 255, 255, .3);
 	transform-origin: top left;
+}
+
+.moments-table {
+	color: white;
+	font-size: 10px;
+}
+
+.moments-table td {
+	padding: 0px 3px;
+}
+
+.moments-button {
+	background-color: #333;
+	color: #CCC;
+	font-weight: bold;
+	font-size: 8px;
+	text-transform: uppercase;
+	border: 1px solid #CCC;
+	padding: 3px;
+	margin: 3px;
+	cursor: pointer;
+}
+
+.moments-button:active {
+	color: #FCF;
+}
+
+.sequence-tick-line {
+	position: absolute;
+	width: 840px;
+	height: 1px;
+	background-color: rgba(255, 255, 255, .1);
+	left: 0;
+	transform: translate(-50%, -280px);
+}
+
+.sequence-tick-line.month {
+	background-color: rgba(255, 255, 255, .5);
+}
+
+.sequence-tick-line-label {
+	color: rgba(255, 255, 255, .3);
+	position: absolute;
+	top: 0;
+	right: 100%;
+	font-size: 10px;
+	transform: translate(-5px, -50%);
+}
+
+.month .sequence-tick-line-label {
+	color: rgba(255, 255, 255, .6);
 }
