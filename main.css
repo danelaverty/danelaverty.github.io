@@ -4,7 +4,7 @@ html {
 	font-size: 14px;
 	margin: 0;
 	padding: 0;
-	background-color: #000000;
+	background-color: #111;
 	//overflow: hidden;
 }
 
@@ -44,12 +44,24 @@ table td {
 	margin: 0;
 }
 
+.controls-frame {
+	position: fixed;
+	height: 100vh;
+	width: 100vw;
+	z-index: 2;
+	border: 5px solid white;
+}
+
 @media (orientation: portrait) {
 	#sky-viewer {
 		transform: scale(2);
 	}
+
+	.hide-mobile {
+		display: none;
+	}
+
 	.control-box {
-		position: fixed;
 		height: 1px;
 		width: 100%;
 		z-index: 2;
@@ -99,6 +111,10 @@ table td {
 }
 
 @media (orientation: landscape) {
+	.hide-desktop {
+		display: none;
+	}
+
 	.control-box {
 		position: fixed;
 		height: 1px;
@@ -110,6 +126,20 @@ table td {
 	.control-box .date-shown td.dst-indicator {
 		font-size: 10px;
 	}
+}
+
+.aspect-list {
+	color: #AAA;
+	font-size: 10px;
+	cursor: pointer;
+}
+
+.aspect-list.selected {
+	color: #FFF;
+}
+
+.aspect-list:hover {
+	color: #FFC;
 }
 
 .date-shown {
@@ -167,7 +197,7 @@ table td {
 }
 
 .control-button:hover {
-	color: #FFF;
+	color: #FFA;
 }
 
 .control-button.on {
@@ -233,21 +263,21 @@ table td {
 	width: 600px;
 	height: 600px;
 	border-radius: 50%;
-	border: 1px solid rgba(255, 215, 0, .3);
+	border: 1px solid rgba(255, 215, 190, .15);
 	position: absolute;
 	transform: translate(-50%, -50%);
 }
 
-.tropical .the-ecliptic {
+/*.tropical .the-ecliptic {
 	border: 1px solid rgba(255, 0, 215, .3);
-}
+}*/
 
 .tropical .the-ecliptic-flat {
 	border-top: 1px solid rgba(255, 0, 215, .3);
 }
 
 .tropical .constellation-divider, .tropical .constellation-divider-flat {
-	border-left: 1px solid rgba(255, 0, 215, .4);
+	border-left: 1px solid rgba(255, 215, 190, .1);
 }
 
 .tropical .constellation-name {
@@ -267,7 +297,7 @@ table td {
 .constellation-divider {
 	width: 1px;
 	height: 600px;
-	border-left: 1px solid rgba(255, 215, 0, .4);
+	border-left: 1px solid rgba(255, 215, 190, .1);
 	position: absolute;
 	transform: translate(-50%, -50%);
 }
@@ -275,7 +305,7 @@ table td {
 .constellation-divider-flat {
 	width: 1px;
 	height: 700px;
-	border-left: 1px solid rgba(255, 215, 0, .4);
+	border-left: 1px solid rgba(255, 215, 0, .2);
 	position: absolute;
 	top: 0;
 }
@@ -283,6 +313,11 @@ table td {
 .a-planet {
 	position: absolute;
 	height: 300px;
+	z-index: 2;
+}
+
+.dim {
+	opacity: .3 !important;
 }
 
 .a-star {
@@ -315,7 +350,7 @@ table td {
 	position: absolute;
 	color: white;
 	transform: translate(-50%, -150%);
-	font-size: 14px;
+	font-size: 12px;
 	font-family: "Palatino Linotype";
 }
 
@@ -350,8 +385,9 @@ table td {
 	border-radius: 50%;
 	background-color: #4488BB;
 	transform: translate(-50%, -50%);
-	font-size: 7px;
 	overflow: hidden;
+	font-size: 7px;
+	color: white;
 }
 
 .moon-shader {
@@ -408,6 +444,7 @@ table td {
 	//background-color: rgba(0, 0, 0, .5);
 	transform-origin: center left;
 	overflow: hidden;
+	z-index: 1;
 }
 
 .visible-ecliptic-shader {
@@ -427,23 +464,23 @@ table td {
 }
 
 .planet-laser.Conjunct {
-	border-left: 1px solid red;
+	background-color: #EC7357;
 }
 
 .planet-laser.Opposition {
-	border-left: 1px solid orange;
+	background-color: #C6FAEF;
 }
 
 .planet-laser.Trine {
-	border-left: 1px solid yellow;
+	border-left: 1px solid #FDD652;
 }
 
 .planet-laser.Square {
-	border-left: 1px solid lightGreen;
+	border-left: 1px solid #4281A4;
 }
 
 .planet-laser.Sextile {
-	border-left: 1px solid magenta;
+	border-left: 1px solid #AEE5A7;
 	top: 1px;
 }
 

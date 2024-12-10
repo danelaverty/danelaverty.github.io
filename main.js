@@ -4,13 +4,19 @@ Vue.component('a-planet', {
 		planetAngle: function() {
 			return this.$root.planetAngle(this.planet.name, this.timeOffset);
 		},
+		previousPlanetAngle: function() {
+			return this.$root.planetAngle(this.planet.name, this.timeOffset - 1000000);
+		},
+		isRetrograde: function() {
+			return this.previousPlanetAngle < this.planetAngle;
+		},
 		planetSign: function() {
 			if (['NN', 'SN'].indexOf(this.planet.name) > -1) { return {}; }
 			return this.$root.angleSign(this.planetAngle);
 		},
 		planetTransform: function() {
 			if (this.isFlat) { 
-				var planetAngleNormalized = (this.planetAngle - (this.$root.showTropical ? 39 : (39-24.2)) + 360) % 360;
+				var planetAngleNormalized = (this.planetAngle - /*this.$root.planetAngle('Sun', this.timeOffset) - 150 -*/ (this.$root.showTropical ? 39 : (39-24.2)) + 360) % 360;
 				var flatDistribution = 420 - ((planetAngleNormalized / 360) * 840);
 				return 'translate(' + flatDistribution + 'px, ' + (-300 + (20 * this.iteration)) + 'px)';
 			}
@@ -38,7 +44,9 @@ Vue.component('a-planet', {
 	},
 	template: '' +
 		'<div class="a-planet" ' +
+			'@click.stop="$root.togglePlanetSelection(planet.name)" ' +
 			':id="planet.name + \'-container\'" ' +
+			':class="{ dim: $root.selectedPlanets && !$root.selectedPlanets[planet.name], }" ' +
 			':style="{ ' +
 				'transform: planetTransform, ' +
 				'height: (this.$root.toEcliptic ? 600 : (100 + 32 * planet.order)) + \'px\', ' +
@@ -59,6 +67,18 @@ Vue.component('a-planet', {
 				'>' +
 				'</div>' +
 				'<div class="planet-disc" ' +
+					':id="planet.name + \'-retrograde\'" ' +
+					'v-if="$root.showRetrogrades && isRetrograde" ' +
+					':style="{ ' +
+						'backgroundColor: \'red\', ' +
+						'width: planet.size * 1.5 + \'px\', ' +
+						'height: planet.size * 1.5 + \'px\', ' +
+						'filter: \'blur(2px) saturate(5)\', ' +
+						'opacity: opacity, ' +
+					'}" ' +
+				'>' +
+				'</div>' +
+				'<div class="planet-disc" ' +
 					':id="planet.name + \'-disc\'" ' +
 					':style="{ ' +
 						'backgroundColor: planet.color, ' +
@@ -68,6 +88,7 @@ Vue.component('a-planet', {
 						'opacity: opacity, ' +
 					'}" ' +
 				'>' +
+					//'{{ Math.round(planetAngle * 100) / 100 }}' +
 					//'<div style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);"></div>' +
 					'<div v-if="planet.name == \'Moon\'" class="moon-shader" ' +
 						':style="{ ' +
@@ -96,20 +117,20 @@ Vue.component('a-star', {
 			       )
 		},
 		starColor: function() {
-			if (this.star.con == 'Ari') return 'red';
-			if (this.star.con == 'Tau') return 'tan';
-			if (this.star.con == 'Gem') return 'pink';
-			if (this.star.con == 'Cnc') return 'gray';
-			if (this.star.con == 'Leo') return 'yellow';
-			if (this.star.con == 'Vir') return 'magenta';
-			if (this.star.con == 'Lib') return 'orange';
-			if (this.star.con == 'Sco') return 'brown';
-			if (this.star.con == 'Sgr') return 'gold';
-			if (this.star.con == 'Cap') return 'lightGreen';
-			if (this.star.con == 'Aqr') return 'turquoise';
-			if (this.star.con == 'Psc') return 'blue';
+			if (this.star.con == 'Ari') return '#CB997E';
+			if (this.star.con == 'Tau') return '#EDDCD2';
+			if (this.star.con == 'Gem') return '#FFF1E6';
+			if (this.star.con == 'Cnc') return '#F0EFEB';
+			if (this.star.con == 'Leo') return '#DDBEA9';
+			if (this.star.con == 'Vir') return '#A5A58D';
+			if (this.star.con == 'Lib') return '#B7B7A4';
+			if (this.star.con == 'Sco') return '#E8EBE4';
+			if (this.star.con == 'Sgr') return '#D2D5DD';
+			if (this.star.con == 'Cap') return '#B8BACF';
+			if (this.star.con == 'Aqr') return '#999AC6';
+			if (this.star.con == 'Psc') return '#A4A99E';
 			if (this.star.con == 'ECL') return '#0F0';
-			return 'white';
+			return '#777';
 		},
 	},
 	template: '' +
@@ -204,7 +225,7 @@ Vue.component('the-sky', {
 		'<div class="the-sky" ' +
 			'@click.stop="$root.showButtons = false;" ' +
 			'>' +
-			'<div class="control-box no-select">' +
+			'<div class="control-box">' +
 				'<table style="width: 100%"><tr><td style="vertical-align: top;">' +
 				'<div class="date-controls">' +
 					'<div class="control-button on" v-if="!$root.visibleSkyUp" @click.stop="$root.visibleSkyUp = true; $root.showShader = true; $root.stepIncrement = 100000;">Space&nbsp;View</div>' +
@@ -238,7 +259,8 @@ Vue.component('the-sky', {
 						'<div class="control-button" :class="{ on: $root.showAspects, }" @click.stop="$root.showAspects = !$root.showAspects">Aspects</div>' +
 						'<div class="control-button" :class="{ on: $root.showDivisions, }" @click.stop="$root.showDivisions = !$root.showDivisions">Divisions</div>' +
 						'<div class="control-button" :class="{ on: $root.showDignities, }" @click.stop="$root.showDignities = !$root.showDignities">Dignities</div>' +
-						'<div class="control-button" :class="{ on: $root.showAngles, }" @click.stop="$root.showAngles = !$root.showAngles">Angles</div>' +
+						'<div class="control-button" :class="{ on: $root.showRetrogrades, }" @click.stop="$root.showRetrogrades = !$root.showRetrogrades">Retrogrades</div>' +
+						//'<div class="control-button" :class="{ on: $root.showAngles, }" @click.stop="$root.showAngles = !$root.showAngles">Angles</div>' +
 						'<div class="control-button" :class="{ on: $root.toEcliptic, }" @click.stop="$root.toEcliptic = !$root.toEcliptic">To Ecliptic</div>' +
 						'<div class="control-button" :class="{ on: $root.sequenceView, }" @click.stop="$root.sequenceView = !$root.sequenceView">Sequence</div>' +
 					'</div>' + 
@@ -278,12 +300,25 @@ Vue.component('the-sky', {
 							//'<tr><td><table class="moments-table"><tr><td @click.stop="$root.dateTime = new Date().getTime()">Now</td></tr></table></td></tr>' +
 							'<tr v-for="savedDateTime in $root.savedDateTimes">' +
 								'<td><table style="margin: 3px; float: right; clear: right;" class="moments-table"><tr>' +
-								'<td @click.stop="$root.dateTime = savedDateTime.time" style="cursor: pointer;">{{ savedDateTime.name }}</td>' +
+								'<td colspan="3" @click.stop="$root.dateTime = savedDateTime.time" style="cursor: pointer;">{{ savedDateTime.name }}</td>' +
+								'</tr><tr>' +
+								'<td @click.stop="referenceMoment(savedDateTime.time)"><div class="moments-button">Reference</div></td>' +
 								'<td @click.stop="renameMoment(savedDateTime.time, savedDateTime.name)"><div class="moments-button">Rename</div></td>' +
 								'<td @click.stop="deleteMoment(savedDateTime.time)"><div class="moments-button">Delete</div></td>' +
 								'</tr></table></td>' +
 							'</tr>' +
 						'</table>' +
+					'</div>' +
+				'</div>' +
+				'<div v-for="(p1, p1name) in $root.aspects" :key="p1name" :id="p1name + \'-aspects\'">' +
+					'<div ' +
+						'v-for="(p2, p2name) in p1" ' +
+						'v-if="p2.p1order > p2.p2order" ' +
+						':key="p1name + \'-\' + p2name" ' +
+					'>' +
+						'<div class="aspect-list" ' +
+							':class="{ selected: $root.selectedPlanets && Object.keys($root.selectedPlanets).length == 2 && $root.selectedPlanets[p1name] && $root.selectedPlanets[p2name], }" ' +
+							'@click.stop="$root.selectAspect(p1name, p2name)">{{ p1name }} {{ p2.symbol }} {{ p2name }} ({{ p2.orb }}&deg;)</div>' +
 					'</div>' +
 				'</div>' +
 				'</td></tr></table>' +
@@ -318,7 +353,7 @@ Vue.component('the-sky', {
 							'>' +
 							'</div>' +
 						'</div>' +
-						'<div ' +
+						/*'<div ' +
 							'v-if="!$root.sequenceView" ' +
 							'v-for="(constellation, i) in $root.theZodiac" ' +
 							'class="a-constellation" ' +
@@ -326,7 +361,7 @@ Vue.component('the-sky', {
 							'>' +
 							'<div class="constellation-name" v-if="!$root.useSymbols">{{ constellation.name }}</div>' +
 							//'<div class="constellation-symbol" v-if="$root.useSymbols">{{ constellation.symbol }}</div>' +
-						'</div>' +
+						'</div>' +*/
 					'</div>' +
 					'<div class="tropical" v-if="$root.showTropical">' +
 						'<div class="the-ecliptic" v-if="!$root.sequenceView"></div>' +
@@ -347,7 +382,7 @@ Vue.component('the-sky', {
 							'>' +
 							'</div>' +
 						'</div>' +
-						'<div ' +
+						/*'<div ' +
 							'v-if="!$root.sequenceView" ' +
 							'v-for="(constellation, i) in $root.theZodiac" ' +
 							'class="a-constellation" ' +
@@ -355,9 +390,9 @@ Vue.component('the-sky', {
 							'>' +
 							'<div class="constellation-name" v-if="!$root.useSymbols">{{ constellation.name }}</div>' +
 							'<div class="constellation-symbol" v-if="$root.useSymbols">{{ constellation.symbol }}</div>' +
-						'</div>' +
+						'</div>' +*/
 					'</div>' +
-					'<div class="planet-circle major" ' +
+					/*'<div class="planet-circle major" ' +
 						'v-if="!$root.toEcliptic && !$root.sequenceView" ' +
 						'v-for="(planet, i) in $root.thePlanets" ' +
 						':style="{ ' +
@@ -365,7 +400,53 @@ Vue.component('the-sky', {
 							'width: (100 + 32 * planet.order) + \'px\', ' +
 							'}" ' +
 						'>' +
-					'</div>' +
+					'</div>' +*/
+						'<svg id="svg" width="700" height="700" viewBox="0 0 700 700" style="position: absolute; top: 0px; left: 0px; transform: translate(-50%, -50%);">' +
+						  '<defs>' +
+						    '<filter x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox" id="pencilTexture3">' +
+						      '<feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="5" stitchTiles="stitch" result="f1">' +
+						      '</feTurbulence>' +
+						      '<feColorMatrix type="matrix" values="0 0 0 0 0, 0 0 0 0 0, 0 0 0 0 0, 0 0 0 -1.5 1.5" result="f2">' +
+						      '</feColorMatrix>' +
+						      '<feComposite operator="in" in2="f2b" in="SourceGraphic" result="f3">' +
+						      '</feComposite>' +
+						      '<feTurbulence type="fractalNoise" baseFrequency="1.2" numOctaves="3" result="noise">' +
+						      '</feTurbulence>' +
+						      '<feDisplacementMap xChannelSelector="R" yChannelSelector="G" scale="2.5" in="f3" result="f4">' +
+						      '</feDisplacementMap>' +
+						    '</filter>' +
+						  '</defs>' +
+						'<g v-if="!$root.toEcliptic" filter="url(#pencilTexture3)">' +
+						  '<circle cx="50%" cy="50%" r="66px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
+						  '<circle cx="50%" cy="50%" r="82px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
+						  '<circle cx="50%" cy="50%" r="98px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
+						  '<circle cx="50%" cy="50%" r="114px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
+						  '<circle cx="50%" cy="50%" r="130px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
+						  '<circle cx="50%" cy="50%" r="146px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
+						  '<circle cx="50%" cy="50%" r="162px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
+						  '<circle cx="50%" cy="50%" r="178px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
+						  '<circle cx="50%" cy="50%" r="194px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
+						  '<circle cx="50%" cy="50%" r="210px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
+						  //'<circle cx="50%" cy="50%" r="300px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
+						'</g>' +
+						'</svg>' +
+						'<div style="position: absolute; left: 0; top: 0; transform: rotate(24.2deg);">' +
+							'<svg ' +
+								'v-for="(constellation, i) in $root.theZodiac" ' +
+								'width="700" ' +
+								'height="700" ' +
+								'viewBox="0 0 700 700" ' +
+								'style="position: absolute; top: 0px; left: 0px;" ' +
+								':style="{ transform: \'translate(-50%, -50%) rotate(\' + (-30 * i) + \'deg)\', }" ' +
+							'>' +
+								'<g>' +
+									'<path id="top-sector" style="fill:none;stroke:none" d="M 90,350 A 46,46.5 0 0 1 610,350" />' +
+									'<text font-size="19" font-family="Georgia" fill="#777" width="500" text-anchor="middle">' +
+										'<textPath alignment-baseline="middle" startOffset="50%" xlink:href="#top-sector">{{ constellation.name }}</textPath>' +
+									'</text>' +
+								'</g>' +
+							'</svg>' +
+						'</div>' +
 					'<div v-if="$root.sequenceView" v-for="n in 35">' +
 						'<a-planet ' +
 							'v-for="(planet, i) in $root.thePlanets" ' +
@@ -410,6 +491,7 @@ Vue.component('the-sky', {
 						':timeOffset="0" ' +
 						':opacity="1" ' +
 						':showName=true ' +
+						'style="cursor: pointer;" ' +
 						'>' +
 					'</a-planet>' +
 					/*'<a-planet ' +
@@ -475,9 +557,14 @@ Vue.component('the-sky', {
 						'>' +
 					'</a-planet>' +*/
 					'<div v-for="(p1, p1name) in $root.aspects" :key="p1name" :id="p1name + \'-aspects\'">' +
-						'<div v-for="(p2, p2name) in p1" :key="p1name + \'-\' + p2name" :id="p1name + \'-\' + p2name + \'-aspect\'">' +
+						'<div ' +
+							'v-for="(p2, p2name) in p1" ' +
+							'v-if="!$root.selectedPlanets || ($root.selectedPlanets[p1name] && $root.selectedPlanets[p2name])" ' +
+							':key="p1name + \'-\' + p2name" ' +
+							':id="p1name + \'-\' + p2name + \'-aspect\'" ' +
+						'>' +
 							'<div ' +
-								'v-if="$root.showAspects" ' +
+								'v-if="$root.showAspects && !$root.sequenceView" ' +
 								'class="planet-laser" ' +
 								':class="[ p2.aspect ]" ' +
 								':style="{ ' +
@@ -487,7 +574,7 @@ Vue.component('the-sky', {
 								'>' +
 							'</div>' +
 							'<div ' +
-								'v-if="$root.showAspects && p2.aspect != \'Conjunct\' && p2.aspect != \'Opposition\'" ' +
+								'v-if="$root.showAspects && !$root.sequenceView && p2.aspect != \'Conjunct\' && p2.aspect != \'Opposition\'" ' +
 								'class="planet-laser" ' +
 								':style="{ ' +
 									'transform: \'rotate(\' + (180 + $root.planetAngle(p1name)) + \'deg)\', ' +
@@ -729,7 +816,7 @@ Vue.component('the-sky', {
 							'<div class="shader-caption" v-if="$root.showAngles">Ascending / Rising</div>' +
 						'</div>' +
 					'</div>' +
-					'<div class="shader-container sunrise" ' +
+					'<div class="shader-container sunset" ' +
 						//'v-if="false" ' +
 						':style="{ ' +				
 							'transform: \'' +
@@ -753,6 +840,12 @@ Vue.component('the-sky', {
 					'</div>' +
 				'</div>' +
 			'</div>' +
+
+
+
+
+
+
 		'</div>' +
 		'',
 	methods: {
@@ -829,13 +922,16 @@ var app = new Vue({
 	    showLasers: false,
 	    showButtons: false,
 	    showDignities: false,
+	    showRetrogrades: false,
 	    showTropical: true,
 	    showLines: false,
-	    showAspects: false,
-	    showDivisions: true,
+	    showAspects: true,
+	    showDivisions: false,
 	    showAngles: false,
 	    toEcliptic: false,
 	    sequenceView: false,
+	    selectedPlanets: null,
+	    referenceMoment: null,
 	    theZodiac: [
 		{ name: 'Aries', symbol: String.fromCodePoint(0x2648), planet: 'Mars', }, 
 		{ name: 'Taurus', symbol: String.fromCodePoint(0x2649), planet: 'Venus', }, 
@@ -851,16 +947,16 @@ var app = new Vue({
 		{ name: 'Pisces', symbol: String.fromCodePoint(0x2653), planet: 'Jupiter', secondaryPlanet: 'Neptune', }, 
 	    ],
 	    thePlanets: [
-		{ order: 1, placement: 'inner', name: 'Moon', symbol: String.fromCodePoint(0x263D), size: 20, color: 'white' }, 
-		{ order: 2, placement: 'inner', name: 'Mercury', symbol: String.fromCodePoint(0x263F), size: 10, color: 'gray' }, 
-		{ order: 3, placement: 'inner', name: 'Venus', symbol: String.fromCodePoint(0x2640), size: 10, color: 'orange' }, 
-		{ order: 4, placement: 'inner', name: 'Sun', symbol: String.fromCodePoint(0x2609), size: 20, color: 'yellow' }, 
-		{ order: 5, placement: 'middle', name: 'Mars', symbol: String.fromCodePoint(0x2642), size: 10, color: 'red' }, 
-		{ order: 6, placement: 'middle', name: 'Jupiter', symbol: String.fromCodePoint(0x2643), size: 10, color: 'gold' }, 
-		{ order: 7, placement: 'middle', name: 'Saturn', symbol: String.fromCodePoint(0x2644), size: 10, color: 'brown' }, 
-		{ order: 8, placement: 'outer', name: 'Uranus', symbol: String.fromCodePoint(0x2645), size: 10, color: 'lightBlue' }, 
-		{ order: 9, placement: 'outer', name: 'Neptune', symbol: String.fromCodePoint(0x2646), size: 10, color: 'blue' }, 
-		{ order: 10, placement: 'outer', name: 'Pluto', symbol: String.fromCodePoint(0x2647), size: 10, color: 'darkGray' }, 
+		{ order: 1, placement: 'inner', name: 'Moon', symbol: String.fromCodePoint(0x263D), size: 20, color: '#D8CFC0' }, 
+		{ order: 2, placement: 'inner', name: 'Mercury', symbol: String.fromCodePoint(0x263F), size: 10, color: '#9A8C98' }, 
+		{ order: 3, placement: 'inner', name: 'Venus', symbol: String.fromCodePoint(0x2640), size: 10, color: '#D8AE48' }, 
+		{ order: 4, placement: 'inner', name: 'Sun', symbol: String.fromCodePoint(0x2609), size: 20, color: '#F8DE48' }, 
+		{ order: 5, placement: 'middle', name: 'Mars', symbol: String.fromCodePoint(0x2642), size: 10, color: '#D75A53' }, 
+		{ order: 6, placement: 'middle', name: 'Jupiter', symbol: String.fromCodePoint(0x2643), size: 10, color: '#E39D4F' }, 
+		{ order: 7, placement: 'middle', name: 'Saturn', symbol: String.fromCodePoint(0x2644), size: 10, color: '#AE8A6A' }, 
+		{ order: 8, placement: 'outer', name: 'Uranus', symbol: String.fromCodePoint(0x2645), size: 10, color: '#BFD3ED' }, 
+		{ order: 9, placement: 'outer', name: 'Neptune', symbol: String.fromCodePoint(0x2646), size: 10, color: '#7DA4F4' }, 
+		{ order: 10, placement: 'outer', name: 'Pluto', symbol: String.fromCodePoint(0x2647), size: 10, color: '#C9ADA7' }, 
 		],
 	    theMinorPlanets: [
 		{ order: 1, name: 'Eros', size: 5, color: 'turquoise' }, 
@@ -6178,22 +6274,35 @@ var app = new Vue({
 					    aspects[p1.name][p2.name].angle = angleDiff;
 					    aspects[p1.name][p2.name].p1angle = p1angle;
 					    aspects[p1.name][p2.name].p2angle = p2angle;
+					    aspects[p1.name][p2.name].p1order = p1.order;
+					    aspects[p1.name][p2.name].p2order = p2.order;
 					    var maxOrb = 2;
+
 					    if (Math.abs(angleDiff - 0) < maxOrb) { 
 						    aspects[p1.name][p2.name].aspect = 'Conjunct';
+						    aspects[p1.name][p2.name].symbol = String.fromCodePoint(0x260C);
+						    aspects[p1.name][p2.name].orb = Math.round((angleDiff - 0) * 10)/10;
 						    aspects[p1.name][p2.name].strength = (angleDiff - 0) / maxOrb;
 					    } else if (Math.abs(angleDiff - 180) < maxOrb) { 
 						    aspects[p1.name][p2.name].aspect = 'Opposition';
+						    aspects[p1.name][p2.name].symbol = String.fromCodePoint(0x260D);
+						    aspects[p1.name][p2.name].orb = Math.round((angleDiff - 180) * 10)/10;
 						    aspects[p1.name][p2.name].strength = (angleDiff - 180) / maxOrb;
 					    } else if (Math.abs(angleDiff - 120) < maxOrb) { 
 						    aspects[p1.name][p2.name].aspect = 'Trine';
-						    aspects[p1.name][p2.name].strength = (angleDiff - 120) / maxOrb;
+						    aspects[p1.name][p2.name].symbol = String.fromCodePoint(0x25B3);
+						    aspects[p1.name][p2.name].orb = angleDiff - 120;
+						    aspects[p1.name][p2.name].orb = Math.round((angleDiff - 120) * 10)/10;
 					    } else if (Math.abs(angleDiff - 90) < maxOrb) { 
 						    aspects[p1.name][p2.name].aspect = 'Square';
-						    aspects[p1.name][p2.name].strength = (angleDiff - 90) / maxOrb;
+						    aspects[p1.name][p2.name].symbol = String.fromCodePoint(0x25A1);
+						    aspects[p1.name][p2.name].orb = angleDiff - 90;
+						    aspects[p1.name][p2.name].orb = Math.round((angleDiff - 90) * 10)/10;
 					    } else if (Math.abs(angleDiff - 60) < maxOrb / 2) { 
 						    aspects[p1.name][p2.name].aspect = 'Sextile';
-						    aspects[p1.name][p2.name].strength = (angleDiff - 60) / maxOrb / 2;
+						    aspects[p1.name][p2.name].symbol = String.fromCodePoint(0x26B9);
+						    aspects[p1.name][p2.name].orb = angleDiff - 60;
+						    aspects[p1.name][p2.name].orb = Math.round((angleDiff - 60) * 10)/10;
 					    } else {
 						    delete aspects[p1.name][p2.name];
 					    }
@@ -6290,6 +6399,30 @@ var app = new Vue({
 	    },
     },
     methods: {
+	    togglePlanetSelection: function(planetName) {
+		    if (this.sequenceView) { return; }
+		    
+		    if (this.selectedPlanets == null) { Vue.set(this, 'selectedPlanets', {}); }
+
+		    if (this.selectedPlanets[planetName]) {
+			    Vue.delete(this.selectedPlanets, planetName);
+		    } else {
+			    Vue.set(this.selectedPlanets, planetName, true);
+		    }
+
+		    if (Object.keys(this.selectedPlanets).length == 0) {
+			    Vue.set(this, 'selectedPlanets', null);
+		    }
+	    },
+	    selectAspect: function(p1name, p2name) {
+		    if (this.selectedPlanets && Object.keys(this.selectedPlanets).length == 2 && this.selectedPlanets[p1name] && this.selectedPlanets[p2name]) {
+			    Vue.set(this, 'selectedPlanets', null);
+		    } else {
+			    Vue.set(this, 'selectedPlanets', null);
+			    this.togglePlanetSelection(p1name);
+			    this.togglePlanetSelection(p2name);
+		    }
+	    },
 	    midnightOverage: function(dateTime) {
 		    var dateWithOverage = new Date(dateTime);
 		    var $root = this.$root;
@@ -6372,6 +6505,7 @@ var app = new Vue({
 	    },
 	    planetAngle: function(planetName, timeOffset) {
 		    if (!timeOffset) { timeOffset = 0; }
+		    if (['NN', 'SN'].indexOf(planetName) > -1) { return 0; }
 		    var $root = this.$root;
 		    var rads;
 		    var degs;
