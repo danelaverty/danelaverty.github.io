@@ -416,7 +416,7 @@ Vue.component('the-sky', {
 						      '</feDisplacementMap>' +
 						    '</filter>' +
 						  '</defs>' +
-						'<g v-if="!$root.toEcliptic" filter="url(#pencilTexture3)">' +
+						'<g v-if="!$root.toEcliptic">' +
 						  '<circle cx="50%" cy="50%" r="66px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
 						  '<circle cx="50%" cy="50%" r="82px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
 						  '<circle cx="50%" cy="50%" r="98px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
