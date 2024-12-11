@@ -220,14 +220,11 @@ Vue.component('a-line', {
 		'',
 });
 
-Vue.component('the-sky', {
+Vue.component('main-frame', {
 	template: '' +
-		'<div class="the-sky" ' +
-			'@click.stop="$root.showButtons = false;" ' +
-			'>' +
-			'<div class="control-box">' +
-				'<table style="width: 100%"><tr><td style="vertical-align: top;">' +
-				'<div class="date-controls">' +
+		'<div class="main-frame">' +
+			'<div class="main-frame-vertical left">' +
+				'<div class="date-controls" style="top: 0; left: 0;">' +
 					'<div class="control-button on" v-if="!$root.visibleSkyUp" @click.stop="$root.visibleSkyUp = true; $root.showShader = true; $root.stepIncrement = 100000;">Space&nbsp;View</div>' +
 					'<div class="control-button on" v-if="$root.visibleSkyUp" @click.stop="$root.visibleSkyUp = false; $root.showShader = false; $root.stepIncrement = 10000000;">Earth&nbsp;View</div>' +
 					'<div class="control-button" @click.stop="$root.runClock" v-if="$root.clockID == -1">GO</div>' +
@@ -265,64 +262,125 @@ Vue.component('the-sky', {
 						'<div class="control-button" :class="{ on: $root.sequenceView, }" @click.stop="$root.sequenceView = !$root.sequenceView">Sequence</div>' +
 					'</div>' + 
 				'</div>' +
-				'</td><td style="vertical-align: top; text-align: right;">' +
-				'<div style="display: inline-block;">' +
-					'<table style="float: right;" class="date-shown no-select">' +
-						'<tr class="control-row">' +
-							'<td class="control-cell" style="text-align: right;" @click.stop="$root.dateTime += (60 * 60 * 1000)">&#9650;</td>' +
-							'<td class="control-cell" style="text-align: right;" @click.stop="$root.dateTime += (60 * 1000)">&#9650;</td>' +
-							'<td></td>' +
-							'<td class="control-cell" @click.stop="incrementMonth">&#9650;</td>' +
-							'<td class="control-cell" @click.stop="$root.dateTime += (24 * 60 * 60 * 1000)">&#9650;</td>' +
-							'<td class="control-cell" @click.stop="incrementYear">&#9650;</td>' +
-						'</tr>' +
-						'<tr style="font-size: 16px;">' +
-							'<td>{{ $root.dateShown.getHours() == 0 ? 12 : ($root.dateShown.getHours() > 12 ? $root.dateShown.getHours() - 12 : $root.dateShown.getHours()) }}:</td>' +
-							'<td><span v-show="$root.dateShown.getMinutes() < 10">0</span>{{ $root.dateShown.getMinutes() }}</td>' +
-							'<td>{{ $root.dateShown.getHours() >= 12 ? \'PM\' : \'AM\' }}&nbsp;</td>' +
-							'<td><span v-show="$root.dateShown.getMonth() < 9">0</span>{{ $root.dateShown.getMonth() + 1 }}/</td>' +
-							'<td><span v-show="$root.dateShown.getDate() < 10">0</span>{{ $root.dateShown.getDate() }}/</td>' +
-							'<td>{{ $root.dateShown.getFullYear() }}&nbsp;</td>' +
-							'<td class="dst-indicator" :style="{ color: $root.isDST ? \'white\' : \'black\', }">(DST)</td>' +
-						'</tr>' +
-						'<tr class="control-row">' +
-							'<td class="control-cell" style="text-align: right;" @click.stop="$root.dateTime -= (60 * 60 * 1000)">&#9660;</td>' +
-							'<td class="control-cell" style="text-align: right;" @click.stop="$root.dateTime -= (60 * 1000)">&#9660;</td>' +
-							'<td></td>' +
-							'<td class="control-cell" @click.stop="decrementMonth">&#9660;</td>' +
-							'<td class="control-cell" @click.stop="$root.dateTime -= (24 * 60 * 60 * 1000)">&#9660;</td>' +
-							'<td class="control-cell" @click.stop="decrementYear">&#9660;</td>' +
-						'</tr>' +
-					'</table>' +
-					'<div class="date-controls" style="clear: right; float: right; text-align: right; min-width: 0px;">' +
-						'<div class="control-button" @click.stop="$root.saveDateTime" style="float: right; width: 120px;">Save&nbsp;Current&nbsp;Time</div>' +
-						'<table style="clear: right;">' +
-							//'<tr><td><table class="moments-table"><tr><td @click.stop="$root.dateTime = new Date().getTime()">Now</td></tr></table></td></tr>' +
-							'<tr v-for="savedDateTime in $root.savedDateTimes">' +
-								'<td><table style="margin: 3px; float: right; clear: right;" class="moments-table"><tr>' +
-								'<td colspan="3" @click.stop="$root.dateTime = savedDateTime.time" style="cursor: pointer;">{{ savedDateTime.name }}</td>' +
-								'</tr><tr>' +
-								'<td @click.stop="referenceMoment(savedDateTime.time)"><div class="moments-button">Reference</div></td>' +
-								'<td @click.stop="renameMoment(savedDateTime.time, savedDateTime.name)"><div class="moments-button">Rename</div></td>' +
-								'<td @click.stop="deleteMoment(savedDateTime.time)"><div class="moments-button">Delete</div></td>' +
-								'</tr></table></td>' +
+			'</div>' +
+			'<div class="main-frame-vertical right">' +
+				'<div class="control-box" style="top: 0; right: 0;">' +
+					'<div style="display: inline-block;">' +
+						'<table class="date-shown no-select">' +
+							'<tr class="control-row">' +
+								'<td class="control-cell" style="text-align: right;" @click.stop="$root.dateTime += (60 * 60 * 1000)">&#9650;</td>' +
+								'<td class="control-cell" style="text-align: right;" @click.stop="$root.dateTime += (60 * 1000)">&#9650;</td>' +
+								'<td></td>' +
+								'<td class="control-cell" @click.stop="incrementMonth">&#9650;</td>' +
+								'<td class="control-cell" @click.stop="$root.dateTime += (24 * 60 * 60 * 1000)">&#9650;</td>' +
+								'<td class="control-cell" @click.stop="incrementYear">&#9650;</td>' +
+							'</tr>' +
+							'<tr style="font-size: 16px;">' +
+								'<td>{{ $root.dateShown.getHours() == 0 ? 12 : ($root.dateShown.getHours() > 12 ? $root.dateShown.getHours() - 12 : $root.dateShown.getHours()) }}:</td>' +
+								'<td><span v-show="$root.dateShown.getMinutes() < 10">0</span>{{ $root.dateShown.getMinutes() }}</td>' +
+								'<td>{{ $root.dateShown.getHours() >= 12 ? \'PM\' : \'AM\' }}&nbsp;</td>' +
+								'<td><span v-show="$root.dateShown.getMonth() < 9">0</span>{{ $root.dateShown.getMonth() + 1 }}/</td>' +
+								'<td><span v-show="$root.dateShown.getDate() < 10">0</span>{{ $root.dateShown.getDate() }}/</td>' +
+								'<td>{{ $root.dateShown.getFullYear() }}&nbsp;</td>' +
+								'<td class="dst-indicator" :style="{ color: $root.isDST ? \'white\' : \'black\', }">(DST)</td>' +
+							'</tr>' +
+							'<tr class="control-row">' +
+								'<td class="control-cell" style="text-align: right;" @click.stop="$root.dateTime -= (60 * 60 * 1000)">&#9660;</td>' +
+								'<td class="control-cell" style="text-align: right;" @click.stop="$root.dateTime -= (60 * 1000)">&#9660;</td>' +
+								'<td></td>' +
+								'<td class="control-cell" @click.stop="decrementMonth">&#9660;</td>' +
+								'<td class="control-cell" @click.stop="$root.dateTime -= (24 * 60 * 60 * 1000)">&#9660;</td>' +
+								'<td class="control-cell" @click.stop="decrementYear">&#9660;</td>' +
 							'</tr>' +
 						'</table>' +
+						'<div class="date-controls" style="text-align: right; min-width: 0px;">' +
+							'<div class="control-button" @click.stop="$root.saveDateTime" style="width: 120px;">Save&nbsp;Current&nbsp;Time</div>' +
+							'<table style="clear: right;">' +
+								//'<tr><td><table class="moments-table"><tr><td @click.stop="$root.dateTime = new Date().getTime()">Now</td></tr></table></td></tr>' +
+								'<tr v-for="savedDateTime in $root.savedDateTimes">' +
+									'<td><table style="margin: 3px;" class="moments-table"><tr>' +
+									'<td colspan="3" @click.stop="$root.dateTime = savedDateTime.time" style="cursor: pointer;">{{ savedDateTime.name }}</td>' +
+									'</tr><tr>' +
+									'<td @click.stop="referenceMoment(savedDateTime.time)"><div class="moments-button">Reference</div></td>' +
+									'<td @click.stop="renameMoment(savedDateTime.time, savedDateTime.name)"><div class="moments-button">Rename</div></td>' +
+									'<td @click.stop="deleteMoment(savedDateTime.time)"><div class="moments-button">Delete</div></td>' +
+									'</tr></table></td>' +
+								'</tr>' +
+							'</table>' +
+						'</div>' +
 					'</div>' +
 				'</div>' +
-				'<div v-for="(p1, p1name) in $root.aspects" :key="p1name" :id="p1name + \'-aspects\'">' +
-					'<div ' +
-						'v-for="(p2, p2name) in p1" ' +
-						'v-if="p2.p1order > p2.p2order" ' +
-						':key="p1name + \'-\' + p2name" ' +
-					'>' +
-						'<div class="aspect-list" ' +
-							':class="{ selected: $root.selectedPlanets && Object.keys($root.selectedPlanets).length == 2 && $root.selectedPlanets[p1name] && $root.selectedPlanets[p2name], }" ' +
-							'@click.stop="$root.selectAspect(p1name, p2name)">{{ p1name }} {{ p2.symbol }} {{ p2name }} ({{ p2.orb }}&deg;)</div>' +
+				'<div class="control-box" style="bottom: 0; right: 0;">' +
+					'<div v-for="(p1, p1name) in $root.aspects" :key="p1name" :id="p1name + \'-aspects\'">' +
+						'<div ' +
+							'v-for="(p2, p2name) in p1" ' +
+							'v-if="p2.p1order > p2.p2order" ' +
+							':key="p1name + \'-\' + p2name" ' +
+						'>' +
+							'<div class="aspect-list" ' +
+								':class="{ selected: $root.selectedPlanets && Object.keys($root.selectedPlanets).length == 2 && $root.selectedPlanets[p1name] && $root.selectedPlanets[p2name], }" ' +
+								'@click.stop="$root.selectAspect(p1name, p2name)">{{ p1name }} {{ p2.symbol }} {{ p2name }} ({{ p2.orb }}&deg;)</div>' +
+						'</div>' +
 					'</div>' +
 				'</div>' +
-				'</td></tr></table>' +
 			'</div>' +
+		'</div>' +
+	'',
+	methods: {
+		renameMoment: function(time, oldName) {
+			var $root = this.$root;
+			var savedDateTimes = $root.savedDateTimes;
+			var newName = prompt('What do you want to name "' + oldName + '"?');
+			var newMoment = { time: time, name: newName };
+			Vue.delete(savedDateTimes, time);
+			Vue.set(savedDateTimes, time, newMoment);
+		},
+		deleteMoment: function(time) {
+			var $root = this.$root;
+			var savedDateTimes = $root.savedDateTimes;
+			Vue.delete(savedDateTimes, time);
+		},
+		incrementMonth: function() {
+			var newDate = new Date(this.$root.dateShown);
+			if (newDate.getMonth() == 11) {
+				newDate.setMonth(0);
+				newDate.setYear(newDate.getFullYear() + 1);
+			} else {
+				newDate.setMonth(newDate.getMonth() + 1);
+			}
+			this.$root.dateTime = newDate.getTime();
+console.log(this.$root.momentPlacements()['Moon']);
+		},
+		incrementYear: function() {
+			var newDate = new Date(this.$root.dateShown);
+			newDate.setYear(newDate.getFullYear() + 1);
+			this.$root.dateTime = newDate.getTime();
+		},
+		decrementMonth: function() {
+			var newDate = new Date(this.$root.dateShown);
+			if (newDate.getMonth() == 0) {
+				newDate.setMonth(11);
+				newDate.setYear(newDate.getFullYear() - 1);
+			} else {
+				newDate.setMonth(newDate.getMonth() - 1);
+			}
+			this.$root.dateTime = newDate.getTime();
+console.log(this.$root.momentPlacements()['Moon']);
+		},
+		decrementYear: function() {
+			var newDate = new Date(this.$root.dateShown);
+			newDate.setYear(newDate.getFullYear() - 1);
+			this.$root.dateTime = newDate.getTime();
+		}
+	},
+});
+
+Vue.component('the-sky', {
+	template: '' +
+		'<div class="the-sky" ' +
+			'@click.stop="$root.showButtons = false;" ' +
+			'>' +
+			'<main-frame></main-frame>' +
 			'<div id="sky-viewer" class="sky-viewer" ' +
 				'>' +
 				'<div class="the-center" id="the-center" ' +
@@ -848,51 +906,6 @@ Vue.component('the-sky', {
 
 		'</div>' +
 		'',
-	methods: {
-		renameMoment: function(time, oldName) {
-			var $root = this.$root;
-			var savedDateTimes = $root.savedDateTimes;
-			var newName = prompt('What do you want to name "' + oldName + '"?');
-			var newMoment = { time: time, name: newName };
-			Vue.delete(savedDateTimes, time);
-			Vue.set(savedDateTimes, time, newMoment);
-		},
-		deleteMoment: function(time) {
-			var $root = this.$root;
-			var savedDateTimes = $root.savedDateTimes;
-			Vue.delete(savedDateTimes, time);
-		},
-		incrementMonth: function() {
-			var newDate = new Date(this.$root.dateShown);
-			if (newDate.getMonth() == 11) {
-				newDate.setMonth(0);
-				newDate.setYear(newDate.getFullYear() + 1);
-			} else {
-				newDate.setMonth(newDate.getMonth() + 1);
-			}
-			this.$root.dateTime = newDate.getTime();
-		},
-		incrementYear: function() {
-			var newDate = new Date(this.$root.dateShown);
-			newDate.setYear(newDate.getFullYear() + 1);
-			this.$root.dateTime = newDate.getTime();
-		},
-		decrementMonth: function() {
-			var newDate = new Date(this.$root.dateShown);
-			if (newDate.getMonth() == 0) {
-				newDate.setMonth(11);
-				newDate.setYear(newDate.getFullYear() - 1);
-			} else {
-				newDate.setMonth(newDate.getMonth() - 1);
-			}
-			this.$root.dateTime = newDate.getTime();
-		},
-		decrementYear: function() {
-			var newDate = new Date(this.$root.dateShown);
-			newDate.setYear(newDate.getFullYear() - 1);
-			this.$root.dateTime = newDate.getTime();
-		}
-	},
 });
 
 var app = new Vue({
@@ -901,7 +914,7 @@ var app = new Vue({
 	    eclExt: 117,
 	    eclRot: Math.PI,
 	    eclCoe: .262,
-	    sessionStorage: sessionStorage,
+	    localStorage: localStorage,
 	    savedDateTimes: {},
 	    MILLIS_IN_YEAR: 31556952000,
 	    SECOND: 1000,
@@ -6399,7 +6412,8 @@ var app = new Vue({
 	    },
     },
     methods: {
-	    togglePlanetSelection: function(planetName) {
+	    togglePlanetSelection: function(planetName, ignoreAspects) {
+		    var t = this;
 		    if (this.sequenceView) { return; }
 		    
 		    if (this.selectedPlanets == null) { Vue.set(this, 'selectedPlanets', {}); }
@@ -6407,6 +6421,11 @@ var app = new Vue({
 		    if (this.selectedPlanets[planetName]) {
 			    Vue.delete(this.selectedPlanets, planetName);
 		    } else {
+			    if (!ignoreAspects && Object.keys(this.selectedPlanets).length == 0) {
+				    for (var aspectedPlanet in t.aspects[planetName]) {
+					    Vue.set(this.selectedPlanets, aspectedPlanet, true);
+				    }
+			    }
 			    Vue.set(this.selectedPlanets, planetName, true);
 		    }
 
@@ -6419,8 +6438,8 @@ var app = new Vue({
 			    Vue.set(this, 'selectedPlanets', null);
 		    } else {
 			    Vue.set(this, 'selectedPlanets', null);
-			    this.togglePlanetSelection(p1name);
-			    this.togglePlanetSelection(p2name);
+			    this.togglePlanetSelection(p1name, true);
+			    this.togglePlanetSelection(p2name, true);
 		    }
 	    },
 	    midnightOverage: function(dateTime) {
@@ -6480,6 +6499,21 @@ var app = new Vue({
 			    return 0;
 		    }
 	    },
+	    momentPlacements(dateTime) {
+		    var t = this;
+		    if (!dateTime) { dateTime = t.dateTime; }
+		    var placements = {};
+		    t.thePlanets.forEach(function(planet) {
+			    var angle = t.planetAngle(planet.name, null, dateTime);
+			    placements[planet.name] = {};
+			    placements[planet.name].angle = angle;
+			    placements[planet.name].sign = t.angleToSign(angle);
+		    });
+		    return placements;
+	    },
+	    angleToSign(angle) {
+		    return this.theZodiac[Math.floor(((360 + (-angle + 24.2)) % 360) / 30)].name;
+	    },
 	    dayOfYear(date) {
 		    return (Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) - Date.UTC(date.getFullYear(), 0, 0)) / 24 / 60 / 60 / 1000;
 	    },
@@ -6503,7 +6537,7 @@ var app = new Vue({
 		    //return (this.dateShown.getHours() * 60 + this.dateShown.getMinutes()) / 1440;
 		    return (this.dateShownDSTAdjusted.getHours() * 60 + this.dateShownDSTAdjusted.getMinutes()) / 1440;
 	    },
-	    planetAngle: function(planetName, timeOffset) {
+	    planetAngle: function(planetName, timeOffset, dateTime) {
 		    if (!timeOffset) { timeOffset = 0; }
 		    if (['NN', 'SN'].indexOf(planetName) > -1) { return 0; }
 		    var $root = this.$root;
@@ -6518,8 +6552,8 @@ var app = new Vue({
 			    if (planetName == 'Vesta') { degs -= 70; }
 			    return -degs;
 		    }*/
-		    var planetX = Astronomy.GeoVector(planetName, new Date(this.dateShown.getTime() + timeOffset), false).x;
-		    var planetY = Astronomy.GeoVector(planetName, new Date(this.dateShown.getTime() + timeOffset), false).y;
+		    var planetX = Astronomy.GeoVector(planetName, new Date((dateTime ? dateTime : this.dateShown.getTime()) + timeOffset), false).x;
+		    var planetY = Astronomy.GeoVector(planetName, new Date((dateTime ? dateTime : this.dateShown.getTime()) + timeOffset), false).y;
 		    var firstAngle = Math.atan2(100, 0);
 		    var secondAngle = Math.atan2(planetY, planetX);
 		    rads = secondAngle - firstAngle;
@@ -6792,10 +6826,10 @@ var app = new Vue({
 	    let vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
 	    window.scroll({ top: .5 * vh, left: .5 * vw, });
 	    setTimeout(function() { 
-		    if (typeof $root.sessionStorage.getItem('savedDateTimes') == 'undefined' || $root.sessionStorage.getItem('savedDateTimes') == null) {
-			    $root.sessionStorage.setItem('savedDateTimes', JSON.stringify({}));
+		    if (typeof $root.localStorage.getItem('savedDateTimes') == 'undefined' || $root.localStorage.getItem('savedDateTimes') == null) {
+			    $root.localStorage.setItem('savedDateTimes', JSON.stringify({}));
 		    }
-		    Vue.set($root, 'savedDateTimes', JSON.parse($root.sessionStorage.getItem('savedDateTimes')));
+		    Vue.set($root, 'savedDateTimes', JSON.parse($root.localStorage.getItem('savedDateTimes')));
 
 		    $root.theCenterEl = document.getElementById('the-center').getBoundingClientRect();
 		    $root.dateTime++;
@@ -6805,7 +6839,7 @@ var app = new Vue({
     },
     watch: {
 	    savedDateTimes: function(newSavedDateTimes) {
-		    this.sessionStorage.setItem('savedDateTimes', JSON.stringify(newSavedDateTimes));
+		    this.localStorage.setItem('savedDateTimes', JSON.stringify(newSavedDateTimes));
 	    }
     },
 });
