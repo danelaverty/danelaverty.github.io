@@ -49,7 +49,7 @@ Vue.component('a-planet', {
 			':class="{ dim: $root.selectedPlanets && !$root.selectedPlanets[planet.name], }" ' +
 			':style="{ ' +
 				'transform: planetTransform, ' +
-				'height: (this.$root.toEcliptic ? 600 : (100 + 32 * planet.order)) + \'px\', ' +
+				'height: (this.$root.toEcliptic ? 600 : this.$root.tinyView ? 100 : (100 + 32 * planet.order)) + \'px\', ' +
 				'}" ' +
 			'>' +
 				'<div class="planet-name" v-if="!$root.useSymbols && showName" :class="{ small: $root.sequenceView, node: planet.name == \'NN\' || planet.name == \'SN\', }">{{ planet.name }}</div>' +
@@ -224,7 +224,7 @@ Vue.component('main-frame', {
 	template: '' +
 		'<div class="main-frame">' +
 			'<div class="main-frame-vertical left">' +
-				'<div class="date-controls" style="top: 0; left: 0;">' +
+				'<div class="date-controls control-box" style="top: 0; left: 0;">' +
 					'<div class="control-button on" v-if="!$root.visibleSkyUp" @click.stop="$root.visibleSkyUp = true; $root.showShader = true; $root.stepIncrement = 100000;">Space&nbsp;View</div>' +
 					'<div class="control-button on" v-if="$root.visibleSkyUp" @click.stop="$root.visibleSkyUp = false; $root.showShader = false; $root.stepIncrement = 10000000;">Earth&nbsp;View</div>' +
 					'<div class="control-button" @click.stop="$root.runClock" v-if="$root.clockID == -1">GO</div>' +
@@ -260,6 +260,7 @@ Vue.component('main-frame', {
 						//'<div class="control-button" :class="{ on: $root.showAngles, }" @click.stop="$root.showAngles = !$root.showAngles">Angles</div>' +
 						'<div class="control-button" :class="{ on: $root.toEcliptic, }" @click.stop="$root.toEcliptic = !$root.toEcliptic">To Ecliptic</div>' +
 						'<div class="control-button" :class="{ on: $root.sequenceView, }" @click.stop="$root.sequenceView = !$root.sequenceView">Sequence</div>' +
+						'<div class="control-button" :class="{ on: $root.tinyView, }" @click.stop="$root.tinyView = !$root.tinyView">Tiny</div>' +
 					'</div>' + 
 				'</div>' +
 			'</div>' +
@@ -450,6 +451,21 @@ Vue.component('the-sky', {
 							'<div class="constellation-symbol" v-if="$root.useSymbols">{{ constellation.symbol }}</div>' +
 						'</div>' +*/
 					'</div>' +
+					'<div class="tiny-view-frame">' +
+					'</div>' +
+					'<div class="tiny-view-frame-caption" style="top: -96px;">' +
+						'<span>Tiny Horoscope</span>' +
+					'</div>' +
+					'<div class="tiny-view-frame-caption" style="top: 82px;">' +
+						'<div class="tiny-view-card" ' +
+							'v-for="(planet, planetName) in $root.selectedPlanets" ' +
+						'>' +
+							'<div class="tiny-view-card-art"><img :src="planetName == \'Jupiter\' ? \'zeus.png\' : \'chronos.png\'"></div>' +
+							'<div class="tiny-view-card-name">{{ planetName }}</div>' +
+							'<div class="tiny-view-card-text">{{ planetName == \'Saturn\' ? \'Pessimism\' : \'Optimism\'}}</div>' +
+						'</div>' +
+						'<div class="tiny-view-aspect">{{ String.fromCodePoint(0x2694) }}</div>' +
+					'</div>' +
 					/*'<div class="planet-circle major" ' +
 						'v-if="!$root.toEcliptic && !$root.sequenceView" ' +
 						'v-for="(planet, i) in $root.thePlanets" ' +
@@ -474,7 +490,10 @@ Vue.component('the-sky', {
 						      '</feDisplacementMap>' +
 						    '</filter>' +
 						  '</defs>' +
-						'<g v-if="!$root.toEcliptic">' +
+						'<g v-if="$root.tinyView">' +
+						  '<circle cx="50%" cy="50%" r="50px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
+						'</g>' +
+						'<g v-if="!$root.toEcliptic && !$root.tinyView">' +
 						  '<circle cx="50%" cy="50%" r="66px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
 						  '<circle cx="50%" cy="50%" r="82px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
 						  '<circle cx="50%" cy="50%" r="98px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
@@ -627,7 +646,7 @@ Vue.component('the-sky', {
 								':class="[ p2.aspect ]" ' +
 								':style="{ ' +
 									'transform: \'rotate(\' + (180 + $root.planetAngle(p1name)) + \'deg)\', ' +
-									'height: ($root.toEcliptic ? 300 : ((100 + 32 * $root.thePlanets.filter(function(planet) { return planet.name == p1name })[0].order) / 2)) + \'px\', ' +
+									'height: ($root.toEcliptic ? 300 : $root.tinyView ? 50 : ((100 + 32 * $root.thePlanets.filter(function(planet) { return planet.name == p1name })[0].order) / 2)) + \'px\', ' +
 								'}" ' +
 								'>' +
 							'</div>' +
@@ -943,6 +962,7 @@ var app = new Vue({
 	    showAngles: false,
 	    toEcliptic: false,
 	    sequenceView: false,
+	    tinyView: false,
 	    selectedPlanets: null,
 	    referenceMoment: null,
 	    theZodiac: [

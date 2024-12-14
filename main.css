@@ -328,7 +328,7 @@ table td {
 }
 
 .dim {
-	opacity: .3 !important;
+	opacity: 0 !important;
 }
 
 .a-star {
@@ -565,4 +565,74 @@ table td {
 
 .month .sequence-tick-line-label {
 	color: rgba(255, 255, 255, .6);
+}
+
+.tiny-view-frame {
+	position: absolute;
+	width: 160px;
+	height: 160px;
+	border: 1px solid white;
+	transform: translate(-50%, -50%);
+}
+
+.tiny-view-frame-caption {
+	position: absolute;
+	left: 0;
+	width: 160px;
+	text-align: center;
+	background-color: rgba(255, 255, 255, .1);
+	color: white;
+	border: 1px solid white;
+	padding: 0px;
+	font-size: 10px;
+	transform: translateX(-50%);
+}
+
+.tiny-view-card {
+	width: 70px;
+	height: 90px;
+	border: 1px solid white;
+	border-radius: 5px;
+	display: inline-block;
+	position: relative;
+	margin: 3px 4px;
+	overflow: hidden;
+}
+
+.tiny-view-aspect {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	width: 28px;
+	height: 28px;
+	background-color: black;
+	border: 1px solid white;
+	border-radius: 50%;
+	color: white;
+	font-size: 18px;
+}
+
+.tiny-view-card-name {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	width: 100%;
+	background-color: rgba(255, 0, 0, .1);
+}
+
+.tiny-view-card-text {
+	position: absolute;
+	bottom: 0px;
+	left: 0px;
+	width: 100%;
+	background-color: rgba(0, 0, 0, .2);
+	font-size: 9px;
+}
+
+.tiny-view-card-art img {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%) scale(0.1);
 }
