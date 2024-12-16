@@ -40,6 +40,9 @@ Vue.component('a-planet', {
 		},
 	},
 	mounted: function() {
+		if (this.iteration == 1 && this.planet.order == 1) {
+			console.log('first planet');
+		}
 		this.$forceUpdate();
 	},
 	template: '' +
@@ -451,20 +454,22 @@ Vue.component('the-sky', {
 							'<div class="constellation-symbol" v-if="$root.useSymbols">{{ constellation.symbol }}</div>' +
 						'</div>' +*/
 					'</div>' +
-					'<div class="tiny-view-frame">' +
-					'</div>' +
-					'<div class="tiny-view-frame-caption" style="top: -96px;">' +
-						'<span>Tiny Horoscope</span>' +
-					'</div>' +
-					'<div class="tiny-view-frame-caption" style="top: 82px;">' +
-						'<div class="tiny-view-card" ' +
-							'v-for="(planet, planetName) in $root.selectedPlanets" ' +
-						'>' +
-							'<div class="tiny-view-card-art"><img :src="planetName == \'Jupiter\' ? \'zeus.png\' : \'chronos.png\'"></div>' +
-							'<div class="tiny-view-card-name">{{ planetName }}</div>' +
-							'<div class="tiny-view-card-text">{{ planetName == \'Saturn\' ? \'Pessimism\' : \'Optimism\'}}</div>' +
+					'<div v-if="$root.tinyView">' +
+						'<div class="tiny-view-frame">' +
 						'</div>' +
-						'<div class="tiny-view-aspect">{{ String.fromCodePoint(0x2694) }}</div>' +
+						'<div class="tiny-view-frame-caption" style="top: -96px;">' +
+							'<span>Tiny Horoscope</span>' +
+						'</div>' +
+						'<div class="tiny-view-frame-caption" style="top: 82px;">' +
+							'<div class="tiny-view-card" ' +
+								'v-for="(planet, planetName) in $root.selectedPlanets" ' +
+							'>' +
+								'<div class="tiny-view-card-art"><img :src="planetName == \'Jupiter\' ? \'zeus.png\' : \'chronos.png\'"></div>' +
+								'<div class="tiny-view-card-name">{{ planetName }}</div>' +
+								'<div class="tiny-view-card-text">{{ planetName == \'Saturn\' ? \'Pessimism\' : \'Optimism\'}}</div>' +
+							'</div>' +
+							'<div class="tiny-view-aspect">{{ String.fromCodePoint(0x2694) }}</div>' +
+						'</div>' +
 					'</div>' +
 					/*'<div class="planet-circle major" ' +
 						'v-if="!$root.toEcliptic && !$root.sequenceView" ' +
@@ -475,55 +480,57 @@ Vue.component('the-sky', {
 							'}" ' +
 						'>' +
 					'</div>' +*/
+					'<div v-if="!$root.sequenceView">' +
 						'<svg id="svg" width="700" height="700" viewBox="0 0 700 700" style="position: absolute; top: 0px; left: 0px; transform: translate(-50%, -50%);">' +
-						  '<defs>' +
-						    '<filter x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox" id="pencilTexture3">' +
-						      '<feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="5" stitchTiles="stitch" result="f1">' +
-						      '</feTurbulence>' +
-						      '<feColorMatrix type="matrix" values="0 0 0 0 0, 0 0 0 0 0, 0 0 0 0 0, 0 0 0 -1.5 1.5" result="f2">' +
-						      '</feColorMatrix>' +
-						      '<feComposite operator="in" in2="f2b" in="SourceGraphic" result="f3">' +
-						      '</feComposite>' +
-						      '<feTurbulence type="fractalNoise" baseFrequency="1.2" numOctaves="3" result="noise">' +
-						      '</feTurbulence>' +
-						      '<feDisplacementMap xChannelSelector="R" yChannelSelector="G" scale="2.5" in="f3" result="f4">' +
-						      '</feDisplacementMap>' +
-						    '</filter>' +
-						  '</defs>' +
-						'<g v-if="$root.tinyView">' +
-						  '<circle cx="50%" cy="50%" r="50px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
-						'</g>' +
-						'<g v-if="!$root.toEcliptic && !$root.tinyView">' +
-						  '<circle cx="50%" cy="50%" r="66px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
-						  '<circle cx="50%" cy="50%" r="82px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
-						  '<circle cx="50%" cy="50%" r="98px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
-						  '<circle cx="50%" cy="50%" r="114px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
-						  '<circle cx="50%" cy="50%" r="130px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
-						  '<circle cx="50%" cy="50%" r="146px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
-						  '<circle cx="50%" cy="50%" r="162px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
-						  '<circle cx="50%" cy="50%" r="178px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
-						  '<circle cx="50%" cy="50%" r="194px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
-						  '<circle cx="50%" cy="50%" r="210px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
-						  //'<circle cx="50%" cy="50%" r="300px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
-						'</g>' +
+							'<defs>' +
+								'<filter x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox" id="pencilTexture3">' +
+									'<feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="5" stitchTiles="stitch" result="f1">' +
+									'</feTurbulence>' +
+									'<feColorMatrix type="matrix" values="0 0 0 0 0, 0 0 0 0 0, 0 0 0 0 0, 0 0 0 -1.5 1.5" result="f2">' +
+									'</feColorMatrix>' +
+									'<feComposite operator="in" in2="f2b" in="SourceGraphic" result="f3">' +
+									'</feComposite>' +
+									'<feTurbulence type="fractalNoise" baseFrequency="1.2" numOctaves="3" result="noise">' +
+									'</feTurbulence>' +
+									'<feDisplacementMap xChannelSelector="R" yChannelSelector="G" scale="2.5" in="f3" result="f4">' +
+									'</feDisplacementMap>' +
+								'</filter>' +
+							'</defs>' +
+							'<g v-if="$root.tinyView">' +
+								'<circle cx="50%" cy="50%" r="50px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
+							'</g>' +
+							'<g v-if="!$root.toEcliptic && !$root.tinyView">' +
+								'<circle cx="50%" cy="50%" r="66px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
+								'<circle cx="50%" cy="50%" r="82px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
+								'<circle cx="50%" cy="50%" r="98px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
+								'<circle cx="50%" cy="50%" r="114px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
+								'<circle cx="50%" cy="50%" r="130px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
+								'<circle cx="50%" cy="50%" r="146px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
+								'<circle cx="50%" cy="50%" r="162px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
+								'<circle cx="50%" cy="50%" r="178px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
+								'<circle cx="50%" cy="50%" r="194px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
+								'<circle cx="50%" cy="50%" r="210px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
+								//'<circle cx="50%" cy="50%" r="300px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
+							'</g>' +
 						'</svg>' +
-						'<div style="position: absolute; left: 0; top: 0; transform: rotate(24.2deg);">' +
-							'<svg ' +
-								'v-for="(constellation, i) in $root.theZodiac" ' +
-								'width="700" ' +
-								'height="700" ' +
-								'viewBox="0 0 700 700" ' +
-								'style="position: absolute; top: 0px; left: 0px;" ' +
-								':style="{ transform: \'translate(-50%, -50%) rotate(\' + (-30 * i) + \'deg)\', }" ' +
-							'>' +
-								'<g>' +
-									'<path id="top-sector" style="fill:none;stroke:none" d="M 90,350 A 46,46.5 0 0 1 610,350" />' +
-									'<text font-size="19" font-family="Georgia" fill="#777" width="500" text-anchor="middle">' +
-										'<textPath alignment-baseline="middle" startOffset="50%" xlink:href="#top-sector">{{ constellation.name }}</textPath>' +
-									'</text>' +
-								'</g>' +
-							'</svg>' +
-						'</div>' +
+					'</div>' +
+					'<div v-if="!$root.sequenceView" style="position: absolute; left: 0; top: 0; transform: rotate(24.2deg);">' +
+						'<svg ' +
+							'v-for="(constellation, i) in $root.theZodiac" ' +
+							'width="700" ' +
+							'height="700" ' +
+							'viewBox="0 0 700 700" ' +
+							'style="position: absolute; top: 0px; left: 0px;" ' +
+							':style="{ transform: \'translate(-50%, -50%) rotate(\' + (-30 * i) + \'deg)\', }" ' +
+						'>' +
+							'<g>' +
+								'<path id="top-sector" style="fill:none;stroke:none" d="M 90,350 A 46,46.5 0 0 1 610,350" />' +
+								'<text font-size="19" font-family="Georgia" fill="#777" width="500" text-anchor="middle">' +
+									'<textPath alignment-baseline="middle" startOffset="50%" xlink:href="#top-sector">{{ constellation.name }}</textPath>' +
+								'</text>' +
+							'</g>' +
+						'</svg>' +
+					'</div>' +
 					'<div v-if="$root.sequenceView" v-for="n in 35">' +
 						'<a-planet ' +
 							'v-for="(planet, i) in $root.thePlanets" ' +
@@ -6290,7 +6297,7 @@ var app = new Vue({
 	    aspects: function() {
 		    var t = this;
 		    if (!t.showAspects) { return; }
-		    t.dateTime;
+		    t.dateTime; // We need to reference t.dateTime to get the aspects to show up on load
 		    var aspects = {};
 		    if (!document.getElementById('Sun-container')) { return {}; }
 		    t.thePlanets.forEach(function(p1) {

@@ -328,7 +328,7 @@ table td {
 }
 
 .dim {
-	opacity: 0 !important;
+	opacity: 0.05 !important;
 }
 
 .a-star {
