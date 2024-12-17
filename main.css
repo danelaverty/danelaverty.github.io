@@ -543,11 +543,11 @@ table td {
 
 .sequence-tick-line {
 	position: absolute;
-	width: 840px;
+	width: 1640px;
 	height: 1px;
 	background-color: rgba(255, 255, 255, .1);
 	left: 0;
-	transform: translate(-50%, -280px);
+	transform: translate(-420px, -280px);
 }
 
 .sequence-tick-line.month {
@@ -635,4 +635,34 @@ table td {
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%) scale(0.1);
+}
+
+.aspects-row {
+	position: absolute;
+	left: 1250px;
+	width: 1600px;
+	font-size: 13px;
+	transform: translate(-50%, -300px);
+}
+
+.aspect-planets {
+	top: -15px;
+}
+
+.aspect-column {
+	display: inline-block;
+	width: 16px;
+	height: 20px;
+	color: white;
+	text-align: center;
+}
+
+.aspect-column-line {
+	border-left: 1px solid rgba(255, 255, 255, .2);
+	height: 800px;
+	//transform: translateX(4px);
+}
+
+.aspect-column-line:hover {
+	background-color: rgba(255, 255, 210, .1);
 }
