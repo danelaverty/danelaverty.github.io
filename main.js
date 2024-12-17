@@ -40,9 +40,6 @@ Vue.component('a-planet', {
 		},
 	},
 	mounted: function() {
-		if (this.iteration == 1 && this.planet.order == 1) {
-			console.log('first planet');
-		}
 		this.$forceUpdate();
 	},
 	template: '' +
@@ -262,7 +259,7 @@ Vue.component('main-frame', {
 						'<div class="control-button" :class="{ on: $root.showRetrogrades, }" @click.stop="$root.showRetrogrades = !$root.showRetrogrades">Retrogrades</div>' +
 						//'<div class="control-button" :class="{ on: $root.showAngles, }" @click.stop="$root.showAngles = !$root.showAngles">Angles</div>' +
 						'<div class="control-button" :class="{ on: $root.toEcliptic, }" @click.stop="$root.toEcliptic = !$root.toEcliptic">To Ecliptic</div>' +
-						'<div class="control-button" :class="{ on: $root.sequenceView, }" @click.stop="$root.sequenceView = !$root.sequenceView">Sequence</div>' +
+						'<div class="control-button" :class="{ on: $root.sequenceView, }" @click.stop="$root.sequenceView = !$root.sequenceView;">Sequence</div>' +
 						'<div class="control-button" :class="{ on: $root.tinyView, }" @click.stop="$root.tinyView = !$root.tinyView">Tiny</div>' +
 					'</div>' + 
 				'</div>' +
@@ -550,6 +547,44 @@ Vue.component('the-sky', {
 							':isFlat=true ' +
 							'>' +
 						'</a-planet>' +
+					'</div>' +
+					'<div v-if="$root.sequenceView" class="aspects-row aspect-planets">' +
+						'<template v-for="p1 in $root.thePlanets" ' +
+							'>' +
+							'<template v-for="p2 in $root.thePlanets" ' +
+								'>' +
+								'<div class="aspect-column" ' +
+									'v-if="p1.order < p2.order" ' +
+									'>' +
+									'{{ p1.symbol }}<br>{{ p2.symbol }}' +
+								'</div>' +
+							'</template>' +
+						'</template>' +
+					'</div>' +
+					'<div v-if="$root.sequenceView" class="aspects-row" v-for="n in $root.aspectsSequence.length" :style="{ top: (n * 20) + \'px\', }">' +
+						'<template v-for="p1 in $root.thePlanets" ' +
+							'>' +
+							'<template v-for="p2 in $root.thePlanets" ' +
+								'>' +
+								'<div class="aspect-column" ' + 
+									'v-if="p1.order < p2.order" ' +
+									':style="{ backgroundColor: $root.aspectsSequence[n - 1][p1.name][p2.name], }" ' +
+									'>' +
+								'</div>' +
+							'</template>' +
+						'</template>' +
+					'</div>' +
+					'<div v-if="$root.sequenceView" class="aspects-row aspect-planets">' +
+						'<template v-for="p1 in $root.thePlanets" ' +
+							'>' +
+							'<template v-for="p2 in $root.thePlanets" ' +
+								'>' +
+								'<div class="aspect-column aspect-column-line" ' +
+									'v-if="p1.order < p2.order" ' +
+									'>' +
+								'</div>' +
+							'</template>' +
+						'</template>' +
 					'</div>' +
 					'<div ' +
 						'v-if="$root.sequenceView && (' +
@@ -870,7 +905,7 @@ Vue.component('the-sky', {
 						':star="star" ' +
 						'>' +
 					'</a-star>' +
-					'<div class="shader-container sunrise" ' +
+					'<div v-if="!$root.sequenceView && ($root.showAngles || $root.showShader)" class="shader-container sunrise" ' +
 						//'v-if="false" ' +
 						':style="{ ' +				
 							'transform: \'' +
@@ -900,7 +935,7 @@ Vue.component('the-sky', {
 							'<div class="shader-caption" v-if="$root.showAngles">Ascending / Rising</div>' +
 						'</div>' +
 					'</div>' +
-					'<div class="shader-container sunset" ' +
+					'<div v-if="!$root.sequenceView && ($root.showAngles || $root.showShader)" class="shader-container sunset" ' +
 						//'v-if="false" ' +
 						':style="{ ' +				
 							'transform: \'' +
@@ -6294,6 +6329,23 @@ var app = new Vue({
 	    theCenterEl: null,
     },
     computed: {
+	    aspectsSequence: function() {
+		    var t = this;
+		    var aspectsSequence = [];
+		    for (var i = 0; i < 35; i++) {
+			    aspectsRow = {};
+			    t.thePlanets.forEach(function(p1) {
+				    aspectsRow[p1.name] = {};
+				    t.thePlanets.forEach(function(p2) {
+					    if (p1.order < p2.order) {
+						    aspectsRow[p1.name][p2.name] = t.getAspect(p1, p2, t.stepIncrement * i);
+					    }
+				    });
+			    });
+			    aspectsSequence.push(aspectsRow);
+		    }
+		    return aspectsSequence;
+	    },
 	    aspects: function() {
 		    var t = this;
 		    if (!t.showAspects) { return; }
@@ -6314,8 +6366,6 @@ var app = new Vue({
 					    aspects[p1.name][p2.name].angle = angleDiff;
 					    aspects[p1.name][p2.name].p1angle = p1angle;
 					    aspects[p1.name][p2.name].p2angle = p2angle;
-					    aspects[p1.name][p2.name].p1order = p1.order;
-					    aspects[p1.name][p2.name].p2order = p2.order;
 					    var maxOrb = 2;
 
 					    if (Math.abs(angleDiff - 0) < maxOrb) { 
@@ -6439,6 +6489,29 @@ var app = new Vue({
 	    },
     },
     methods: {
+	    getAspect: function(p1, p2, timeOffset) {
+		    var p1angle = this.planetAngle(p1.name, timeOffset);
+		    var p2angle = this.planetAngle(p2.name, timeOffset);
+
+		    var angleDiff = Math.abs(p1angle - p2angle);
+		    if (angleDiff > 180) { angleDiff = 360 - angleDiff; }
+
+		    var maxOrb = 2;
+
+		    if (Math.abs(angleDiff - 0) < maxOrb) { 
+			    return '#EC7357';
+		    } else if (Math.abs(angleDiff - 180) < maxOrb) { 
+			    return '#C6FAEF';
+		    } else if (Math.abs(angleDiff - 120) < maxOrb) { 
+			    return '#FDD652';
+		    } else if (Math.abs(angleDiff - 90) < maxOrb) { 
+			    return '#4281A4';
+		    } else if (Math.abs(angleDiff - 60) < maxOrb / 2) { 
+			    return '#AEE5A7';
+		    }
+
+		    return null;
+	    },
 	    togglePlanetSelection: function(planetName, ignoreAspects) {
 		    var t = this;
 		    if (this.sequenceView) { return; }
