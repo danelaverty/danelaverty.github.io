@@ -261,6 +261,7 @@ Vue.component('main-frame', {
 						'<div class="control-button" :class="{ on: $root.toEcliptic, }" @click.stop="$root.toEcliptic = !$root.toEcliptic">To Ecliptic</div>' +
 						'<div class="control-button" :class="{ on: $root.sequenceView, }" @click.stop="$root.sequenceView = !$root.sequenceView;">Sequence</div>' +
 						'<div class="control-button" :class="{ on: $root.tinyView, }" @click.stop="$root.tinyView = !$root.tinyView">Tiny</div>' +
+						'<div class="control-button" :class="{ on: $root.videoView, }" @click.stop="$root.videoView = !$root.videoView">Video</div>' +
 					'</div>' + 
 				'</div>' +
 			'</div>' +
@@ -316,11 +317,12 @@ Vue.component('main-frame', {
 						'</div>' +
 					'</div>' +
 				'</div>' +
-				'<div class="control-box" style="bottom: 0; right: 0;">' +
+				'<div class="control-box" style="bottom: 0; right: 0;"' +
+					'>' +
 					'<div v-for="(p1, p1name) in $root.aspects" :key="p1name" :id="p1name + \'-aspects\'">' +
 						'<div ' +
 							'v-for="(p2, p2name) in p1" ' +
-							'v-if="p2.p1order > p2.p2order" ' +
+							'v-if="p2.p1order > p2.p2order && p1name != \'Moon\' && p2name != \'Moon\'"" ' +
 							':key="p1name + \'-\' + p2name" ' +
 						'>' +
 							'<div class="aspect-list" ' +
@@ -421,9 +423,6 @@ Vue.component('the-sky', {
 								'opacity: .9, ' +
 							'}" ' +
 						'></div>' +
-					'</div>' +
-					'<div class="the-day-text">' +
-						'{{ $root.dayOfWeek[$root.dateShown.getDay()] }}<br>{{ $root.dateShown.getMonth() + 1 }}/{{ $root.dateShown.getDate() }}' +
 					'</div>' +
 					//'<div class="the-constellations-circle"></div>' +
 					'<div class="sideral" v-if="!$root.showTropical">' +
@@ -1050,6 +1049,38 @@ Vue.component('the-sky', {
 							'<div class="shader-caption" v-if="$root.showAngles"><div style="transform: scaleX(-1)">Descending</div></div>' +
 						'</div>' +
 					'</div>' +
+					'<div class="video-view" ' +
+						'v-if="$root.videoView" ' +
+						'>' +
+						'<table class="aspects-box" ' +
+							'>' +
+							'<template v-for="(p1, p1name) in $root.aspectsInTheAspectsSequence">' +
+								'<tr ' +
+									'v-for="(p2, p2name) in p1" ' +
+									'v-if="p1name != \'Moon\' && p2name != \'Moon\'"" ' +
+									':key="p1name + \'-\' + p2name" ' +
+									'style="border-bottom: 1px solid white;" ' +
+								'>' +
+									'<td style="text-align: right; background-color: rgba(0, 0, 0, .5);"><div style="display: inline-block; padding: 1px 3px; border-right: 1px solid white;">{{ p1name }}&nbsp;+&nbsp;{{ p2name }}</div></td>' +
+									'<td v-for="aspect in $root.aspectsSequence" style="width: 5px;" :style="{ backgroundColor: aspect[p1name] ? aspect[p1name][p2name] : null }"></td>' +
+								'</tr>' +
+							'</template>' +
+						'</table>' +
+						'<div class="sunrise-sunset-box">' +
+							'<div ' +
+								'style="width: 120px; height: 120px; border-radius: 50%; position: absolute; transform: translate(-50%, -50%);" ' +
+								':style="{ backgroundColor: \'rgba(0, 255, 255, \' + (.5 * Math.sin($root.dayPercent() * Math.PI) - .2) + \')\', }" ' +
+							'>' +
+							'</div>' +
+							'<img src="sun-and-moon.png" ' +
+								':style="{ transform: \'translate(-50%, -50%) rotate(\' + (180 + $root.dayPercent() * 360) + \'deg)\', }" ' +
+							'>' +
+							'<img src="hills.png">' +
+							'<div class="the-day-text">' +
+								'{{ $root.dayOfWeek[$root.dateShown.getDay()] }}<br>{{ $root.dateShown.getMonth() + 1 }}/{{ $root.dateShown.getDate() }}' +
+							'</div>' +
+						'</div>' +
+					'</div>' +
 				'</div>' +
 			'</div>' +
 
@@ -1104,6 +1135,7 @@ var app = new Vue({
 	    toEcliptic: false,
 	    sequenceView: false,
 	    tinyView: false,
+	    videoView: false,
 	    selectedPlanets: null,
 	    referenceMoment: null,
 	    theZodiac: [
@@ -6431,7 +6463,7 @@ var app = new Vue({
 	    aspectsSequence: function() {
 		    var t = this;
 		    var aspectsSequence = [];
-		    for (var i = 0; i < 35; i++) {
+		    for (var i = 0; i < 70; i++) {
 			    aspectsRow = {};
 			    t.thePlanets.forEach(function(p1) {
 				    aspectsRow[p1.name] = {};
@@ -6444,6 +6476,23 @@ var app = new Vue({
 			    aspectsSequence.push(aspectsRow);
 		    }
 		    return aspectsSequence;
+	    },
+	    aspectsInTheAspectsSequence: function() {
+		    var t = this;
+		    var aspectsInTheAspectsSequence = {};
+		    t.aspectsSequence.forEach(function(aspectsSequenceStep) {
+			    for (var p1name in aspectsSequenceStep) {
+				    for (var p2name in aspectsSequenceStep[p1name]) {
+					    if (aspectsSequenceStep[p1name][p2name] != null) {
+						    if (!aspectsInTheAspectsSequence[p1name]) {
+							    aspectsInTheAspectsSequence[p1name] = {};
+						    }
+						    aspectsInTheAspectsSequence[p1name][p2name] = true;
+					    }
+				    }
+			    }
+		    });
+		    return aspectsInTheAspectsSequence;
 	    },
 	    aspects: function() {
 		    var t = this;
@@ -6493,7 +6542,7 @@ var app = new Vue({
 						    aspects[p1.name][p2.name].symbol = String.fromCodePoint(0x25A1);
 						    aspects[p1.name][p2.name].orb = Math.round((angleDiff - 90) * 10)/10;
 						    aspects[p1.name][p2.name].strength = 1 - Math.abs((angleDiff - 90) / maxOrb);
-					    } else if (Math.abs(angleDiff - 60) < maxOrb / 2) { 
+					    } else if (Math.abs(angleDiff - 60) < maxOrb) { 
 						    aspects[p1.name][p2.name].aspect = 'Sextile';
 						    aspects[p1.name][p2.name].color = '#9EF597';
 						    aspects[p1.name][p2.name].symbol = String.fromCodePoint(0x26B9);
