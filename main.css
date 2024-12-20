@@ -228,6 +228,21 @@ table td {
 	width: 100vw;
 }
 
+.the-sky-color, .fader {
+	position: absolute;
+	//top: -100vh;
+	//left: -100vw;
+	height: 400vh;
+	width: 400vw;
+	background-color: #FFC;
+	z-index: -100;
+}
+
+div.fader {
+	background-color: #000;
+	z-index: 100;
+}
+
 .sky-viewer {
 	position:absolute;
 	height: 100vh;
@@ -251,6 +266,18 @@ table td {
 	background-color: #5599CC;
 	position: absolute;
 	transform: translate(-50%, -50%);
+	overflow: hidden;
+}
+
+.the-day-text {
+	color: white;
+	position: absolute;
+	top: 10px;
+	left: 0;
+	font-size: 10px;
+	transform: translate(-50%, 0%);
+	font-weight: bold;
+	text-align: center;
 }
 
 .the-constellations-circle {
@@ -472,26 +499,28 @@ table td {
 	position: absolute;
 	border-left: 1px solid rgba(255, 255, 255, .6);
 	transform-origin: top left;
+	color: white;
+	font-size: 10px;
 }
 
 .planet-laser.Conjunct {
-	background-color: #EC7357;
+	border-left: 2px solid #FC8367;
 }
 
 .planet-laser.Opposition {
-	background-color: #C6FAEF;
+	border-left: 2px solid #CBFFF8;
 }
 
 .planet-laser.Trine {
-	border-left: 1px solid #FDD652;
+	border-left: 2px solid #FDD652;
 }
 
 .planet-laser.Square {
-	border-left: 1px solid #4281A4;
+	border-left: 2px solid #4281D4;
 }
 
 .planet-laser.Sextile {
-	border-left: 1px solid #AEE5A7;
+	border-left: 2px solid #9EF597;
 	top: 1px;
 }
 
@@ -543,7 +572,7 @@ table td {
 
 .sequence-tick-line {
 	position: absolute;
-	width: 1640px;
+	width: 1740px;
 	height: 1px;
 	background-color: rgba(255, 255, 255, .1);
 	left: 0;
@@ -555,7 +584,7 @@ table td {
 }
 
 .sequence-tick-line-label {
-	color: rgba(255, 255, 255, .3);
+	color: rgba(255, 255, 255, .5);
 	position: absolute;
 	top: 0;
 	right: 100%;
@@ -639,10 +668,19 @@ table td {
 
 .aspects-row {
 	position: absolute;
-	left: 1250px;
+	left: 1335px;
 	width: 1600px;
 	font-size: 13px;
 	transform: translate(-50%, -300px);
+}
+
+.aspect-planets-header {
+	top: -30px;
+	font-size: 8px;
+}
+
+.aspect-planets-header div {
+	border-left: 1px solid rgba(255, 255, 255, .2);
 }
 
 .aspect-planets {
@@ -655,6 +693,7 @@ table td {
 	height: 20px;
 	color: white;
 	text-align: center;
+	position: relative;
 }
 
 .aspect-column-line {
