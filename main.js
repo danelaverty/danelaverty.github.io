@@ -302,7 +302,12 @@ Vue.component('main-frame', {
 									'<td><table style="margin: 3px;" class="moments-table"><tr>' +
 									'<td colspan="3" @click.stop="$root.dateTime = savedDateTime.time" style="cursor: pointer;">{{ savedDateTime.name }}</td>' +
 									'</tr><tr>' +
-									'<td @click.stop="referenceMoment(savedDateTime.time)"><div class="moments-button">Reference</div></td>' +
+									'<td @click.stop="referenceMoment(savedDateTime.time)"><div class="moments-button" ' +
+										':style="{ ' +
+											'color: $root.referenceMoment == savedDateTime.time ? \'white\' : null, ' +
+											'backgroundColor: $root.referenceMoment == savedDateTime.time ? \'#AA3\' : null, ' +
+										'}" ' +
+									'>Reference</div></td>' +
 									'<td @click.stop="renameMoment(savedDateTime.time, savedDateTime.name)"><div class="moments-button">Rename</div></td>' +
 									'<td @click.stop="deleteMoment(savedDateTime.time)"><div class="moments-button">Delete</div></td>' +
 									'</tr></table></td>' +
@@ -340,6 +345,13 @@ Vue.component('main-frame', {
 			var $root = this.$root;
 			var savedDateTimes = $root.savedDateTimes;
 			Vue.delete(savedDateTimes, time);
+		},
+		referenceMoment: function(time) {
+			if (this.$root.referenceMoment == time) {
+				this.$root.referenceMoment = null;
+			} else {
+				this.$root.referenceMoment = time;
+			}
 		},
 		incrementMonth: function() {
 			var newDate = new Date(this.$root.dateShown);
@@ -381,6 +393,17 @@ Vue.component('the-sky', {
 		'<div class="the-sky" ' +
 			'@click.stop="$root.showButtons = false;" ' +
 			'>' +
+			'<div class="the-sky-color" ' +
+				':style="{ ' +				
+					'opacity: .1 * Math.sin($root.dayPercent() * Math.PI), ' +
+				'} "' +
+			'></div>' +
+			'<div class="fader" ' +
+				'v-if="$root.faderOpacity > 0" ' +
+				':style="{ ' +				
+					'opacity: $root.faderOpacity, ' +
+				'} "' +
+			'></div>' +
 			'<main-frame></main-frame>' +
 			'<div id="sky-viewer" class="sky-viewer" ' +
 				'>' +
@@ -391,7 +414,17 @@ Vue.component('the-sky', {
 						', ' +
 					'} "' +
 					'>' +
-					'<div v-if="!$root.sequenceView" class="the-earth"></div>' +
+					'<div v-if="!$root.sequenceView" class="the-earth">' +
+						'<div v-if="!$root.sequenceView" class="moon-shader" ' +
+							':style="{ ' +
+								'transform: \'rotate(\' + ($root.dayPercent() * 360) + \'deg)\', ' +
+								'opacity: .9, ' +
+							'}" ' +
+						'></div>' +
+					'</div>' +
+					'<div class="the-day-text">' +
+						'{{ $root.dayOfWeek[$root.dateShown.getDay()] }}<br>{{ $root.dateShown.getMonth() + 1 }}/{{ $root.dateShown.getDate() }}' +
+					'</div>' +
 					//'<div class="the-constellations-circle"></div>' +
 					'<div class="sideral" v-if="!$root.showTropical">' +
 						'<div class="the-ecliptic" v-if="!$root.sequenceView"></div>' +
@@ -548,6 +581,9 @@ Vue.component('the-sky', {
 							'>' +
 						'</a-planet>' +
 					'</div>' +
+					'<div v-if="$root.sequenceView" class="aspects-row aspect-planets-header">' +
+						'<div class="aspect-column" v-for="(planet, i) in $root.thePlanets" v-if="i != 9" :style="{ width: ((9 - i) * 16) + \'px\', }">{{ planet.name }}</div>' +
+					'</div>' +
 					'<div v-if="$root.sequenceView" class="aspects-row aspect-planets">' +
 						'<template v-for="p1 in $root.thePlanets" ' +
 							'>' +
@@ -556,7 +592,42 @@ Vue.component('the-sky', {
 								'<div class="aspect-column" ' +
 									'v-if="p1.order < p2.order" ' +
 									'>' +
-									'{{ p1.symbol }}<br>{{ p2.symbol }}' +
+									//'<div style="position: absolute; top: 0; left: 3px;">{{ p1.symbol }}</div>' +
+									'<div style="position: absolute; top: 100%; left: 0; width: 16px; text-align: center; font-size: 10px;">{{ p2.symbol }}</div>' +
+									'<div class="planet-disc" ' +
+										':id="p1.name + \'-disc\'" ' +
+										':style="{ ' +
+											'backgroundColor: p1.color, ' +
+											'width: ([\'Moon\', \'Sun\'].indexOf(p1.name) > -1 ? 9 : 6) + \'px\', ' +
+											'height: ([\'Moon\', \'Sun\'].indexOf(p1.name) > -1 ? 9 : 6) + \'px\', ' +
+											'top: \'20%\', ' +
+											'left: \'50%\', ' +
+										'}" ' +
+									'>' +
+										'<div v-if="p1.name == \'Moon\'" class="moon-shader" ' +
+											':style="{ ' +
+												'width: (9) + \'px\', ' +
+												'height: (9) + \'px\', ' +
+											'}" ' +
+										'></div>' +
+									'</div>' +
+									'<div class="planet-disc" ' +
+										':id="p2.name + \'-disc\'" ' +
+										':style="{ ' +
+											'backgroundColor: p2.color, ' +
+											'width: ([\'Moon\', \'Sun\'].indexOf(p2.name) > -1 ? 9 : 6) + \'px\', ' +
+											'height: ([\'Moon\', \'Sun\'].indexOf(p2.name) > -1 ? 9 : 6) + \'px\', ' +
+											'top: \'80%\', ' +
+											'left: \'50%\', ' +
+										'}" ' +
+									'>' +
+										'<div v-if="p2.name == \'Moon\'" class="moon-shader" ' +
+											':style="{ ' +
+												'width: (9) + \'px\', ' +
+												'height: (9) + \'px\', ' +
+											'}" ' +
+										'></div>' +
+									'</div>' +
 								'</div>' +
 							'</template>' +
 						'</template>' +
@@ -588,19 +659,19 @@ Vue.component('the-sky', {
 					'</div>' +
 					'<div ' +
 						'v-if="$root.sequenceView && (' +
-							'($root.stepIncrement == 10000000 || $root.stepIncrement == 100000000) ' +
-							'|| ($root.stepIncrement == 1000000000 && (new Date($root.dateTime + ($root.DAY * n))).getDate() == 1) ' +
-							'|| ($root.stepIncrement == 3000000000 && (new Date($root.dateTime + ($root.DAY * n))).getDate() == 1) ' +
-							'|| ($root.stepIncrement >= 10000000000 && (new Date($root.dateTime + ($root.DAY * n))).getDate() == 1 && (new Date($root.dateTime + ($root.DAY * n))).getMonth() == 0) ' +
+							'($root.stepIncrement <= 100000000) ' +
+							'|| ((new Date($root.dateTime + ($root.DAY * n))).getDate() == 1) ' +
+							//'|| ($root.stepIncrement >= 10000000000 && (new Date($root.dateTime + ($root.DAY * n))).getDate() == 1 && (new Date($root.dateTime + ($root.DAY * n))).getMonth() == 0) ' +
 							')" ' +
 						'class="sequence-tick-line" ' +
 						':class="{ ' +
 							'month: $root.stepIncrement <= 100000000 && (new Date($root.dateTime + ($root.DAY * n))).getDate() == 1, ' +
 						'}" ' +
-						'v-for="n in ({ 10000000: 5, 100000000: 40, 1000000000: 400, 3000000000: 1200, 10000000000: 4000, 50000000000: 20000 }[$root.stepIncrement])" ' +
+						'v-for="n in Math.floor($root.stepIncrement / 2500000)" ' +
 						':style="{ top: (20 * ($root.DAY / $root.stepIncrement) * n) - (($root.midnightOverage($root.dateTime) / $root.DAY) * (20 * $root.DAY / $root.stepIncrement)) + \'px\', }" ' +
 						'>' +
 						'<div class="sequence-tick-line-label">{{ $root.humanReadableDateTime($root.dateTime + ($root.DAY * n), true) }}</div>' +
+						'<div class="sequence-tick-line-label" style="transform: translate(950px, -50%);">{{ $root.humanReadableDateTime($root.dateTime + ($root.DAY * n), true) }}</div>' +
 					'</div>' +
 					'<a-planet ' +
 						'v-if="!$root.sequenceView" ' +
@@ -678,7 +749,7 @@ Vue.component('the-sky', {
 					'<div v-for="(p1, p1name) in $root.aspects" :key="p1name" :id="p1name + \'-aspects\'">' +
 						'<div ' +
 							'v-for="(p2, p2name) in p1" ' +
-							'v-if="!$root.selectedPlanets || ($root.selectedPlanets[p1name] && $root.selectedPlanets[p2name])" ' +
+							'v-if="(!$root.selectedPlanets || ($root.selectedPlanets[p1name] && $root.selectedPlanets[p2name])) && p1name != \'Moon\' && p2name != \'Moon\'" ' +
 							':key="p1name + \'-\' + p2name" ' +
 							':id="p1name + \'-\' + p2name + \'-aspect\'" ' +
 						'>' +
@@ -689,8 +760,25 @@ Vue.component('the-sky', {
 								':style="{ ' +
 									'transform: \'rotate(\' + (180 + $root.planetAngle(p1name)) + \'deg)\', ' +
 									'height: ($root.toEcliptic ? 300 : $root.tinyView ? 50 : ((100 + 32 * $root.thePlanets.filter(function(planet) { return planet.name == p1name })[0].order) / 2)) + \'px\', ' +
+									'opacity: p2.strength, ' +
 								'}" ' +
 								'>' +
+							'</div>' +
+							'<div ' +
+								'v-if="$root.showAspects && !$root.sequenceView && p2.p1order > p2.p2order" ' +
+								'class="planet-laser" ' +
+								':style="{ ' +
+									'transform: \'rotate(\' + (180 + $root.planetAngle(p1name)) + \'deg)\', ' +
+									'height: ($root.toEcliptic ? 300 : $root.tinyView ? 50 : ((100 + 32 * $root.thePlanets.filter(function(planet) { return planet.name == p1name })[0].order) / 2)) + \'px\', ' +
+									'opacity: p2.strength, ' +
+								'}" ' +
+								'>' +
+								'<div style="position: absolute; top: 50px;" ' +
+									':style="{ ' +
+										'transform: \'rotate(-\' + (180 + $root.planetAngle(p1name)) + \'deg)\', ' +
+										'color: p2.color, ' +
+									'}" ' +
+									'>{{ p1name }}&nbsp;+ {{ p2name }}</div>' +
 							'</div>' +
 							'<div ' +
 								'v-if="$root.showAspects && !$root.sequenceView && p2.aspect != \'Conjunct\' && p2.aspect != \'Opposition\'" ' +
@@ -699,6 +787,7 @@ Vue.component('the-sky', {
 									'transform: \'rotate(\' + (180 + $root.planetAngle(p1name)) + \'deg)\', ' +
 									'height: (20) + \'px\', ' +
 									'borderLeft: \'unset\', ' +
+									'opacity: p2.strength, ' +
 								'}" ' +
 								'>' +
 								'<div ' +
@@ -905,13 +994,15 @@ Vue.component('the-sky', {
 						':star="star" ' +
 						'>' +
 					'</a-star>' +
-					'<div v-if="!$root.sequenceView && ($root.showAngles || $root.showShader)" class="shader-container sunrise" ' +
+					'<div class="shader-container sunrise" ' +
+						//'v-if="!$root.sequenceView && ($root.showAngles || $root.showShader)" ' + 
 						//'v-if="false" ' +
 						':style="{ ' +				
 							'transform: \'' +
 								'translate(0%, -50%) ' +
 								'rotate(\' + ($root.sunAngle - (360 * $root.dayPercent())) + \'deg)' +
 							'\', ' +
+							'zIndex: !$root.showShader ? -1 : null, ' +
 							'borderLeft: $root.showAngles ? \'1px solid #666\' : null, ' +
 						'} "' +
 						'>' +
@@ -935,7 +1026,8 @@ Vue.component('the-sky', {
 							'<div class="shader-caption" v-if="$root.showAngles">Ascending / Rising</div>' +
 						'</div>' +
 					'</div>' +
-					'<div v-if="!$root.sequenceView && ($root.showAngles || $root.showShader)" class="shader-container sunset" ' +
+					'<div class="shader-container sunset" ' +
+						//'v-if="!$root.sequenceView && ($root.showAngles || $root.showShader)" ' + 
 						//'v-if="false" ' +
 						':style="{ ' +				
 							'transform: \'' +
@@ -943,6 +1035,7 @@ Vue.component('the-sky', {
 								'rotate(\' + ($root.sunAngle - (360 * $root.dayPercent())) + \'deg) ' +
 								'scaleX(-1) ' +
 							'\', ' +
+							'zIndex: !$root.showShader ? -1 : null, ' +
 						'} "' +
 						'>' +
 						'<div class="visible-ecliptic-shader" v-if="$root.showShader" ' +
@@ -972,6 +1065,7 @@ Vue.component('the-sky', {
 var app = new Vue({
 	el: '#app',
     data: {
+	    dayOfWeek: { 0: 'Mon', 1: 'Tue', 2: 'Wed', 3: 'Thu', 4: 'Fri', 5: 'Sat', 6: 'Sun' },
 	    eclExt: 117,
 	    eclRot: Math.PI,
 	    eclCoe: .262,
@@ -986,10 +1080,15 @@ var app = new Vue({
 	    YEARISH: 365 * 24 * 60 * 60 * 1000,
 	    window: window,
 	    dateTime: new Date().getTime(),
+	    loadTime: new Date().getTime(),
 	    savedDateTime: null,
     	sunZs: [],
-	    stepIncrement: 10000000,
+	    stepIncrement: 10 * 1000000,
+	    factor: 1000000,
+	    stepIncrements: [1, 2, 3, 6, 10, 20, 30, 60, 100, 300, 1000, 3000, 10000, 30000, ],
 	    clockID: -1,
+	    faderID: -1,
+	    faderOpacity: 0,
 	    showShader: false,
 	    visibleSkyUp: false,
 	    useSymbols: false,
@@ -6366,33 +6465,40 @@ var app = new Vue({
 					    aspects[p1.name][p2.name].angle = angleDiff;
 					    aspects[p1.name][p2.name].p1angle = p1angle;
 					    aspects[p1.name][p2.name].p2angle = p2angle;
+					    aspects[p1.name][p2.name].p1order = p1.order;
+					    aspects[p1.name][p2.name].p2order = p2.order;
 					    var maxOrb = 2;
 
 					    if (Math.abs(angleDiff - 0) < maxOrb) { 
 						    aspects[p1.name][p2.name].aspect = 'Conjunct';
+						    aspects[p1.name][p2.name].color = '#FC8367';
 						    aspects[p1.name][p2.name].symbol = String.fromCodePoint(0x260C);
 						    aspects[p1.name][p2.name].orb = Math.round((angleDiff - 0) * 10)/10;
-						    aspects[p1.name][p2.name].strength = (angleDiff - 0) / maxOrb;
+						    aspects[p1.name][p2.name].strength = 1 - Math.abs((angleDiff - 0) / maxOrb);
 					    } else if (Math.abs(angleDiff - 180) < maxOrb) { 
 						    aspects[p1.name][p2.name].aspect = 'Opposition';
+						    aspects[p1.name][p2.name].color = '#CBFFF8';
 						    aspects[p1.name][p2.name].symbol = String.fromCodePoint(0x260D);
 						    aspects[p1.name][p2.name].orb = Math.round((angleDiff - 180) * 10)/10;
-						    aspects[p1.name][p2.name].strength = (angleDiff - 180) / maxOrb;
+						    aspects[p1.name][p2.name].strength = 1 - Math.abs((angleDiff - 180) / maxOrb);
 					    } else if (Math.abs(angleDiff - 120) < maxOrb) { 
 						    aspects[p1.name][p2.name].aspect = 'Trine';
+						    aspects[p1.name][p2.name].color = '#FDD652';
 						    aspects[p1.name][p2.name].symbol = String.fromCodePoint(0x25B3);
-						    aspects[p1.name][p2.name].orb = angleDiff - 120;
 						    aspects[p1.name][p2.name].orb = Math.round((angleDiff - 120) * 10)/10;
+						    aspects[p1.name][p2.name].strength = 1 - Math.abs((angleDiff - 120) / maxOrb);
 					    } else if (Math.abs(angleDiff - 90) < maxOrb) { 
 						    aspects[p1.name][p2.name].aspect = 'Square';
+						    aspects[p1.name][p2.name].color = '#4281D4';
 						    aspects[p1.name][p2.name].symbol = String.fromCodePoint(0x25A1);
-						    aspects[p1.name][p2.name].orb = angleDiff - 90;
 						    aspects[p1.name][p2.name].orb = Math.round((angleDiff - 90) * 10)/10;
+						    aspects[p1.name][p2.name].strength = 1 - Math.abs((angleDiff - 90) / maxOrb);
 					    } else if (Math.abs(angleDiff - 60) < maxOrb / 2) { 
 						    aspects[p1.name][p2.name].aspect = 'Sextile';
+						    aspects[p1.name][p2.name].color = '#9EF597';
 						    aspects[p1.name][p2.name].symbol = String.fromCodePoint(0x26B9);
-						    aspects[p1.name][p2.name].orb = angleDiff - 60;
 						    aspects[p1.name][p2.name].orb = Math.round((angleDiff - 60) * 10)/10;
+						    aspects[p1.name][p2.name].strength = 1 - Math.abs((angleDiff - 60) / maxOrb);
 					    } else {
 						    delete aspects[p1.name][p2.name];
 					    }
@@ -6439,8 +6545,13 @@ var app = new Vue({
 	    dateShown: function() {
 		    return new Date(this.dateTime);
 	    },
-	    dateShownHours: function() {
-		    return this.dateShown.getHours();
+	    dateShownPercentOfDayDone: function() {
+		    var hours = this.dateShown.getHours();
+		    var minutes = this.dateShown.getMinutes();
+		    var hoursAsMinutes = hours * 60;
+		    var totalMinutes = minutes + hoursAsMinutes;
+		    var MINUTES_IN_A_DAY = 24 * 60;
+		    return totalMinutes / MINUTES_IN_A_DAY;
 	    },
 	    dateShownDSTAdjusted: function() {
 		    if (!this.isDST) { return new Date(this.dateShown.getTime()); }
@@ -6569,20 +6680,14 @@ var app = new Vue({
 		    return timePortion + ' ' + datePortion;
 	    },
 	    stepIncrementDown: function() {
-		    if (this.stepIncrement / 100000 == 100000) { this.stepIncrement = 30000 * 100000; }
-		    else if (this.stepIncrement / 100000 == 30000) { this.stepIncrement = 10000 * 100000; }
-		    else if (this.stepIncrement / 100000 == 500000) { this.stepIncrement = 100000 * 100000; }
-		    else if (this.stepIncrement / 100000 > .01) {
-			    this.stepIncrement /= 10;
-		    }
+		    var i = this.stepIncrements.indexOf(this.stepIncrement / this.factor);
+		    if (i == 0) { return; }
+		    this.stepIncrement = this.stepIncrements[i - 1] * this.factor;
 	    },
 	    stepIncrementUp: function() {
-		    if (this.stepIncrement / 100000 == 10000) { this.stepIncrement = 30000 * 100000; }
-		    else if (this.stepIncrement / 100000 == 30000) { this.stepIncrement = 100000 * 100000; }
-		    else if (this.stepIncrement / 100000 == 100000) { this.stepIncrement = 100000 * 500000; }
-		    else if (this.stepIncrement / 100000 < 500000) {
-			    this.stepIncrement *= 10;
-		    }
+		    var i = this.stepIncrements.indexOf(this.stepIncrement / this.factor);
+		    if (i == this.stepIncrements.length - 1) { return; }
+		    this.stepIncrement = this.stepIncrements[i + 1] * this.factor;
 	    },
 	    saveDateTime: function() {
 		    Vue.set(this.savedDateTimes, this.dateTime, { 
@@ -6880,8 +6985,32 @@ var app = new Vue({
 				    y: R * Math.sin(Lrad)
 		    };
 	    },
+	    fadeOutAndIn: function(callback) {
+		    var $root = this.$root;
+		    $root.faderID = setInterval(function() { 
+			    $root.faderOpacity += 0.01; 
+			    if ($root.faderOpacity >= 1) {
+				    clearInterval($root.faderID);
+				    $root.faderID = -1;
+				    callback();
+				    $root.faderID = setInterval(function() { 
+					    $root.faderOpacity -= 0.01; 
+					    if ($root.faderOpacity <= 0) {
+						    clearInterval($root.faderID);
+						    $root.faderID = -1;
+						    $root.runClock();
+					    }
+				    }, 10);
+			    }
+		    }, 10);
+	    },
 	    stepTime: function() {
-		    this.$root.dateTime += this.$root.stepIncrement;
+		    var $root = this.$root;
+		    $root.dateTime += $root.stepIncrement;
+		    if ($root.referenceMoment && $root.dateTime > $root.referenceMoment) { 
+			    $root.stopClock();
+			    $root.fadeOutAndIn(function() { $root.dateTime = $root.loadTime; });
+		    }
 	    },
 	    stepTimeBack: function() {
 		    this.$root.dateTime -= this.$root.stepIncrement;
