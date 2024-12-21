@@ -2,10 +2,10 @@ Vue.component('a-planet', {
 	props: { planet: Object, timeOffset: Number, opacity: Number, showName: Boolean, isFlat: Boolean, iteration: Number },
 	computed: {
 		planetAngle: function() {
-			return this.$root.planetAngle(this.planet.name, this.timeOffset);
+			return this.$root.planetAngle(this.planet.name, this.$root.dateTime + this.timeOffset);
 		},
 		previousPlanetAngle: function() {
-			return this.$root.planetAngle(this.planet.name, this.timeOffset - 1000000);
+			return this.$root.planetAngle(this.planet.name, this.$root.dateTime + this.timeOffset - 1000000);
 		},
 		isRetrograde: function() {
 			return this.previousPlanetAngle < this.planetAngle;
@@ -16,7 +16,7 @@ Vue.component('a-planet', {
 		},
 		planetTransform: function() {
 			if (this.isFlat) { 
-				var planetAngleNormalized = (this.planetAngle - /*this.$root.planetAngle('Sun', this.timeOffset) - 150 -*/ (this.$root.showTropical ? 39 : (39-24.2)) + 360) % 360;
+				var planetAngleNormalized = (this.planetAngle - /*this.$root.planetAngle('Sun', this.$root.dateTime + this.timeOffset) - 150 -*/ (this.$root.showTropical ? 39 : (39-24.2)) + 360) % 360;
 				var flatDistribution = 420 - ((planetAngleNormalized / 360) * 840);
 				return 'translate(' + flatDistribution + 'px, ' + (-300 + (20 * this.iteration)) + 'px)';
 			}
@@ -236,7 +236,7 @@ Vue.component('main-frame', {
 							'<div class="speed-control-button" @click.stop="$root.stepIncrementDown">&minus;</div>' +
 							'<div class="speed-control-button" @click.stop="$root.stepIncrementUp">+</div>' +
 						'</div>' +
-						'<div class="control-text">Speed: {{ $root.stepIncrement / 100000 }} ({{ Math.round(($root.stepIncrement / $root.DAY) * 100) / 100 }} days)</div>' +
+						'<div class="control-text">Speed: {{ $root.stepIncrement / 1000000 }} ({{ Math.round(($root.stepIncrement / $root.DAY) * 100) / 100 }} days)</div>' +
 						//'<div class="control-button" @click.stop="$root.dateTime = $root.sessionStorage.getItem(\'savedTime\') ? parseInt($root.sessionStorage.getItem(\'savedTime\')) : 0;">Load</div>' +
 						//'<div class="control-button" @click.stop="$root.dateTime = 1718973664715">Longest SR</div>' +
 						//'<div class="control-button" @click.stop="$root.dateTime = 1718996414715">Longest Noon</div>' +
@@ -397,7 +397,7 @@ Vue.component('the-sky', {
 			'>' +
 			'<div class="the-sky-color" ' +
 				':style="{ ' +				
-					'opacity: .1 * Math.sin($root.dayPercent() * Math.PI), ' +
+					'opacity: .1 * Math.sin($root.dayPercent() * Math.PI) - .03, ' +
 				'} "' +
 			'></div>' +
 			'<div class="fader" ' +
@@ -726,7 +726,7 @@ Vue.component('the-sky', {
 					'<div v-if="$root.showLasers && !$root.sequenceView" class="planet-laser" ' +
 						'v-for="(planet, i) in $root.thePlanets" ' +
 						':key="planet.order" ' +
-						':style="{ transform: \'rotate(\' + (180 + $root.planetAngle(planet.name)) + \'deg)\', }" ' +
+						':style="{ transform: \'rotate(\' + (180 + $root.planetAngle(planet.name, $root.dateTime)) + \'deg)\', }" ' +
 						'>' +
 					'</div>' +
 					/*'<div class="planet-circle minor" ' +
@@ -757,7 +757,7 @@ Vue.component('the-sky', {
 								'class="planet-laser" ' +
 								':class="[ p2.aspect ]" ' +
 								':style="{ ' +
-									'transform: \'rotate(\' + (180 + $root.planetAngle(p1name)) + \'deg)\', ' +
+									'transform: \'rotate(\' + (180 + $root.planetAngle(p1name, $root.dateTime)) + \'deg)\', ' +
 									'height: ($root.toEcliptic ? 300 : $root.tinyView ? 50 : ((100 + 32 * $root.thePlanets.filter(function(planet) { return planet.name == p1name })[0].order) / 2)) + \'px\', ' +
 									'opacity: p2.strength, ' +
 								'}" ' +
@@ -767,14 +767,14 @@ Vue.component('the-sky', {
 								'v-if="$root.showAspects && !$root.sequenceView && p2.p1order > p2.p2order" ' +
 								'class="planet-laser" ' +
 								':style="{ ' +
-									'transform: \'rotate(\' + (180 + $root.planetAngle(p1name)) + \'deg)\', ' +
+									'transform: \'rotate(\' + (180 + $root.planetAngle(p1name, $root.dateTime)) + \'deg)\', ' +
 									'height: ($root.toEcliptic ? 300 : $root.tinyView ? 50 : ((100 + 32 * $root.thePlanets.filter(function(planet) { return planet.name == p1name })[0].order) / 2)) + \'px\', ' +
 									'opacity: p2.strength, ' +
 								'}" ' +
 								'>' +
 								'<div style="position: absolute; top: 50px;" ' +
 									':style="{ ' +
-										'transform: \'rotate(-\' + (180 + $root.planetAngle(p1name)) + \'deg)\', ' +
+										'transform: \'rotate(-\' + (180 + $root.planetAngle(p1name, $root.dateTime)) + \'deg)\', ' +
 										'color: p2.color, ' +
 									'}" ' +
 									'>{{ p1name }}&nbsp;+ {{ p2name }}</div>' +
@@ -783,7 +783,7 @@ Vue.component('the-sky', {
 								'v-if="$root.showAspects && !$root.sequenceView && p2.aspect != \'Conjunct\' && p2.aspect != \'Opposition\'" ' +
 								'class="planet-laser" ' +
 								':style="{ ' +
-									'transform: \'rotate(\' + (180 + $root.planetAngle(p1name)) + \'deg)\', ' +
+									'transform: \'rotate(\' + (180 + $root.planetAngle(p1name, $root.dateTime)) + \'deg)\', ' +
 									'height: (20) + \'px\', ' +
 									'borderLeft: \'unset\', ' +
 									'opacity: p2.strength, ' +
@@ -1054,6 +1054,7 @@ Vue.component('the-sky', {
 						'>' +
 						'<table class="aspects-box" ' +
 							'>' +
+							'<tr><td style="height: 31px; background-color: rgba(0, 0, 0, .5);" colspan="999"></td></tr>' +
 							'<template v-for="(p1, p1name) in $root.aspectsInTheAspectsSequence">' +
 								'<tr ' +
 									'v-for="(p2, p2name) in p1" ' +
@@ -1061,11 +1062,43 @@ Vue.component('the-sky', {
 									':key="p1name + \'-\' + p2name" ' +
 									'style="border-bottom: 1px solid white;" ' +
 								'>' +
-									'<td style="text-align: right; background-color: rgba(0, 0, 0, .5);"><div style="display: inline-block; padding: 1px 3px; border-right: 1px solid white;">{{ p1name }}&nbsp;+&nbsp;{{ p2name }}</div></td>' +
-									'<td v-for="aspect in $root.aspectsSequence" style="width: 5px;" :style="{ backgroundColor: aspect[p1name] ? aspect[p1name][p2name] : null }"></td>' +
+									'<td style="text-align: right; background-color: rgba(0, 0, 0, .5); width: 110px;"><div style="display: inline-block; padding: 1px 3px; border-right: 1px solid white;">{{ p2name }}&nbsp;+&nbsp;{{ p1name }}</div></td>' +
+									'<td v-for="aspect in $root.aspectsSequence" style="width: 5px;" :style="{ backgroundColor: aspect[p1name] && aspect[p1name][p2name] ? aspect[p1name][p2name] : \'rgba(0, 0, 0, .5)\' }"></td>' +
 								'</tr>' +
 							'</template>' +
 						'</table>' +
+						'<div ' +
+							'style=" ' +
+								'position: absolute; ' +
+								'width: 100%; height: 100%; ' +
+								'transform: translate(142px, -8px) rotate(90deg); ' +
+							'" ' +
+							'>' +
+							'<div ' +
+								'v-if="$root.stepIncrement <= 100000000"' +
+								'class="sequence-tick-line short" ' +
+								':class="{ ' +
+									'month: $root.stepIncrement <= 100000000 && (new Date($root.loadTime + ($root.DAY * n))).getDate() == 1, ' +
+								'}" ' +
+								'v-for="n in Math.floor($root.stepIncrement / (10 * 100000))" ' +
+								':style="{ ' +
+									'width: (2 + $root.countOfAspectsInTheAspectsSequence * 16) + \'px\', ' +
+									'bottom: (4.2 * ($root.DAY / $root.stepIncrement) * n) - (($root.midnightOverage($root.loadTime) / $root.DAY) * (4.2 * $root.DAY / $root.stepIncrement)) + \'px\', ' +
+								'}" ' +
+								'>' +
+								'<div class="sequence-tick-line-label" style="left: -20px; color: rgba(255, 255, 255, .8); font-size: 7px;">{{ $root.humanReadableDateTime($root.loadTime + ($root.DAY * n), true, true) }}</div>' +
+							'</div>' +
+							'<div ' +
+								'v-if="$root.stepIncrement <= 100000000 && $root.dateTime >= $root.loadTime" ' +
+								'class="sequence-tick-line short" ' +
+								'style="background-color: #FF7; height: 2px;" ' +
+								':style="{ ' +
+									'width: (2 + $root.countOfAspectsInTheAspectsSequence * 16) + \'px\', ' +
+									'bottom: (4.2 * (($root.dateTime - $root.loadTime) / $root.stepIncrement)) + \'px\', ' +
+								'}" ' +
+								'>' +
+							'</div>' +
+						'</div>' +
 						'<div class="sunrise-sunset-box">' +
 							'<div ' +
 								'style="width: 120px; height: 120px; border-radius: 50%; position: absolute; transform: translate(-50%, -50%);" ' +
@@ -1116,7 +1149,7 @@ var app = new Vue({
     	sunZs: [],
 	    stepIncrement: 10 * 1000000,
 	    factor: 1000000,
-	    stepIncrements: [1, 2, 3, 6, 10, 20, 30, 60, 100, 300, 1000, 3000, 10000, 30000, ],
+	    stepIncrements: [.1, .3, 1, 2, 3, 6, 10, 20, 30, 60, 100, 300, 1000, 3000, 10000, 30000, ],
 	    clockID: -1,
 	    faderID: -1,
 	    faderOpacity: 0,
@@ -1135,7 +1168,7 @@ var app = new Vue({
 	    toEcliptic: false,
 	    sequenceView: false,
 	    tinyView: false,
-	    videoView: false,
+	    videoView: true,
 	    selectedPlanets: null,
 	    referenceMoment: null,
 	    theZodiac: [
@@ -6469,7 +6502,8 @@ var app = new Vue({
 				    aspectsRow[p1.name] = {};
 				    t.thePlanets.forEach(function(p2) {
 					    if (p1.order < p2.order) {
-						    aspectsRow[p1.name][p2.name] = t.getAspect(p1, p2, t.stepIncrement * i);
+						    aspectsRow[p1.name][p2.name] = t.getAspect(p1, p2, t.loadTime + t.stepIncrement * i);
+						    //aspectsRow[p1.name][p2.name] = t.getAspect(p1, p2, t.dateTime + t.stepIncrement * i);
 					    }
 				    });
 			    });
@@ -6494,6 +6528,16 @@ var app = new Vue({
 		    });
 		    return aspectsInTheAspectsSequence;
 	    },
+	    countOfAspectsInTheAspectsSequence: function(excludeMoon) {
+		    var t = this;
+		    var count = 0;
+		    for (var p1name in t.aspectsInTheAspectsSequence) {
+			    for (var p2name in t.aspectsInTheAspectsSequence[p1name]) {
+				    if (p1name != 'Moon') { count++ }
+			    }
+		    }
+		    return count;
+	    },
 	    aspects: function() {
 		    var t = this;
 		    if (!t.showAspects) { return; }
@@ -6505,8 +6549,8 @@ var app = new Vue({
 			    t.thePlanets.forEach(function(p2) {
 				    if (p1.name != p2.name) {
 					    aspects[p1.name][p2.name] = {};
-					    p1angle = t.planetAngle(p1.name);
-					    p2angle = t.planetAngle(p2.name);
+					    p1angle = t.planetAngle(p1.name, t.dateTime);
+					    p2angle = t.planetAngle(p2.name, t.dateTime);
 
 					    angleDiff = Math.abs(p1angle - p2angle);
 					    if (angleDiff > 180) { angleDiff = 360 - angleDiff; }
@@ -6642,16 +6686,16 @@ var app = new Vue({
 		    return theStarsNameLookup;
 	    },
 	    sunAngle: function() {
-		    return this.$root.planetAngle('Sun');
+		    return this.$root.planetAngle('Sun', this.dateTime);
 	    },
 	    moonAngle: function() {
-		    return this.$root.planetAngle('Moon');
+		    return this.$root.planetAngle('Moon', this.dateTime);
 	    },
     },
     methods: {
-	    getAspect: function(p1, p2, timeOffset) {
-		    var p1angle = this.planetAngle(p1.name, timeOffset);
-		    var p2angle = this.planetAngle(p2.name, timeOffset);
+	    getAspect: function(p1, p2, dateTime) {
+		    var p1angle = this.planetAngle(p1.name, dateTime);
+		    var p2angle = this.planetAngle(p2.name, dateTime);
 
 		    var angleDiff = Math.abs(p1angle - p2angle);
 		    if (angleDiff > 180) { angleDiff = 360 - angleDiff; }
@@ -6666,7 +6710,7 @@ var app = new Vue({
 			    return '#FDD652';
 		    } else if (Math.abs(angleDiff - 90) < maxOrb) { 
 			    return '#4281A4';
-		    } else if (Math.abs(angleDiff - 60) < maxOrb / 2) { 
+		    } else if (Math.abs(angleDiff - 60) < maxOrb) { 
 			    return '#AEE5A7';
 		    }
 
@@ -6713,7 +6757,7 @@ var app = new Vue({
 		    var overage = hours * this.HOUR + minutes * this.MINUTE + seconds * this.SECOND + milliseconds;
 		    return overage;
 	    },
-	    humanReadableDateTime: function(dateTime, dateOnly) {
+	    humanReadableDateTime: function(dateTime, dateOnly, noYear) {
 		    var dateToShow = new Date(dateTime);
 		    var $root = this.$root;
 		    var hours = dateToShow.getHours() == 0 ? 12 : (dateToShow.getHours() > 12 ? dateToShow.getHours() - 12 : dateToShow.getHours());
@@ -6724,7 +6768,8 @@ var app = new Vue({
 		    var year = dateToShow.getFullYear();
 
 		    var timePortion = hours + ':' + minutes + ampm;
-		    var datePortion = month + '/' + date + '/' + year;
+		    var datePortion = month + '/' + date;
+		    if (!noYear) { datePortion += ('/' + year); }
 		    if (dateOnly) { return datePortion; }
 		    return timePortion + ' ' + datePortion;
 	    },
@@ -6758,7 +6803,7 @@ var app = new Vue({
 		    if (!dateTime) { dateTime = t.dateTime; }
 		    var placements = {};
 		    t.thePlanets.forEach(function(planet) {
-			    var angle = t.planetAngle(planet.name, null, dateTime);
+			    var angle = t.planetAngle(planet.name, dateTime);
 			    placements[planet.name] = {};
 			    placements[planet.name].angle = angle;
 			    placements[planet.name].sign = t.angleToSign(angle);
@@ -6791,8 +6836,7 @@ var app = new Vue({
 		    //return (this.dateShown.getHours() * 60 + this.dateShown.getMinutes()) / 1440;
 		    return (this.dateShownDSTAdjusted.getHours() * 60 + this.dateShownDSTAdjusted.getMinutes()) / 1440;
 	    },
-	    planetAngle: function(planetName, timeOffset, dateTime) {
-		    if (!timeOffset) { timeOffset = 0; }
+	    planetAngle: function(planetName, dateTime) {
 		    if (['NN', 'SN'].indexOf(planetName) > -1) { return 0; }
 		    var $root = this.$root;
 		    var rads;
@@ -6806,8 +6850,8 @@ var app = new Vue({
 			    if (planetName == 'Vesta') { degs -= 70; }
 			    return -degs;
 		    }*/
-		    var planetX = Astronomy.GeoVector(planetName, new Date((dateTime ? dateTime : this.dateShown.getTime()) + timeOffset), false).x;
-		    var planetY = Astronomy.GeoVector(planetName, new Date((dateTime ? dateTime : this.dateShown.getTime()) + timeOffset), false).y;
+		    var planetX = Astronomy.GeoVector(planetName, new Date(dateTime), false).x;
+		    var planetY = Astronomy.GeoVector(planetName, new Date(dateTime), false).y;
 		    var firstAngle = Math.atan2(100, 0);
 		    var secondAngle = Math.atan2(planetY, planetX);
 		    rads = secondAngle - firstAngle;
