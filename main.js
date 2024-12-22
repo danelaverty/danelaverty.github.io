@@ -296,7 +296,8 @@ Vue.component('main-frame', {
 							'</tr>' +
 						'</table>' +
 						'<div class="date-controls" style="text-align: right; min-width: 0px;">' +
-							'<div class="control-button" @click.stop="$root.saveDateTime" style="width: 120px;">Save&nbsp;Current&nbsp;Time</div>' +
+							'<div class="moments-button" @click.stop="$root.saveDateTime" style="width: 60px; display: inline-block;">Save</div>' +
+							'<div class="moments-button" @click.stop="$root.loadTime = $root.dateTime" style="width: 60px; display: inline-block;">Reset</div>' +
 							'<table style="clear: right;">' +
 								//'<tr><td><table class="moments-table"><tr><td @click.stop="$root.dateTime = new Date().getTime()">Now</td></tr></table></td></tr>' +
 								'<tr v-for="savedDateTime in $root.savedDateTimes">' +
@@ -1054,7 +1055,10 @@ Vue.component('the-sky', {
 						'>' +
 						'<table class="aspects-box" ' +
 							'>' +
-							'<tr><td style="height: 31px; background-color: rgba(0, 0, 0, .5);" colspan="999"></td></tr>' +
+							'<tr>' +
+								'<td style="height: 31px; background-color: rgba(0, 0, 0, .5);" colspan="999">' +
+								'</td>' +
+							'</tr>' +
 							'<template v-for="(p1, p1name) in $root.aspectsInTheAspectsSequence">' +
 								'<tr ' +
 									'v-for="(p2, p2name) in p1" ' +
@@ -1062,7 +1066,7 @@ Vue.component('the-sky', {
 									':key="p1name + \'-\' + p2name" ' +
 									'style="border-bottom: 1px solid white;" ' +
 								'>' +
-									'<td style="text-align: right; background-color: rgba(0, 0, 0, .5); width: 110px;"><div style="display: inline-block; padding: 1px 3px; border-right: 1px solid white;">{{ p2name }}&nbsp;+&nbsp;{{ p1name }}</div></td>' +
+									'<td style="text-align: right; background-color: rgba(0, 0, 0, .5); width: 110px;"><div style="display: inline-block; padding: 1px 3px; border-right: 1px solid white; font-size: 8px;">{{ p2name }}&nbsp;+&nbsp;{{ p1name }}</div></td>' +
 									'<td v-for="aspect in $root.aspectsSequence" style="width: 5px;" :style="{ backgroundColor: aspect[p1name] && aspect[p1name][p2name] ? aspect[p1name][p2name] : \'rgba(0, 0, 0, .5)\' }"></td>' +
 								'</tr>' +
 							'</template>' +
@@ -1075,26 +1079,25 @@ Vue.component('the-sky', {
 							'" ' +
 							'>' +
 							'<div ' +
-								'v-if="$root.stepIncrement <= 100000000"' +
 								'class="sequence-tick-line short" ' +
 								':class="{ ' +
-									'month: $root.stepIncrement <= 100000000 && (new Date($root.loadTime + ($root.DAY * n))).getDate() == 1, ' +
+									'month: 20000000 <= 100000000 && (new Date($root.loadTime + ($root.DAY * n))).getDate() == 1, ' +
 								'}" ' +
-								'v-for="n in Math.floor($root.stepIncrement / (10 * 100000))" ' +
+								'v-for="n in Math.floor(20000000 / (10 * 100000))" ' +
 								':style="{ ' +
-									'width: (2 + $root.countOfAspectsInTheAspectsSequence * 16) + \'px\', ' +
-									'bottom: (4.2 * ($root.DAY / $root.stepIncrement) * n) - (($root.midnightOverage($root.loadTime) / $root.DAY) * (4.2 * $root.DAY / $root.stepIncrement)) + \'px\', ' +
+									'width: (2 + $root.countOfAspectsInTheAspectsSequence * 13) + \'px\', ' +
+									'bottom: (4.2 * ($root.DAY / 20000000) * n) - (($root.midnightOverage($root.loadTime) / $root.DAY) * (4.2 * $root.DAY / 20000000)) + \'px\', ' +
 								'}" ' +
 								'>' +
 								'<div class="sequence-tick-line-label" style="left: -20px; color: rgba(255, 255, 255, .8); font-size: 7px;">{{ $root.humanReadableDateTime($root.loadTime + ($root.DAY * n), true, true) }}</div>' +
 							'</div>' +
 							'<div ' +
-								'v-if="$root.stepIncrement <= 100000000 && $root.dateTime >= $root.loadTime" ' +
+								'v-if="20000000 <= 100000000 && $root.dateTime >= $root.loadTime" ' +
 								'class="sequence-tick-line short" ' +
 								'style="background-color: #FF7; height: 2px;" ' +
 								':style="{ ' +
-									'width: (2 + $root.countOfAspectsInTheAspectsSequence * 16) + \'px\', ' +
-									'bottom: (4.2 * (($root.dateTime - $root.loadTime) / $root.stepIncrement)) + \'px\', ' +
+									'width: (2 + $root.countOfAspectsInTheAspectsSequence * 13) + \'px\', ' +
+									'bottom: (4.2 * (($root.dateTime - $root.loadTime) / (20000000))) + \'px\', ' +
 								'}" ' +
 								'>' +
 							'</div>' +
@@ -6502,7 +6505,7 @@ var app = new Vue({
 				    aspectsRow[p1.name] = {};
 				    t.thePlanets.forEach(function(p2) {
 					    if (p1.order < p2.order) {
-						    aspectsRow[p1.name][p2.name] = t.getAspect(p1, p2, t.loadTime + t.stepIncrement * i);
+						    aspectsRow[p1.name][p2.name] = t.getAspect(p1, p2, t.loadTime + 20000000 * i);
 						    //aspectsRow[p1.name][p2.name] = t.getAspect(p1, p2, t.dateTime + t.stepIncrement * i);
 					    }
 				    });
