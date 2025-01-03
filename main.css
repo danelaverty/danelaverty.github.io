@@ -582,6 +582,7 @@ div.fader {
 .sequence-tick-line.short {
 	width: 100px;
 	transform: translate(0px, 0px);
+	transform-origin: top left;
 	background-color: rgba(255, 255, 255, .4);
 }
 
@@ -596,6 +597,7 @@ div.fader {
 	right: 100%;
 	font-size: 10px;
 	transform: translate(-5px, -50%);
+	cursor: pointer;
 }
 
 .month .sequence-tick-line-label {
@@ -714,22 +716,33 @@ div.fader {
 
 .video-view {
 	position: absolute;
-	top: 0;
+	top: -50;
 	left: 0;
 	width: 400px;
-	height: 470px;
+	height: 520px;
 	transform: translate(-50%, -250px);
 	border: 1px solid white;
 	overflow: hidden;
+	z-index: 50;
 }
 
 .aspects-box {
 	position: absolute;
 	top: 0;
 	left: 0;
-	width: 100%;
 	color: white;
 	font-size: 10px;
+}
+
+.aspect-bar {
+	overflow: hidden;
+}
+
+.aspect-bar-segment {
+	display: inline-block;
+	width: 16.8px;
+	height: 9px;
+	//border: 1px solid white;
 }
 
 .sunrise-sunset-box {
