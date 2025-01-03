@@ -302,7 +302,7 @@ Vue.component('main-frame', {
 								//'<tr><td><table class="moments-table"><tr><td @click.stop="$root.dateTime = new Date().getTime()">Now</td></tr></table></td></tr>' +
 								'<tr v-for="savedDateTime in $root.savedDateTimes">' +
 									'<td><table style="margin: 3px;" class="moments-table"><tr>' +
-									'<td colspan="3" @click.stop="$root.dateTime = savedDateTime.time" style="cursor: pointer;">{{ savedDateTime.name }}</td>' +
+									'<td colspan="3" @click.stop="$root.dateTime = savedDateTime.time; $root.loadTime = savedDateTime.time" style="cursor: pointer;">{{ savedDateTime.name }}</td>' +
 									'</tr><tr>' +
 									'<td @click.stop="referenceMoment(savedDateTime.time)"><div class="moments-button" ' +
 										':style="{ ' +
@@ -365,7 +365,7 @@ Vue.component('main-frame', {
 				newDate.setMonth(newDate.getMonth() + 1);
 			}
 			this.$root.dateTime = newDate.getTime();
-console.log(this.$root.momentPlacements()['Moon']);
+
 		},
 		incrementYear: function() {
 			var newDate = new Date(this.$root.dateShown);
@@ -381,7 +381,7 @@ console.log(this.$root.momentPlacements()['Moon']);
 				newDate.setMonth(newDate.getMonth() - 1);
 			}
 			this.$root.dateTime = newDate.getTime();
-console.log(this.$root.momentPlacements()['Moon']);
+
 		},
 		decrementYear: function() {
 			var newDate = new Date(this.$root.dateShown);
@@ -1053,51 +1053,68 @@ Vue.component('the-sky', {
 					'<div class="video-view" ' +
 						'v-if="$root.videoView" ' +
 						'>' +
-						'<table class="aspects-box" ' +
+						'<div class="aspects-box" ' +
 							'>' +
-							'<tr>' +
-								'<td style="height: 31px; background-color: rgba(0, 0, 0, .5);" colspan="999">' +
-								'</td>' +
-							'</tr>' +
+							'<div>' +
+								'<div style="height: 31px; background-color: rgba(0, 0, 0, .5);">' +
+								'</div>' +
+							'</div>' +
 							'<template v-for="(p1, p1name) in $root.aspectsInTheAspectsSequence">' +
-								'<tr ' +
+								'<div ' +
+									'class="aspect-bar" ' +
 									'v-for="(p2, p2name) in p1" ' +
 									'v-if="p1name != \'Moon\' && p2name != \'Moon\'"" ' +
 									':key="p1name + \'-\' + p2name" ' +
-									'style="border-bottom: 1px solid white;" ' +
+									'style="border-bottom: 1px solid white; height: 10px;" ' +
 								'>' +
-									'<td style="text-align: right; background-color: rgba(0, 0, 0, .5); width: 110px;"><div style="display: inline-block; padding: 1px 3px; border-right: 1px solid white; font-size: 8px;">{{ p2name }}&nbsp;+&nbsp;{{ p1name }}</div></td>' +
-									'<td v-for="aspect in $root.aspectsSequence" style="width: 5px;" :style="{ backgroundColor: aspect[p1name] && aspect[p1name][p2name] ? aspect[p1name][p2name] : \'rgba(0, 0, 0, .5)\' }"></td>' +
-								'</tr>' +
+									'<div v-for="(aspect, i) in $root.aspectsSequence" ' +
+										'class="aspect-bar-segment" ' +
+										'style="position: relative; font-size: 8px;" ' +
+										':style="{ ' +
+											'width: ($root.tickScale * 2) + \'px\', ' +
+											//'left: -$root.tickScale + \'px\', ' +
+											'backgroundColor: aspect[p1name] && aspect[p1name][p2name] ? aspect[p1name][p2name].color : \'rgba(0, 0, 0, .5)\', ' +
+										'}"' +
+										'>' +
+										'<div style="z-index: 3; position: absolute; bottom: 0; text-shadow: 1px 1px 0px black;" v-if=" ' +
+											'($root.aspectsSequence[i][p1name] && $root.aspectsSequence[i][p1name][p2name]) && ' +
+											'(i == 0 || !$root.aspectsSequence[i - 1][p1name] || !$root.aspectsSequence[i - 1][p1name][p2name])' +
+											'">{{ p2name }}&nbsp;{{ aspect[p1name][p2name].symbol }}&nbsp;{{ p1name }}</div>' +
+									'</div>' +
+								'</div>' +
 							'</template>' +
-						'</table>' +
+						'</div>' +
 						'<div ' +
 							'style=" ' +
 								'position: absolute; ' +
 								'width: 100%; height: 100%; ' +
-								'transform: translate(142px, -8px) rotate(90deg); ' +
+								'transform: translate(1px, 10px); ' +
 							'" ' +
 							'>' +
 							'<div ' +
 								'class="sequence-tick-line short" ' +
 								':class="{ ' +
-									'month: 20000000 <= 100000000 && (new Date($root.loadTime + ($root.DAY * n))).getDate() == 1, ' +
+									'month: 10000000 <= 100000000 && (new Date($root.loadTime + ($root.DAY * n))).getDate() == 1, ' +
 								'}" ' +
-								'v-for="n in Math.floor(20000000 / (10 * 100000))" ' +
+								'v-for="n in Math.floor(10000000 / (10 * 100000))" ' +
 								':style="{ ' +
-									'width: (2 + $root.countOfAspectsInTheAspectsSequence * 13) + \'px\', ' +
-									'bottom: (4.2 * ($root.DAY / 20000000) * n) - (($root.midnightOverage($root.loadTime) / $root.DAY) * (4.2 * $root.DAY / 20000000)) + \'px\', ' +
+									'width: (2 + $root.countOfAspectsInTheAspectsSequence * 11) + \'px\', ' +
+									'left: ($root.tickScale * ($root.DAY / 10000000) * n) - (($root.midnightOverage($root.loadTime) / $root.DAY) * ($root.tickScale * $root.DAY / 10000000)) + \'px\', ' +
+									'top: (16) + \'px\', ' +
+									'transform: \'rotate(90deg)\', ' +
 								'}" ' +
 								'>' +
-								'<div class="sequence-tick-line-label" style="left: -20px; color: rgba(255, 255, 255, .8); font-size: 7px;">{{ $root.humanReadableDateTime($root.loadTime + ($root.DAY * n), true, true) }}</div>' +
+								'<div class="sequence-tick-line-label" @click.stop="$root.dateTime = $root.loadTime + $root.DAY * n - $root.loadTimeDayPercent * $root.DAY" style="left: -16px; color: rgba(255, 255, 255, .8); font-size: 7px;">{{ $root.humanReadableDateTime($root.loadTime + ($root.DAY * n), true, true) }}</div>' +
 							'</div>' +
 							'<div ' +
-								'v-if="20000000 <= 100000000 && $root.dateTime >= $root.loadTime" ' +
+								'v-if="10000000 <= 100000000 && $root.dateTime >= $root.loadTime" ' +
 								'class="sequence-tick-line short" ' +
 								'style="background-color: #FF7; height: 2px;" ' +
 								':style="{ ' +
-									'width: (2 + $root.countOfAspectsInTheAspectsSequence * 13) + \'px\', ' +
-									'bottom: (4.2 * (($root.dateTime - $root.loadTime) / (20000000))) + \'px\', ' +
+									'width: (2 + $root.countOfAspectsInTheAspectsSequence * 11) + \'px\', ' +
+									'left: ($root.tickScale * (($root.dateTime - $root.loadTime) / (10000000))) + \'px\', ' +
+									'top: (16) + \'px\', ' +
+									'transform: \'rotate(90deg)\', ' +
 								'}" ' +
 								'>' +
 							'</div>' +
@@ -1132,6 +1149,7 @@ Vue.component('the-sky', {
 var app = new Vue({
 	el: '#app',
     data: {
+	    tickScale: 6,
 	    dayOfWeek: { 0: 'Mon', 1: 'Tue', 2: 'Wed', 3: 'Thu', 4: 'Fri', 5: 'Sat', 6: 'Sun' },
 	    eclExt: 117,
 	    eclRot: Math.PI,
@@ -6496,10 +6514,13 @@ var app = new Vue({
 	    theCenterEl: null,
     },
     computed: {
+	    loadTimeDayPercent: function() {
+		    return (new Date(this.loadTime).getHours() * 60 + new Date(this.loadTime).getMinutes()) / 1440;
+	    },
 	    aspectsSequence: function() {
 		    var t = this;
 		    var aspectsSequence = [];
-		    for (var i = 0; i < 70; i++) {
+		    for (var i = 0; i < 35; i++) {
 			    aspectsRow = {};
 			    t.thePlanets.forEach(function(p1) {
 				    aspectsRow[p1.name] = {};
@@ -6706,15 +6727,30 @@ var app = new Vue({
 		    var maxOrb = 2;
 
 		    if (Math.abs(angleDiff - 0) < maxOrb) { 
-			    return '#EC7357';
+			    return {
+				    color: '#EC7357',
+				    symbol: String.fromCodePoint(0x260D),
+			    };
 		    } else if (Math.abs(angleDiff - 180) < maxOrb) { 
-			    return '#C6FAEF';
+			    return {
+				    color: '#A6FAEF',
+				    symbol: String.fromCodePoint(0x260D),
+			    };
 		    } else if (Math.abs(angleDiff - 120) < maxOrb) { 
-			    return '#FDD652';
+			    return {
+				    color: '#FDD652',
+				    symbol: String.fromCodePoint(0x25B3),
+			    };
 		    } else if (Math.abs(angleDiff - 90) < maxOrb) { 
-			    return '#4281A4';
+			    return {
+				    color: '#4281A4',
+				    symbol: String.fromCodePoint(0x25A1),
+			    };
 		    } else if (Math.abs(angleDiff - 60) < maxOrb) { 
-			    return '#AEE5A7';
+			    return {
+				    color: '#AEE5A7',
+				    symbol: String.fromCodePoint(0x26B9),
+			    };
 		    }
 
 		    return null;
