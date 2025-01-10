@@ -304,6 +304,7 @@ div.fader {
 	border: 1px solid rgba(255, 215, 190, .15);
 	position: absolute;
 	transform: translate(-50%, -50%);
+	pointer-events: none;
 }
 
 /*.tropical .the-ecliptic {
@@ -388,7 +389,7 @@ div.fader {
 	position: absolute;
 	color: white;
 	transform: translate(-50%, -150%);
-	font-size: 12px;
+	font-size: 14px;
 	font-family: "Palatino Linotype";
 }
 
@@ -483,6 +484,7 @@ div.fader {
 	transform-origin: center left;
 	overflow: hidden;
 	z-index: 1;
+	pointer-events: none;
 }
 
 .visible-ecliptic-shader {
@@ -522,6 +524,26 @@ div.fader {
 .planet-laser.Sextile {
 	border-left: 2px solid #9EF597;
 	top: 1px;
+}
+
+.tiny-view-aspect.Conjunct {
+	border: 6px double #FC8367;
+}
+
+.tiny-view-aspect.Opposition {
+	border: 6px double #CBFFF8;
+}
+
+.tiny-view-aspect.Trine {
+	border: 6px double #FDD652;
+}
+
+.tiny-view-aspect.Square {
+	border: 6px double #4281D4;
+}
+
+.tiny-view-aspect.Sextile {
+	border: 6px double #9EF597;
 }
 
 .shader-caption {
@@ -617,23 +639,21 @@ div.fader {
 	left: 0;
 	width: 160px;
 	text-align: center;
-	background-color: rgba(255, 255, 255, .1);
 	color: white;
-	border: 1px solid white;
 	padding: 0px;
 	font-size: 10px;
-	transform: translateX(-50%);
 }
 
 .tiny-view-card {
-	width: 70px;
-	height: 90px;
+	width: 140px;
+	height: 190px;
 	border: 1px solid white;
 	border-radius: 5px;
 	display: inline-block;
 	position: relative;
-	margin: 3px 4px;
+	margin: 13px 40px;
 	overflow: hidden;
+	background-color: black;
 }
 
 .tiny-view-aspect {
@@ -641,13 +661,13 @@ div.fader {
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%);
-	width: 28px;
-	height: 28px;
+	width: 70px;
+	height: 70px;
 	background-color: black;
 	border: 1px solid white;
 	border-radius: 50%;
 	color: white;
-	font-size: 18px;
+	font-size: 32px;
 }
 
 .tiny-view-card-name {
@@ -655,23 +675,30 @@ div.fader {
 	top: 0px;
 	left: 0px;
 	width: 100%;
-	background-color: rgba(255, 0, 0, .1);
+	font-family: "Palatino Linotype";
+	font-size: 20px;
+	font-style: italic;
 }
 
 .tiny-view-card-text {
 	position: absolute;
-	bottom: 0px;
-	left: 0px;
-	width: 100%;
-	background-color: rgba(0, 0, 0, .2);
+	left: 50%;
 	font-size: 9px;
+	transform: translate(-50%, -50%);
 }
 
-.tiny-view-card-art img {
+.tiny-view-card-key-trait {
 	position: absolute;
 	top: 50%;
 	left: 50%;
-	transform: translate(-50%, -50%) scale(0.1);
+	transform: translate(-50%, -50%);
+	font-family: "Palatino Linotype";
+	font-size: 14px;
+	font-weight: bold;
+	text-shadow: black 1px 1px 0px;
+}
+.tiny-view-card-trait {
+	position: absolute;
 }
 
 .aspects-row {
@@ -718,8 +745,8 @@ div.fader {
 	position: absolute;
 	top: -50;
 	left: 0;
-	width: 400px;
-	height: 520px;
+	width: 500px;
+	height: 570px;
 	transform: translate(-50%, -250px);
 	border: 1px solid white;
 	overflow: hidden;
@@ -735,14 +762,15 @@ div.fader {
 }
 
 .aspect-bar {
-	overflow: hidden;
+	position: absolute;
+	/*overflow: hidden;*/
 }
 
 .aspect-bar-segment {
-	display: inline-block;
-	width: 16.8px;
+	position: absolute;
+	width: 18px;
 	height: 9px;
-	//border: 1px solid white;
+	cursor: pointer;
 }
 
 .sunrise-sunset-box {

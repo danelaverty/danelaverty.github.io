@@ -52,51 +52,49 @@ Vue.component('a-planet', {
 				'height: (this.$root.toEcliptic ? 600 : this.$root.tinyView ? 100 : (100 + 32 * planet.order)) + \'px\', ' +
 				'}" ' +
 			'>' +
-				'<div class="planet-name" v-if="!$root.useSymbols && showName" :class="{ small: $root.sequenceView, node: planet.name == \'NN\' || planet.name == \'SN\', }">{{ planet.name }}</div>' +
-				'<div class="planet-symbol" v-if="$root.useSymbols && showName" :class="{ node: planet.name == \'NN\' || planet.name == \'SN\', }">{{ planet.symbol }}</div>' +
-				'<div class="planet-disc" ' +
-					':id="planet.name + \'-domal-dignity\'" ' +
-					'v-if="$root.showDignities && (planet.name == planetSign.planet || planet.name == planetSign.secondaryPlanet)" ' +
+			'<div class="planet-name" v-if="!$root.useSymbols && showName" :class="{ small: $root.sequenceView, node: planet.name == \'NN\' || planet.name == \'SN\', }">{{ planet.name }}</div>' +
+			'<div class="planet-symbol" v-if="$root.useSymbols && showName" :class="{ node: planet.name == \'NN\' || planet.name == \'SN\', }">{{ planet.symbol }}</div>' +
+			'<div class="planet-disc" ' +
+				':id="planet.name + \'-domal-dignity\'" ' +
+				'v-if="$root.showDignities && (planet.name == planetSign.planet || planet.name == planetSign.secondaryPlanet)" ' +
+				':style="{ ' +
+					'backgroundColor: \'yellow\', ' +
+					'width: planet.size * 1.5 + \'px\', ' +
+					'height: planet.size * 1.5 + \'px\', ' +
+					'filter: \'blur(2px) saturate(5)\', ' +
+					'opacity: opacity, ' +
+				'}" ' +
+			'>' +
+			'</div>' +
+			'<div class="planet-disc" ' +
+				':id="planet.name + \'-retrograde\'" ' +
+				'v-if="$root.showRetrogrades && isRetrograde" ' +
+				':style="{ ' +
+					'backgroundColor: \'red\', ' +
+					'width: planet.size * 1.5 + \'px\', ' +
+					'height: planet.size * 1.5 + \'px\', ' +
+					'filter: \'blur(2px) saturate(5)\', ' +
+					'opacity: opacity, ' +
+				'}" ' +
+			'>' +
+			'</div>' +
+			'<div class="planet-disc" ' +
+				':id="planet.name + \'-disc\'" ' +
+				':style="{ ' +
+					'backgroundColor: planet.color, ' +
+					'border: planet.color == \'black\' ? \'1px solid #AAA\' : null, ' +
+					'width: planet.size + \'px\', ' +
+					'height: planet.size + \'px\', ' +
+					'opacity: opacity, ' +
+				'}" ' +
+			'>' +
+				'<div v-if="planet.name == \'Moon\'" class="moon-shader" ' +
 					':style="{ ' +
-						'backgroundColor: \'yellow\', ' +
-						'width: planet.size * 1.5 + \'px\', ' +
-						'height: planet.size * 1.5 + \'px\', ' +
-						'filter: \'blur(2px) saturate(5)\', ' +
+						'transform: \'rotate(\' + (180 - 90 + $root.sunAngle - $root.moonAngle - ($root.visibleSkyUp ? $root.theCenterRotation : 0)) + \'deg)\', ' +
 						'opacity: opacity, ' +
 					'}" ' +
-				'>' +
-				'</div>' +
-				'<div class="planet-disc" ' +
-					':id="planet.name + \'-retrograde\'" ' +
-					'v-if="$root.showRetrogrades && isRetrograde" ' +
-					':style="{ ' +
-						'backgroundColor: \'red\', ' +
-						'width: planet.size * 1.5 + \'px\', ' +
-						'height: planet.size * 1.5 + \'px\', ' +
-						'filter: \'blur(2px) saturate(5)\', ' +
-						'opacity: opacity, ' +
-					'}" ' +
-				'>' +
-				'</div>' +
-				'<div class="planet-disc" ' +
-					':id="planet.name + \'-disc\'" ' +
-					':style="{ ' +
-						'backgroundColor: planet.color, ' +
-						'border: planet.color == \'black\' ? \'1px solid #AAA\' : null, ' +
-						'width: planet.size + \'px\', ' +
-						'height: planet.size + \'px\', ' +
-						'opacity: opacity, ' +
-					'}" ' +
-				'>' +
-					//'{{ Math.round(planetAngle * 100) / 100 }}' +
-					//'<div style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);"></div>' +
-					'<div v-if="planet.name == \'Moon\'" class="moon-shader" ' +
-						':style="{ ' +
-							'transform: \'rotate(\' + (180 - 90 + $root.sunAngle - $root.moonAngle - ($root.visibleSkyUp ? $root.theCenterRotation : 0)) + \'deg)\', ' +
-							'opacity: opacity, ' +
-						'}" ' +
-					'></div>' +
-				'</div>' +
+				'></div>' +
+			'</div>' +
 		'</div>' +
 		'',
 });
@@ -276,6 +274,8 @@ Vue.component('main-frame', {
 								'<td class="control-cell" @click.stop="incrementMonth">&#9650;</td>' +
 								'<td class="control-cell" @click.stop="$root.dateTime += (24 * 60 * 60 * 1000)">&#9650;</td>' +
 								'<td class="control-cell" @click.stop="incrementYear">&#9650;</td>' +
+								'<td class="control-cell"></td>' +
+								'<td class="control-cell" @click.stop="$root.additionalRotation += 5;">&#9650;</td>' +
 							'</tr>' +
 							'<tr style="font-size: 16px;">' +
 								'<td>{{ $root.dateShown.getHours() == 0 ? 12 : ($root.dateShown.getHours() > 12 ? $root.dateShown.getHours() - 12 : $root.dateShown.getHours()) }}:</td>' +
@@ -285,6 +285,7 @@ Vue.component('main-frame', {
 								'<td><span v-show="$root.dateShown.getDate() < 10">0</span>{{ $root.dateShown.getDate() }}/</td>' +
 								'<td>{{ $root.dateShown.getFullYear() }}&nbsp;</td>' +
 								'<td class="dst-indicator" :style="{ color: $root.isDST ? \'white\' : \'black\', }">(DST)</td>' +
+								'<td>&nbsp;{{ $root.additionalRotation > 0 ? \'+\' : \'\' }}{{ $root.additionalRotation }}&deg;</td>' +
 							'</tr>' +
 							'<tr class="control-row">' +
 								'<td class="control-cell" style="text-align: right;" @click.stop="$root.dateTime -= (60 * 60 * 1000)">&#9660;</td>' +
@@ -293,6 +294,8 @@ Vue.component('main-frame', {
 								'<td class="control-cell" @click.stop="decrementMonth">&#9660;</td>' +
 								'<td class="control-cell" @click.stop="$root.dateTime -= (24 * 60 * 60 * 1000)">&#9660;</td>' +
 								'<td class="control-cell" @click.stop="decrementYear">&#9660;</td>' +
+								'<td class="control-cell"></td>' +
+								'<td class="control-cell" @click.stop="$root.additionalRotation -= 5;">&#9660;</td>' +
 							'</tr>' +
 						'</table>' +
 						'<div class="date-controls" style="text-align: right; min-width: 0px;">' +
@@ -328,7 +331,8 @@ Vue.component('main-frame', {
 						'>' +
 							'<div class="aspect-list" ' +
 								':class="{ selected: $root.selectedPlanets && Object.keys($root.selectedPlanets).length == 2 && $root.selectedPlanets[p1name] && $root.selectedPlanets[p2name], }" ' +
-								'@click.stop="$root.selectAspect(p1name, p2name)">{{ p1name }} {{ p2.symbol }} {{ p2name }} ({{ p2.orb }}&deg;)</div>' +
+								'@click.stop="$root.selectAspect(p1name, p2name)" ' +
+								'>{{ p1name }} {{ p2.symbol }} {{ p2name }} ({{ p2.orb }}&deg;)</div>' +
 						'</div>' +
 					'</div>' +
 				'</div>' +
@@ -391,6 +395,43 @@ Vue.component('main-frame', {
 	},
 });
 
+Vue.component('planet-card', {
+	props: ['planet'],
+	template: '' +
+		'<div class="tiny-view-card" ' +
+		'>' +
+			'<div class="tiny-view-card-art">' +
+				'<div class="planet-disc" ' +
+					':id="planet.name + \'-disc\'" ' +
+					'style="width: 50px; height: 50px; top: 50%; left: 50%; transform: translate(-50%, -50%);" ' +
+					':style="{ ' +
+						'backgroundColor: planet.color, ' +
+						'border: planet.color == \'black\' ? \'1px solid #AAA\' : null, ' +
+					'}" ' +
+				'>' +
+					'<div v-if="planet.name == \'Moon\'" class="moon-shader" ' +
+						':style="{ ' +
+							'transform: \'rotate(\' + (180 - 90 + $root.sunAngle - $root.moonAngle - ($root.visibleSkyUp ? $root.theCenterRotation : 0)) + \'deg)\', ' +
+						'}" ' +
+					'></div>' +
+				'</div>' +
+			'</div>' +
+			'<div class="tiny-view-card-name">{{ planet.name }}</div>' +
+			'<div class="tiny-view-card-key-trait">{{ planet.keyTrait }}</div>' +
+			'<div class="tiny-view-card-text" style="top: 25%;">' +
+				'<div class="tiny-view-card-trait" style="transform: translateX(-50%);">|</div>' +
+				'<div class="tiny-view-card-trait" style="right: 10px;">{{ planet.traits[0] }}</div>' +
+				'<div class="tiny-view-card-trait" style="left: 10px;">{{ planet.traits[1] }}</div>' +
+			'</div>' +
+			'<div class="tiny-view-card-text" style="bottom: 31%;">' +
+				'<div class="tiny-view-card-trait" style="transform: translateX(-50%);">|</div>' +
+				'<div class="tiny-view-card-trait" style="right: 10px;">{{ planet.traits[2] }}</div>' +
+				'<div class="tiny-view-card-trait" style="left: 10px;">{{ planet.traits[3] }}</div>' +
+			'</div>' +
+		'</div>' +
+	'',
+});
+
 Vue.component('the-sky', {
 	template: '' +
 		'<div class="the-sky" ' +
@@ -413,8 +454,7 @@ Vue.component('the-sky', {
 				'<div class="the-center" id="the-center" ' +
 					':style="{ ' +				
 						'transform: ' +
-							'$root.visibleSkyUp ? (\'rotate(\' + $root.theCenterRotation + \'deg)\') : null' +
-						', ' +
+							'\'rotate(\' + ($root.visibleSkyUp ? $root.theCenterRotation : $root.additionalRotation) + \'deg)\', ' +
 					'} "' +
 					'>' +
 					'<div v-if="!$root.sequenceView" class="the-earth">' +
@@ -511,7 +551,7 @@ Vue.component('the-sky', {
 						'>' +
 					'</div>' +*/
 					'<div v-if="!$root.sequenceView">' +
-						'<svg id="svg" width="700" height="700" viewBox="0 0 700 700" style="position: absolute; top: 0px; left: 0px; transform: translate(-50%, -50%);">' +
+						'<svg width="700" height="700" viewBox="0 0 700 700" style="position: absolute; top: 0px; left: 0px; pointer-events: none; transform: translate(-50%, -50%);">' +
 							'<defs>' +
 								'<filter x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox" id="pencilTexture3">' +
 									'<feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="5" stitchTiles="stitch" result="f1">' +
@@ -550,7 +590,7 @@ Vue.component('the-sky', {
 							'width="700" ' +
 							'height="700" ' +
 							'viewBox="0 0 700 700" ' +
-							'style="position: absolute; top: 0px; left: 0px;" ' +
+							'style="position: absolute; top: 0px; left: 0px; pointer-events: none;" ' +
 							':style="{ transform: \'translate(-50%, -50%) rotate(\' + (-30 * i) + \'deg)\', }" ' +
 						'>' +
 							'<g>' +
@@ -775,7 +815,8 @@ Vue.component('the-sky', {
 								'>' +
 								'<div style="position: absolute; top: 50px;" ' +
 									':style="{ ' +
-										'transform: \'rotate(-\' + (180 + $root.planetAngle(p1name, $root.dateTime)) + \'deg)\', ' +
+										//'transform: \'rotate(-\' + (180 + $root.planetAngle(p1name, $root.dateTime)) + \'deg)\', ' +
+										'transform: \'rotate(180deg)\', ' +
 										'color: p2.color, ' +
 									'}" ' +
 									'>{{ p1name }}&nbsp;+ {{ p2name }}</div>' +
@@ -796,7 +837,7 @@ Vue.component('the-sky', {
 									':class="[ p2.aspect ]" ' +
 									':style="{ ' +
 										'transform: ' +
-											'\'rotate(\' + (p2.aspect == \'Square\' ? 90 : ( p2.aspect == \'Trine\' ? (30) : 60)) + \'deg)\' ' +
+											'\'translateY(-2px) rotate(\' + (p2.aspect == \'Square\' ? 90 : ( p2.aspect == \'Trine\' ? (30) : 60)) + \'deg)\' ' +
 											//' + \'scaleY(\' + (p2.p1angle - p2.p2angle > 180 ? -1 : 1) + \')\'' +
 											', ' +
 										'transformOrigin: \'bottom left\', ' +
@@ -1050,39 +1091,39 @@ Vue.component('the-sky', {
 							'<div class="shader-caption" v-if="$root.showAngles"><div style="transform: scaleX(-1)">Descending</div></div>' +
 						'</div>' +
 					'</div>' +
+				'</div>' +
+				'<div class="the-center" id="the-center">' +
 					'<div class="video-view" ' +
 						'v-if="$root.videoView" ' +
 						'>' +
+						'<div style="position: absolute; width: 100%; background-color: black;" ' +
+							':style="{ height: (32 + ($root.stackedAspectsInTheAspectsSequence.length) * 10) + \'px\', }" ' +
+							'>' +
+						'</div>' +
 						'<div class="aspects-box" ' +
 							'>' +
-							'<div>' +
-								'<div style="height: 31px; background-color: rgba(0, 0, 0, .5);">' +
+							'<div ' +
+								'class="aspect-bar" ' +
+								'v-for="(aspectRow, i) in $root.stackedAspectsInTheAspectsSequence" ' +
+								':key="i" ' +
+								'style="border-bottom: 1px solid white; height: 10px;" ' +
+								':style="{ top: (i * 10 + 33) + \'px\', }" ' +
+							'>' +
+								'<div v-for="(aspect, j) in aspectRow" ' +
+									'class="aspect-bar-segment" ' +
+									'style="font-size: 8px;" ' +
+									':style="{ ' +
+										'width: ($root.tickScale * 2 + 1) + \'px\', ' +
+										'left: (j * $root.tickScale * 2) + \'px\', ' +
+										'backgroundColor: aspect ? aspect.color : null, ' +
+									'}"' +
+									'@click.stop="$root.selectAspect(aspect.p1name, aspect.p2name)" ' +
+									'>' +
+									'<div style="z-index: 3; position: absolute; bottom: 0; text-shadow: 1px 1px 0px black;" ' +
+										'v-if=" aspect && aspect.start ' +
+										'">{{ aspect.p2name }}&nbsp;{{ aspect.symbol }}&nbsp;{{ aspect.p1name }}</div>' +
 								'</div>' +
 							'</div>' +
-							'<template v-for="(p1, p1name) in $root.aspectsInTheAspectsSequence">' +
-								'<div ' +
-									'class="aspect-bar" ' +
-									'v-for="(p2, p2name) in p1" ' +
-									'v-if="p1name != \'Moon\' && p2name != \'Moon\'"" ' +
-									':key="p1name + \'-\' + p2name" ' +
-									'style="border-bottom: 1px solid white; height: 10px;" ' +
-								'>' +
-									'<div v-for="(aspect, i) in $root.aspectsSequence" ' +
-										'class="aspect-bar-segment" ' +
-										'style="position: relative; font-size: 8px;" ' +
-										':style="{ ' +
-											'width: ($root.tickScale * 2) + \'px\', ' +
-											//'left: -$root.tickScale + \'px\', ' +
-											'backgroundColor: aspect[p1name] && aspect[p1name][p2name] ? aspect[p1name][p2name].color : \'rgba(0, 0, 0, .5)\', ' +
-										'}"' +
-										'>' +
-										'<div style="z-index: 3; position: absolute; bottom: 0; text-shadow: 1px 1px 0px black;" v-if=" ' +
-											'($root.aspectsSequence[i][p1name] && $root.aspectsSequence[i][p1name][p2name]) && ' +
-											'(i == 0 || !$root.aspectsSequence[i - 1][p1name] || !$root.aspectsSequence[i - 1][p1name][p2name])' +
-											'">{{ p2name }}&nbsp;{{ aspect[p1name][p2name].symbol }}&nbsp;{{ p1name }}</div>' +
-									'</div>' +
-								'</div>' +
-							'</template>' +
 						'</div>' +
 						'<div ' +
 							'style=" ' +
@@ -1098,7 +1139,7 @@ Vue.component('the-sky', {
 								'}" ' +
 								'v-for="n in Math.floor(10000000 / (10 * 100000))" ' +
 								':style="{ ' +
-									'width: (2 + $root.countOfAspectsInTheAspectsSequence * 11) + \'px\', ' +
+									'width: (6 + ($root.stackedAspectsInTheAspectsSequence.length) * 10) + \'px\', ' +
 									'left: ($root.tickScale * ($root.DAY / 10000000) * n) - (($root.midnightOverage($root.loadTime) / $root.DAY) * ($root.tickScale * $root.DAY / 10000000)) + \'px\', ' +
 									'top: (16) + \'px\', ' +
 									'transform: \'rotate(90deg)\', ' +
@@ -1111,7 +1152,7 @@ Vue.component('the-sky', {
 								'class="sequence-tick-line short" ' +
 								'style="background-color: #FF7; height: 2px;" ' +
 								':style="{ ' +
-									'width: (2 + $root.countOfAspectsInTheAspectsSequence * 11) + \'px\', ' +
+									'width: (6 + ($root.stackedAspectsInTheAspectsSequence.length) * 10) + \'px\', ' +
 									'left: ($root.tickScale * (($root.dateTime - $root.loadTime) / (10000000))) + \'px\', ' +
 									'top: (16) + \'px\', ' +
 									'transform: \'rotate(90deg)\', ' +
@@ -1133,6 +1174,36 @@ Vue.component('the-sky', {
 								'{{ $root.dayOfWeek[$root.dateShown.getDay()] }}<br>{{ $root.dateShown.getMonth() + 1 }}/{{ $root.dateShown.getDate() }}' +
 							'</div>' +
 						'</div>' +
+						'<div class="tiny-view-frame-caption" style="bottom: 0px; width: 100%; transform: none;">' +
+							'<div ' +
+								'v-if="$root.selectedAspect" ' +
+								'class="planet-laser" ' +
+								':class="[ $root.selectedAspect.aspect ]" ' +
+								'style="' +
+									'transform: rotate(90deg); ' +
+									'transform-origin: center center; ' +
+									'height: 200px; ' +
+									'top: 4%; ' +
+									'left: 50%; ' +
+									'border-left-width: 5px; ' +
+								'" ' +
+								'>' +
+							'</div>' +
+							'<planet-card ' +
+								'v-for="(planet, planetName) in $root.selectedPlanets" ' +
+								':planet="$root.thePlanet(planetName)" ' +
+								':key="planetName" ' +
+								'>' +
+							'</planet-card>' +
+							'<div class="tiny-view-aspect" ' +
+								'v-if="$root.selectedAspect" ' +
+								':class="[ $root.selectedAspect.aspect ]" ' +
+								'>' +
+								'<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">{{ [\'Opposition\', \'Square\'].indexOf($root.selectedAspect.aspect) == -1 ? String.fromCodePoint(0x1F91D) : String.fromCodePoint(0x2694) }}</div>' +
+								'<div style="font-size: 20px; position: absolute; bottom: 0%; left: 50%; transform: translateX(-50%);">{{ $root.selectedAspect.symbol }}</div>' +
+								'<div style="font-size: 9px; position: absolute; top: 10%; left: 50%; transform: translateX(-50%);">{{ $root.selectedAspect.aspect }}</div>' +
+							'</div>' +
+						'</div>' +
 					'</div>' +
 				'</div>' +
 			'</div>' +
@@ -1149,7 +1220,8 @@ Vue.component('the-sky', {
 var app = new Vue({
 	el: '#app',
     data: {
-	    tickScale: 6,
+	    additionalRotation: 0,
+	    tickScale: 7.2,
 	    dayOfWeek: { 0: 'Mon', 1: 'Tue', 2: 'Wed', 3: 'Thu', 4: 'Fri', 5: 'Sat', 6: 'Sun' },
 	    eclExt: 117,
 	    eclRot: Math.PI,
@@ -1207,16 +1279,46 @@ var app = new Vue({
 		{ name: 'Pisces', symbol: String.fromCodePoint(0x2653), planet: 'Jupiter', secondaryPlanet: 'Neptune', }, 
 	    ],
 	    thePlanets: [
-		{ order: 1, placement: 'inner', name: 'Moon', symbol: String.fromCodePoint(0x263D), size: 20, color: '#D8CFC0' }, 
-		{ order: 2, placement: 'inner', name: 'Mercury', symbol: String.fromCodePoint(0x263F), size: 10, color: '#9A8C98' }, 
-		{ order: 3, placement: 'inner', name: 'Venus', symbol: String.fromCodePoint(0x2640), size: 10, color: '#D8AE48' }, 
-		{ order: 4, placement: 'inner', name: 'Sun', symbol: String.fromCodePoint(0x2609), size: 20, color: '#F8DE48' }, 
-		{ order: 5, placement: 'middle', name: 'Mars', symbol: String.fromCodePoint(0x2642), size: 10, color: '#D75A53' }, 
-		{ order: 6, placement: 'middle', name: 'Jupiter', symbol: String.fromCodePoint(0x2643), size: 10, color: '#E39D4F' }, 
-		{ order: 7, placement: 'middle', name: 'Saturn', symbol: String.fromCodePoint(0x2644), size: 10, color: '#AE8A6A' }, 
-		{ order: 8, placement: 'outer', name: 'Uranus', symbol: String.fromCodePoint(0x2645), size: 10, color: '#BFD3ED' }, 
-		{ order: 9, placement: 'outer', name: 'Neptune', symbol: String.fromCodePoint(0x2646), size: 10, color: '#7DA4F4' }, 
-		{ order: 10, placement: 'outer', name: 'Pluto', symbol: String.fromCodePoint(0x2647), size: 10, color: '#C9ADA7' }, 
+		{ order: 1, placement: 'inner', name: 'Moon', symbol: String.fromCodePoint(0x263D), size: 20, color: '#D8CFC0', 
+			keyTrait: 'Sensitivity', 
+			traits: ['Cycles', 'Memory', 'Nurturing', 'Instinct'], 
+		}, 
+		{ order: 2, placement: 'inner', name: 'Mercury', symbol: String.fromCodePoint(0x263F), size: 10, color: '#9A8C98', 
+			keyTrait: 'Communication', 
+			traits: ['Speed', 'Intelligence', 'Flexibility', 'Commerce'], 
+		}, 
+		{ order: 3, placement: 'inner', name: 'Venus', symbol: String.fromCodePoint(0x2640), size: 10, color: '#D8AE48', 
+			keyTrait: 'Relationships', 
+			traits: ['Love', 'Pleasure', 'Harmony', 'Beauty'], 
+		}, 
+		{ order: 4, placement: 'inner', name: 'Sun', symbol: String.fromCodePoint(0x2609), size: 20, color: '#F8DE48', 
+			keyTrait: 'Ego', 
+			traits: ['Clarity', 'Energy', 'Vitality', 'Leadership'], 
+		}, 
+		{ order: 5, placement: 'middle', name: 'Mars', symbol: String.fromCodePoint(0x2642), size: 10, color: '#D75A53', 
+			keyTrait: 'Action', 
+			traits: ['Conflict', 'Courage', 'Prowess', 'Tools'], 
+		}, 
+		{ order: 6, placement: 'middle', name: 'Jupiter', symbol: String.fromCodePoint(0x2643), size: 10, color: '#E39D4F', 
+			keyTrait: 'Success', 
+			traits: ['Growth', 'Fortune', 'Adventure', 'Optimism'], 
+		}, 
+		{ order: 7, placement: 'middle', name: 'Saturn', symbol: String.fromCodePoint(0x2644), size: 10, color: '#AE8A6A', 
+			keyTrait: 'Caution', 
+			traits: ['Order', 'Boundaries', 'Time', 'Discipline'], 
+		}, 
+		{ order: 8, placement: 'outer', name: 'Uranus', symbol: String.fromCodePoint(0x2645), size: 10, color: '#BFD3ED', 
+			keyTrait: 'Catastrophe', 
+			traits: ['Awakening', 'New', 'Wild', 'Disruption'], 
+		}, 
+		{ order: 9, placement: 'outer', name: 'Neptune', symbol: String.fromCodePoint(0x2646), size: 10, color: '#7DA4F4', 
+			keyTrait: 'Mysticism', 
+			traits: ['Spiritual', 'Dreams', 'Transcend', 'Merging'], 
+		}, 
+		{ order: 10, placement: 'outer', name: 'Pluto', symbol: String.fromCodePoint(0x2647), size: 10, color: '#C9ADA7', 
+			keyTrait: 'Transformation', 
+			traits: ['Death', 'Wealth', 'Secret', 'Rebirth'], 
+		}, 
 		],
 	    theMinorPlanets: [
 		{ order: 1, name: 'Eros', size: 5, color: 'turquoise' }, 
@@ -6514,6 +6616,17 @@ var app = new Vue({
 	    theCenterEl: null,
     },
     computed: {
+	    selectedAspect: function() {
+		    var t = this;
+		    var selectedPlanets = t.selectedPlanets;
+		    if (!selectedPlanets) return;
+		    var selectedPlanetNames = Object.keys(selectedPlanets);
+		    if (selectedPlanetNames.length == 2) {
+			    if (t.aspects[selectedPlanetNames[0]]) {
+				    return t.aspects[selectedPlanetNames[0]][selectedPlanetNames[1]];
+			    }
+		    }
+	    },
 	    loadTimeDayPercent: function() {
 		    return (new Date(this.loadTime).getHours() * 60 + new Date(this.loadTime).getMinutes()) / 1440;
 	    },
@@ -6523,13 +6636,15 @@ var app = new Vue({
 		    for (var i = 0; i < 35; i++) {
 			    aspectsRow = {};
 			    t.thePlanets.forEach(function(p1) {
-				    aspectsRow[p1.name] = {};
-				    t.thePlanets.forEach(function(p2) {
-					    if (p1.order < p2.order) {
-						    aspectsRow[p1.name][p2.name] = t.getAspect(p1, p2, t.loadTime + 20000000 * i);
-						    //aspectsRow[p1.name][p2.name] = t.getAspect(p1, p2, t.dateTime + t.stepIncrement * i);
-					    }
-				    });
+				    if (p1.name != 'Moon') {
+					    aspectsRow[p1.name] = {};
+					    t.thePlanets.forEach(function(p2) {
+						    if (p2.name != 'Moon' && p1.order < p2.order) {
+							    aspectsRow[p1.name][p2.name] = t.getAspect(p1, p2, t.loadTime + 20000000 * i);
+							    //aspectsRow[p1.name][p2.name] = t.getAspect(p1, p2, t.dateTime + t.stepIncrement * i);
+						    }
+					    });
+				    }
 			    });
 			    aspectsSequence.push(aspectsRow);
 		    }
@@ -6551,6 +6666,50 @@ var app = new Vue({
 			    }
 		    });
 		    return aspectsInTheAspectsSequence;
+	    },
+	    stackedAspectsInTheAspectsSequence: function() {
+		    var t = this;
+		    var stackedAspectsInTheAspectsSequence = [[]];
+		    t.aspectsSequence.forEach(function() { stackedAspectsInTheAspectsSequence[0].push(null); });
+		    for (var p1name in t.aspectsInTheAspectsSequence) {
+			    for (var p2name in t.aspectsInTheAspectsSequence[p1name]) {
+				    var aspectStart = -1;
+				    t.aspectsSequence.forEach(function(step, ind) { if (aspectStart == -1 && step[p1name][p2name]) { aspectStart = ind; } });
+				    var aspectEnd = -1;
+				    t.aspectsSequence.forEach(function(step, ind) { if (step[p1name][p2name]) { aspectEnd = ind; } });
+				    //console.log(p1name + ', ' + p2name + ': ' + aspectStart + ', ' + aspectEnd);
+
+				    // Check if any rows in the sequence have space for this aspect
+				    // If not, add a new row
+				    var rowWithSpace = -1;
+				    stackedAspectsInTheAspectsSequence.forEach(function(row, ind) {
+					    var rowHasSpace = true;
+					    for (var i = aspectStart; i <= aspectEnd; i++) {
+						    if (row[i]) { 
+							    rowHasSpace = false; 
+						    }
+					    }
+					    if (rowHasSpace) { 
+						    if (rowWithSpace == -1) { rowWithSpace = ind; }
+					    } else if (ind == stackedAspectsInTheAspectsSequence.length - 1) {
+						    var newRow = [];
+						    t.aspectsSequence.forEach(function() { newRow.push(null); });
+						    stackedAspectsInTheAspectsSequence.push(newRow);
+						    rowWithSpace = stackedAspectsInTheAspectsSequence.length - 1;
+					    }
+				    });
+
+				    // Fill in the spaces in the row with space
+				    for (var i = aspectStart; i <= aspectEnd; i++) {
+					    var aspect = JSON.parse(JSON.stringify(t.aspectsSequence[i][p1name][p2name]));
+					    aspect.p1name = p1name;
+					    aspect.p2name = p2name;
+					    if (i == aspectStart) { aspect.start = true; } else { aspect.start = false; }
+					    stackedAspectsInTheAspectsSequence[rowWithSpace][i] = aspect;
+				    }
+			    }
+		    }
+		    return stackedAspectsInTheAspectsSequence;
 	    },
 	    countOfAspectsInTheAspectsSequence: function(excludeMoon) {
 		    var t = this;
@@ -6717,6 +6876,11 @@ var app = new Vue({
 	    },
     },
     methods: {
+	    thePlanet: function(planetName) {
+		    for (var i = 0; i < this.thePlanets.length; i++) {
+			    if (this.thePlanets[i].name == planetName) { return this.thePlanets[i]; }
+		    }
+	    },
 	    getAspect: function(p1, p2, dateTime) {
 		    var p1angle = this.planetAngle(p1.name, dateTime);
 		    var p2angle = this.planetAngle(p2.name, dateTime);
