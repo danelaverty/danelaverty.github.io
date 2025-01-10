@@ -228,7 +228,7 @@ table td {
 	width: 100vw;
 }
 
-.the-sky-color, .fader {
+.the-sky-color {
 	position: absolute;
 	//top: -100vh;
 	//left: -100vw;
@@ -236,11 +236,6 @@ table td {
 	width: 400vw;
 	background-color: #FFC;
 	z-index: -100;
-}
-
-div.fader {
-	background-color: #000;
-	z-index: 100;
 }
 
 .sky-viewer {
@@ -745,12 +740,41 @@ div.fader {
 	position: absolute;
 	top: -50;
 	left: 0;
-	width: 500px;
-	height: 570px;
+	width: 480px;
+	height: 1px;
 	transform: translate(-50%, -250px);
-	border: 1px solid white;
-	overflow: hidden;
+	background-color: white;
 	z-index: 50;
+}
+
+div.fader {
+	position: absolute;
+	background-color: #000;
+	z-index: 100;
+	width: 480px;
+	height: 570px;
+}
+
+
+.video-view-vertical {
+	position: absolute;
+	background-color: white;
+	height: 570px;
+	width: 1px;
+}
+
+.video-view-horizontal {
+	position: absolute;
+	background-color: white;
+	height: 1px;
+	width: 480px;
+}
+
+.video-view-blackout {
+	position: absolute;
+	width: 2000px;
+	height: 2000px;
+	background-color: black;
 }
 
 .aspects-box {

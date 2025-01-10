@@ -442,12 +442,6 @@ Vue.component('the-sky', {
 					'opacity: .1 * Math.sin($root.dayPercent() * Math.PI) - .03, ' +
 				'} "' +
 			'></div>' +
-			'<div class="fader" ' +
-				'v-if="$root.faderOpacity > 0" ' +
-				':style="{ ' +				
-					'opacity: $root.faderOpacity, ' +
-				'} "' +
-			'></div>' +
 			'<main-frame></main-frame>' +
 			'<div id="sky-viewer" class="sky-viewer" ' +
 				'>' +
@@ -466,7 +460,7 @@ Vue.component('the-sky', {
 						'></div>' +
 					'</div>' +
 					//'<div class="the-constellations-circle"></div>' +
-					'<div class="sideral" v-if="!$root.showTropical">' +
+					'<div class="sideral" v-if="!$root.showTropical && !$root.videoView">' +
 						'<div class="the-ecliptic" v-if="!$root.sequenceView"></div>' +
 						'<div class="constellation-divider"' + 
 							'v-if="$root.showDivisions && !$root.sequenceView" ' +
@@ -495,7 +489,7 @@ Vue.component('the-sky', {
 							//'<div class="constellation-symbol" v-if="$root.useSymbols">{{ constellation.symbol }}</div>' +
 						'</div>' +*/
 					'</div>' +
-					'<div class="tropical" v-if="$root.showTropical">' +
+					'<div class="tropical" v-if="$root.showTropical && !$root.videoView">' +
 						'<div class="the-ecliptic" v-if="!$root.sequenceView"></div>' +
 						'<div class="constellation-divider"' + 
 							'v-if="$root.showDivisions && !$root.sequenceView" ' +
@@ -584,7 +578,7 @@ Vue.component('the-sky', {
 							'</g>' +
 						'</svg>' +
 					'</div>' +
-					'<div v-if="!$root.sequenceView" style="position: absolute; left: 0; top: 0; transform: rotate(24.2deg);">' +
+					'<div v-if="!$root.sequenceView && !$root.videoView" style="position: absolute; left: 0; top: 0; transform: rotate(24.2deg);">' +
 						'<svg ' +
 							'v-for="(constellation, i) in $root.theZodiac" ' +
 							'width="700" ' +
@@ -754,7 +748,7 @@ Vue.component('the-sky', {
 						':showName=false ' +
 						'>' +
 					'</a-planet>' +*/
-					'<a-planet ' +
+					/*'<a-planet ' +
 						'v-if="!$root.sequenceView" ' +
 						':planet="{ name: \'NN\', symbol: String.fromCodePoint(0x260A), color: \'black\', order: 4, size: 5, }" ' +
 						'>' +
@@ -763,7 +757,7 @@ Vue.component('the-sky', {
 						'v-if="!$root.sequenceView" ' +
 						':planet="{ name: \'SN\', symbol: String.fromCodePoint(0x260B), color: \'black\', order: 4, size: 5, }" ' +
 						'>' +
-					'</a-planet>' +
+					'</a-planet>' +*/
 					'<div v-if="$root.showLasers && !$root.sequenceView" class="planet-laser" ' +
 						'v-for="(planet, i) in $root.thePlanets" ' +
 						':key="planet.order" ' +
@@ -1028,7 +1022,7 @@ Vue.component('the-sky', {
 '<div class="a-line" id="FFumalsamakahT2496250" style="transform: translate(-50%, -50%) rotate(-305.969deg); height: 656.329px;"><div class="the-visible-line" style="height: 19.6759px; transform: rotate(71.8104deg);"></div></div>' +
 	'</div>' +				
 					'<a-star ' +
-						'v-if="!$root.sequenceView" ' +
+						'v-if="!$root.sequenceView && !$root.videoView" ' +
 						'v-for="(star, i) in $root.theStarsFiltered" ' +
 						':key="star.id" ' +
 						':id="star.id" ' +
@@ -1096,114 +1090,130 @@ Vue.component('the-sky', {
 					'<div class="video-view" ' +
 						'v-if="$root.videoView" ' +
 						'>' +
-						'<div style="position: absolute; width: 100%; background-color: black;" ' +
-							':style="{ height: (32 + ($root.stackedAspectsInTheAspectsSequence.length) * 10) + \'px\', }" ' +
-							'>' +
-						'</div>' +
-						'<div class="aspects-box" ' +
-							'>' +
+						'<div class="video-view-blackout" style="bottom: 2px;"></div>' +
+						'<div class="video-view-vertical" style="left: 0;">' +
+							'<div style="position: absolute; width: 540px; left: 1px; top: 2px; background-color: black;" ' +
+								':style="{ height: (32 + ($root.stackedAspectsInTheAspectsSequence.length) * 10) + \'px\', }" ' +
+								'>' +
+							'</div>' +
+							'<div class="aspects-box" ' +
+								'>' +
+								'<div ' +
+									'class="aspect-bar" ' +
+									'v-for="(aspectRow, i) in $root.stackedAspectsInTheAspectsSequence" ' +
+									':key="i" ' +
+									'style="border-bottom: 1px solid white; height: 10px;" ' +
+									':style="{ top: (i * 10 + 33) + \'px\', }" ' +
+								'>' +
+									'<div v-for="(aspect, j) in aspectRow" ' +
+										'class="aspect-bar-segment no-select" ' +
+										'style="font-size: 8px;" ' +
+										':style="{ ' +
+											'width: ($root.tickScale * 2 + 1) + \'px\', ' +
+											'left: (j * $root.tickScale * 2) + \'px\', ' +
+											'backgroundColor: aspect ? aspect.color : null, ' +
+										'}"' +
+										'@click.stop="$root.selectAspect(aspect.p1name, aspect.p2name)" ' +
+										'>' +
+										'<div style="z-index: 3; position: absolute; bottom: 0; text-shadow: 1px 1px 0px black;" ' +
+											'v-if=" aspect && aspect.start ' +
+											'">{{ aspect.p2name }}&nbsp;{{ aspect.symbol }}&nbsp;{{ aspect.p1name }}</div>' +
+									'</div>' +
+								'</div>' +
+							'</div>' +
 							'<div ' +
-								'class="aspect-bar" ' +
-								'v-for="(aspectRow, i) in $root.stackedAspectsInTheAspectsSequence" ' +
-								':key="i" ' +
-								'style="border-bottom: 1px solid white; height: 10px;" ' +
-								':style="{ top: (i * 10 + 33) + \'px\', }" ' +
-							'>' +
-								'<div v-for="(aspect, j) in aspectRow" ' +
-									'class="aspect-bar-segment" ' +
-									'style="font-size: 8px;" ' +
+								'style=" ' +
+									'position: absolute; ' +
+									'width: 100%; height: 100%; ' +
+									'transform: translate(1px, 10px); ' +
+								'" ' +
+								'>' +
+								'<div ' +
+									'class="sequence-tick-line short" ' +
+									':class="{ ' +
+										'month: 10000000 <= 100000000 && (new Date($root.loadTime + ($root.DAY * n))).getDate() == 1, ' +
+									'}" ' +
+									'v-for="n in Math.floor(10000000 / (10 * 100000))" ' +
 									':style="{ ' +
-										'width: ($root.tickScale * 2 + 1) + \'px\', ' +
-										'left: (j * $root.tickScale * 2) + \'px\', ' +
-										'backgroundColor: aspect ? aspect.color : null, ' +
-									'}"' +
-									'@click.stop="$root.selectAspect(aspect.p1name, aspect.p2name)" ' +
+										'width: (6 + ($root.stackedAspectsInTheAspectsSequence.length) * 10) + \'px\', ' +
+										'left: ($root.tickScale * ($root.DAY / 10000000) * n) - (($root.midnightOverage($root.loadTime) / $root.DAY) * ($root.tickScale * $root.DAY / 10000000)) + \'px\', ' +
+										'top: (16) + \'px\', ' +
+										'transform: \'rotate(90deg)\', ' +
+									'}" ' +
 									'>' +
-									'<div style="z-index: 3; position: absolute; bottom: 0; text-shadow: 1px 1px 0px black;" ' +
-										'v-if=" aspect && aspect.start ' +
-										'">{{ aspect.p2name }}&nbsp;{{ aspect.symbol }}&nbsp;{{ aspect.p1name }}</div>' +
+									'<div class="sequence-tick-line-label" @click.stop="$root.dateTime = $root.loadTime + $root.DAY * n - $root.loadTimeDayPercent * $root.DAY" style="left: -16px; color: rgba(255, 255, 255, .8); font-size: 7px;">{{ $root.humanReadableDateTime($root.loadTime + ($root.DAY * n), true, true) }}</div>' +
+								'</div>' +
+								'<div ' +
+									'v-if="10000000 <= 100000000 && $root.dateTime >= $root.loadTime" ' +
+									'class="sequence-tick-line short" ' +
+									'style="background-color: #FF7; height: 2px;" ' +
+									':style="{ ' +
+										'width: (6 + ($root.stackedAspectsInTheAspectsSequence.length) * 10) + \'px\', ' +
+										'left: ($root.tickScale * (($root.dateTime - $root.loadTime) / (10000000)) + 1) + \'px\', ' +
+										'top: (16) + \'px\', ' +
+										'transform: \'rotate(90deg)\', ' +
+									'}" ' +
+									'>' +
+								'</div>' +
+							'</div>' +
+							'<div class="video-view-blackout" style="right: 1px; bottom: 0;"></div>' +
+							'<div class="video-view-horizontal" style="bottom: 0;">' +
+								'<div class="sunrise-sunset-box">' +
+									'<div ' +
+										'style="width: 120px; height: 120px; border-radius: 50%; position: absolute; transform: translate(-50%, -50%);" ' +
+										':style="{ backgroundColor: \'rgba(0, 255, 255, \' + (.5 * Math.sin($root.dayPercent() * Math.PI) - .2) + \')\', }" ' +
+									'>' +
+									'</div>' +
+									'<img src="sun-and-moon.png" ' +
+										':style="{ transform: \'translate(-50%, -50%) rotate(\' + (180 + $root.dayPercent() * 360) + \'deg)\', }" ' +
+									'>' +
+									'<img src="hills.png">' +
+									'<div class="the-day-text">' +
+										'{{ $root.dayOfWeek[$root.dateShown.getDay()] }}<br>{{ $root.dateShown.getMonth() + 1 }}/{{ $root.dateShown.getDate() }}' +
+									'</div>' +
+								'</div>' +
+								'<div class="video-view-blackout" style="right: -1px; top: 2px;"></div>' +
+							'</div>' +
+							'<div class="tiny-view-frame-caption" style="bottom: 0px; width: 480px; transform: none;">' +
+								'<div ' +
+									'v-if="$root.selectedAspect" ' +
+									'class="planet-laser" ' +
+									':class="[ $root.selectedAspect.aspect ]" ' +
+									'style="' +
+										'transform: rotate(90deg); ' +
+										'transform-origin: center center; ' +
+										'height: 200px; ' +
+										'top: 4%; ' +
+										'left: 50%; ' +
+										'border-left-width: 5px; ' +
+									'" ' +
+									'>' +
+								'</div>' +
+								'<planet-card ' +
+									'v-for="(planet, planetName) in $root.selectedPlanets" ' +
+									':planet="$root.thePlanet(planetName)" ' +
+									':key="planetName" ' +
+									'>' +
+								'</planet-card>' +
+								'<div class="tiny-view-aspect" ' +
+									'v-if="$root.selectedAspect" ' +
+									':class="[ $root.selectedAspect.aspect ]" ' +
+									'>' +
+									'<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">{{ [\'Opposition\', \'Square\'].indexOf($root.selectedAspect.aspect) == -1 ? String.fromCodePoint(0x1F91D) : String.fromCodePoint(0x2694) }}</div>' +
+									'<div style="font-size: 20px; position: absolute; bottom: 0%; left: 50%; transform: translateX(-50%);">{{ $root.selectedAspect.symbol }}</div>' +
+									'<div style="font-size: 9px; position: absolute; top: 10%; left: 50%; transform: translateX(-50%);">{{ $root.selectedAspect.aspect }}</div>' +
 								'</div>' +
 							'</div>' +
 						'</div>' +
-						'<div ' +
-							'style=" ' +
-								'position: absolute; ' +
-								'width: 100%; height: 100%; ' +
-								'transform: translate(1px, 10px); ' +
-							'" ' +
-							'>' +
-							'<div ' +
-								'class="sequence-tick-line short" ' +
-								':class="{ ' +
-									'month: 10000000 <= 100000000 && (new Date($root.loadTime + ($root.DAY * n))).getDate() == 1, ' +
-								'}" ' +
-								'v-for="n in Math.floor(10000000 / (10 * 100000))" ' +
-								':style="{ ' +
-									'width: (6 + ($root.stackedAspectsInTheAspectsSequence.length) * 10) + \'px\', ' +
-									'left: ($root.tickScale * ($root.DAY / 10000000) * n) - (($root.midnightOverage($root.loadTime) / $root.DAY) * ($root.tickScale * $root.DAY / 10000000)) + \'px\', ' +
-									'top: (16) + \'px\', ' +
-									'transform: \'rotate(90deg)\', ' +
-								'}" ' +
-								'>' +
-								'<div class="sequence-tick-line-label" @click.stop="$root.dateTime = $root.loadTime + $root.DAY * n - $root.loadTimeDayPercent * $root.DAY" style="left: -16px; color: rgba(255, 255, 255, .8); font-size: 7px;">{{ $root.humanReadableDateTime($root.loadTime + ($root.DAY * n), true, true) }}</div>' +
-							'</div>' +
-							'<div ' +
-								'v-if="10000000 <= 100000000 && $root.dateTime >= $root.loadTime" ' +
-								'class="sequence-tick-line short" ' +
-								'style="background-color: #FF7; height: 2px;" ' +
-								':style="{ ' +
-									'width: (6 + ($root.stackedAspectsInTheAspectsSequence.length) * 10) + \'px\', ' +
-									'left: ($root.tickScale * (($root.dateTime - $root.loadTime) / (10000000))) + \'px\', ' +
-									'top: (16) + \'px\', ' +
-									'transform: \'rotate(90deg)\', ' +
-								'}" ' +
-								'>' +
-							'</div>' +
+						'<div class="video-view-vertical" style="right: 0; z-index: 100;">' +
+							'<div class="video-view-blackout" style="left: 1px; top: -10px;"></div>' +
 						'</div>' +
-						'<div class="sunrise-sunset-box">' +
-							'<div ' +
-								'style="width: 120px; height: 120px; border-radius: 50%; position: absolute; transform: translate(-50%, -50%);" ' +
-								':style="{ backgroundColor: \'rgba(0, 255, 255, \' + (.5 * Math.sin($root.dayPercent() * Math.PI) - .2) + \')\', }" ' +
-							'>' +
-							'</div>' +
-							'<img src="sun-and-moon.png" ' +
-								':style="{ transform: \'translate(-50%, -50%) rotate(\' + (180 + $root.dayPercent() * 360) + \'deg)\', }" ' +
-							'>' +
-							'<img src="hills.png">' +
-							'<div class="the-day-text">' +
-								'{{ $root.dayOfWeek[$root.dateShown.getDay()] }}<br>{{ $root.dateShown.getMonth() + 1 }}/{{ $root.dateShown.getDate() }}' +
-							'</div>' +
-						'</div>' +
-						'<div class="tiny-view-frame-caption" style="bottom: 0px; width: 100%; transform: none;">' +
-							'<div ' +
-								'v-if="$root.selectedAspect" ' +
-								'class="planet-laser" ' +
-								':class="[ $root.selectedAspect.aspect ]" ' +
-								'style="' +
-									'transform: rotate(90deg); ' +
-									'transform-origin: center center; ' +
-									'height: 200px; ' +
-									'top: 4%; ' +
-									'left: 50%; ' +
-									'border-left-width: 5px; ' +
-								'" ' +
-								'>' +
-							'</div>' +
-							'<planet-card ' +
-								'v-for="(planet, planetName) in $root.selectedPlanets" ' +
-								':planet="$root.thePlanet(planetName)" ' +
-								':key="planetName" ' +
-								'>' +
-							'</planet-card>' +
-							'<div class="tiny-view-aspect" ' +
-								'v-if="$root.selectedAspect" ' +
-								':class="[ $root.selectedAspect.aspect ]" ' +
-								'>' +
-								'<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">{{ [\'Opposition\', \'Square\'].indexOf($root.selectedAspect.aspect) == -1 ? String.fromCodePoint(0x1F91D) : String.fromCodePoint(0x2694) }}</div>' +
-								'<div style="font-size: 20px; position: absolute; bottom: 0%; left: 50%; transform: translateX(-50%);">{{ $root.selectedAspect.symbol }}</div>' +
-								'<div style="font-size: 9px; position: absolute; top: 10%; left: 50%; transform: translateX(-50%);">{{ $root.selectedAspect.aspect }}</div>' +
-							'</div>' +
-						'</div>' +
+						'<div class="fader" ' +
+							'v-if="$root.faderOpacity > 0" ' +
+							':style="{ ' +				
+								'opacity: $root.faderOpacity, ' +
+							'} "' +
+						'></div>' +
 					'</div>' +
 				'</div>' +
 			'</div>' +
@@ -1222,7 +1232,7 @@ var app = new Vue({
     data: {
 	    additionalRotation: 0,
 	    tickScale: 7.2,
-	    dayOfWeek: { 0: 'Mon', 1: 'Tue', 2: 'Wed', 3: 'Thu', 4: 'Fri', 5: 'Sat', 6: 'Sun' },
+	    dayOfWeek: { 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat', 0: 'Sun' },
 	    eclExt: 117,
 	    eclRot: Math.PI,
 	    eclCoe: .262,
@@ -1287,7 +1297,7 @@ var app = new Vue({
 			keyTrait: 'Communication', 
 			traits: ['Speed', 'Intelligence', 'Flexibility', 'Commerce'], 
 		}, 
-		{ order: 3, placement: 'inner', name: 'Venus', symbol: String.fromCodePoint(0x2640), size: 10, color: '#D8AE48', 
+		{ order: 3, placement: 'inner', name: 'Venus', symbol: String.fromCodePoint(0x2640), size: 10, color: '#D8BE48', 
 			keyTrait: 'Relationships', 
 			traits: ['Love', 'Pleasure', 'Harmony', 'Beauty'], 
 		}, 
@@ -6966,7 +6976,7 @@ var app = new Vue({
 		    var hours = dateToShow.getHours() == 0 ? 12 : (dateToShow.getHours() > 12 ? dateToShow.getHours() - 12 : dateToShow.getHours());
 		    var minutes = (dateToShow.getMinutes() < 10 ? '0' : '') + dateToShow.getMinutes();
 		    var ampm = dateToShow.getHours() >= 12 ? 'PM' : 'AM';
-		    var month = (dateToShow.getMonth() < 9 ? '0' : '') + (dateToShow.getMonth() + 1);
+		    var month = (dateToShow.getMonth() < 9 && !noYear ? '0' : '') + (dateToShow.getMonth() + 1);
 		    var date = (dateToShow.getDate() < 10 ? '0' : '') + dateToShow.getDate();
 		    var year = dateToShow.getFullYear();
 
