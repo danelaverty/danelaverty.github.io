@@ -401,29 +401,16 @@ Vue.component('planet-card', {
 		'<div class="tiny-view-card" ' +
 		'>' +
 			'<div class="tiny-view-card-art">' +
-				'<div class="planet-disc" ' +
-					':id="planet.name + \'-disc\'" ' +
-					'style="width: 50px; height: 50px; top: 50%; left: 50%; transform: translate(-50%, -50%);" ' +
-					':style="{ ' +
-						'backgroundColor: planet.color, ' +
-						'border: planet.color == \'black\' ? \'1px solid #AAA\' : null, ' +
-					'}" ' +
-				'>' +
-					'<div v-if="planet.name == \'Moon\'" class="moon-shader" ' +
-						':style="{ ' +
-							'transform: \'rotate(\' + (180 - 90 + $root.sunAngle - $root.moonAngle - ($root.visibleSkyUp ? $root.theCenterRotation : 0)) + \'deg)\', ' +
-						'}" ' +
-					'></div>' +
-				'</div>' +
+				'<img :src="\'images/\' + planet.name + \'.png\'">' +
 			'</div>' +
 			'<div class="tiny-view-card-name">{{ planet.name }}</div>' +
-			'<div class="tiny-view-card-key-trait">{{ planet.keyTrait }}</div>' +
-			'<div class="tiny-view-card-text" style="top: 25%;">' +
+			'<div class="tiny-view-card-key-trait">&mdash;<br>{{ planet.keyTrait }}</div>' +
+			'<div class="tiny-view-card-text" style="top: 42%;">' +
 				'<div class="tiny-view-card-trait" style="transform: translateX(-50%);">|</div>' +
 				'<div class="tiny-view-card-trait" style="right: 10px;">{{ planet.traits[0] }}</div>' +
 				'<div class="tiny-view-card-trait" style="left: 10px;">{{ planet.traits[1] }}</div>' +
 			'</div>' +
-			'<div class="tiny-view-card-text" style="bottom: 31%;">' +
+			'<div class="tiny-view-card-text" style="bottom: 14%;">' +
 				'<div class="tiny-view-card-trait" style="transform: translateX(-50%);">|</div>' +
 				'<div class="tiny-view-card-trait" style="right: 10px;">{{ planet.traits[2] }}</div>' +
 				'<div class="tiny-view-card-trait" style="left: 10px;">{{ planet.traits[3] }}</div>' +
@@ -1141,7 +1128,7 @@ Vue.component('the-sky', {
 										'transform: \'rotate(90deg)\', ' +
 									'}" ' +
 									'>' +
-									'<div class="sequence-tick-line-label" @click.stop="$root.dateTime = $root.loadTime + $root.DAY * n - $root.loadTimeDayPercent * $root.DAY" style="left: -16px; color: rgba(255, 255, 255, .8); font-size: 7px;">{{ $root.humanReadableDateTime($root.loadTime + ($root.DAY * n), true, true) }}</div>' +
+									'<div class="sequence-tick-line-label" @click.stop="$root.dateTime = $root.loadTime + $root.DAY * n - $root.loadTimeDayPercent * $root.DAY" style="left: -16px; color: rgba(255, 255, 255, .8); font-size: 9px;">{{ $root.humanReadableDateTime($root.loadTime + ($root.DAY * n), true, true) }}</div>' +
 								'</div>' +
 								'<div ' +
 									'v-if="10000000 <= 100000000 && $root.dateTime >= $root.loadTime" ' +
@@ -1247,7 +1234,7 @@ var app = new Vue({
 	    YEARISH: 365 * 24 * 60 * 60 * 1000,
 	    window: window,
 	    dateTime: new Date().getTime(),
-	    loadTime: new Date().getTime(),
+	    loadTime: new Date().getTime() - (24 * 60 * 60 * 1000),
 	    savedDateTime: null,
     	sunZs: [],
 	    stepIncrement: 10 * 1000000,
@@ -1297,7 +1284,7 @@ var app = new Vue({
 			keyTrait: 'Communication', 
 			traits: ['Speed', 'Intelligence', 'Flexibility', 'Commerce'], 
 		}, 
-		{ order: 3, placement: 'inner', name: 'Venus', symbol: String.fromCodePoint(0x2640), size: 10, color: '#D8BE48', 
+		{ order: 3, placement: 'inner', name: 'Venus', symbol: String.fromCodePoint(0x2640), size: 10, color: '#E39D4F', 
 			keyTrait: 'Relationships', 
 			traits: ['Love', 'Pleasure', 'Harmony', 'Beauty'], 
 		}, 
@@ -1309,7 +1296,7 @@ var app = new Vue({
 			keyTrait: 'Action', 
 			traits: ['Conflict', 'Courage', 'Prowess', 'Tools'], 
 		}, 
-		{ order: 6, placement: 'middle', name: 'Jupiter', symbol: String.fromCodePoint(0x2643), size: 10, color: '#E39D4F', 
+		{ order: 6, placement: 'middle', name: 'Jupiter', symbol: String.fromCodePoint(0x2643), size: 10, color: '#D8BE48', 
 			keyTrait: 'Success', 
 			traits: ['Growth', 'Fortune', 'Adventure', 'Optimism'], 
 		}, 
@@ -1322,8 +1309,8 @@ var app = new Vue({
 			traits: ['Awakening', 'New', 'Wild', 'Disruption'], 
 		}, 
 		{ order: 9, placement: 'outer', name: 'Neptune', symbol: String.fromCodePoint(0x2646), size: 10, color: '#7DA4F4', 
-			keyTrait: 'Mysticism', 
-			traits: ['Spiritual', 'Dreams', 'Transcend', 'Merging'], 
+			keyTrait: 'Dreams', 
+			traits: ['Spiritual', 'Mysticism', 'Transcend', 'Merging'], 
 		}, 
 		{ order: 10, placement: 'outer', name: 'Pluto', symbol: String.fromCodePoint(0x2647), size: 10, color: '#C9ADA7', 
 			keyTrait: 'Transformation', 
