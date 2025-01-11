@@ -651,6 +651,15 @@ table td {
 	background-color: black;
 }
 
+.tiny-view-card-art img {
+	width: 70px;
+	height: 70px;
+	position: absolute;
+	top: 67%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+}
+
 .tiny-view-aspect {
 	position: absolute;
 	top: 50%;
@@ -662,7 +671,7 @@ table td {
 	border: 1px solid white;
 	border-radius: 50%;
 	color: white;
-	font-size: 32px;
+	font-size: 25px;
 }
 
 .tiny-view-card-name {
@@ -684,7 +693,7 @@ table td {
 
 .tiny-view-card-key-trait {
 	position: absolute;
-	top: 50%;
+	top: 23%;
 	left: 50%;
 	transform: translate(-50%, -50%);
 	font-family: "Palatino Linotype";
