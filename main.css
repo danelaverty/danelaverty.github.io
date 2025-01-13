@@ -495,7 +495,7 @@ table td {
 	height: 2000px;
 	position: absolute;
 	border-left: 1px solid rgba(255, 255, 255, .6);
-	transform-origin: top left;
+	transform-origin: top center;
 	color: white;
 	font-size: 10px;
 }
@@ -506,6 +506,7 @@ table td {
 
 .planet-laser.Opposition {
 	border-left: 2px solid #CBFFF8;
+	border-right: 2px solid #CBFFF8;
 }
 
 .planet-laser.Trine {

@@ -255,7 +255,8 @@ Vue.component('main-frame', {
 						'<div class="control-button" :class="{ on: $root.showDivisions, }" @click.stop="$root.showDivisions = !$root.showDivisions">Divisions</div>' +
 						'<div class="control-button" :class="{ on: $root.showDignities, }" @click.stop="$root.showDignities = !$root.showDignities">Dignities</div>' +
 						'<div class="control-button" :class="{ on: $root.showRetrogrades, }" @click.stop="$root.showRetrogrades = !$root.showRetrogrades">Retrogrades</div>' +
-						//'<div class="control-button" :class="{ on: $root.showAngles, }" @click.stop="$root.showAngles = !$root.showAngles">Angles</div>' +
+						'<div class="control-button" :class="{ on: $root.showAngles, }" @click.stop="$root.showAngles = !$root.showAngles">Angles</div>' +
+						'<div class="control-button" :class="{ on: $root.showCards, }" @click.stop="$root.showCards = !$root.showCards">Cards</div>' +
 						'<div class="control-button" :class="{ on: $root.toEcliptic, }" @click.stop="$root.toEcliptic = !$root.toEcliptic">To Ecliptic</div>' +
 						'<div class="control-button" :class="{ on: $root.sequenceView, }" @click.stop="$root.sequenceView = !$root.sequenceView;">Sequence</div>' +
 						'<div class="control-button" :class="{ on: $root.tinyView, }" @click.stop="$root.tinyView = !$root.tinyView">Tiny</div>' +
@@ -399,6 +400,7 @@ Vue.component('planet-card', {
 	props: ['planet'],
 	template: '' +
 		'<div class="tiny-view-card" ' +
+			'@click.stop="$root.showCards = false" ' +
 		'>' +
 			'<div class="tiny-view-card-art">' +
 				'<img :src="\'images/\' + planet.name + \'.png\'">' +
@@ -1177,6 +1179,7 @@ Vue.component('the-sky', {
 									'>' +
 								'</div>' +
 								'<planet-card ' +
+									'v-if="$root.showCards" ' +
 									'v-for="(planet, planetName) in $root.selectedPlanets" ' +
 									':planet="$root.thePlanet(planetName)" ' +
 									':key="planetName" ' +
@@ -1218,7 +1221,8 @@ var app = new Vue({
 	el: '#app',
     data: {
 	    additionalRotation: 0,
-	    tickScale: 7.2,
+	    //tickScale: 7.2,
+	    tickScale: 14.4,
 	    dayOfWeek: { 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat', 0: 'Sun' },
 	    eclExt: 117,
 	    eclRot: Math.PI,
@@ -1255,6 +1259,7 @@ var app = new Vue({
 	    showAspects: true,
 	    showDivisions: false,
 	    showAngles: false,
+	    showCards: true,
 	    toEcliptic: false,
 	    sequenceView: false,
 	    tinyView: false,
@@ -6613,6 +6618,9 @@ var app = new Vue({
 	    theCenterEl: null,
     },
     computed: {
+	    risingSignForReferenceMoment: function() {
+		    //
+	    },
 	    selectedAspect: function() {
 		    var t = this;
 		    var selectedPlanets = t.selectedPlanets;
