@@ -1145,7 +1145,7 @@ Vue.component('the-sky', {
 									'>' +
 								'</div>' +
 							'</div>' +
-							'<div class="video-view-blackout" style="right: 1px; bottom: 0;"></div>' +
+							'<div class="video-view-blackout" style="right: 1px; bottom: -3px;"></div>' +
 							'<div class="video-view-horizontal" style="bottom: 0;">' +
 								'<div class="sunrise-sunset-box">' +
 									'<div ' +
@@ -1197,6 +1197,21 @@ Vue.component('the-sky', {
 						'</div>' +
 						'<div class="video-view-vertical" style="right: 0; z-index: 100;">' +
 							'<div class="video-view-blackout" style="left: 1px; top: -10px;"></div>' +
+							'<div class="control-box" style="bottom: 2px; right: 2px;"' +
+								'>' +
+								'<div v-for="(p1, p1name) in $root.aspects" :key="p1name" :id="p1name + \'-aspects\'">' +
+									'<div ' +
+										'v-for="(p2, p2name) in p1" ' +
+										'v-if="p2.p1order > p2.p2order && p1name != \'Moon\' && p2name != \'Moon\'"" ' +
+										':key="p1name + \'-\' + p2name" ' +
+									'>' +
+										'<div class="aspect-list" ' +
+											':class="{ selected: $root.selectedPlanets && Object.keys($root.selectedPlanets).length == 2 && $root.selectedPlanets[p1name] && $root.selectedPlanets[p2name], }" ' +
+											'@click.stop="$root.selectAspect(p1name, p2name)" ' +
+											'>{{ p1name }} {{ p2.symbol }} {{ p2name }} ({{ p2.orb }}&deg;)</div>' +
+									'</div>' +
+								'</div>' +
+							'</div>' +
 						'</div>' +
 						'<div class="fader" ' +
 							'v-if="$root.faderOpacity > 0" ' +
@@ -6783,6 +6798,7 @@ var app = new Vue({
 					    } else {
 						    delete aspects[p1.name][p2.name];
 					    }
+					    if (aspects[p1.name] && aspects[p1.name][p2.name]) { aspects[p1.name][p2.name].strength *= 4; }
 				    }
 			    });
 		    });
