@@ -798,8 +798,7 @@ Vue.component('the-sky', {
 								'>' +
 								'<div style="position: absolute; top: 50px;" ' +
 									':style="{ ' +
-										//'transform: \'rotate(-\' + (180 + $root.planetAngle(p1name, $root.dateTime)) + \'deg)\', ' +
-										'transform: \'rotate(180deg)\', ' +
+										'transform: \'translateY(\' + Math.round(p2.p2order * p2.p1order) + \'px) rotate(180deg)\', ' +
 										'color: p2.color, ' +
 									'}" ' +
 									'>{{ p1name }}&nbsp;+ {{ p2name }}</div>' +
@@ -1082,7 +1081,7 @@ Vue.component('the-sky', {
 						'<div class="video-view-blackout" style="bottom: 2px;"></div>' +
 						'<div class="video-view-vertical" style="left: 0;">' +
 							'<div style="position: absolute; width: 540px; left: 1px; top: 2px; background-color: black;" ' +
-								':style="{ height: (32 + ($root.stackedAspectsInTheAspectsSequence.length) * 10) + \'px\', }" ' +
+								':style="{ height: (32 + ($root.stackedAspectsInTheAspectsSequence.length) * $root.segmentHeight) + \'px\', }" ' +
 								'>' +
 							'</div>' +
 							'<div class="aspects-box" ' +
@@ -1092,12 +1091,13 @@ Vue.component('the-sky', {
 									'v-for="(aspectRow, i) in $root.stackedAspectsInTheAspectsSequence" ' +
 									':key="i" ' +
 									'style="border-bottom: 1px solid white; height: 10px;" ' +
-									':style="{ top: (i * 10 + 33) + \'px\', }" ' +
+									':style="{ top: (i * $root.segmentHeight + 33) + \'px\', }" ' +
 								'>' +
 									'<div v-for="(aspect, j) in aspectRow" ' +
 										'class="aspect-bar-segment no-select" ' +
-										'style="font-size: 8px;" ' +
+										'style="font-size: 11px;" ' +
 										':style="{ ' +
+											'height: ($root.segmentHeight - 1) + \'px\', ' +
 											'width: ($root.tickScale * 2 + 1) + \'px\', ' +
 											'left: (j * $root.tickScale * 2) + \'px\', ' +
 											'backgroundColor: aspect ? aspect.color : null, ' +
@@ -1124,20 +1124,20 @@ Vue.component('the-sky', {
 									'}" ' +
 									'v-for="n in Math.floor(10000000 / (10 * 100000))" ' +
 									':style="{ ' +
-										'width: (6 + ($root.stackedAspectsInTheAspectsSequence.length) * 10) + \'px\', ' +
+										'width: (6 + ($root.stackedAspectsInTheAspectsSequence.length) * $root.segmentHeight) + \'px\', ' +
 										'left: ($root.tickScale * ($root.DAY / 10000000) * n) - (($root.midnightOverage($root.loadTime) / $root.DAY) * ($root.tickScale * $root.DAY / 10000000)) + \'px\', ' +
 										'top: (16) + \'px\', ' +
 										'transform: \'rotate(90deg)\', ' +
 									'}" ' +
 									'>' +
-									'<div class="sequence-tick-line-label" @click.stop="$root.dateTime = $root.loadTime + $root.DAY * n - $root.loadTimeDayPercent * $root.DAY" style="left: -16px; color: rgba(255, 255, 255, .8); font-size: 9px;">{{ $root.humanReadableDateTime($root.loadTime + ($root.DAY * n), true, true) }}</div>' +
+									'<div class="sequence-tick-line-label" @click.stop="$root.dateTime = $root.loadTime + $root.DAY * n - $root.loadTimeDayPercent * $root.DAY" style="left: -16px; color: rgba(255, 255, 255, .8); font-weight: bold; font-size: 10px; font-family: Arial; letter-spacing: 1px;">{{ $root.dayOfWeek[($root.loadDateShown.getDay() + n) % 7] }}<br>{{ $root.humanReadableDateTime($root.loadTime + ($root.DAY * n), true, true) }}</div>' +
 								'</div>' +
 								'<div ' +
 									'v-if="10000000 <= 100000000 && $root.dateTime >= $root.loadTime" ' +
 									'class="sequence-tick-line short" ' +
 									'style="background-color: #FF7; height: 2px;" ' +
 									':style="{ ' +
-										'width: (6 + ($root.stackedAspectsInTheAspectsSequence.length) * 10) + \'px\', ' +
+										'width: (6 + ($root.stackedAspectsInTheAspectsSequence.length) * $root.segmentHeight) + \'px\', ' +
 										'left: ($root.tickScale * (($root.dateTime - $root.loadTime) / (10000000)) + 1) + \'px\', ' +
 										'top: (16) + \'px\', ' +
 										'transform: \'rotate(90deg)\', ' +
@@ -1197,7 +1197,7 @@ Vue.component('the-sky', {
 						'</div>' +
 						'<div class="video-view-vertical" style="right: 0; z-index: 100;">' +
 							'<div class="video-view-blackout" style="left: 1px; top: -10px;"></div>' +
-							'<div class="control-box" style="bottom: 2px; right: 2px;"' +
+							/*'<div class="control-box" style="bottom: 2px; right: 2px;"' +
 								'>' +
 								'<div v-for="(p1, p1name) in $root.aspects" :key="p1name" :id="p1name + \'-aspects\'">' +
 									'<div ' +
@@ -1211,7 +1211,7 @@ Vue.component('the-sky', {
 											'>{{ p1name }} {{ p2.symbol }} {{ p2name }} ({{ p2.orb }}&deg;)</div>' +
 									'</div>' +
 								'</div>' +
-							'</div>' +
+							'</div>' +*/
 						'</div>' +
 						'<div class="fader" ' +
 							'v-if="$root.faderOpacity > 0" ' +
@@ -1238,6 +1238,7 @@ var app = new Vue({
 	    additionalRotation: 0,
 	    //tickScale: 7.2,
 	    tickScale: 14.4,
+	    segmentHeight: 13,
 	    dayOfWeek: { 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat', 0: 'Sun' },
 	    eclExt: 117,
 	    eclRot: Math.PI,
@@ -6653,7 +6654,7 @@ var app = new Vue({
 	    aspectsSequence: function() {
 		    var t = this;
 		    var aspectsSequence = [];
-		    for (var i = 0; i < 35; i++) {
+		    for (var i = 0; i < Math.floor(35 / (t.tickScale / 7.2)); i++) {
 			    aspectsRow = {};
 			    t.thePlanets.forEach(function(p1) {
 				    if (p1.name != 'Moon') {
@@ -6841,6 +6842,9 @@ var app = new Vue({
 	    },
 	    dateShown: function() {
 		    return new Date(this.dateTime);
+	    },
+	    loadDateShown: function() {
+		    return new Date(this.loadTime);
 	    },
 	    dateShownPercentOfDayDone: function() {
 		    var hours = this.dateShown.getHours();

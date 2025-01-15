@@ -384,7 +384,8 @@ table td {
 	position: absolute;
 	color: white;
 	transform: translate(-50%, -150%);
-	font-size: 14px;
+	font-size: 16px;
+	line-height: 16px;
 	font-family: "Palatino Linotype";
 }
 
@@ -505,8 +506,8 @@ table td {
 }
 
 .planet-laser.Opposition {
-	border-left: 2px solid #CBFFF8;
-	border-right: 2px solid #CBFFF8;
+	border-left: 3px solid #CBFFF8;
+	border-right: 3px solid #CBFFF8;
 }
 
 .planet-laser.Trine {
@@ -803,7 +804,6 @@ div.fader {
 .aspect-bar-segment {
 	position: absolute;
 	width: 18px;
-	height: 9px;
 	cursor: pointer;
 }
 
