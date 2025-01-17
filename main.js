@@ -327,7 +327,8 @@ Vue.component('main-frame', {
 					'<div v-for="(p1, p1name) in $root.aspects" :key="p1name" :id="p1name + \'-aspects\'">' +
 						'<div ' +
 							'v-for="(p2, p2name) in p1" ' +
-							'v-if="p2.p1order > p2.p2order && p1name != \'Moon\' && p2name != \'Moon\'"" ' +
+							'v-if="p2.p1order > p2.p2order" ' +
+								//'&& p1name != \'Moon\' && p2name != \'Moon\'"" ' +
 							':key="p1name + \'-\' + p2name" ' +
 						'>' +
 							'<div class="aspect-list" ' +
@@ -772,7 +773,8 @@ Vue.component('the-sky', {
 					'<div v-for="(p1, p1name) in $root.aspects" :key="p1name" :id="p1name + \'-aspects\'">' +
 						'<div ' +
 							'v-for="(p2, p2name) in p1" ' +
-							'v-if="(!$root.selectedPlanets || ($root.selectedPlanets[p1name] && $root.selectedPlanets[p2name])) && p1name != \'Moon\' && p2name != \'Moon\'" ' +
+							'v-if="(!$root.selectedPlanets || ($root.selectedPlanets[p1name] && $root.selectedPlanets[p2name]))" ' +
+								//'&& p1name != \'Moon\' && p2name != \'Moon\'" ' +
 							':key="p1name + \'-\' + p2name" ' +
 							':id="p1name + \'-\' + p2name + \'-aspect\'" ' +
 						'>' +
@@ -1098,7 +1100,7 @@ Vue.component('the-sky', {
 										'style="font-size: 11px;" ' +
 										':style="{ ' +
 											'height: ($root.segmentHeight - 1) + \'px\', ' +
-											'width: ($root.tickScale * 2 + 1) + \'px\', ' +
+											'width: ($root.tickScale * 2 + ((aspect && aspect.end) ? -2 : 1)) + \'px\', ' +
 											'left: (j * $root.tickScale * 2) + \'px\', ' +
 											'backgroundColor: aspect ? aspect.color : null, ' +
 										'}"' +
@@ -1106,7 +1108,7 @@ Vue.component('the-sky', {
 										'>' +
 										'<div style="z-index: 3; position: absolute; bottom: 0; text-shadow: 1px 1px 0px black;" ' +
 											'v-if=" aspect && aspect.start ' +
-											'">{{ aspect.p2name }}&nbsp;{{ aspect.symbol }}&nbsp;{{ aspect.p1name }}</div>' +
+											'">{{ aspect.length <= 1 ? aspect.p2symbol : aspect.p2name + \'&nbsp;\' }}{{ aspect.symbol }}{{ aspect.length <= 1 ? aspect.p1symbol : \'&nbsp;\' + aspect.p1name }}</div>' +
 									'</div>' +
 								'</div>' +
 							'</div>' +
@@ -6657,10 +6659,12 @@ var app = new Vue({
 		    for (var i = 0; i < Math.floor(35 / (t.tickScale / 7.2)); i++) {
 			    aspectsRow = {};
 			    t.thePlanets.forEach(function(p1) {
-				    if (p1.name != 'Moon') {
+				    if (true 
+					    ) {
 					    aspectsRow[p1.name] = {};
 					    t.thePlanets.forEach(function(p2) {
-						    if (p2.name != 'Moon' && p1.order < p2.order) {
+						    if (p1.order < p2.order
+							    ) {
 							    aspectsRow[p1.name][p2.name] = t.getAspect(p1, p2, t.loadTime + 20000000 * i);
 							    //aspectsRow[p1.name][p2.name] = t.getAspect(p1, p2, t.dateTime + t.stepIncrement * i);
 						    }
@@ -6698,7 +6702,6 @@ var app = new Vue({
 				    t.aspectsSequence.forEach(function(step, ind) { if (aspectStart == -1 && step[p1name][p2name]) { aspectStart = ind; } });
 				    var aspectEnd = -1;
 				    t.aspectsSequence.forEach(function(step, ind) { if (step[p1name][p2name]) { aspectEnd = ind; } });
-				    //console.log(p1name + ', ' + p2name + ': ' + aspectStart + ', ' + aspectEnd);
 
 				    // Check if any rows in the sequence have space for this aspect
 				    // If not, add a new row
@@ -6722,25 +6725,21 @@ var app = new Vue({
 
 				    // Fill in the spaces in the row with space
 				    for (var i = aspectStart; i <= aspectEnd; i++) {
-					    var aspect = JSON.parse(JSON.stringify(t.aspectsSequence[i][p1name][p2name]));
-					    aspect.p1name = p1name;
-					    aspect.p2name = p2name;
-					    if (i == aspectStart) { aspect.start = true; } else { aspect.start = false; }
-					    stackedAspectsInTheAspectsSequence[rowWithSpace][i] = aspect;
+					    if (t.aspectsSequence[i][p1name][p2name]) {
+						    var aspect = JSON.parse(JSON.stringify(t.aspectsSequence[i][p1name][p2name]));
+						    aspect.p1name = p1name;
+						    aspect.p1symbol = t.thePlanets.filter(function(el) { return el.name == p1name; })[0].symbol;
+						    aspect.p2name = p2name; 
+						    aspect.p2symbol = t.thePlanets.filter(function(el) { return el.name == p2name; })[0].symbol;
+						    aspect.length = aspectEnd - aspectStart;
+						    if (i == aspectStart) { aspect.start = true; } else { aspect.start = false; }
+						    if (i == aspectEnd) { aspect.end = true; } else { aspect.end = false; }
+						    stackedAspectsInTheAspectsSequence[rowWithSpace][i] = aspect;
+					    }
 				    }
 			    }
 		    }
 		    return stackedAspectsInTheAspectsSequence;
-	    },
-	    countOfAspectsInTheAspectsSequence: function(excludeMoon) {
-		    var t = this;
-		    var count = 0;
-		    for (var p1name in t.aspectsInTheAspectsSequence) {
-			    for (var p2name in t.aspectsInTheAspectsSequence[p1name]) {
-				    if (p1name != 'Moon') { count++ }
-			    }
-		    }
-		    return count;
 	    },
 	    aspects: function() {
 		    var t = this;
@@ -6797,6 +6796,9 @@ var app = new Vue({
 						    aspects[p1.name][p2.name].orb = Math.round((angleDiff - 60) * 10)/10;
 						    aspects[p1.name][p2.name].strength = 1 - Math.abs((angleDiff - 60) / maxOrb);
 					    } else {
+						    delete aspects[p1.name][p2.name];
+					    }
+					    if (p1.name == 'Moon' || p2.name == 'Moon') {
 						    delete aspects[p1.name][p2.name];
 					    }
 					    if (aspects[p1.name] && aspects[p1.name][p2.name]) { aspects[p1.name][p2.name].strength *= 4; }
@@ -6907,6 +6909,7 @@ var app = new Vue({
 		    }
 	    },
 	    getAspect: function(p1, p2, dateTime) {
+		    if (p1.name == 'Moon' || p2.name == 'Moon') { return null; }
 		    var p1angle = this.planetAngle(p1.name, dateTime);
 		    var p2angle = this.planetAngle(p2.name, dateTime);
 
@@ -6918,7 +6921,7 @@ var app = new Vue({
 		    if (Math.abs(angleDiff - 0) < maxOrb) { 
 			    return {
 				    color: '#EC7357',
-				    symbol: String.fromCodePoint(0x260D),
+				    symbol: String.fromCodePoint(0x260C),
 			    };
 		    } else if (Math.abs(angleDiff - 180) < maxOrb) { 
 			    return {
@@ -6953,7 +6956,7 @@ var app = new Vue({
 		    if (this.selectedPlanets[planetName]) {
 			    Vue.delete(this.selectedPlanets, planetName);
 		    } else {
-			    if (!ignoreAspects && Object.keys(this.selectedPlanets).length == 0) {
+			    if (t.showAspects && !ignoreAspects && Object.keys(this.selectedPlanets).length == 0) {
 				    for (var aspectedPlanet in t.aspects[planetName]) {
 					    Vue.set(this.selectedPlanets, aspectedPlanet, true);
 				    }
