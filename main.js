@@ -258,9 +258,10 @@ Vue.component('main-frame', {
 						'<div class="control-button" :class="{ on: $root.showAngles, }" @click.stop="$root.showAngles = !$root.showAngles">Angles</div>' +
 						'<div class="control-button" :class="{ on: $root.showCards, }" @click.stop="$root.showCards = !$root.showCards">Cards</div>' +
 						'<div class="control-button" :class="{ on: $root.toEcliptic, }" @click.stop="$root.toEcliptic = !$root.toEcliptic">To Ecliptic</div>' +
-						'<div class="control-button" :class="{ on: $root.sequenceView, }" @click.stop="$root.sequenceView = !$root.sequenceView;">Sequence</div>' +
+						//'<div class="control-button" :class="{ on: $root.sequenceView, }" @click.stop="$root.sequenceView = !$root.sequenceView;">Sequence</div>' +
 						'<div class="control-button" :class="{ on: $root.tinyView, }" @click.stop="$root.tinyView = !$root.tinyView">Tiny</div>' +
 						'<div class="control-button" :class="{ on: $root.videoView, }" @click.stop="$root.videoView = !$root.videoView">Video</div>' +
+						'<div class="control-button" :class="{ on: $root.showAspectsSequence, }" @click.stop="$root.showAspectsSequence = !$root.showAspectsSequence">Sequence</div>' +
 					'</div>' + 
 				'</div>' +
 			'</div>' +
@@ -402,6 +403,10 @@ Vue.component('planet-card', {
 	template: '' +
 		'<div class="tiny-view-card" ' +
 			'@click.stop="$root.showCards = false" ' +
+			':style="{ ' +
+				' marginLeft: Object.keys($root.selectedPlanets).length == 3 ? \'7px\' : null, ' +
+				' marginRight: Object.keys($root.selectedPlanets).length == 3 ? \'7px\' : null, ' +
+			'}" ' +
 		'>' +
 			'<div class="tiny-view-card-art">' +
 				'<img :src="\'images/\' + planet.name + \'.png\'">' +
@@ -1083,10 +1088,12 @@ Vue.component('the-sky', {
 						'<div class="video-view-blackout" style="bottom: 2px;"></div>' +
 						'<div class="video-view-vertical" style="left: 0;">' +
 							'<div style="position: absolute; width: 540px; left: 1px; top: 2px; background-color: black;" ' +
+								'v-if="$root.showAspectsSequence" ' +
 								':style="{ height: (32 + ($root.stackedAspectsInTheAspectsSequence.length) * $root.segmentHeight) + \'px\', }" ' +
 								'>' +
 							'</div>' +
 							'<div class="aspects-box" ' +
+								'v-if="$root.showAspectsSequence" ' +
 								'>' +
 								'<div ' +
 									'class="aspect-bar" ' +
@@ -1113,6 +1120,7 @@ Vue.component('the-sky', {
 								'</div>' +
 							'</div>' +
 							'<div ' +
+								'v-if="$root.showAspectsSequence" ' +
 								'style=" ' +
 									'position: absolute; ' +
 									'width: 100%; height: 100%; ' +
@@ -1275,6 +1283,7 @@ var app = new Vue({
 	    showTropical: true,
 	    showLines: false,
 	    showAspects: true,
+	    showAspectsSequence: true,
 	    showDivisions: false,
 	    showAngles: false,
 	    showCards: true,
