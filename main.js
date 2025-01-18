@@ -1182,7 +1182,7 @@ Vue.component('the-sky', {
 										'transform: rotate(90deg); ' +
 										'transform-origin: center center; ' +
 										'height: 200px; ' +
-										'top: 4%; ' +
+										'top: 14%; ' +
 										'left: 50%; ' +
 										'border-left-width: 5px; ' +
 									'" ' +
@@ -1309,12 +1309,12 @@ var app = new Vue({
 	    ],
 	    thePlanets: [
 		{ order: 1, placement: 'inner', name: 'Moon', symbol: String.fromCodePoint(0x263D), size: 20, color: '#D8CFC0', 
-			keyTrait: 'Sensitivity', 
+			keyTrait: 'Emotions', 
 			traits: ['Cycles', 'Memory', 'Nurturing', 'Instinct'], 
 		}, 
 		{ order: 2, placement: 'inner', name: 'Mercury', symbol: String.fromCodePoint(0x263F), size: 10, color: '#9A8C98', 
 			keyTrait: 'Communication', 
-			traits: ['Speed', 'Intelligence', 'Flexibility', 'Commerce'], 
+			traits: ['Speed', 'Intellect', 'Flexibility', 'Commerce'], 
 		}, 
 		{ order: 3, placement: 'inner', name: 'Venus', symbol: String.fromCodePoint(0x2640), size: 10, color: '#E39D4F', 
 			keyTrait: 'Relationships', 
