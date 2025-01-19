@@ -619,6 +619,10 @@ table td {
 	cursor: pointer;
 }
 
+.sequence-tick-line-label.tiny {
+	font-size: 7px;
+}
+
 .month .sequence-tick-line-label {
 	color: rgba(255, 255, 255, .6);
 }
@@ -806,6 +810,11 @@ div.fader {
 	position: absolute;
 	width: 18px;
 	cursor: pointer;
+	font-size: 11px;
+}
+
+.aspect-bar-segment.tiny {
+	font-size: 9px;
 }
 
 .sunrise-sunset-box {
@@ -818,4 +827,8 @@ div.fader {
 	position: absolute;
 	transform: translate(-50%, -50%);
 	//transform-origin: center;
+}
+
+.placements-table td {
+	padding: 0px 3px;
 }
