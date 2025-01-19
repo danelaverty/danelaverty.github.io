@@ -235,6 +235,11 @@ Vue.component('main-frame', {
 							'<div class="speed-control-button" @click.stop="$root.stepIncrementUp">+</div>' +
 						'</div>' +
 						'<div class="control-text">Speed: {{ $root.stepIncrement / 1000000 }} ({{ Math.round(($root.stepIncrement / $root.DAY) * 100) / 100 }} days)</div>' +
+						'<div>' +
+							'<div class="speed-control-button" @click.stop="$root.tickScaleDown">&minus;</div>' +
+							'<div class="speed-control-button" @click.stop="$root.tickScaleUp">+</div>' +
+						'</div>' +
+						'<div class="control-text">Scale: {{ $root.tickScale }}</div>' +
 						//'<div class="control-button" @click.stop="$root.dateTime = $root.sessionStorage.getItem(\'savedTime\') ? parseInt($root.sessionStorage.getItem(\'savedTime\')) : 0;">Load</div>' +
 						//'<div class="control-button" @click.stop="$root.dateTime = 1718973664715">Longest SR</div>' +
 						//'<div class="control-button" @click.stop="$root.dateTime = 1718996414715">Longest Noon</div>' +
@@ -263,6 +268,20 @@ Vue.component('main-frame', {
 						'<div class="control-button" :class="{ on: $root.videoView, }" @click.stop="$root.videoView = !$root.videoView">Video</div>' +
 						'<div class="control-button" :class="{ on: $root.showAspectsSequence, }" @click.stop="$root.showAspectsSequence = !$root.showAspectsSequence">Sequence</div>' +
 					'</div>' + 
+				'</div>' +
+				'<div class="control-box" style="bottom: 0; left: 0;"' +
+					'>' +
+					'<table class="placements-table aspect-list">' +
+						'<tr v-for="(planet, planetName) in $root.placements()" :key="planetName" ' +
+							':class="{ selected: $root.selectedPlanets && $root.selectedPlanets[planetName], }" ' +
+							'@click.stop="$root.togglePlanetSelection(planetName)" ' +
+							'>' +
+							'<td style="text-align: right;">{{ planetName }}</td>' +
+							'<td>{{ $root.thePlanets.filter(function(planet) { return planet.name == planetName })[0].symbol }}</td>' +
+							'<td>{{ $root.theZodiac.filter(function(constellation) { return constellation.name == planet.sign })[0].symbol }}</td>' +
+							'<td>{{ planet.sign }}</td>' +
+						'</tr>' +
+					'</table>' +
 				'</div>' +
 			'</div>' +
 			'<div class="main-frame-vertical right">' +
@@ -589,8 +608,23 @@ Vue.component('the-sky', {
 								'</text>' +
 							'</g>' +
 						'</svg>' +
+						'<svg ' +
+							'v-for="(constellation, i) in $root.theZodiac" ' +
+							'width="670" ' +
+							'height="670" ' +
+							'viewBox="0 0 700 700" ' +
+							'style="position: absolute; top: 0px; left: 0px; pointer-events: none;" ' +
+							':style="{ transform: \'translate(-50%, -50%) rotate(\' + (-30 * i) + \'deg)\', }" ' +
+						'>' +
+							'<g>' +
+								'<path id="top-sector" style="fill:none;stroke:none" d="M 90,350 A 46,46.5 0 0 1 610,350" />' +
+								'<text font-size="12" font-family="Georgia" fill="#777" width="500" text-anchor="middle">' +
+									'<textPath alignment-baseline="middle" startOffset="50%" xlink:href="#top-sector">{{ i + 1 }}</textPath>' +
+								'</text>' +
+							'</g>' +
+						'</svg>' +
 					'</div>' +
-					'<div v-if="$root.sequenceView" v-for="n in 35">' +
+					'<div v-if="$root.sequenceView" v-for="n in $root.tickCount">' +
 						'<a-planet ' +
 							'v-for="(planet, i) in $root.thePlanets" ' +
 							':key="planet.order" ' +
@@ -1104,7 +1138,8 @@ Vue.component('the-sky', {
 								'>' +
 									'<div v-for="(aspect, j) in aspectRow" ' +
 										'class="aspect-bar-segment no-select" ' +
-										'style="font-size: 11px;" ' +
+										':class="{ tiny: $root.tickScaleIsTiny, }" ' +
+										//'style="font-size: 11px;" ' +
 										':style="{ ' +
 											'height: ($root.segmentHeight - 1) + \'px\', ' +
 											'width: ($root.tickScale * 2 + ((aspect && aspect.end) ? -2 : 1)) + \'px\', ' +
@@ -1114,8 +1149,8 @@ Vue.component('the-sky', {
 										'@click.stop="$root.selectAspect(aspect.p1name, aspect.p2name)" ' +
 										'>' +
 										'<div style="z-index: 3; position: absolute; bottom: 0; text-shadow: 1px 1px 0px black;" ' +
-											'v-if=" aspect && aspect.start ' +
-											'">{{ aspect.length <= 1 ? aspect.p2symbol : aspect.p2name + \'&nbsp;\' }}{{ aspect.symbol }}{{ aspect.length <= 1 ? aspect.p1symbol : \'&nbsp;\' + aspect.p1name }}</div>' +
+											'v-if="aspect && aspect.start" ' +
+											'>{{ aspect.length <= 1 || $root.tickScaleIsTiny ? aspect.p2symbol : aspect.p2name + \'&nbsp;\' }}{{ aspect.symbol }}{{ aspect.length <= 1 || $root.tickScaleIsTiny ? aspect.p1symbol : \'&nbsp;\' + aspect.p1name }}</div>' +
 									'</div>' +
 								'</div>' +
 							'</div>' +
@@ -1132,7 +1167,7 @@ Vue.component('the-sky', {
 									':class="{ ' +
 										'month: 10000000 <= 100000000 && (new Date($root.loadTime + ($root.DAY * n))).getDate() == 1, ' +
 									'}" ' +
-									'v-for="n in Math.floor(10000000 / (10 * 100000))" ' +
+									'v-for="n in $root.tickCount" ' +
 									':style="{ ' +
 										'width: (6 + ($root.stackedAspectsInTheAspectsSequence.length) * $root.segmentHeight) + \'px\', ' +
 										'left: ($root.tickScale * ($root.DAY / 10000000) * n) - (($root.midnightOverage($root.loadTime) / $root.DAY) * ($root.tickScale * $root.DAY / 10000000)) + \'px\', ' +
@@ -1140,12 +1175,20 @@ Vue.component('the-sky', {
 										'transform: \'rotate(90deg)\', ' +
 									'}" ' +
 									'>' +
-									'<div class="sequence-tick-line-label" @click.stop="$root.dateTime = $root.loadTime + $root.DAY * n - $root.loadTimeDayPercent * $root.DAY" style="left: -16px; color: rgba(255, 255, 255, .8); font-weight: bold; font-size: 10px; font-family: Arial; letter-spacing: 1px;">{{ $root.dayOfWeek[($root.loadDateShown.getDay() + n) % 7] }}<br>{{ $root.humanReadableDateTime($root.loadTime + ($root.DAY * n), true, true) }}</div>' +
+									'<div class="sequence-tick-line-label" ' +
+										':class="{ tiny: $root.tickScaleIsTiny, }" ' +
+										'@click.stop="$root.dateTime = $root.loadTime + $root.DAY * n - $root.loadTimeDayPercent * $root.DAY" ' +
+										'style="left: -16px; color: rgba(255, 255, 255, .8); font-weight: bold; font-family: Arial; letter-spacing: 1px;" ' +
+										'>' +
+											'<span v-if="!$root.tickScaleIsTiny">{{ $root.dayOfWeek[($root.loadDateShown.getDay() + n) % 7] }}<br></span>' +
+											'{{ $root.humanReadableDateTime($root.loadTime + ($root.DAY * n), true, true) }}' +
+										'</div>' +
 								'</div>' +
 								'<div ' +
 									'v-if="10000000 <= 100000000 && $root.dateTime >= $root.loadTime" ' +
 									'class="sequence-tick-line short" ' +
 									'style="background-color: #FF7; height: 2px;" ' +
+									'id="tick-cursor" ' +
 									':style="{ ' +
 										'width: (6 + ($root.stackedAspectsInTheAspectsSequence.length) * $root.segmentHeight) + \'px\', ' +
 										'left: ($root.tickScale * (($root.dateTime - $root.loadTime) / (10000000)) + 1) + \'px\', ' +
@@ -1246,9 +1289,8 @@ var app = new Vue({
 	el: '#app',
     data: {
 	    additionalRotation: 0,
-	    //tickScale: 7.2,
-	    tickScale: 14.4,
-	    segmentHeight: 13,
+	    tickScale: 7,
+	    //tickScale: 14.4,
 	    dayOfWeek: { 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat', 0: 'Sun' },
 	    eclExt: 117,
 	    eclRot: Math.PI,
@@ -1330,7 +1372,7 @@ var app = new Vue({
 		}, 
 		{ order: 6, placement: 'middle', name: 'Jupiter', symbol: String.fromCodePoint(0x2643), size: 10, color: '#D8BE48', 
 			keyTrait: 'Success', 
-			traits: ['Growth', 'Fortune', 'Adventure', 'Optimism'], 
+			traits: ['Growth', 'Fortune', 'Adventure', 'Enthusiasm'], 
 		}, 
 		{ order: 7, placement: 'middle', name: 'Saturn', symbol: String.fromCodePoint(0x2644), size: 10, color: '#AE8A6A', 
 			keyTrait: 'Caution', 
@@ -6645,6 +6687,12 @@ var app = new Vue({
 	    theCenterEl: null,
     },
     computed: {
+	    tickScaleIsTiny: function() {
+		    return this.tickScale < 3;
+	    },
+	    segmentHeight: function() {
+		    return this.tickScaleIsTiny ? 10 : 13;
+	    },
 	    risingSignForReferenceMoment: function() {
 		    //
 	    },
@@ -6662,10 +6710,13 @@ var app = new Vue({
 	    loadTimeDayPercent: function() {
 		    return (new Date(this.loadTime).getHours() * 60 + new Date(this.loadTime).getMinutes()) / 1440;
 	    },
+	    tickCount: function() {
+		    return Math.floor(35 / (this.tickScale / 7.2));
+	    },
 	    aspectsSequence: function() {
 		    var t = this;
 		    var aspectsSequence = [];
-		    for (var i = 0; i < Math.floor(35 / (t.tickScale / 7.2)); i++) {
+		    for (var i = 0; i < t.tickCount; i++) {
 			    aspectsRow = {};
 			    t.thePlanets.forEach(function(p1) {
 				    if (true 
@@ -7013,6 +7064,14 @@ var app = new Vue({
 		    if (dateOnly) { return datePortion; }
 		    return timePortion + ' ' + datePortion;
 	    },
+	    tickScaleUp: function() {
+		    if (this.tickScale > 100) { return; }
+		    this.tickScale++;
+	    },
+	    tickScaleDown: function() {
+		    if (this.tickScale < 2) { return; }
+		    this.tickScale--;
+	    },
 	    stepIncrementDown: function() {
 		    var i = this.stepIncrements.indexOf(this.stepIncrement / this.factor);
 		    if (i == 0) { return; }
@@ -7038,7 +7097,7 @@ var app = new Vue({
 			    return 0;
 		    }
 	    },
-	    momentPlacements(dateTime) {
+	    placements(dateTime) {
 		    var t = this;
 		    if (!dateTime) { dateTime = t.dateTime; }
 		    var placements = {};
@@ -7051,7 +7110,7 @@ var app = new Vue({
 		    return placements;
 	    },
 	    angleToSign(angle) {
-		    return this.theZodiac[Math.floor(((360 + (-angle + 24.2)) % 360) / 30)].name;
+		    return this.theZodiac[Math.floor(((360 + (-angle + 24.2 + 14.9)) % 360) / 30)].name;
 	    },
 	    dayOfYear(date) {
 		    return (Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) - Date.UTC(date.getFullYear(), 0, 0)) / 24 / 60 / 60 / 1000;
@@ -7343,6 +7402,9 @@ var app = new Vue({
 		    if ($root.referenceMoment && $root.dateTime > $root.referenceMoment) { 
 			    $root.stopClock();
 			    $root.fadeOutAndIn(function() { $root.dateTime = $root.loadTime; });
+		    }
+		    if (~~document.getElementById('tick-cursor').style.left.replace('px','') > 480) {
+			    $root.loadTime = $root.dateTime;
 		    }
 	    },
 	    stepTimeBack: function() {
