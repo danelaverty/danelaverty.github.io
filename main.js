@@ -90,7 +90,7 @@ Vue.component('a-planet', {
 			'>' +
 				'<div v-if="planet.name == \'Moon\'" class="moon-shader" ' +
 					':style="{ ' +
-						'transform: \'rotate(\' + (180 - 90 + $root.sunAngle - $root.moonAngle - ($root.visibleSkyUp ? $root.theCenterRotation : 0)) + \'deg)\', ' +
+						'transform: \'rotate(\' + (180 - 90 + $root.sunAngle() - $root.moonAngle - ($root.visibleSkyUp ? $root.theCenterRotation : 0)) + \'deg)\', ' +
 						'opacity: opacity, ' +
 					'}" ' +
 				'></div>' +
@@ -277,9 +277,11 @@ Vue.component('main-frame', {
 							'@click.stop="$root.togglePlanetSelection(planetName)" ' +
 							'>' +
 							'<td style="text-align: right;">{{ planetName }}</td>' +
-							'<td>{{ $root.thePlanets.filter(function(planet) { return planet.name == planetName })[0].symbol }}</td>' +
-							'<td>{{ $root.theZodiac.filter(function(constellation) { return constellation.name == planet.sign })[0].symbol }}</td>' +
+							'<td>{{ planetName == \'Rising\' ? \'\' : $root.thePlanets.filter(function(planet) { return planet.name == planetName })[0].symbol }}</td>' +
+							'<td>{{ planet.name == \'Rising\' ? \'R\' : $root.theZodiac.filter(function(constellation) { return constellation.name == planet.sign })[0].symbol }}</td>' +
 							'<td>{{ planet.sign }}</td>' +
+							'<td v-if="$root.referenceMoment"> / </td>' +
+							'<td v-if="$root.referenceMoment">{{ planet.referenceSign }}</td>' +
 						'</tr>' +
 					'</table>' +
 				'</div>' +
@@ -305,7 +307,7 @@ Vue.component('main-frame', {
 								'<td><span v-show="$root.dateShown.getMonth() < 9">0</span>{{ $root.dateShown.getMonth() + 1 }}/</td>' +
 								'<td><span v-show="$root.dateShown.getDate() < 10">0</span>{{ $root.dateShown.getDate() }}/</td>' +
 								'<td>{{ $root.dateShown.getFullYear() }}&nbsp;</td>' +
-								'<td class="dst-indicator" :style="{ color: $root.isDST ? \'white\' : \'black\', }">(DST)</td>' +
+								'<td class="dst-indicator" :style="{ color: $root.isDST() ? \'white\' : \'black\', }">(DST)</td>' +
 								'<td>&nbsp;{{ $root.additionalRotation > 0 ? \'+\' : \'\' }}{{ $root.additionalRotation }}&deg;</td>' +
 							'</tr>' +
 							'<tr class="control-row">' +
@@ -1064,7 +1066,7 @@ Vue.component('the-sky', {
 						':style="{ ' +				
 							'transform: \'' +
 								'translate(0%, -50%) ' +
-								'rotate(\' + ($root.sunAngle - (360 * $root.dayPercent())) + \'deg)' +
+								'rotate(\' + ($root.sunAngle() - (360 * $root.dayPercent())) + \'deg)' +
 							'\', ' +
 							'zIndex: !$root.showShader ? -1 : null, ' +
 							'borderLeft: $root.showAngles ? \'1px solid #666\' : null, ' +
@@ -1096,7 +1098,7 @@ Vue.component('the-sky', {
 						':style="{ ' +				
 							'transform: \'' +
 								'translate(0%, -50%) ' +
-								'rotate(\' + ($root.sunAngle - (360 * $root.dayPercent())) + \'deg) ' +
+								'rotate(\' + ($root.sunAngle() - (360 * $root.dayPercent())) + \'deg) ' +
 								'scaleX(-1) ' +
 							'\', ' +
 							'zIndex: !$root.showShader ? -1 : null, ' +
@@ -6872,7 +6874,7 @@ var app = new Vue({
 		    return aspects;
 	    },
 	    theCenterRotation: function() {
-		    return -(180 + this.$root.sunAngle - (360 * this.$root.dayPercent()));
+		    return -(180 + this.$root.sunAngle() - (360 * this.$root.dayPercent()));
 	    },
 	    northSouthNodeRotation: function() {
 		    var referenceTime = 1689658882319;
@@ -6880,27 +6882,6 @@ var app = new Vue({
 		    // Wikipedia says nodes travel 19.5 degrees per year, but 19.8 matches the sample dates here - https://people.com/north-node-south-node-everything-to-know-8694483
 		    var rotationPerMILLI = 19.8 / this.$root.MILLIS_IN_YEAR;
 		    return (msFromReferenceTime * rotationPerMILLI) % 360 - 15;
-	    },
-	    isDST: function() {
-		    var month = this.dateShown.getMonth() + 1;
-		    if (month >= 4 && month <= 10) { return true };
-		    if (month == 12 || month == 1 || month == 2) { return false };
-
-		    // Starts 2nd Sunday of March
-		    if (month == 3) {
-			    if (this.dateShown.getDate() > 14) { return true; }
-			    if (this.dateShown.getDate() <= 7) { return false; }
-			    var dateOfPreviousSunday = (this.dateShown.getDate() - this.dateShown.getDay())
-			    if (dateOfPreviousSunday <= 7) { return false; }
-			    return true;
-		    }
-		    // Ends 1st Sunday of November
-		    if (month == 11) {
-			    if (this.dateShown.getDate() > 7) { return false; }
-			    var dateOfPreviousSunday = (this.dateShown.getDate() - this.dateShown.getDay())
-			    if (dateOfPreviousSunday <= 0) { return true; }
-			    return false;
-		    }
 	    },
 	    dateShown: function() {
 		    return new Date(this.dateTime);
@@ -6915,10 +6896,6 @@ var app = new Vue({
 		    var totalMinutes = minutes + hoursAsMinutes;
 		    var MINUTES_IN_A_DAY = 24 * 60;
 		    return totalMinutes / MINUTES_IN_A_DAY;
-	    },
-	    dateShownDSTAdjusted: function() {
-		    if (!this.isDST) { return new Date(this.dateShown.getTime()); }
-		    return new Date(this.dateShown.getTime() - (60 * 60 * 1000));
 	    },
 	    starsInTheLines: function() {
 		    starsInTheLines = {};
@@ -6955,14 +6932,42 @@ var app = new Vue({
 		    }
 		    return theStarsNameLookup;
 	    },
-	    sunAngle: function() {
-		    return this.$root.planetAngle('Sun', this.dateTime);
-	    },
 	    moonAngle: function() {
 		    return this.$root.planetAngle('Moon', this.dateTime);
 	    },
     },
     methods: {
+	    dateDSTAdjusted: function(date) {
+		    if (!date) { date = this.dateShown; }
+		    if (!this.isDST(date)) { return new Date(date.getTime()); }
+		    return new Date(date.getTime() - (60 * 60 * 1000));
+	    },
+	    isDST: function(date) {
+		    if (!date) { date = this.dateShown; }
+		    var month = date.getMonth() + 1;
+		    if (month >= 4 && month <= 10) { return true };
+		    if (month == 12 || month == 1 || month == 2) { return false };
+
+		    // Starts 2nd Sunday of March
+		    if (month == 3) {
+			    if (date.getDate() > 14) { return true; }
+			    if (date.getDate() <= 7) { return false; }
+			    var dateOfPreviousSunday = (date.getDate() - date.getDay())
+			    if (dateOfPreviousSunday <= 7) { return false; }
+			    return true;
+		    }
+		    // Ends 1st Sunday of November
+		    if (month == 11) {
+			    if (date.getDate() > 7) { return false; }
+			    var dateOfPreviousSunday = (date.getDate() - date.getDay())
+			    if (dateOfPreviousSunday <= 0) { return true; }
+			    return false;
+		    }
+	    },
+	    sunAngle: function(dateTime) {
+		    if (!dateTime) { dateTime = this.dateTime; }
+		    return this.$root.planetAngle('Sun', dateTime);
+	    },
 	    thePlanet: function(planetName) {
 		    for (var i = 0; i < this.thePlanets.length; i++) {
 			    if (this.thePlanets[i].name == planetName) { return this.thePlanets[i]; }
@@ -7106,7 +7111,23 @@ var app = new Vue({
 			    placements[planet.name] = {};
 			    placements[planet.name].angle = angle;
 			    placements[planet.name].sign = t.angleToSign(angle);
+			    if (t.referenceMoment) {
+				    var referenceAngle = t.planetAngle(planet.name, t.referenceMoment);
+				    placements[planet.name].referenceAngle = referenceAngle;
+				    placements[planet.name].referenceSign = t.angleToSign(referenceAngle);
+			    }
 		    });
+		    var risingAngle = this.sunAngle(dateTime) - (360 * this.dayPercent()) - this.shaderSeasonRotation() + 90;
+		    placements['Rising'] = {
+			    angle: risingAngle,
+			    sign: t.angleToSign(risingAngle),
+		    }
+
+		    if (t.referenceMoment) {
+			    var referenceRisingAngle = this.sunAngle(t.referenceMoment) - (360 * this.dayPercent(new Date(t.referenceMoment))) - this.shaderSeasonRotation(new Date(t.referenceMoment)) + 90;
+			    placements['Rising'].referenceAngle = referenceRisingAngle;
+			    placements['Rising'].referenceSign = t.angleToSign(referenceRisingAngle);
+		    }
 		    return placements;
 	    },
 	    angleToSign(angle) {
@@ -7118,10 +7139,11 @@ var app = new Vue({
 	    dayLengthCoefficient(date) {
 		    return Math.sin((this.dayOfYear(date) - 172 + 91.25) / (365 / (2 * Math.PI)));
 	    },
-	    shaderSeasonRotation() {
+	    shaderSeasonRotation(date) {
+		    if (!date) { date = this.dateShown; }
 		    var delta = 0
 		    var maxRotationDegs = 20 - delta;
-		    return this.dayLengthCoefficient(this.dateShown) * maxRotationDegs - delta;
+		    return this.dayLengthCoefficient(date) * maxRotationDegs - delta;
 	    },
 	    isZodiac: function(star) {
 		    return [
@@ -7131,9 +7153,9 @@ var app = new Vue({
 		    //'ECL', 
 		    ].indexOf(star.con) > -1;
 	    },
-	    dayPercent: function() {
-		    //return (this.dateShown.getHours() * 60 + this.dateShown.getMinutes()) / 1440;
-		    return (this.dateShownDSTAdjusted.getHours() * 60 + this.dateShownDSTAdjusted.getMinutes()) / 1440;
+	    dayPercent: function(date) {
+		    if (!date) { date = this.dateShown; }
+		    return (this.dateDSTAdjusted(date).getHours() * 60 + this.dateDSTAdjusted(date).getMinutes()) / 1440;
 	    },
 	    planetAngle: function(planetName, dateTime) {
 		    if (['NN', 'SN'].indexOf(planetName) > -1) { return 0; }
