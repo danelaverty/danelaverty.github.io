@@ -322,8 +322,8 @@ Vue.component('main-frame', {
 							'</tr>' +
 						'</table>' +
 						'<div class="date-controls" style="text-align: right; min-width: 0px;">' +
-							'<div class="moments-button" @click.stop="$root.saveDateTime" style="width: 60px; display: inline-block;">Save</div>' +
-							'<div class="moments-button" @click.stop="$root.loadTime = $root.dateTime" style="width: 60px; display: inline-block;">Reset</div>' +
+							'<div class="moments-button" @click.stop="$root.saveDateTime" style="width: 70px; display: inline-block;">Save</div>' +
+							'<div class="moments-button" @click.stop="$root.loadTime = $root.dateTime" style="width: 70px; display: inline-block;">Reset</div>' +
 							'<table style="clear: right;">' +
 								//'<tr><td><table class="moments-table"><tr><td @click.stop="$root.dateTime = new Date().getTime()">Now</td></tr></table></td></tr>' +
 								'<tr v-for="savedDateTime in $root.savedDateTimes">' +
