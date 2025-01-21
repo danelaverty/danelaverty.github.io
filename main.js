@@ -1,5 +1,5 @@
 Vue.component('a-planet', {
-	props: { planet: Object, timeOffset: Number, opacity: Number, showName: Boolean, isFlat: Boolean, iteration: Number },
+	props: { planet: Object, timeOffset: Number, opacity: Number, showName: Boolean, isFlat: Boolean, iteration: Number, reference: Boolean },
 	computed: {
 		planetAngle: function() {
 			return this.$root.planetAngle(this.planet.name, this.$root.dateTime + this.timeOffset);
@@ -52,7 +52,7 @@ Vue.component('a-planet', {
 				'height: (this.$root.toEcliptic ? 600 : this.$root.tinyView ? 100 : (100 + 32 * planet.order)) + \'px\', ' +
 				'}" ' +
 			'>' +
-			'<div class="planet-name" v-if="!$root.useSymbols && showName" :class="{ small: $root.sequenceView, node: planet.name == \'NN\' || planet.name == \'SN\', }">{{ planet.name }}</div>' +
+			'<div class="planet-name" v-if="!$root.useSymbols && showName && !reference" :class="{ small: $root.sequenceView, node: planet.name == \'NN\' || planet.name == \'SN\', }">{{ planet.name }}</div>' +
 			'<div class="planet-symbol" v-if="$root.useSymbols && showName" :class="{ node: planet.name == \'NN\' || planet.name == \'SN\', }">{{ planet.symbol }}</div>' +
 			'<div class="planet-disc" ' +
 				':id="planet.name + \'-domal-dignity\'" ' +
@@ -81,7 +81,7 @@ Vue.component('a-planet', {
 			'<div class="planet-disc" ' +
 				':id="planet.name + \'-disc\'" ' +
 				':style="{ ' +
-					'backgroundColor: planet.color, ' +
+					'backgroundColor: reference ? \'white\' : planet.color, ' +
 					'border: planet.color == \'black\' ? \'1px solid #AAA\' : null, ' +
 					'width: planet.size + \'px\', ' +
 					'height: planet.size + \'px\', ' +
@@ -250,21 +250,22 @@ Vue.component('main-frame', {
 						//'<div class="control-button" @click.stop="$root.dateTime = 1734811224715">Shortest Noon</div>' +
 						//'<div class="control-button" @click.stop="$root.dateTime = 1734828424715">Shortest SS</div>' +
 						//'<br>' +
-						'<div class="control-button" :class="{ on: $root.useSymbols, }" @click.stop="$root.useSymbols = !$root.useSymbols">Symbols</div>' +
+						//'<div class="control-button" :class="{ on: $root.useSymbols, }" @click.stop="$root.useSymbols = !$root.useSymbols">Symbols</div>' +
 						'<div class="control-button" :class="{ on: $root.showShader, }" @click.stop="$root.showShader = !$root.showShader">Horizon</div>' +
 						'<div class="control-button" :class="{ on: $root.visibleSkyUp, }" @click.stop="$root.visibleSkyUp = !$root.visibleSkyUp">Sky Up</div>' +
 						'<div class="control-button" :class="{ on: $root.showLasers, }" @click.stop="$root.showLasers = !$root.showLasers">Finders</div>' +
 						'<div class="control-button" :class="{ on: $root.showLines, }" @click.stop="$root.showLines = !$root.showLines">Const.</div>' +
-						'<div class="control-button" :class="{ on: $root.showTropical, }" @click.stop="$root.showTropical = !$root.showTropical">Tropical</div>' +
+						//'<div class="control-button" :class="{ on: $root.showTropical, }" @click.stop="$root.showTropical = !$root.showTropical">Tropical</div>' +
 						'<div class="control-button" :class="{ on: $root.showAspects, }" @click.stop="$root.showAspects = !$root.showAspects">Aspects</div>' +
 						'<div class="control-button" :class="{ on: $root.showDivisions, }" @click.stop="$root.showDivisions = !$root.showDivisions">Divisions</div>' +
-						'<div class="control-button" :class="{ on: $root.showDignities, }" @click.stop="$root.showDignities = !$root.showDignities">Dignities</div>' +
-						'<div class="control-button" :class="{ on: $root.showRetrogrades, }" @click.stop="$root.showRetrogrades = !$root.showRetrogrades">Retrogrades</div>' +
+						//'<div class="control-button" :class="{ on: $root.showDignities, }" @click.stop="$root.showDignities = !$root.showDignities">Dignities</div>' +
+						//'<div class="control-button" :class="{ on: $root.showRetrogrades, }" @click.stop="$root.showRetrogrades = !$root.showRetrogrades">Retrogrades</div>' +
 						'<div class="control-button" :class="{ on: $root.showAngles, }" @click.stop="$root.showAngles = !$root.showAngles">Angles</div>' +
+						'<div class="control-button" :class="{ on: $root.showTransits, }" @click.stop="$root.showTransits = !$root.showTransits">Transits</div>' +
 						'<div class="control-button" :class="{ on: $root.showCards, }" @click.stop="$root.showCards = !$root.showCards">Cards</div>' +
 						'<div class="control-button" :class="{ on: $root.toEcliptic, }" @click.stop="$root.toEcliptic = !$root.toEcliptic">To Ecliptic</div>' +
 						//'<div class="control-button" :class="{ on: $root.sequenceView, }" @click.stop="$root.sequenceView = !$root.sequenceView;">Sequence</div>' +
-						'<div class="control-button" :class="{ on: $root.tinyView, }" @click.stop="$root.tinyView = !$root.tinyView">Tiny</div>' +
+						//'<div class="control-button" :class="{ on: $root.tinyView, }" @click.stop="$root.tinyView = !$root.tinyView">Tiny</div>' +
 						'<div class="control-button" :class="{ on: $root.videoView, }" @click.stop="$root.videoView = !$root.videoView">Video</div>' +
 						'<div class="control-button" :class="{ on: $root.showAspectsSequence, }" @click.stop="$root.showAspectsSequence = !$root.showAspectsSequence">Sequence</div>' +
 					'</div>' + 
@@ -274,7 +275,7 @@ Vue.component('main-frame', {
 					'<table class="placements-table aspect-list">' +
 						'<tr v-for="(planet, planetName) in $root.placements()" :key="planetName" ' +
 							':class="{ selected: $root.selectedPlanets && $root.selectedPlanets[planetName], }" ' +
-							'@click.stop="$root.togglePlanetSelection(planetName)" ' +
+							//'@click.stop="$root.togglePlanetSelection(planetName)" ' +
 							'>' +
 							'<td style="text-align: right;">{{ planetName }}</td>' +
 							'<td>{{ planetName == \'Rising\' ? \'\' : $root.thePlanets.filter(function(planet) { return planet.name == planetName })[0].symbol }}</td>' +
@@ -322,8 +323,9 @@ Vue.component('main-frame', {
 							'</tr>' +
 						'</table>' +
 						'<div class="date-controls" style="text-align: right; min-width: 0px;">' +
-							'<div class="moments-button" @click.stop="$root.saveDateTime" style="width: 70px; display: inline-block;">Save</div>' +
-							'<div class="moments-button" @click.stop="$root.loadTime = $root.dateTime" style="width: 70px; display: inline-block;">Reset</div>' +
+							'<div class="moments-button" @click.stop="$root.saveDateTime" style="display: inline-block;">Save</div>' +
+							'<div class="moments-button" @click.stop="$root.loadTime = $root.dateTime" style="display: inline-block;">Reset</div>' +
+							'<div class="moments-button" @click.stop="$root.dateTime = new Date().getTime(); $root.loadTime = $root.dateTime - (24 * 60 * 60 * 1000);" style="display: inline-block;">Now</div>' +
 							'<table style="clear: right;">' +
 								//'<tr><td><table class="moments-table"><tr><td @click.stop="$root.dateTime = new Date().getTime()">Now</td></tr></table></td></tr>' +
 								'<tr v-for="savedDateTime in $root.savedDateTimes">' +
@@ -625,6 +627,22 @@ Vue.component('the-sky', {
 								'</text>' +
 							'</g>' +
 						'</svg>' +
+						'<svg ' +
+							'v-if="$root.referenceMoment" ' +
+							'v-for="(constellation, i) in $root.theZodiac" ' +
+							'width="740" ' +
+							'height="740" ' +
+							'viewBox="0 0 700 700" ' +
+							'style="position: absolute; top: 0px; left: 0px; pointer-events: none;" ' +
+							':style="{ transform: \'translate(-50%, -50%) rotate(\' + (-30 * i - $root.houseRotation) + \'deg)\', }" ' +
+						'>' +
+							'<g>' +
+								'<path id="top-sector" style="fill:none;stroke:none" d="M 90,350 A 46,46.5 0 0 1 610,350" />' +
+								'<text font-size="16" font-family="Georgia" fill="#AA7" width="500" text-anchor="middle">' +
+									'<textPath alignment-baseline="middle" startOffset="50%" xlink:href="#top-sector">{{ $root.romanNumerals[i + 1] }}</textPath>' +
+								'</text>' +
+							'</g>' +
+						'</svg>' +
 					'</div>' +
 					'<div v-if="$root.sequenceView" v-for="n in $root.tickCount">' +
 						'<a-planet ' +
@@ -745,6 +763,18 @@ Vue.component('the-sky', {
 						':planet="planet" ' +
 						':timeOffset="0" ' +
 						':opacity="1" ' +
+						':showName=true ' +
+						'style="cursor: pointer;" ' +
+						'>' +
+					'</a-planet>' +
+					'<a-planet ' +
+						'v-if="!$root.sequenceView && $root.referenceMoment && $root.showTransits" ' +
+						'v-for="(planet, i) in $root.thePlanets" ' +
+						':key="planet.order + \'-ref\'" ' +
+						':planet="planet" ' +
+						':timeOffset="$root.referenceMoment - $root.dateTime" ' +
+						':reference=true ' +
+						':opacity=".2" ' +
 						':showName=true ' +
 						'style="cursor: pointer;" ' +
 						'>' +
@@ -1143,16 +1173,30 @@ Vue.component('the-sky', {
 										':class="{ tiny: $root.tickScaleIsTiny, }" ' +
 										//'style="font-size: 11px;" ' +
 										':style="{ ' +
-											'height: ($root.segmentHeight - 1) + \'px\', ' +
+											'height: ($root.segmentHeight / 2) + \'px\', ' +
 											'width: ($root.tickScale * 2 + ((aspect && aspect.end) ? -2 : 1)) + \'px\', ' +
 											'left: (j * $root.tickScale * 2) + \'px\', ' +
-											'backgroundColor: aspect ? aspect.color : null, ' +
+											'backgroundColor: aspect ? aspect.p1color : null, ' +
 										'}"' +
 										'@click.stop="$root.selectAspect(aspect.p1name, aspect.p2name)" ' +
 										'>' +
 										'<div style="z-index: 3; position: absolute; bottom: 0; text-shadow: 1px 1px 0px black;" ' +
 											'v-if="aspect && aspect.start" ' +
 											'>{{ aspect.length <= 1 || $root.tickScaleIsTiny ? aspect.p2symbol : aspect.p2name + \'&nbsp;\' }}{{ aspect.symbol }}{{ aspect.length <= 1 || $root.tickScaleIsTiny ? aspect.p1symbol : \'&nbsp;\' + aspect.p1name }}</div>' +
+									'</div>' +
+									'<div v-for="(aspect, j) in aspectRow" ' +
+										'class="aspect-bar-segment no-select" ' +
+										':class="{ tiny: $root.tickScaleIsTiny, }" ' +
+										//'style="font-size: 11px;" ' +
+										':style="{ ' +
+											'height: ($root.segmentHeight / 2 - 1) + \'px\', ' +
+											'width: ($root.tickScale * 2 + ((aspect && aspect.end) ? -2 : 1)) + \'px\', ' +
+											'left: (j * $root.tickScale * 2) + \'px\', ' +
+											'backgroundColor: aspect ? aspect.p2color : null, ' +
+											'transform: \'translateY(\' + (-$root.segmentHeight / 2 + 2) + \'px)\', ' +
+										'}"' +
+										'@click.stop="$root.selectAspect(aspect.p1name, aspect.p2name)" ' +
+										'>' +
 									'</div>' +
 								'</div>' +
 							'</div>' +
@@ -1290,6 +1334,20 @@ Vue.component('the-sky', {
 var app = new Vue({
 	el: '#app',
     data: {
+	    romanNumerals: {
+		    1: 'I',
+		    2: 'II',
+		    3: 'III',
+		    4: 'IV',
+		    5: 'V',
+		    6: 'VI',
+		    7: 'VII',
+		    8: 'VIII',
+		    9: 'IX',
+		    10: 'X',
+		    11: 'XI',
+		    12: 'XII',
+	    },
 	    additionalRotation: 0,
 	    tickScale: 7,
 	    //tickScale: 14.4,
@@ -1330,6 +1388,7 @@ var app = new Vue({
 	    showAspectsSequence: true,
 	    showDivisions: false,
 	    showAngles: false,
+	    showTransits: true,
 	    showCards: true,
 	    toEcliptic: false,
 	    sequenceView: false,
@@ -1338,18 +1397,18 @@ var app = new Vue({
 	    selectedPlanets: null,
 	    referenceMoment: null,
 	    theZodiac: [
-		{ name: 'Aries', symbol: String.fromCodePoint(0x2648), planet: 'Mars', }, 
-		{ name: 'Taurus', symbol: String.fromCodePoint(0x2649), planet: 'Venus', }, 
-		{ name: 'Gemini', symbol: String.fromCodePoint(0x264A), planet: 'Mercury', },
-		{ name: 'Cancer', symbol: String.fromCodePoint(0x264B), planet: 'Moon', }, 
-		{ name: 'Leo', symbol: String.fromCodePoint(0x264C), planet: 'Sun', }, 
-		{ name: 'Virgo', symbol: String.fromCodePoint(0x264D), planet: 'Mercury', }, 
-		{ name: 'Libra', symbol: String.fromCodePoint(0x264E), planet: 'Venus', }, 
-		{ name: 'Scorpio', symbol: String.fromCodePoint(0x264F), planet: 'Mars', secondaryPlanet: 'Pluto', }, 
-		{ name: 'Sagittarius', symbol: String.fromCodePoint(0x2650), planet: 'Jupiter', }, 
-		{ name: 'Capricorn', symbol: String.fromCodePoint(0x2651), planet: 'Saturn', }, 
-		{ name: 'Aquarius', symbol: String.fromCodePoint(0x2652), planet: 'Saturn', secondaryPlanet: 'Uranus', }, 
-		{ name: 'Pisces', symbol: String.fromCodePoint(0x2653), planet: 'Jupiter', secondaryPlanet: 'Neptune', }, 
+		{ order: 1, name: 'Aries', symbol: String.fromCodePoint(0x2648), planet: 'Mars', }, 
+		{ order: 2, name: 'Taurus', symbol: String.fromCodePoint(0x2649), planet: 'Venus', }, 
+		{ order: 3, name: 'Gemini', symbol: String.fromCodePoint(0x264A), planet: 'Mercury', },
+		{ order: 4, name: 'Cancer', symbol: String.fromCodePoint(0x264B), planet: 'Moon', }, 
+		{ order: 5, name: 'Leo', symbol: String.fromCodePoint(0x264C), planet: 'Sun', }, 
+		{ order: 6, name: 'Virgo', symbol: String.fromCodePoint(0x264D), planet: 'Mercury', }, 
+		{ order: 7, name: 'Libra', symbol: String.fromCodePoint(0x264E), planet: 'Venus', }, 
+		{ order: 8, name: 'Scorpio', symbol: String.fromCodePoint(0x264F), planet: 'Mars', secondaryPlanet: 'Pluto', }, 
+		{ order: 9, name: 'Sagittarius', symbol: String.fromCodePoint(0x2650), planet: 'Jupiter', }, 
+		{ order: 10, name: 'Capricorn', symbol: String.fromCodePoint(0x2651), planet: 'Saturn', }, 
+		{ order: 11, name: 'Aquarius', symbol: String.fromCodePoint(0x2652), planet: 'Saturn', secondaryPlanet: 'Uranus', }, 
+		{ order: 12, name: 'Pisces', symbol: String.fromCodePoint(0x2653), planet: 'Jupiter', secondaryPlanet: 'Neptune', }, 
 	    ],
 	    thePlanets: [
 		{ order: 1, placement: 'inner', name: 'Moon', symbol: String.fromCodePoint(0x263D), size: 20, color: '#D8CFC0', 
@@ -6689,6 +6748,15 @@ var app = new Vue({
 	    theCenterEl: null,
     },
     computed: {
+	    houseRotation: function() {
+		    var t = this;
+		    var placements = t.placements();
+		    if (placements && placements['Rising'] && placements['Rising'].referenceSign) {
+			    var firstHouse = t.theZodiac.filter(function(constellation) { return constellation.name == placements['Rising'].referenceSign; })[0];
+			    return (firstHouse.order - 1) * 30;
+		    }
+		    return 0;
+	    },
 	    tickScaleIsTiny: function() {
 		    return this.tickScale < 3;
 	    },
@@ -6791,8 +6859,10 @@ var app = new Vue({
 						    var aspect = JSON.parse(JSON.stringify(t.aspectsSequence[i][p1name][p2name]));
 						    aspect.p1name = p1name;
 						    aspect.p1symbol = t.thePlanets.filter(function(el) { return el.name == p1name; })[0].symbol;
+						    aspect.p1color = t.thePlanets.filter(function(el) { return el.name == p1name; })[0].color;
 						    aspect.p2name = p2name; 
 						    aspect.p2symbol = t.thePlanets.filter(function(el) { return el.name == p2name; })[0].symbol;
+						    aspect.p2color = t.thePlanets.filter(function(el) { return el.name == p2name; })[0].color;
 						    aspect.length = aspectEnd - aspectStart;
 						    if (i == aspectStart) { aspect.start = true; } else { aspect.start = false; }
 						    if (i == aspectEnd) { aspect.end = true; } else { aspect.end = false; }
@@ -7102,7 +7172,7 @@ var app = new Vue({
 			    return 0;
 		    }
 	    },
-	    placements(dateTime) {
+	    placements: function(dateTime) {
 		    var t = this;
 		    if (!dateTime) { dateTime = t.dateTime; }
 		    var placements = {};
@@ -7425,7 +7495,7 @@ var app = new Vue({
 			    $root.stopClock();
 			    $root.fadeOutAndIn(function() { $root.dateTime = $root.loadTime; });
 		    }
-		    if (~~document.getElementById('tick-cursor').style.left.replace('px','') > 480) {
+		    if (document.getElementById('tick-cursor') && ~~document.getElementById('tick-cursor').style.left.replace('px','') > 480) {
 			    $root.loadTime = $root.dateTime;
 		    }
 	    },

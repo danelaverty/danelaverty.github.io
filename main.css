@@ -153,11 +153,11 @@ table td {
 	cursor: pointer;
 }
 
-.aspect-list.selected {
+div.aspect-list.selected {
 	color: #FFF;
 }
 
-.aspect-list:hover {
+div.aspect-list:hover {
 	color: #FFC;
 }
 
