@@ -110,7 +110,7 @@ table td {
 		touch-action: none;
 		font-size: 1.3vh;
 	}
-
+	
 	.control-box .control-text {
 		margin: 0.1vh;
 		padding: 0.1vh;
@@ -120,6 +120,14 @@ table td {
 
 	.control-box .date-controls {
 		min-width: 18vw;
+	}
+
+	div.moments-button {
+		font-size: 1.2vh;
+	}
+
+	div.aspect-list, table.aspect-list {
+		font-size: 1.2vh;
 	}
 }
 
