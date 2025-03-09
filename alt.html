@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spiritual Movements Visualization</title>
+  
+  <!-- React and ReactDOM CDN -->
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  
+  <!-- Babel for JSX transformation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.21.2/babel.min.js"></script>
+  
+  <style>
+    /* Add some basic styling */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    
+    /* Layout classes */
+    .w-full { width: 100%; }
+    .h-full { height: 100%; }
+    .overflow-auto { overflow: auto; }
+    .bg-white { background-color: white; }
+    .p-2 { padding: 0.5rem; }
+    .text-xl { font-size: 1.25rem; }
+    .text-sm { font-size: 0.875rem; }
+    .text-xs { font-size: 0.75rem; }
+    .font-bold { font-weight: 700; }
+    .text-center { text-align: center; }
+    .italic { font-style: italic; }
+    .mb-4 { margin-bottom: 1rem; }
+    .mb-3 { margin-bottom: 0.75rem; }
+    .mb-1 { margin-bottom: 0.25rem; }
+    .ml-24 { margin-left: 6rem; }
+    .text-gray-600 { color: #718096; }
+    .text-gray-700 { color: #4a5568; }
+    .pb-1 { padding-bottom: 0.25rem; }
+    .w-24 { width: 6rem; }
+    .text-right { text-align: right; }
+    .pr-2 { padding-right: 0.5rem; }
+    .flex { display: flex; }
+    .flex-col { flex-direction: column; }
+    .flex-row { flex-direction: row; }
+    .flex-grow { flex-grow: 1; }
+    .flex-wrap { flex-wrap: wrap; }
+    .items-center { align-items: center; }
+    .justify-center { justify-content: center; }
+    .border-b { border-bottom-width: 1px; }
+    .border-gray-300 { border-color: #e2e8f0; }
+    .border-dashed { border-style: dashed; }
+    .rounded-lg { border-radius: 0.5rem; }
+    .rounded-full { border-radius: 9999px; }
+    .grid { display: grid; }
+    .relative { position: relative; }
+    .whitespace-normal { white-space: normal; }
+    
+    .period-header {
+      width: 160px;
+      margin-right: 8px;
+      text-align: center;
+      font-size: 0.75rem;
+      font-style: italic;
+      color: #718096;
+      padding-bottom: 0.25rem;
+    }
+    
+    .category-row {
+      margin-bottom: 12px;
+    }
+    
+    .category-label {
+      width: 95px;
+      text-align: right;
+      padding-right: 0.5rem;
+      font-weight: 700;
+      font-size: 0.875rem;
+      color: #4a5568;
+    }
+    
+    .time-periods-container {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
+    }
+    
+    .period-column {
+      width: 160px;
+      margin-right: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    
+    .movement-container {
+      width: 156px;
+      border: 1px dashed #555;
+      border-radius: 0.5rem;
+      padding: 4px;
+      margin-bottom: 8px;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .movement-title {
+      text-align: center;
+      font-weight: 700;
+      font-size: 0.875rem;
+      margin-bottom: 0.25rem;
+    }
+    
+    .nodes-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding-top: 4px;
+      padding-bottom: 4px;
+    }
+    
+    .node-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2px;
+    }
+    
+    .node-circle {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 1px solid #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 4px;
+    }
+    
+    .node-text {
+      text-align: center;
+      line-height: 0.7rem;
+      width: 100%;
+    }
+    
+    .node-name {
+      font-size: 0.75rem;
+      font-weight: bold;
+      white-space: normal;
+    }
+  </style>
+</head>
+<body>
+  <div id="root" style="width: 100%; height: 100vh;"></div>
+
+  <!-- Your React component script -->
+  <script type="text/babel">
+    // Define the SpiritualMovementsVisualization component
+    const SpiritualMovementsVisualization = () => {
+      const periods = ["1700s-1840s", "1830s-1880s", "1870s-1930s", "1920s-1950s", "1950s-1970s", "1960s-1980s", "1970s-1990s", "1990s-2010s", "2000s-2020s"];
+      const categories = ["Mainstream Movements", "Exotic Influences", "Wisdom Traditions", "Communities & Scenes", "Esoteric & Occult", "Psychology & Somatics"];
+      
+      const movements = [
+        // Mainstream Movements row (r:0)
+        {i:"sc0",n:"State Churches",r:0,p:0,c:"#A52A2A",s:1,h:1},
+        {i:"er0",n:"Enlightenment Rationalism",r:0,p:0,c:"#A52A2A",s:1,h:1},
+        {i:"vm0",n:"Victorian Morality",r:0,p:1,c:"#A52A2A",s:1,h:1},
+        {i:"is0",n:"Industrial Society",r:0,p:1,c:"#A52A2A",s:1,h:1},
+        {i:"sp0",n:"Scientific Positivism",r:0,p:2,c:"#A52A2A",s:1,h:1},
+        {i:"ce0",n:"Colonial Empires",r:0,p:2,c:"#A52A2A",s:1,h:1},
+        {i:"ir0",n:"Institutionalized Religion",r:0,p:3,c:"#A52A2A",s:1,h:1},
+        {i:"np0",n:"Nation-State Politics",r:0,p:3,c:"#A52A2A",s:1,h:1},
+        {i:"cw0",n:"Cold War Consensus",r:0,p:4,c:"#A52A2A",s:1,h:1},
+        {i:"mp0",n:"Medical Psychiatry",r:0,p:4,c:"#A52A2A",s:1,h:1},
+        {i:"cc0",n:"Corporate Capitalism",r:0,p:5,c:"#A52A2A",s:1,h:1},
+        {i:"nf0",n:"Nuclear Family",r:0,p:5,c:"#A52A2A",s:1,h:1},
+        {i:"cs0",n:"Consumer Society",r:0,p:6,c:"#A52A2A",s:1,h:1},
+        {i:"rr0",n:"Religious Right",r:0,p:6,c:"#A52A2A",s:1,h:1},
+        {i:"ic0",n:"Internet Capitalism",r:0,p:7,c:"#A52A2A",s:1,h:1},
+        {i:"si0",n:"Secular Institutions",r:0,p:7,c:"#A52A2A",s:1,h:1},
+        {i:"ds0",n:"Digital Surveillance",r:0,p:8,c:"#A52A2A",s:1,h:1},
+        {i:"sa0",n:"Scientific Authority",r:0,p:8,c:"#A52A2A",s:1,h:1},
+        
+        // Exotic Influences row (r:1)
+        {i:"orient1",n:"Orientalism",r:1,p:1,c:"#9932CC",s:1,h:2},
+        {i:"me",n:"Middle Eastern Influences",r:1,p:3,c:"#CD853F",s:1,h:1},
+        {i:"e",n:"Asian Influences",r:1,p:4,c:"#4682B4",s:1,h:2},
+        {i:"ii",n:"Indian Influences",r:1,p:5,c:"#FF8C00",s:1,h:2},
+        {i:"iw",n:"Indigenous Influences",r:1,p:6,c:"#8B4513",s:1,h:2},
+        {i:"jm",n:"Jewish Mysticism",r:1,p:7,c:"#4169E1",s:1,h:1},
+        
+        // Wisdom Traditions row (r:2)
+        {i:"nt",n:"New Thought",r:2,p:2,c:"#DDA0DD",s:1,h:1},
+        {i:"fw",n:"Fourth Way Schools",r:2,p:3,c:"#808000",s:1,h:1},
+        {i:"ep",n:"Eastern Philosophy Popularizers",r:2,p:4,c:"#7B68EE",s:1,h:2},
+        {i:"st",n:"Gurus",r:2,p:5,c:"#FF4500",s:1,h:2},
+        {i:"a",n:"New Age Movement",r:2,p:6,c:"#90EE90",s:1,h:2},
+        {i:"cm",n:"Contemporary Mindfulness",r:2,p:7,c:"#6495ED",s:1,h:2},
+        
+        // Communities & Scenes row (r:3)
+        {i:"fs",n:"Fraternal Societies",r:3,p:0,c:"#CD853F",s:1,h:2},
+        {i:"uc",n:"Utopian Communities",r:3,p:1,c:"#FF7F50",s:1,h:2},
+        {i:"ct",n:"Counterculture",r:3,p:4,c:"#FFD700",s:1,h:2},
+        {i:"sc",n:"Spiritual Communes",r:3,p:5,c:"#FF6347",s:1,h:2},
+        {i:"ic",n:"Intentional Communities",r:3,p:6,c:"#FF7F50",s:1,h:1},
+        {i:"fc",n:"Rave Culture",r:3,p:7,c:"#FFA07A",s:1,h:2},
+        
+        // Esoteric & Occult row (r:4)
+        {i:"mg",n:"Magic",r:4,p:0,c:"#9370DB",s:1,h:2},
+        {i:"s",n:"Spiritualism",r:4,p:1,c:"#8B4513",s:1,h:2},
+        {i:"w",n:"Western Esotericism",r:4,p:2,c:"#9370DB",s:1,h:3},
+        {i:"meo",n:"Modern Esoteric Orders",r:4,p:3,c:"#DA70D6",s:1,h:2},
+        {i:"eb",n:"Extraterrestrial Beliefs",r:4,p:4,c:"#6495ED",s:1,h:1},
+        {i:"mc",n:"Modern Channeling",r:4,p:5,c:"#FF6347",s:1,h:2},
+        {i:"pst",n:"Prophetic Spiritual Teachings",r:4,p:7,c:"#20B2AA",s:1,h:2},
+        {i:"pc",n:"Prosperity Consciousness",r:4,p:7,c:"#FF8C00",s:1,h:1},
+        
+        // Psychology & Somatics row (r:5)
+        {i:"pt",n:"Psychoanalytic Traditions",r:5,p:1,c:"#800080",s:1,h:1},
+        {i:"o",n:"Somatic Practices",r:5,p:3,c:"#4682B4",s:1,h:2},
+        {i:"hp",n:"Humanistic Psychology",r:5,p:4,c:"#20B2AA",s:1,h:2},
+        {i:"tp",n:"Transpersonal Psychology",r:5,p:5,c:"#9932CC",s:1,h:2},
+        {i:"ps",n:"Personality Systems",r:5,p:6,c:"#9370DB",s:1,h:2}
+      ];
+      
+      const nodes = [
+        // Mainstream Movements nodes
+        {i:"pd0",n:"Protestant Denominations",p:"",b:"sc0",x:0,y:0},
+        {i:"cc0",n:"Catholic Church",p:"",b:"sc0",x:1,y:0},
+        {i:"as0",n:"Academic Science",p:"",b:"er0",x:0,y:0},
+        {i:"pr0",n:"Philosophical Rationalism",p:"",b:"er0",x:1,y:0},
+        {i:"cp0",n:"Christian Purity",p:"",b:"vm0",x:0,y:0},
+        {i:"ch0",n:"Class Hierarchies",p:"",b:"vm0",x:1,y:0},
+        {i:"um0",n:"Urban Mass Production",p:"",b:"is0",x:0,y:0},
+        {i:"fs0",n:"Factory System",p:"",b:"is0",x:1,y:0},
+        {i:"ad0",n:"Academic Disciplines",p:"",b:"sp0",x:0,y:0},
+        {i:"mr0",n:"Material Reductionism",p:"",b:"sp0",x:1,y:0},
+        {i:"os0",n:"Orientalist Scholarship",p:"",b:"ce0",x:0,y:0},
+        {i:"mm0",n:"Missionary Movements",p:"",b:"ce0",x:1,y:0},
+        {i:"od0",n:"Organized Denominations",p:"",b:"ir0",x:0,y:0},
+        {i:"rh0",n:"Religious Hierarchies",p:"",b:"ir0",x:1,y:0},
+        {i:"na0",n:"Nationalism",p:"",b:"np0",x:0,y:0},
+        {i:"mp0",n:"Mass Politics",p:"",b:"np0",x:1,y:0},
+        {i:"aci0",n:"Anti-Communist Ideology",p:"",b:"cw0",x:0,y:0},
+        {i:"cf0",n:"Conformist Culture",p:"",b:"cw0",x:1,y:0},
+        {i:"cp0",n:"Clinical Psychology",p:"",b:"mp0",x:0,y:0},
+        {i:"pt0",n:"Pharmaceutical Treatment",p:"",b:"mp0",x:1,y:0},
+        {i:"cn0",n:"Consumer Culture",p:"",b:"cc0",x:0,y:0},
+        {i:"mm0",n:"Mass Media",p:"",b:"cc0",x:1,y:0},
+        {i:"sl0",n:"Suburban Lifestyle",p:"",b:"nf0",x:0,y:0},
+        {i:"gr0",n:"Gender Roles",p:"",b:"nf0",x:1,y:0},
+        {i:"sc0",n:"Shopping Culture",p:"",b:"cs0",x:0,y:0},
+        {i:"me0",n:"Mass Entertainment",p:"",b:"cs0",x:1,y:0},
+        {i:"ec0",n:"Evangelical Christianity",p:"",b:"rr0",x:0,y:0},
+        {i:"tv0",n:"Traditional Values",p:"",b:"rr0",x:1,y:0},
+        {i:"tc0",n:"Tech Corporations",p:"",b:"ic0",x:0,y:0},
+        {i:"gl0",n:"Globalization",p:"",b:"ic0",x:1,y:0},
+        {i:"se0",n:"Secular Education",p:"",b:"si0",x:0,y:0},
+        {i:"mw0",n:"Materialist Worldview",p:"",b:"si0",x:1,y:0},
+        {i:"sm0",n:"Social Media",p:"",b:"ds0",x:0,y:0},
+        {i:"bd0",n:"Big Data",p:"",b:"ds0",x:1,y:0},
+        {i:"ea0",n:"Expert Authority",p:"",b:"sa0",x:0,y:0},
+        {i:"ir0",n:"Institutional Research",p:"",b:"sa0",x:1,y:0},
+        
+        // Orientalism nodes
+        {i:"eg",n:"Egyptomania",p:"",b:"orient1",x:0,y:0},
+        {i:"an",n:"Arabian Nights",p:"",b:"orient1",x:1,y:0},
+        {i:"mo",n:"Mystic Orient",p:"",b:"orient1",x:0,y:1},
+        {i:"fs2",n:"Fakirs & Swamis",p:"",b:"orient1",x:1,y:1},
+        
+        // Middle Eastern Influences nodes
+        {i:"ea1",n:"Egyptian Artifacts",p:"",b:"me",x:0,y:0},
+        
+        // Asian Influences nodes
+        {i:"zb",n:"Zen & Tibetan Buddhism",p:"",b:"e",x:0,y:0},
+        {i:"ym",n:"Yoga Movement",p:"",b:"e",x:1,y:0},
+        {i:"su",n:"Sufism",p:"",b:"e",x:0,y:1},
+        {i:"ic2",n:"I Ching",p:"",b:"e",x:1,y:1},
+        
+        // Indian Influences nodes
+        {i:"hi1",n:"Hinduism",p:"",b:"ii",x:0,y:0},
+        {i:"ta1",n:"Tantra",p:"",b:"ii",x:1,y:0},
+        {i:"hk1",n:"Hare Krishna",p:"",b:"ii",x:0,y:1},
+        
+        // Indigenous Influences nodes
+        {i:"ns",n:"Neo Shamanism",p:"",b:"iw",x:0,y:0},
+        {i:"wi2",n:"Wicca",p:"",b:"iw",x:1,y:0},
+        {i:"gd",n:"Goddess Movement",p:"",b:"iw",x:0,y:1},
+        {i:"nd",n:"Neo Druidism",p:"",b:"iw",x:1,y:1},
+        
+        // Jewish Mysticism nodes
+        {i:"kb",n:"Kabbalah",p:"",b:"jm",x:0,y:0},
+        
+        // Fraternal Societies nodes
+        {i:"fm",n:"Freemasonry",p:"",b:"fs",x:0,y:0},
+        {i:"od",n:"Odd Fellows",p:"",b:"fs",x:1,y:0},
+        
+        // Utopian Communities nodes
+        {i:"bf",n:"Brook Farm",p:"",b:"uc",x:0,y:0},
+        {i:"on",n:"Oneida Community",p:"",b:"uc",x:1,y:0},
+        {i:"sh",n:"Shakers",p:"",b:"uc",x:0,y:1},
+        {i:"nh",n:"New Harmony",p:"",b:"uc",x:1,y:1},
+        
+        // Magic nodes
+        {i:"gt",n:"Grimoire Traditions",p:"",b:"mg",x:0,y:0},
+        {i:"fm2",n:"Folk Magic",p:"",b:"mg",x:1,y:0},
+        {i:"os",n:"Occult Sciences",p:"",b:"mg",x:0,y:1},
+        
+        // Spiritualism nodes
+        {i:"f",n:"Fox Sisters",p:"",b:"s",x:0,y:0},
+        {i:"d",n:"A.J. Davis",p:"",b:"s",x:1,y:0},
+        {i:"v",n:"Victorian Mediumship",p:"",b:"s",x:0,y:1},
+        {i:"c",n:"Spiritualist Churches",p:"",b:"s",x:1,y:1},
+        
+        // New Thought nodes
+        {i:"pq",n:"Quimby & Mental Healing",p:"",b:"nt",x:0,y:0},
+        {i:"eh",n:"Holmes & Science of Mind",p:"",b:"nt",x:1,y:0},
+        {i:"ef",n:"Hopkins & High Mysticism",p:"",b:"nt",x:0,y:1},
+        {i:"cf",n:"Fillmore & Unity Church",p:"",b:"nt",x:1,y:1},
+        
+        // Western Esotericism nodes
+        {i:"t",n:"Theosophy",p:"",b:"w",x:0,y:0},
+        {i:"g",n:"Golden Dawn",p:"",b:"w",x:1,y:0},
+        {i:"b",n:"Bailey Teachings",p:"",b:"w",x:0,y:1},
+        {i:"lc",n:"Lost Civilizations",p:"",b:"w",x:1,y:1},
+        {i:"pp2",n:"Perennial Philosophy",p:"",b:"w",x:0,y:2},
+	      {i:"th",n:"Thelema",p:"",b:"w",x:1,y:2},
+        
+        // Modern Esoteric Orders nodes
+        {i:"ky",n:"The Kybalion",p:"",b:"meo",x:0,y:0},
+        {i:"he",n:"Hermetic Order",p:"",b:"meo",x:1,y:0},
+        {i:"ro",n:"Rosicrucian Orders",p:"",b:"meo",x:0,y:1},
+        {i:"ot",n:"OTO",p:"",b:"meo",x:1,y:1},
+        
+        // Fourth Way Schools nodes
+        {i:"gu",n:"Gurdjieff & Fourth Way",p:"",b:"fw",x:0,y:0},
+        {i:"ou",n:"Ouspensky & In Search of Miraculous",p:"",b:"fw",x:1,y:0},
+        {i:"jb",n:"Bennett & Dramatic Universe",p:"",b:"fw",x:0,y:1},
+        {i:"mb",n:"Nicoll & Psychological Commentaries",p:"",b:"fw",x:1,y:1},
+        
+        // Extraterrestrial Beliefs nodes
+        {i:"ga",n:"Adamski",p:"",b:"eb",x:0,y:0},
+        {i:"ea",n:"Aetherius Society",p:"",b:"eb",x:1,y:0},
+        
+        // Eastern Philosophy Popularizers nodes
+        {i:"aw1",n:"Alan Watts & The Way of Zen",p:"",b:"ep",x:0,y:0},
+        {i:"ds1",n:"D.T. Suzuki & Zen Essays",p:"",b:"ep",x:1,y:0},
+        {i:"gs1",n:"Gary Snyder & Beat Zen",p:"",b:"ep",x:0,y:1},
+        {i:"rd1",n:"Ram Dass & Be Here Now",p:"",b:"ep",x:1,y:1},
+        
+        // Humanistic Psychology nodes
+        {i:"ma",n:"Maslow",p:"",b:"hp",x:0,y:0},
+        {i:"sd",n:"Spiral Dynamics",p:"",b:"hp",x:0,y:1},
+        {i:"ge",n:"Gestalt Therapy",p:"",b:"hp",x:1,y:0},
+        {i:"it",n:"Integral Theory",p:"",b:"hp",x:1,y:1},
+        
+        // Counterculture nodes
+        {i:"pa",n:"Psychedelic Art",p:"",b:"ct",x:0,y:0},
+        {i:"bt",n:"Beat Movement",p:"",b:"ct",x:1,y:0},
+        {i:"cs",n:"Conspiracism",p:"",b:"ct",x:0,y:1},
+        {i:"hi",n:"Hippies",p:"",b:"ct",x:1,y:1},
+        
+        // Transpersonal Psychology nodes
+        {i:"gr",n:"Grof",p:"",b:"tp",x:0,y:0},
+        {i:"wi",n:"Ken Wilber",p:"",b:"tp",x:1,y:0},
+        {i:"jt",n:"Journal of Transpersonal",p:"",b:"tp",x:0,y:1},
+        {i:"wa",n:"Walsh",p:"",b:"tp",x:1,y:1},
+        
+        // Gurus nodes
+        {i:"kt1",n:"Krishnamurti & Freedom",p:"",b:"st",x:0,y:0},
+        {i:"mh1",n:"Maharishi & TM",p:"",b:"st",x:1,y:0},
+        {i:"cy1",n:"Yogananda & Autobiography",p:"",b:"st",x:0,y:1},
+        {i:"pr1",n:"Prem Rawat & Divine Light",p:"",b:"st",x:1,y:1},
+        
+        // Modern Channeling nodes
+        {i:"ac",n:"Helen Schucman & Course in Miracles",p:"",b:"mc",x:0,y:0},
+        {i:"ra",n:"Carla Rueckert & Ra Material",p:"",b:"mc",x:1,y:0},
+        {i:"rm",n:"JZ Knight & Ramtha",p:"",b:"mc",x:0,y:1},
+        {i:"ab",n:"Esther Hicks & Abraham",p:"",b:"mc",x:1,y:1},
+        
+        // Somatic Practices nodes
+        {i:"l",n:"Rolfing",p:"",b:"o",x:0,y:0},
+        {i:"k",n:"Feldenkrais Method",p:"",b:"o",x:1,y:0},
+        {i:"x",n:"Alexander Technique",p:"",b:"o",x:0,y:1},
+        {i:"i",n:"Bioenergetics",p:"",b:"o",x:1,y:1},
+        
+        // New Age Movement nodes
+        {i:"j",n:"New Age Aesthetics",p:"",b:"a",x:0,y:0},
+        {i:"en",n:"Energy Healing",p:"",b:"a",x:1,y:0},
+        {i:"h",n:"Human Potential",p:"",b:"a",x:0,y:1},
+        {i:"bm",n:"Body Mind Spirit Publishing",p:"",b:"a",x:1,y:1},
+        
+        // Psychoanalytic Traditions nodes
+        {i:"fr",n:"Freudian Analysis",p:"",b:"pt",x:0,y:0},
+        {i:"ju",n:"Jungian Psychology",p:"",b:"pt",x:1,y:0},
+        
+        // Prosperity Consciousness nodes
+        {i:"la",n:"Law of Attraction",p:"",b:"pc",x:0,y:0},
+        {i:"qm",n:"Quantum Mysticism",p:"",b:"pc",x:1,y:0},
+        
+        // Spiritual Communes nodes
+        {i:"or1",n:"Osho & Rajneeshpuram",p:"",b:"sc",x:0,y:0},
+        {i:"es1",n:"Esalen Institute",p:"",b:"sc",x:1,y:0},
+        {i:"tf1",n:"Stephen Gaskin & The Farm",p:"",b:"sc",x:0,y:1},
+        {i:"av1",n:"Kriyananda & Ananda Village",p:"",b:"sc",x:1,y:1},
+        
+        // Intentional Communities nodes
+        {i:"ec",n:"Ecovillages",p:"",b:"ic",x:0,y:0},
+        {i:"co",n:"Cohousing",p:"",b:"ic",x:1,y:0},
+        
+        // Personality Systems nodes
+        {i:"en2",n:"Enneagram",p:"",b:"ps",x:0,y:0},
+        {i:"hd2",n:"Human Design",p:"",b:"ps",x:1,y:0},
+        
+        // Rave Culture nodes
+        {i:"bm2",n:"Burning Man",p:"",b:"fc",x:0,y:0},
+        {i:"psy",n:"Festival Communities",p:"",b:"fc",x:1,y:0},
+        
+        // Prophetic Spiritual Teachings nodes
+        {i:"jp1",n:"John Peniel/Trivedi",p:"",b:"pst",x:0,y:0},
+        {i:"dw1",n:"David Wilcock & Ascension",p:"",b:"pst",x:1,y:0},
+        {i:"dm1",n:"Drunvalo Melchizedek",p:"",b:"pst",x:0,y:1},
+        
+        // Contemporary Mindfulness nodes
+        {i:"mbsr",n:"MBSR",p:"",b:"cm",x:0,y:0},
+        {i:"mct",n:"Mindfulness Based Therapy",p:"",b:"cm",x:1,y:0},
+        {i:"sm",n:"Secular Meditation",p:"",b:"cm",x:0,y:1},
+        {i:"app",n:"Meditation Apps",p:"",b:"cm",x:1,y:1}
+      ];
+    
+      const getColorForNode = (node) => {
+        if (node.m) return "#aaaaaa";
+        if (node.b) {
+          const movement = movements.find(m => m.i === node.b);
+          return movement ? movement.c : "#aaaaaa";
+        }
+        return "#aaaaaa";
+      };
+      
+      // Group nodes by row/y value within each movement
+      const groupNodesByRow = (movementId) => {
+        const relevantNodes = nodes.filter(node => node.b === movementId);
+        const maxY = Math.max(...relevantNodes.map(node => node.y)) + 1;
+        const rows = [];
+        
+        for (let y = 0; y < maxY; y++) {
+          const rowNodes = relevantNodes.filter(node => node.y === y);
+          rows.push(rowNodes);
+        }
+        
+        return rows;
+      };
+      
+      return (
+        <div className="w-full h-full overflow-auto bg-white p-2">
+          <h1 className="text-xl font-bold text-center">Alternative Spiritual and Psychological Movements</h1>
+          <h2 className="text-sm italic text-center mb-4">(Showing only critical influences)</h2>
+          
+          {/* Time period headers */}
+          <div className="flex">
+            <div className="w-24"></div>
+            <div className="flex" style={{ borderBottom: '1px dashed #ccc', marginBottom: '2px' }}>
+              {periods.map((period, index) => (
+                <div key={index} className="period-header">{period}</div>
+              ))}
+            </div>
+          </div>
+          
+          {/* Category rows */}
+          {categories.map((category, categoryIndex) => {
+            const categoryMovements = movements.filter(movement => movement.r === categoryIndex);
+            
+            return (
+              <div key={categoryIndex} className="category-row flex">
+                {/* Category label */}
+                <div className="category-label">{category}</div>
+                
+                {/* Content container */}
+                <div className="flex-grow">
+                  {/* Category separator line */}
+                  <div className="border-b border-gray-300 border-dashed mb-1"></div>
+                  
+                  {/* Time periods container */}
+                  <div className="flex">
+                    {periods.map((period, periodIndex) => {
+                      // Find movements for this category and period
+                      const periodMovements = categoryMovements.filter(m => m.p === periodIndex);
+                      
+                      return (
+                        <div key={periodIndex} className="period-column" style={{ alignItems: 'flex-start' }}>
+                          <div className="flex flex-col" style={{ width: '100%' }}>
+                            {periodMovements.map(movement => {
+                              const movementNodes = nodes.filter(node => node.b === movement.i);
+                              const nodeRows = groupNodesByRow(movement.i);
+                              
+                              return (
+                                <div 
+                                  key={movement.i} 
+                                  className="movement-container"
+                                  style={{ backgroundColor: `${movement.c}20` }}
+                                >
+                                  <div className="movement-title">{movement.n}</div>
+                                  
+                                  <div className="nodes-grid">
+                                    {movementNodes.map(node => (
+                                      <div 
+                                        key={node.i} 
+                                        className="node-item" 
+                                        style={{ gridColumn: node.x + 1, gridRow: node.y + 1 }}
+                                      >
+                                        <div 
+                                          className="node-circle" 
+                                          style={{ backgroundColor: movement.c }}
+                                        ></div>
+                                        <div className="node-text">
+                                          <div className="node-name">{node.n}</div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    };
+
+    // Render the component to the DOM
+    ReactDOM.render(
+      <SpiritualMovementsVisualization />,
+      document.getElementById('root')
+    );
+  </script>
+</body>
+</html>
