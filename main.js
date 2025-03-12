@@ -1155,7 +1155,7 @@ Vue.component('the-sky', {
 						'<div class="video-view-vertical" style="left: 0;">' +
 							'<div style="position: absolute; width: 540px; left: 1px; top: 2px; background-color: black;" ' +
 								'v-if="$root.showAspectsSequence" ' +
-								':style="{ height: (32 + ($root.stackedAspectsInTheAspectsSequence.length) * $root.segmentHeight) + \'px\', }" ' +
+								':style="{ height: (32 + ($root.xiple == 2 ? $root.stackedAspectsInTheAspectsSequence.length : $root.stackedTripleAspectsInTheAspectsSequence.length) * $root.segmentHeight) + \'px\', }" ' +
 								'>' +
 							'</div>' +
 							'<div class="aspects-box" ' +
@@ -1163,7 +1163,7 @@ Vue.component('the-sky', {
 								'>' +
 								'<div ' +
 									'class="aspect-bar" ' +
-									'v-for="(aspectRow, i) in $root.stackedAspectsInTheAspectsSequence" ' +
+									'v-for="(aspectRow, i) in ($root.xiple == 2 ? $root.stackedAspectsInTheAspectsSequence : $root.stackedTripleAspectsInTheAspectsSequence)" ' +
 									':key="i" ' +
 									'style="border-bottom: 1px solid white; height: 10px;" ' +
 									':style="{ top: (i * $root.segmentHeight + 33) + \'px\', }" ' +
@@ -1173,29 +1173,45 @@ Vue.component('the-sky', {
 										':class="{ tiny: $root.tickScaleIsTiny, }" ' +
 										//'style="font-size: 11px;" ' +
 										':style="{ ' +
-											'height: ($root.segmentHeight / 2) + \'px\', ' +
+											'height: ($root.segmentHeight / $root.xiple) + \'px\', ' +
 											'width: ($root.tickScale * 2 + ((aspect && aspect.end) ? -2 : 1)) + \'px\', ' +
 											'left: (j * $root.tickScale * 2) + \'px\', ' +
 											'backgroundColor: aspect ? aspect.p1color : null, ' +
 										'}"' +
-										'@click.stop="$root.selectAspect(aspect.p1name, aspect.p2name)" ' +
+										'@click.stop="$root.selectAspect(aspect.p1name, aspect.p2name, aspect.p3name)" ' +
 										'>' +
 										'<div style="z-index: 3; position: absolute; bottom: 0; text-shadow: 1px 1px 0px black;" ' +
 											'v-if="aspect && aspect.start" ' +
-											'>{{ aspect.length <= 1 || $root.tickScaleIsTiny ? aspect.p2symbol : aspect.p2name + \'&nbsp;\' }}{{ aspect.symbol }}{{ aspect.length <= 1 || $root.tickScaleIsTiny ? aspect.p1symbol : \'&nbsp;\' + aspect.p1name }}</div>' +
+											'>' +
+											'<span v-if="$root.xiple == 2">{{ aspect.length <= 1 || $root.tickScaleIsTiny ? aspect.p2symbol : aspect.p2name + \'&nbsp;\' }}{{ aspect.symbol }}{{ aspect.length <= 1 || $root.tickScaleIsTiny ? aspect.p1symbol : \'&nbsp;\' + aspect.p1name }}</span>' +
+											'<span v-if="$root.xiple == 3" style="white-space: nowrap; font-size: 10px; display: inline-block; transform: translateY(4px);">{{ aspect.length <= 1 || $root.tickScaleIsTiny ? aspect.p3symbol : aspect.p3name + \'&nbsp;\' }}-{{ aspect.length <= 1 || $root.tickScaleIsTiny ? aspect.p2symbol : aspect.p2name + \'&nbsp;\' }}-{{ aspect.length <= 1 || $root.tickScaleIsTiny ? aspect.p1symbol : \'&nbsp;\' + aspect.p1name }}</span>' +
+										'</div>' +
 									'</div>' +
 									'<div v-for="(aspect, j) in aspectRow" ' +
 										'class="aspect-bar-segment no-select" ' +
 										':class="{ tiny: $root.tickScaleIsTiny, }" ' +
-										//'style="font-size: 11px;" ' +
 										':style="{ ' +
-											'height: ($root.segmentHeight / 2 - 1) + \'px\', ' +
+											'height: ($root.segmentHeight / $root.xiple - 1) + \'px\', ' +
 											'width: ($root.tickScale * 2 + ((aspect && aspect.end) ? -2 : 1)) + \'px\', ' +
 											'left: (j * $root.tickScale * 2) + \'px\', ' +
 											'backgroundColor: aspect ? aspect.p2color : null, ' +
-											'transform: \'translateY(\' + (-$root.segmentHeight / 2 + 2) + \'px)\', ' +
+											'transform: \'translateY(\' + (-$root.segmentHeight / $root.xiple + 2) + \'px)\', ' +
 										'}"' +
-										'@click.stop="$root.selectAspect(aspect.p1name, aspect.p2name)" ' +
+										'@click.stop="$root.selectAspect(aspect.p1name, aspect.p2name, aspect.p3name)" ' +
+										'>' +
+									'</div>' +
+									'<div v-for="(aspect, j) in aspectRow" ' +
+										'v-if="$root.xiple == 3" ' +
+										'class="aspect-bar-segment no-select" ' +
+										':class="{ tiny: $root.tickScaleIsTiny, }" ' +
+										':style="{ ' +
+											'height: ($root.segmentHeight / $root.xiple - 1) + \'px\', ' +
+											'width: ($root.tickScale * 2 + ((aspect && aspect.end) ? -2 : 1)) + \'px\', ' +
+											'left: (j * $root.tickScale * 2) + \'px\', ' +
+											'backgroundColor: aspect ? aspect.p3color : null, ' +
+											'transform: \'translateY(\' + (-$root.segmentHeight / $root.xiple + 8) + \'px)\', ' +
+										'}"' +
+										'@click.stop="$root.selectAspect(aspect.p1name, aspect.p2name, aspect.p3name)" ' +
 										'>' +
 									'</div>' +
 								'</div>' +
@@ -1215,7 +1231,7 @@ Vue.component('the-sky', {
 									'}" ' +
 									'v-for="n in $root.tickCount" ' +
 									':style="{ ' +
-										'width: (6 + ($root.stackedAspectsInTheAspectsSequence.length) * $root.segmentHeight) + \'px\', ' +
+										'width: (6 + ($root.xiple == 2 ? $root.stackedAspectsInTheAspectsSequence.length : $root.stackedTripleAspectsInTheAspectsSequence.length) * $root.segmentHeight) + \'px\', ' +
 										'left: ($root.tickScale * ($root.DAY / 10000000) * n) - (($root.midnightOverage($root.loadTime) / $root.DAY) * ($root.tickScale * $root.DAY / 10000000)) + \'px\', ' +
 										'top: (16) + \'px\', ' +
 										'transform: \'rotate(90deg)\', ' +
@@ -1236,12 +1252,16 @@ Vue.component('the-sky', {
 									'style="background-color: #FF7; height: 2px;" ' +
 									'id="tick-cursor" ' +
 									':style="{ ' +
-										'width: (6 + ($root.stackedAspectsInTheAspectsSequence.length) * $root.segmentHeight) + \'px\', ' +
+										'width: (6 + ($root.xiple == 2 ? $root.stackedAspectsInTheAspectsSequence.length : $root.stackedTripleAspectsInTheAspectsSequence.length) * $root.segmentHeight) + \'px\', ' +
 										'left: ($root.tickScale * (($root.dateTime - $root.loadTime) / (10000000)) + 1) + \'px\', ' +
 										'top: (16) + \'px\', ' +
 										'transform: \'rotate(90deg)\', ' +
 									'}" ' +
 									'>' +
+								'</div>' +
+								'<div style="color: white; position: absolute; top: -40px; left: 0; border: 1px solid #444; background-color: black; margin: 3px; padding: 2px; white-space: nowrap;">' +
+									'<div class="aspect-xiple-button" :class="{ selected: $root.xiple == 2 }" @click.stop="$root.xiple = 2">2x</div> ' +
+									'<div class="aspect-xiple-button" :class="{ selected: $root.xiple == 3 }" @click.stop="$root.xiple = 3">3x</div> ' +
 								'</div>' +
 							'</div>' +
 							'<div class="video-view-blackout" style="right: 1px; bottom: -3px;"></div>' +
@@ -1334,6 +1354,7 @@ Vue.component('the-sky', {
 var app = new Vue({
 	el: '#app',
     data: {
+	    xiple: 2,
 	    romanNumerals: {
 		    1: 'I',
 		    2: 'II',
@@ -1440,8 +1461,8 @@ var app = new Vue({
 			traits: ['Order', 'Boundaries', 'Time', 'Discipline'], 
 		}, 
 		{ order: 8, placement: 'outer', name: 'Uranus', symbol: String.fromCodePoint(0x2645), size: 10, color: '#BFD3ED', 
-			keyTrait: 'Catastrophe', 
-			traits: ['Awakening', 'New', 'Wild', 'Disruption'], 
+			keyTrait: 'Disruption', 
+			traits: ['Awakening', 'New', 'Wild', 'Catastrophe'], 
 		}, 
 		{ order: 9, placement: 'outer', name: 'Neptune', symbol: String.fromCodePoint(0x2646), size: 10, color: '#7DA4F4', 
 			keyTrait: 'Dreams', 
@@ -6748,6 +6769,9 @@ var app = new Vue({
 	    theCenterEl: null,
     },
     computed: {
+	    thePlanetsExceptMoon: function() {
+		    return this.thePlanets.filter(function(planet) { return planet.name != 'Moon'; });
+	    },
 	    houseRotation: function() {
 		    var t = this;
 		    var placements = t.placements();
@@ -6762,9 +6786,6 @@ var app = new Vue({
 	    },
 	    segmentHeight: function() {
 		    return this.tickScaleIsTiny ? 10 : 13;
-	    },
-	    risingSignForReferenceMoment: function() {
-		    //
 	    },
 	    selectedAspect: function() {
 		    var t = this;
@@ -6822,12 +6843,105 @@ var app = new Vue({
 		    });
 		    return aspectsInTheAspectsSequence;
 	    },
+	    tripleAspectsInTheAspectsSequence: function() {
+		    var t = this;
+		    var tripleAspectsInTheAspectsSequence = {};
+
+		    t.aspectsSequence.forEach(function(aspectsSequenceStep, ind) {
+			    for (var p1name in aspectsSequenceStep) {
+				    for (var p2name in aspectsSequenceStep[p1name]) {
+					    if (aspectsSequenceStep[p1name][p2name] != null) {
+							    t.thePlanetsExceptMoon.forEach(function(planet) {
+								    if (aspectsSequenceStep[p1name][planet.name] && aspectsSequenceStep[p2name][planet.name]) {
+									    if (!tripleAspectsInTheAspectsSequence[p1name]) {
+										    tripleAspectsInTheAspectsSequence[p1name] = {};
+									    }
+									    if (!tripleAspectsInTheAspectsSequence[p1name][p2name]) {
+										    tripleAspectsInTheAspectsSequence[p1name][p2name] = {};
+									    }
+									    tripleAspectsInTheAspectsSequence[p1name][p2name][planet.name] = true;
+								    }
+							    });
+						    }
+					    }
+				    }
+			   });
+		    return tripleAspectsInTheAspectsSequence;
+	    },
+	    stackedTripleAspectsInTheAspectsSequence: function() {
+		    var t = this;
+		    var stackedTripleAspectsInTheAspectsSequence = [[]];
+
+		    // Fill in stackedTripleAspectsInTheAspectsSequence with a null value for each step visible in the current sequence view
+		    t.aspectsSequence.forEach(function() { stackedTripleAspectsInTheAspectsSequence[0].push(null); });
+		    
+		    // Go through the 3-planet combinations that are in aspect anywhere in the current sequence view
+		    for (var p1name in t.tripleAspectsInTheAspectsSequence) {
+			    for (var p2name in t.tripleAspectsInTheAspectsSequence[p1name]) {
+				    for (var p3name in t.tripleAspectsInTheAspectsSequence[p1name][p2name]) {
+					    var aspectStart = -1;
+					    t.aspectsSequence.forEach(function(step, ind) { if (aspectStart == -1 && step[p1name][p2name] && step[p1name][p3name] && step[p2name][p3name]) { aspectStart = ind; } });
+					    var aspectEnd = -1;
+					    t.aspectsSequence.forEach(function(step, ind) { if (step[p1name][p2name] && step[p1name][p3name] && step[p2name][p3name]) { aspectEnd = ind; } });
+
+					    // Check if any rows in the sequence have space for this aspect
+					    // If not, add a new row
+					    var rowWithSpace = -1;
+					    stackedTripleAspectsInTheAspectsSequence.forEach(function(row, ind) {
+						    var rowHasSpace = true;
+						    for (var i = aspectStart; i <= aspectEnd; i++) {
+							    if (row[i]) { 
+								    rowHasSpace = false; 
+							    }
+						    }
+						    if (rowHasSpace) { 
+							    if (rowWithSpace == -1) { rowWithSpace = ind; }
+						    } else if (ind == stackedTripleAspectsInTheAspectsSequence.length - 1) {
+							    var newRow = [];
+							    t.aspectsSequence.forEach(function() { newRow.push(null); });
+							    stackedTripleAspectsInTheAspectsSequence.push(newRow);
+							    rowWithSpace = stackedTripleAspectsInTheAspectsSequence.length - 1;
+						    }
+					    });
+
+					    // Fill in the spaces in the row with space
+					    for (var i = aspectStart; i <= aspectEnd; i++) {
+						    if (t.aspectsSequence[i][p1name][p2name] && t.aspectsSequence[i][p1name][p3name] && t.aspectsSequence[i][p2name][p3name]) {
+							    var aspect = {};
+							    aspect.p1name = p1name;
+							    aspect.p1symbol = t.thePlanets.filter(function(el) { return el.name == p1name; })[0].symbol;
+							    aspect.p1color = t.thePlanets.filter(function(el) { return el.name == p1name; })[0].color;
+							    aspect.p2name = p2name; 
+							    aspect.p2symbol = t.thePlanets.filter(function(el) { return el.name == p2name; })[0].symbol;
+							    aspect.p2color = t.thePlanets.filter(function(el) { return el.name == p2name; })[0].color;
+							    aspect.p3name = p3name; 
+							    aspect.p3symbol = t.thePlanets.filter(function(el) { return el.name == p3name; })[0].symbol;
+							    aspect.p3color = t.thePlanets.filter(function(el) { return el.name == p3name; })[0].color;
+							    aspect.length = aspectEnd - aspectStart;
+							    if (i == aspectStart) { aspect.start = true; } else { aspect.start = false; }
+							    if (i == aspectEnd) { aspect.end = true; } else { aspect.end = false; }
+							    stackedTripleAspectsInTheAspectsSequence[rowWithSpace][i] = aspect;
+						    }
+					    }
+				    }
+			    }
+		    }
+		    return stackedTripleAspectsInTheAspectsSequence;
+	    },
 	    stackedAspectsInTheAspectsSequence: function() {
 		    var t = this;
 		    var stackedAspectsInTheAspectsSequence = [[]];
+
+		    // Fill in stackedAspectsInTheAspectsSequence with a null value for each step visible in the current sequence view
 		    t.aspectsSequence.forEach(function() { stackedAspectsInTheAspectsSequence[0].push(null); });
+		    
+		    // Go through the 2-planet combinations that are in aspect anywhere in the current sequence view
 		    for (var p1name in t.aspectsInTheAspectsSequence) {
 			    for (var p2name in t.aspectsInTheAspectsSequence[p1name]) {
+				    // Sequence aspects aren't really sustainted "objects"...they're just a series of adjacent objects that look like a sustained object when you display them side-by-side
+				    // This means that to lay them out on the sequence view we need to find the start & end for each aspect so we can reserve that range of grid squares in the sequence view
+				    // NOTE: This means if a pair is in aspect, then leaves aspect, then returns to aspect within the sequence view range, the empty space between those aspects
+				    //       will be reserved along with the in-aspect spaces (i.e. not available for use by another aspect)
 				    var aspectStart = -1;
 				    t.aspectsSequence.forEach(function(step, ind) { if (aspectStart == -1 && step[p1name][p2name]) { aspectStart = ind; } });
 				    var aspectEnd = -1;
@@ -7103,13 +7217,17 @@ var app = new Vue({
 			    Vue.set(this, 'selectedPlanets', null);
 		    }
 	    },
-	    selectAspect: function(p1name, p2name) {
-		    if (this.selectedPlanets && Object.keys(this.selectedPlanets).length == 2 && this.selectedPlanets[p1name] && this.selectedPlanets[p2name]) {
+	    selectAspect: function(p1name, p2name, p3name) {
+		    if (this.selectedPlanets && (
+			    (Object.keys(this.selectedPlanets).length == 2 && this.selectedPlanets[p1name] && this.selectedPlanets[p2name])
+			    || (Object.keys(this.selectedPlanets).length == 3 && this.selectedPlanets[p1name] && this.selectedPlanets[p2name] && this.selectedPlanets[p3name])
+		    )) {
 			    Vue.set(this, 'selectedPlanets', null);
 		    } else {
 			    Vue.set(this, 'selectedPlanets', null);
 			    this.togglePlanetSelection(p1name, true);
 			    this.togglePlanetSelection(p2name, true);
+			    if (p3name) { this.togglePlanetSelection(p3name, true); }
 		    }
 	    },
 	    midnightOverage: function(dateTime) {
@@ -7141,11 +7259,13 @@ var app = new Vue({
 	    },
 	    tickScaleUp: function() {
 		    if (this.tickScale > 100) { return; }
-		    this.tickScale++;
+		    else if (this.tickScale < 1) { this.tickScale += .5; }
+		    else { this.tickScale++; }
 	    },
 	    tickScaleDown: function() {
-		    if (this.tickScale < 2) { return; }
-		    this.tickScale--;
+		    if (this.tickScale < 1) { return; }
+		    else if (this.tickScale < 2) { this.tickScale -= .5; }
+		    else { this.tickScale--; }
 	    },
 	    stepIncrementDown: function() {
 		    var i = this.stepIncrements.indexOf(this.stepIncrement / this.factor);
