@@ -43,24 +43,44 @@ body {
     z-index: 1;
 }
 
-#right-panel {
+/* New right-side container with two panels */
+#right-container {
     flex: 1; /* Take all remaining space */
     height: 100%;
-    background-color: black; /* Always black background */
+    display: flex;
+    flex-direction: column;
+    border-left: 2px solid #AAA;
+}
+
+/* Top panel for controls */
+#top-panel {
+    height: 80px; /* Fixed height for the top panel */
+    background-color: #111;
+    border-bottom: 1px solid #444;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    flex-shrink: 0; /* Prevent shrinking */
+}
+
+/* Bottom panel (former right panel) */
+#bottom-panel {
+    flex: 1; /* Take remaining vertical space */
+    background-color: black;
     position: relative;
     user-select: none;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    border-left: 2px solid #AAA;
     padding-bottom: 50px;
 }
 
-#right-panel.active {
+/* Update the active state */
+#bottom-panel.active {
     /* No background color change, just indicating active state */
 }
 
-#left-panel, #right-panel {
+#left-panel, #bottom-panel {
     padding-bottom: 50px;
 }
 
@@ -189,7 +209,7 @@ body {
     height: auto;
     opacity: 0; /* Start invisible */
     transform: scale(0.95); /* Start slightly scaled down */
-    pointer-events: none; /* No interaction when invisible */
+    //pointer-events: none; /* No interaction when invisible */
     transition: opacity 0.3s ease, transform 0.3s ease; /* Smooth transition */
 }
 
@@ -219,6 +239,7 @@ body {
     align-items: center;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5); /* Add shadow for depth */
     border: 1px solid rgba(255, 255, 255, 0.1); /* Subtle border */
+    cursor: pointer;
 }
 
 .attribute-box.highlight {
@@ -228,10 +249,6 @@ body {
 .attribute-box .emoji {
     font-size: 28px; /* Smaller emoji */
     margin-bottom: 6px; /* Less space beneath emoji */
-}
-
-.attribute-box div:not(.emoji) {
-    font-size: 14px; /* Slightly smaller text */
 }
 
 #ally-box {
@@ -245,7 +262,9 @@ body {
 }
 
 #door-box {
-    background-color: #FF0000;
+    background-color: #AA0000;
+    color: white;
+    text-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
 }
 
 #treasure-box {
@@ -553,8 +572,6 @@ body {
 }
 
 .action-btn {
-    position: absolute;
-    left: 20px;
     width: 40px;
     height: 40px;
     background-color: #555;
@@ -575,16 +592,12 @@ body {
     transform: scale(1.1);
 }
 
-#add-circle-btn {
-    top: 20px;
-}
-
-#color-change-btn {
-    top: 80px; /* Position below the add button */
-}
-
-#delete-circle-btn {
-    top: 140px; /* Position below the color button */
+/* Move buttons to top panel */
+#top-panel .action-btn {
+    position: relative; /* Change from absolute to relative */
+    left: auto; /* Reset absolute positioning */
+    top: auto; /* Reset absolute positioning */
+    margin-right: 15px; /* Add margin between buttons */
 }
 
 /* Style for when buttons are active */
@@ -593,25 +606,121 @@ body {
     box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
 }
 
-/* Color picker modal */
+/* Color picker container adjustments */
 .color-picker-modal {
-    position: fixed;
+    position: absolute; /* Change to absolute for proper positioning */
     display: none;
     background-color: #222;
     border-radius: 8px;
     border: 1px solid #444;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
     z-index: 1000;
-    width: 140px;
+    width: 280px; /* Width to accommodate two columns and crystal names */
     max-height: 80vh;
     overflow-y: auto;
-    padding: 4px;
+    padding: 10px;
+    transform-origin: top left;
+    animation: colorPickerFadeIn 0.2s ease-out forwards;
 }
 
+@keyframes colorPickerFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Main grid container for the color picker */
+.color-grid {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+}
+
+/* Each color family is now a column */
+.color-family {
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #333;
+    width: calc(50% - 5px); /* 50% width minus half the gap */
+}
+
+/* Family name header */
+.family-name {
+    font-size: 11px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    text-align: center;
+    color: #333;
+    user-select: none;
+}
+
+/* Container for all swatches in a family */
+.swatches-container {
+    display: flex;
+    flex-direction: column; /* Stack vertically */
+    gap: 8px;
+}
+
+/* Container for each individual color option */
+.color-option {
+    display: flex;
+    align-items: center;
+    padding: 2px;
+    border-radius: 3px;
+    transition: background-color 0.2s;
+    cursor: pointer;
+}
+
+/* Hover effect for the entire color option */
+.color-option:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Crystal name styling */
+.crystal-name {
+    font-size: 10px;
+    color: #333;
+    flex-grow: 1;
+    margin-right: 8px;
+    text-align: right;
+    font-weight: 500;
+}
+
+/* Color swatch styling */
+.color-swatch {
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Swatch hover effect */
+.color-option:hover .color-swatch {
+    transform: scale(1.2);
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+}
+
+/* Header for the color picker */
+.color-picker-header {
+    text-align: center;
+    color: #eee;
+    margin-bottom: 10px;
+    font-size: 12px;
+    border-bottom: 1px solid #444;
+    padding-bottom: 5px;
+}
+
+/* Close button */
 .color-picker-close {
     position: absolute;
-    top: 4px;
-    right: 6px;
+    top: 8px;
+    right: 10px;
     background: none;
     border: none;
     color: #aaa;
@@ -624,44 +733,191 @@ body {
     color: white;
 }
 
-.color-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-}
-
-.color-family {
-    padding: 5px;
-    border-radius: 4px;
-    border: 1px solid #333;
-}
-
-.family-name {
-    font-size: 10px;
+/* Top panel title and controls */
+.panel-title {
+    color: white;
+    font-size: 16px;
     font-weight: bold;
-    margin-bottom: 3px;
-    text-align: center;
-    color: #333;
-    user-select: none;
+    margin-right: 20px;
 }
 
-.swatches-container {
+.top-panel-controls {
     display: flex;
-    justify-content: space-between;
-    gap: 2px;
+    gap: 10px;
 }
 
-.color-swatch {
-    width: 18px;
-    height: 18px;
-    border-radius: 3px;
-    cursor: pointer;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+/* Style for buttons in the top panel */
+#top-panel .action-btn {
+    width: 35px;
+    height: 35px;
+    background-color: #333;
+    transition: all 0.2s ease;
 }
 
-.color-swatch:hover {
-    transform: scale(1.3);
-    box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+#top-panel .action-btn:hover {
+    background-color: #555;
+    transform: scale(1.05);
+}
+
+.special-me-square {
+    position: absolute !important; /* Ensure it can't be repositioned */
+    z-index: 5; /* Lower than regular squares (which have z-index 10) to ensure it stays in the background */
+    pointer-events: auto; /* Allow click events */
+    user-select: none; /* Prevent selection */
+    transition: all 0.3s ease;
+}
+
+.special-me-square:hover {
+    transform: translate(-50%, -50%) scale(1.05); /* Slight scale effect on hover */
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.7) !important;
+}
+
+.special-me-square.selected {
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.9) !important;
+    z-index: 8; /* Higher than non-selected "Me" square but lower than draggable squares */
+}
+
+.special-me-square .item-name {
+    font-weight: bold;
+    background: rgba(0, 0, 0, 0.7);
+    pointer-events: none; /* Prevent clicks on the name */
+}
+
+/* Connection lines styling */
+#line-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
     z-index: 5;
+}
+
+.connection-line {
+    position: absolute;
+    height: 1px;
+    background-color: rgba(255, 255, 255, 0.3);
+    transform-origin: left center;
+    z-index: 1;
+    pointer-events: none;
+    box-shadow: 0 0 2px rgba(255, 255, 255, 0.2);
+    transition: opacity 0.3s ease;
+}
+
+/* Make lines more visible when a square is selected */
+.square.selected ~ #line-container .connection-line {
+    background-color: rgba(255, 255, 255, 0.5);
+    height: 1.5px;
+    box-shadow: 0 0 3px rgba(255, 255, 255, 0.3);
+}
+
+/* Line highlight for the shortest connection to Me square */
+.connecting-line-highlight {
+    background: linear-gradient(90deg, 
+        rgba(255, 215, 0, 0.3), 
+        rgba(255, 223, 0, 0.9), 
+        rgba(255, 215, 0, 0.3)) !important; /* Golden gradient */
+    height: 3px !important;
+    box-shadow: 
+        0 0 8px rgba(255, 215, 0, 0.8),
+        0 0 12px rgba(255, 215, 0, 0.6),
+        0 0 16px rgba(255, 215, 0, 0.4) !important; /* Multiple glows */
+    z-index: 6 !important;
+    animation: 
+        pulse-connection 2s infinite alternate,
+        sparkle-motion 4s linear infinite;
+    position: absolute;
+    overflow: visible;
+}
+
+/* Pseudo-elements for sparkles */
+.connecting-line-highlight::before,
+.connecting-line-highlight::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    background-image: 
+        radial-gradient(circle, rgba(255, 255, 255, 0.9) 1px, transparent 1px),
+        radial-gradient(circle, rgba(255, 255, 255, 0.7) 1px, transparent 1px),
+        radial-gradient(circle, rgba(255, 255, 255, 0.5) 1px, transparent 1px);
+    background-size: 6px 6px, 10px 10px, 4px 4px;
+    animation: sparkle-drift 3s linear infinite;
+    pointer-events: none;
+}
+
+.connecting-line-highlight::after {
+    animation-direction: reverse;
+    animation-duration: 5s;
+    background-position: 3px 3px, 5px 5px, 2px 2px;
+}
+
+@keyframes pulse-connection {
+    0% {
+        background: linear-gradient(90deg, 
+            rgba(255, 215, 0, 0.9), 
+            rgba(255, 223, 0, 1), 
+            rgba(255, 215, 0, 0.9));
+        box-shadow: 
+            0 0 6px rgba(255, 215, 0, 0.7),
+            0 0 10px rgba(255, 215, 0, 0.5),
+            0 0 14px rgba(255, 215, 0, 0.3);
+    }
+    100% {
+        background: linear-gradient(90deg, 
+            rgba(255, 215, 0, 0.9), 
+            rgba(255, 223, 0, 1), 
+            rgba(255, 215, 0, 0.5));
+        box-shadow: 
+            0 0 10px rgba(255, 215, 0, 0.9),
+            0 0 15px rgba(255, 215, 0, 0.7),
+            0 0 20px rgba(255, 215, 0, 0.5);
+    }
+}
+
+@keyframes sparkle-motion {
+    0%, 100% { opacity: 0.95; }
+    25% { opacity: 1; }
+    50% { opacity: 1; }
+    75% { opacity: 0.8; }
+}
+
+@keyframes sparkle-drift {
+    from { background-position: 0 0, 0 0, 0 0; }
+    to { background-position: 10px 10px, -10px 10px, 5px -5px; }
+}
+
+/* Closest square indicator styling */
+.closest-square-indicator {
+    position: absolute;
+    top: calc(120% + 1.5em); /* Position below the circle name */
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(255, 215, 0, 0.3); /* Gold background matching the line */
+    color: rgba(255, 215, 0, 0.9);
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    white-space: nowrap;
+    z-index: 35; /* Above other name elements */
+    pointer-events: none; /* Don't interfere with clicks */
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
+    text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
+    border: 1px solid rgba(255, 215, 0, 0.5);
+    animation: glow-pulse 1.5s infinite alternate;
+    font-weight: bold;
+}
+
+@keyframes glow-pulse {
+    from {
+        box-shadow: 0 0 5px rgba(255, 215, 0, 0.3);
+        text-shadow: 0 0 2px rgba(0, 0, 0, 0.7);
+    }
+    to {
+        box-shadow: 0 0 10px rgba(255, 215, 0, 0.7);
+        text-shadow: 0 0 3px rgba(0, 0, 0, 0.9);
+    }
 }

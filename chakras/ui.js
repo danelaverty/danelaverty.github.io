@@ -24,13 +24,89 @@ const UIManager = {
         Utils.debugLog('Meridian line created at x=' + Config.meridian.x);
     },
     
-    // Create the color picker modal
+    // Add drag functionality for positioning
+    addDragFunctionality: function(element) {
+        let startDrag = function(e) {
+            // Only start dragging if the element is not being dragged for HTML5 drag and drop
+            if (e.target === element) {
+                e.preventDefault();
+                UIManager.isDragging = true;
+                UIManager.wasDragged = false; // Reset the dragged flag on mousedown
+                UIManager.draggedElement = element;
+                element.style.zIndex = 20;
+                Utils.debugLog('Started positioning drag', element.dataset.id);
+            }
+        };
+        
+        element.addEventListener('mousedown', startDrag);
+    },
+
+    // Select an item (circle or square) - only when it's a true click, not a drag
+    selectItem: function(item) {
+        // Skip selection if we're at the end of a drag operation
+        if (this.wasDragged) {
+            return;
+        }
+        
+        const bottomPanel = document.getElementById('bottom-panel');
+        
+        if (item.classList.contains('circle')) {
+            // Deselect previously selected circle if any
+            if (CircleManager.selectedCircle && CircleManager.selectedCircle !== item) {
+                CircleManager.selectedCircle.classList.remove('selected');
+            }
+            
+            CircleManager.selectedCircle = item;
+            const circleId = item.dataset.id;
+            
+            // Add selected class for visual indication
+            item.classList.add('selected');
+            
+            // Show action buttons
+            this.toggleActionButtons(true);
+            
+            // Dim all other circles
+            this.dimOtherCircles(circleId);
+            
+            // Activate bottom panel content
+            bottomPanel.classList.add('active');
+            
+            // Show the attribute grid
+            this.toggleAttributeGrid(true);
+            
+            // Show only squares associated with this circle
+            this.showSquaresForCircle(circleId);
+            
+            // Enable attribute boxes since a circle is selected
+            this.toggleAttributeBoxInteractivity(true);
+
+	    ConnectionManager.updateCircleWithClosestName();
+        } else if (item.classList.contains('square')) {
+            // Deselect previously selected square if any
+            if (SquareManager.selectedSquare && SquareManager.selectedSquare !== item) {
+                const prevButtons = SquareManager.selectedSquare.querySelector('.item-buttons');
+                if (prevButtons) {
+                    prevButtons.style.display = 'none';
+                }
+                SquareManager.selectedSquare.classList.remove('selected');
+            }
+            
+            SquareManager.selectedSquare = item;
+            
+            // We no longer show buttons for selected squares
+            // Buttons have been removed as deletion can be handled with key press
+            
+            // Add selected class for visual indication
+            item.classList.add('selected');
+        }
+    },
+
     createColorPicker: function() {
         // Create color picker container
         const colorPicker = document.createElement('div');
         colorPicker.id = 'color-picker';
         colorPicker.className = 'color-picker-modal';
-        
+
         // Create close button
         const closeBtn = document.createElement('button');
         closeBtn.className = 'color-picker-close';
@@ -40,112 +116,148 @@ const UIManager = {
             e.stopPropagation();
             colorPicker.style.display = 'none';
         });
-        //colorPicker.appendChild(closeBtn);
-        
+        colorPicker.appendChild(closeBtn);
+
+        // Optional header
+        const header = document.createElement('div');
+        header.className = 'color-picker-header';
+        header.textContent = 'Crystal Colors';
+        colorPicker.appendChild(header);
+
         // Create color picker content
         const colorPickerContent = document.createElement('div');
         colorPickerContent.className = 'color-picker-content';
-        
-        // Set up simplified color families with 4 colors each
+
+        // Set up color families with crystal names - 12 in each column
         const colorFamilies = [
-            { name: "Scarlet", colors: ['#FF0050'], bg: '#FFF0F0' },
-            { name: "Red", colors: ['#FF0000'], bg: '#FFF0F0' },
-            { name: "Pink", colors: ['#FFAAAA'], bg: '#FFF5F7' },
-            { name: "Vermilion", colors: ['#FF5234'], bg: '#FFF0F0' },
-            { name: "Orange", colors: ['#FFAC00'], bg: '#FFF5F0' },
-            { name: "Yellow", colors: ['#FFE700'], bg: '#FFFDF0' },
-            { name: "Chartreuse", colors: ['#D0FF00'], bg: '#FFFDF0' },
-            { name: "Green", colors: ['#00FF00'], bg: '#F0FFF0' },
-            { name: "Aqua", colors: ['#00FFD0'], bg: '#F0FFF0' },
-            { name: "Teal", colors: ['#99EEFF'], bg: '#F0FFFF' },
-            { name: "Blue", colors: ['#0000FF'], bg: '#F0F8FF' },
-            { name: "Purple", colors: ['#AA2BFF'], bg: '#F8F0FF' },
-            { name: "Magenta", colors: ['#FF00FF'], bg: '#FFF0FF' },
-            { name: "Brown", colors: ['#A52A2A'], bg: '#F8F5F0' },
-            { name: "White", colors: ['#FFFFFF'], bg: '#F8F8F8' },
-            { name: "Gray", colors: ['#999999'], bg: '#F8F8F8' },
-            { name: "Black", colors: ['#000000'], bg: '#F8F8F8' },
+        { name: "Warm Crystals", colors: [
+            { color: '#FF0050', crystal: 'Ruby' },
+                { color: '#FF0000', crystal: 'Garnet' },
+                { color: '#FFAAAA', crystal: 'Rose Quartz' },
+                { color: '#FF5234', crystal: 'Carnelian' },
+                { color: '#FFAC00', crystal: 'Amber' },
+                { color: '#FFE700', crystal: 'Citrine' },
+                { color: '#B87333', crystal: 'Tiger\'s Eye' },
+                { color: '#CD7F32', crystal: 'Sunstone' },
+                { color: '#D35400', crystal: 'Fire Agate' },
+                { color: '#A52A2A', crystal: 'Smoky Quartz' },
+                { color: '#FFFFFF', crystal: 'Clear Quartz' },
+                { color: '#FFC0CB', crystal: 'Rhodochrosite' }
+            ], bg: '#FFF5F5' },
+
+        { name: "Cool Crystals", colors: [
+            { color: '#D0FF00', crystal: 'Peridot' },
+            { color: '#00FF00', crystal: 'Emerald' },
+            { color: '#00FFD0', crystal: 'Aquamarine' },
+            { color: '#99EEFF', crystal: 'Turquoise' },
+            { color: '#0000FF', crystal: 'Sapphire' },
+            { color: '#AA2BFF', crystal: 'Amethyst' },
+            { color: '#FF00FF', crystal: 'Sugilite' },
+            { color: '#800080', crystal: 'Charoite' },
+            { color: '#483D8B', crystal: 'Lapis Lazuli' },
+            { color: '#999999', crystal: 'Hematite' },
+            { color: '#000000', crystal: 'Obsidian' },
+            { color: '#40E0D0', crystal: 'Amazonite' }
+            ], bg: '#F5F5FF' }
         ];
-        
-        // Create a compact grid layout for all colors
+
+        // Create grid for two column layout - directly use the two color families as columns
         const colorGrid = document.createElement('div');
         colorGrid.className = 'color-grid';
-        
-        colorFamilies.forEach(family => {
+
+        // Process each color family (now just two - warm and cool)
+        colorFamilies.forEach((family) => {
             // Create family container
             const familyContainer = document.createElement('div');
             familyContainer.className = 'color-family';
             familyContainer.style.backgroundColor = family.bg;
-            
+
             // Create family label
             const familyLabel = document.createElement('div');
             familyLabel.className = 'family-name';
             familyLabel.textContent = family.name;
-            //familyContainer.appendChild(familyLabel);
-            
+            familyContainer.appendChild(familyLabel);
+
             // Create color swatches container
             const swatchesContainer = document.createElement('div');
             swatchesContainer.className = 'swatches-container';
-            
-            // Add the 4 color swatches for this family
-            family.colors.forEach(color => {
+
+            // Add color options with crystal names on the left
+            family.colors.forEach(item => {
+                const colorOption = document.createElement('div');
+                colorOption.className = 'color-option';
+
+                // Create crystal name label (left)
+                const crystalLabel = document.createElement('div');
+                crystalLabel.className = 'crystal-name';
+                crystalLabel.textContent = item.crystal;
+
+                // Create color swatch (right)
                 const swatch = document.createElement('div');
                 swatch.className = 'color-swatch';
-                swatch.style.backgroundColor = color;
-                swatch.dataset.color = color;
-                swatch.title = color;
-                
+                swatch.style.backgroundColor = item.color;
+                swatch.dataset.color = item.color;
+                swatch.title = `${item.crystal}: ${item.color}`;
+
                 // Add click event to apply color
-                swatch.addEventListener('click', function(e) {
+                colorOption.addEventListener('click', function(e) {
                     e.stopPropagation();
                     if (CircleManager.selectedCircle) {
-                        const selectedColor = this.dataset.color;
-                        
+                        const selectedColor = item.color;
+
                         // Update the glow element's background color
                         const glowElement = CircleManager.selectedCircle.querySelector('.circle-glow');
                         if (glowElement) {
                             glowElement.style.backgroundColor = selectedColor;
                         }
-                        
+
                         // Update particles color
                         const particles = CircleManager.selectedCircle.querySelectorAll('.particle');
                         particles.forEach(particle => {
                             particle.style.backgroundColor = selectedColor;
                         });
-                        
-                        DataManager.updateCircleData(CircleManager.selectedCircle.dataset.id, { color: selectedColor });
-                        
+
+                        DataManager.updateCircleData(CircleManager.selectedCircle.dataset.id, { 
+                            color: selectedColor,
+                            crystal: item.crystal // Store the crystal name with the circle
+                        });
+
                         // Close color picker
                         colorPicker.style.display = 'none';
                     }
                 });
-                
-                swatchesContainer.appendChild(swatch);
+
+                // Add elements to color option
+                colorOption.appendChild(crystalLabel);
+                colorOption.appendChild(swatch);
+                swatchesContainer.appendChild(colorOption);
             });
-            
+
             familyContainer.appendChild(swatchesContainer);
             colorGrid.appendChild(familyContainer);
         });
-        
+
         colorPickerContent.appendChild(colorGrid);
         colorPicker.appendChild(colorPickerContent);
         document.body.appendChild(colorPicker);
-        
+
         // Hide color picker when clicking outside
         document.addEventListener('click', function(e) {
             if (colorPicker.style.display === 'block' && 
                 !colorPicker.contains(e.target) && 
                 e.target.id !== 'color-change-btn') {
-                colorPicker.style.display = 'none';
-            }
+                    colorPicker.style.display = 'none';
+                }
         });
-        
+
         return colorPicker;
     },
     
     // Create and add the action buttons (initially hidden)
     createActionButtons: function() {
+        // Get references to the new panels
         const leftPanel = document.getElementById('left-panel');
+        const topPanel = document.getElementById('top-panel');
         const addCircleBtn = document.getElementById('add-circle-btn');
         
         // Create color change button
@@ -164,9 +276,9 @@ const UIManager = {
         deleteCircleBtn.style.display = 'none'; // Initially hidden
         deleteCircleBtn.title = "Delete Circle";
         
-        // Add buttons to left panel
-        leftPanel.appendChild(colorChangeBtn);
-        leftPanel.appendChild(deleteCircleBtn);
+        // Add buttons to top panel instead of left panel
+        topPanel.appendChild(colorChangeBtn);
+        topPanel.appendChild(deleteCircleBtn);
         
         // Create color picker
         const colorPicker = this.createColorPicker();
@@ -178,10 +290,32 @@ const UIManager = {
                 // Show the color picker
                 colorPicker.style.display = 'block';
                 
-                // Position the color picker
+                // Position the color picker near the button
                 const btnRect = colorChangeBtn.getBoundingClientRect();
-                colorPicker.style.left = `${btnRect.right + 10}px`;
-                colorPicker.style.top = `${btnRect.top}px`;
+                
+                // Position below the button
+                let leftPos = btnRect.left;
+                let topPos = btnRect.bottom + 10; // Position below with some offset
+                
+                // Make sure it stays within the viewport
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+                const pickerWidth = 280; // Should match the width in CSS
+                const pickerHeight = Math.min(500, viewportHeight * 0.8); // Approximate max height
+                
+                // Adjust if would go off-screen to the right
+                if (leftPos + pickerWidth > viewportWidth) {
+                    leftPos = Math.max(10, viewportWidth - pickerWidth - 10);
+                }
+                
+                // Adjust if would go off-screen at the bottom
+                if (topPos + pickerHeight > viewportHeight) {
+                    topPos = Math.max(10, viewportHeight - pickerHeight - 10);
+                }
+                
+                // Apply the calculated position
+                colorPicker.style.left = `${leftPos}px`;
+                colorPicker.style.top = `${topPos}px`;
             }
         });
         
@@ -208,9 +342,9 @@ const UIManager = {
                 // This makes sense because a square can only be selected when a circle is selected,
                 // so the square is likely the user's current focus
                 if (SquareManager.selectedSquare) {
-                    const rightPanel = document.getElementById('right-panel');
+                    const bottomPanel = document.getElementById('bottom-panel');
                     Utils.showDeleteDialog(function() {
-                        rightPanel.removeChild(SquareManager.selectedSquare);
+                        bottomPanel.removeChild(SquareManager.selectedSquare);
                         DataManager.deleteSquareData(SquareManager.selectedSquare.dataset.id);
                         UIManager.deselectSquare();
                     });
@@ -296,9 +430,56 @@ const UIManager = {
         }
     },
 
+    // Setup top panel controls
+    setupTopPanelControls: function() {
+        const topPanel = document.getElementById('top-panel');
+        
+        // Create a container for the panel title
+        const titleContainer = document.createElement('div');
+        titleContainer.className = 'panel-title';
+        
+        // Create a container for future buttons
+        const buttonContainer = document.createElement('div');
+        buttonContainer.id = 'top-panel-controls';
+        buttonContainer.className = 'top-panel-controls';
+        
+        // Add a sample button that will appear for all circles (we can add more later)
+        const infoButton = document.createElement('button');
+        infoButton.id = 'info-btn';
+        infoButton.className = 'action-btn';
+        infoButton.innerHTML = 'ℹ️'; // Info emoji
+        infoButton.title = "Information";
+        infoButton.style.display = 'none'; // Initially hidden, will show when circle is selected
+        
+        // Add event listener for the info button (just a placeholder)
+        infoButton.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (CircleManager.selectedCircle) {
+                const circleData = DataManager.data.circles.find(c => c.id === CircleManager.selectedCircle.dataset.id);
+                alert(`Chakra Info: ${circleData.name}\nPosition: (${circleData.x}, ${circleData.y})\nSquares: ${DataManager.countCircleSquares(circleData.id)}`);
+            }
+        });
+        
+        // Add elements to the top panel
+        buttonContainer.appendChild(infoButton);
+        topPanel.appendChild(titleContainer);
+        topPanel.appendChild(buttonContainer);
+        
+        // Add this to the toggleActionButtons method to show/hide the info button
+        const originalToggleActionButtons = this.toggleActionButtons;
+        this.toggleActionButtons = function(show) {
+            originalToggleActionButtons.call(this, show);
+            
+            // Also toggle the info button
+            if (infoButton) {
+                infoButton.style.display = show ? 'flex' : 'none';
+            }
+        };
+    },
+
     // Select an item (circle or square)
     selectItem: function(item) {
-        const rightPanel = document.getElementById('right-panel');
+        const bottomPanel = document.getElementById('bottom-panel');
         
         if (item.classList.contains('circle')) {
             // Deselect previously selected circle if any
@@ -318,8 +499,8 @@ const UIManager = {
             // Dim all other circles
             this.dimOtherCircles(circleId);
             
-            // Activate right panel content
-            rightPanel.classList.add('active');
+            // Activate bottom panel content
+            bottomPanel.classList.add('active');
             
             // Show the attribute grid
             this.toggleAttributeGrid(true);
@@ -341,11 +522,8 @@ const UIManager = {
             
             SquareManager.selectedSquare = item;
             
-            // Show buttons for the selected square
-            const buttons = item.querySelector('.item-buttons');
-            if (buttons) {
-                buttons.style.display = 'flex';
-            }
+                            // We no longer show buttons for selected squares
+                // Buttons have been removed as deletion can be handled with key press
             
             // Add selected class for visual indication
             item.classList.add('selected');
@@ -366,26 +544,48 @@ const UIManager = {
     
     // Show only squares associated with the selected circle
     showSquaresForCircle: function(circleId) {
-        // Hide all squares first
-        const allSquares = document.querySelectorAll('.square');
-        allSquares.forEach(square => {
-            square.style.display = 'none';
-        });
-        
-        // Show only squares associated with this circle
-        const relatedSquares = document.querySelectorAll(`.square[data-circle-id="${circleId}"]`);
-        relatedSquares.forEach(square => {
-            square.style.display = 'flex';
-        });
-        
-        // Deselect square if it's not visible
-        if (SquareManager.selectedSquare && SquareManager.selectedSquare.dataset.circleId !== circleId) {
-            this.deselectSquare();
-        }
+	    // Hide all squares first, including any special Me squares
+	    const allSquares = document.querySelectorAll('.square');
+	    allSquares.forEach(square => {
+		    square.style.display = 'none';
+	    });
+
+	    // Show only squares associated with this circle
+	    const relatedSquares = document.querySelectorAll(`.square[data-circle-id="${circleId}"]`);
+	    relatedSquares.forEach(square => {
+		    square.style.display = 'flex';
+	    });
+
+	    // Deselect square if it's not visible
+	    if (SquareManager.selectedSquare && SquareManager.selectedSquare.dataset.circleId !== circleId) {
+		    this.deselectSquare();
+	    }
+
+	    // Remove any existing "Me" squares first to avoid duplicates
+	    const existingMeSquares = document.querySelectorAll('.special-me-square');
+	    existingMeSquares.forEach(square => {
+		    if (square.dataset.circleId !== circleId) {
+			    // Only remove Me squares from other circles
+			    square.style.display = 'none';
+		    }
+	    });
+
+	    // Create or display the special "Me" square for this circle only
+	    this.createSpecialMeSquare(circleId);
+
+	    // Update connections with proper timing
+	    ConnectionManager.updateAllConnections();
+
+	    // Force a second update after a delay to ensure everything is positioned correctly
+	    setTimeout(() => {
+		    // This second call helps ensure the highlight is applied after everything is rendered
+		    ConnectionManager.updateAllConnections();
+		    ConnectionManager.highlightShortestMeConnection();
+	    }, 150);
     },
     
     deselectCircle: function() {
-        const rightPanel = document.getElementById('right-panel');
+        const bottomPanel = document.getElementById('bottom-panel');
         
         if (CircleManager.selectedCircle) {
             // Remove selected class
@@ -399,8 +599,8 @@ const UIManager = {
             
             CircleManager.selectedCircle = null;
             
-            // Deactivate right panel content
-            rightPanel.classList.remove('active');
+            // Deactivate bottom panel content
+            bottomPanel.classList.remove('active');
             
             // Hide the attribute grid 
             this.toggleAttributeGrid(false);
@@ -410,8 +610,9 @@ const UIManager = {
             allSquares.forEach(square => {
                 square.style.display = 'none';
             });
+	    ConnectionManager.clearAllLines();
             
-            // Also deselect square since right panel is deactivated
+            // Also deselect square since bottom panel is deactivated
             this.deselectSquare();
             
             // Disable attribute boxes since no circle is selected
@@ -421,10 +622,7 @@ const UIManager = {
     
     deselectSquare: function() {
         if (SquareManager.selectedSquare) {
-            const buttons = SquareManager.selectedSquare.querySelector('.item-buttons');
-            if (buttons) {
-                buttons.style.display = 'none';
-            }
+            // No need to hide buttons since they've been removed
             
             // Remove selected class
             SquareManager.selectedSquare.classList.remove('selected');
@@ -436,7 +634,7 @@ const UIManager = {
     // Setup panel click handlers for deselection
     setupPanelClickHandlers: function() {
         const leftPanel = document.getElementById('left-panel');
-        const rightPanel = document.getElementById('right-panel');
+        const bottomPanel = document.getElementById('bottom-panel');
         
         // Left panel click - only deselect circle
         leftPanel.addEventListener('click', function(e) {
@@ -446,10 +644,10 @@ const UIManager = {
             }
         });
 
-        // Right panel click handler - only for deselection of squares
-        rightPanel.addEventListener('click', function(e) {
+        // Bottom panel click handler - only for deselection of squares
+        bottomPanel.addEventListener('click', function(e) {
             // Only handle clicks directly on the panel (not on children)
-            if (e.target === rightPanel) {
+            if (e.target === bottomPanel) {
                 // Only deselect squares
                 if (SquareManager.selectedSquare) {
                     UIManager.deselectSquare();
@@ -461,7 +659,7 @@ const UIManager = {
     // Setup attribute boxes as creation buttons
     setupAttributeBoxCreation: function() {
         const attributeBoxes = document.querySelectorAll('.attribute-box');
-        const rightPanel = document.getElementById('right-panel');
+        const bottomPanel = document.getElementById('bottom-panel');
         
         attributeBoxes.forEach(box => {
             box.classList.add('create-button');
@@ -478,7 +676,7 @@ const UIManager = {
                 
                 // Create a new square at a random position near the center
                 const id = Utils.generateId();
-                const panelRect = rightPanel.getBoundingClientRect();
+                const panelRect = bottomPanel.getBoundingClientRect();
                 const centerX = panelRect.width / 2;
                 const centerY = panelRect.height / 2;
                 
@@ -560,5 +758,76 @@ const UIManager = {
             // Select the new circle
             UIManager.selectItem(circle);
         });
+    },
+
+    // Create the special "Me" square for a given circle
+    createSpecialMeSquare: function(circleId) {
+        const bottomPanel = document.getElementById('bottom-panel');
+        
+        // Check if a "Me" square already exists for this circle
+        const existingMeSquare = document.querySelector(`.special-me-square[data-circle-id="${circleId}"]`);
+        if (existingMeSquare) {
+            // If it exists, just make sure it's visible
+            existingMeSquare.style.display = 'flex';
+            return existingMeSquare;
+        }
+        
+        // Create special Me square
+        const meSquare = document.createElement('div');
+        meSquare.className = 'square special-me-square';
+        meSquare.dataset.id = 'me-' + circleId; // Unique ID based on the circle
+        meSquare.dataset.circleId = circleId;
+        
+        // Fixed position
+        meSquare.style.width = '30px';
+        meSquare.style.height = '30px';
+        meSquare.style.left = '200px';
+        meSquare.style.top = '200px';
+        meSquare.style.backgroundColor = '#FFCC88'; // Light skin tone color
+        meSquare.style.cursor = 'default'; // Change cursor to indicate it's not draggable
+        
+        // Add the nonbinary light skinned person emoji
+        const emojiElement = document.createElement('div');
+        emojiElement.className = 'square-content';
+        emojiElement.textContent = '🧑🏼'; // Nonbinary light skinned person emoji
+        meSquare.appendChild(emojiElement);
+        
+        // Add name label
+        const nameElement = document.createElement('div');
+        nameElement.className = 'item-name';
+        nameElement.textContent = 'Me';
+        nameElement.contentEditable = false; // Make it non-editable
+        meSquare.appendChild(nameElement);
+        
+        // Add special styling
+        meSquare.style.boxShadow = '0 0 10px rgba(255, 255, 255, 0.5)';
+        meSquare.style.border = '1px solid rgba(255, 255, 255, 0.7)';
+        
+        // Click handler (just for visual selection effect)
+	meSquare.addEventListener('click', function(e) {
+		e.stopPropagation();
+
+		// Toggle selection visual without actual drag functionality
+		if (meSquare.classList.contains('selected')) {
+			meSquare.classList.remove('selected');
+		} else {
+			// Deselect any other square first
+			const selectedSquares = document.querySelectorAll('.square.selected');
+			selectedSquares.forEach(sq => sq.classList.remove('selected'));
+
+			meSquare.classList.add('selected');
+		}
+
+		// This is the new line to update connections when the Me square is clicked
+		ConnectionManager.updateAllConnections();
+	});
+        
+        // Add to bottom panel
+        bottomPanel.appendChild(meSquare);
+	setTimeout(() => {
+		ConnectionManager.updateAllConnections();
+	}, 50);
+        
+        return meSquare;
     }
 };

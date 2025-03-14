@@ -10,32 +10,16 @@
     <div id="left-panel">
         <button id="add-circle-btn" class="add-btn">+</button>
     </div>
-    <div id="right-panel">
-        <!-- Attribute grid section - now these will act as creation buttons -->
-        <div id="attribute-grid">
-            <div id="treasure-box" class="attribute-box" data-attribute="treasure">
-                <div class="emoji">💎</div>
-                <div>Treasures</div>
-            </div>
-            <div id="ally-box" class="attribute-box" data-attribute="ally">
-                <div class="emoji">🧝🏻‍♂️</div>
-                <div>Allies</div>
-            </div>
-            <div id="door-box" class="attribute-box" data-attribute="door">
-                <div class="emoji">🚪</div>
-                <div>Doors</div>
-            </div>
-            <div id="key-box" class="attribute-box" data-attribute="key">
-                <div class="emoji">🔑</div>
-                <div>Keys</div>
-            </div>
-            <div id="demon-box" class="attribute-box" data-attribute="demon">
-                <div class="emoji">😈</div>
-                <div>Demons</div>
-            </div>
-            <div id="sword-box" class="attribute-box" data-attribute="sword">
-                <div class="emoji">🗡️</div>
-                <div>Swords</div>
+    <div id="right-container">
+        <!-- New top panel for controls -->
+        <div id="top-panel">
+            <!-- This will hold the color picker button and other controls -->
+        </div>
+        <!-- Bottom panel (former right panel) -->
+        <div id="bottom-panel">
+            <!-- Attribute grid section - this will be populated dynamically -->
+            <div id="attribute-grid">
+                <!-- Dynamic content will be inserted here -->
             </div>
         </div>
     </div>
@@ -60,6 +44,7 @@
     <script src="circle.js"></script>
     <script src="square.js"></script>
     <script src="attributes.js"></script>
+    <script src="connection.js"></script>
     <script src="ui.js"></script>
     <script src="main.js"></script>
 </body>
