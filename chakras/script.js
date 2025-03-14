@@ -24,6 +24,8 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     
     // ===== CONFIG =====
+    const defaultName = '???';
+
     const predefinedColors = [
         '#FF0000', // Red
         '#FF7F00', // Orange
@@ -38,7 +40,8 @@ document.addEventListener('DOMContentLoaded', function() {
     ];
 
     const chakraForms = [
-	    [{ sides: 3, starFactor: 1, borderPercent: .20 }],
+	    [{ sides: 1, starFactor: 1, borderPercent: .1, scale: .2 }],
+	    [{ sides: 3, starFactor: 1, borderPercent: .1, scale: .8 }],
 	    [{ sides: 3, starFactor: 1, borderPercent: .18 }, { sides: 3, starFactor: 1, borderPercent: .18, rotate: 60 }],
 	    [{ sides: 4, starFactor: 1, borderPercent: .12 }, { sides: 4, starFactor: 1, borderPercent: .12, rotate: 45 }],
 	    //[{ sides: 7, starFactor: 2, borderPercent: .12 }],
@@ -137,8 +140,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Get chakra form based on square count
-    function getChakraFormForCircle(circleId) {
-        const squareCount = countCircleSquares(circleId);
+    function getChakraFormForCircle(circleId, circleName) {
+        const squareCount = countCircleSquares(circleId) + (circleName == defaultName ? 0 : 1);
         // Get the chakra form index based on square count, with a fallback to the last form if count exceeds array length
         const formIndex = Math.min(squareCount, chakraForms.length - 1);
         debugLog(`Circle ${circleId} has ${squareCount} squares, using chakraForm[${formIndex}]`);
@@ -149,6 +152,10 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateChakraFormForCircle(circleId) {
         const circle = document.querySelector(`.circle[data-id="${circleId}"]`);
         if (!circle) return;
+
+	// Get the current name from the input element
+	const nameInput = circle.querySelector('.item-name');
+	const circleName = nameInput ? nameInput.value : defaultName;
 
         const chakraFormElement = getChakraFormForCircle(circleId);
         
@@ -491,7 +498,7 @@ document.addEventListener('DOMContentLoaded', function() {
 	particlesElement.appendChild(angleElement);
 	particlesElement.appendChild(angleElement.cloneNode(true));
 
-	const chakraFormElement = getChakraFormForCircle(circleData.id);
+	const chakraFormElement = getChakraFormForCircle(circleData.id, circleData.name);
 	const outerPolygonContainerElement = document.createElement('div');
 	outerPolygonContainerElement.className = 'outer-polygon-container';
 
@@ -525,6 +532,7 @@ document.addEventListener('DOMContentLoaded', function() {
         nameInput.value = circleData.name;
         nameInput.addEventListener('blur', function() {
             updateCircleData(circleData.id, { name: this.value });
+	    updateChakraFormForCircle(circleData.id);
         });
         nameInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
@@ -1052,7 +1060,7 @@ document.addEventListener('DOMContentLoaded', function() {
             y: y,
             size: sizes.medium.circle,
             color: predefinedColors[0],
-            name: '???'
+            name: defaultName,
         };
         
         // Create and add circle to DOM
