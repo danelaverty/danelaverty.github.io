@@ -149,14 +149,31 @@ const CircleManager = {
         nameElement.addEventListener('click', function(e) {
             e.stopPropagation();
         });
+
+	// Add closest square indicator if it exists in the data
+	if (circleData.closestSquareName) {
+		const closestIndicator = document.createElement('div');
+		closestIndicator.className = 'closest-square-indicator';
+		closestIndicator.textContent = circleData.closestSquareName; // No "Closest: " prefix
+		circle.appendChild(closestIndicator);
+	} else {
+		// Create an empty indicator that's hidden
+		const closestIndicator = document.createElement('div');
+		closestIndicator.className = 'closest-square-indicator';
+		closestIndicator.style.display = "none";
+		circle.appendChild(closestIndicator);
+	}
         
         // Add name element to circle
         circle.appendChild(nameElement);
         
-        // Click handler for selection
+        // Click handler for selection - only when it's a genuine click, not a drag
         circle.addEventListener('click', function(e) {
             e.stopPropagation();
-            UIManager.selectItem(circle);
+            // Only select if we weren't just dragging
+            if (!UIManager.wasDragged) {
+                UIManager.selectItem(circle);
+            }
         });
         
         // Add drag functionality

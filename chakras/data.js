@@ -31,6 +31,11 @@ const DataManager = {
                     square.style.display = 'none';
                 });
                 
+                // Update all circle indicators after data is loaded
+                setTimeout(() => {
+                    ConnectionManager.updateAllCircleIndicators();
+                }, 100);
+                
                 Utils.debugLog('Loaded data successfully');
             } catch (e) {
                 console.error("Error loading saved data:", e);
@@ -81,14 +86,25 @@ const DataManager = {
     },
     
     deleteSquareData: function(id) {
-        const square = this.data.squares.find(s => s.id === id);
-        if (square) {
-            const circleId = square.circleId;
-            this.data.squares = this.data.squares.filter(square => square.id !== id);
-            this.saveData();
-            // Update the chakra form for the associated circle
-            CircleManager.updateChakraFormForCircle(circleId);
-        }
+	    const square = this.data.squares.find(s => s.id === id);
+	    if (square) {
+		    const circleId = square.circleId;
+
+		    // Remove the square from the data
+		    this.data.squares = this.data.squares.filter(square => square.id !== id);
+		    ConnectionManager.removeSquareConnections(id);
+		    this.saveData();
+
+		    // Update the chakra form for the associated circle
+		    CircleManager.updateChakraFormForCircle(circleId);
+
+		    // Recalculate closest square after deletion
+		    setTimeout(() => {
+			    ConnectionManager.updateAllConnections();
+			    // Force update of closest indicators
+			    ConnectionManager.updateAllCircleIndicators();
+		    }, 100);
+	    }
     },
     
     // Count squares associated with a circle

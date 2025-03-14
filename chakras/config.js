@@ -21,7 +21,11 @@ const Config = {
     // Chakra forms configuration
     chakraForms: [
         [{ sides: 1, starFactor: 1, borderPercent: .1, scale: .2 }],
-        [{ sides: 3, starFactor: 1, borderPercent: .10, scale: .8 }],
+        [{ sides: 21, starFactor: 1, borderPercent: .05, scale: .8 }],
+        [{ sides: 3, starFactor: 1, borderPercent: .18, scale: .9 }],
+        [{ sides: 4, starFactor: 1, borderPercent: .15 }],
+        [{ sides: 5, starFactor: 1, borderPercent: .12 }],
+        [{ sides: 6, starFactor: 1, borderPercent: .09 }],
         [{ sides: 3, starFactor: 1, borderPercent: .18 }, { sides: 3, starFactor: 1, borderPercent: .18, rotate: 60 }],
         [{ sides: 4, starFactor: 1, borderPercent: .12 }, { sides: 4, starFactor: 1, borderPercent: .12, rotate: 45 }],
         [{ sides: 5, starFactor: 1, borderPercent: .10 }, { sides: 5, starFactor: 1, borderPercent: .10, rotate: 36 }],
@@ -35,12 +39,12 @@ const Config = {
     
     // Attribute information
     attributeInfo: {
-        treasure: { emoji: '💎', color: '#0000FF' },
-        ally: { emoji: '🧝🏻‍♂️', color: '#FF8C00' },
-        key: { emoji: '🔑', color: '#8B4513' },
-        door: { emoji: '🚪', color: '#FF0000' },
-        demon: { emoji: '😈', color: '#663399' },
-        sword: { emoji: '🗡️', color: '#C0C0C0' }
+	    treasure: { emoji: '💎', color: '#0000FF', displayName: 'Treasures', description: 'Proxy success criteria' },
+        door: { emoji: '🚪', color: '#AA0000', displayName: 'Doors', description: 'Paths you could choose' },
+        key: { emoji: '🔑', color: '#8B4513', displayName: 'Keys', description: 'Helps open doors' },
+        demon: { emoji: '😈', color: '#663399', displayName: 'Demons', description: 'Exacerbating factors' },
+        sword: { emoji: '🗡️', color: '#C0C0C0', displayName: 'Swords', description: 'Helps slay demons' },
+        ally: { emoji: '🧝🏻‍♂️', color: '#FF8C00', displayName: 'Allies', description: 'Helpful people' },
     },
     
     // Size configurations
@@ -54,6 +58,13 @@ const Config = {
     meridian: {
         x: 170,           // X position of meridian line
         snapThreshold: 20, // Distance in pixels to snap to meridian
-        lineColor: 'rgba(255, 255, 255, 0.3)' // Color of meridian line
-    }
+        lineColor: 'rgba(255, 255, 255, 0.2)' // Color of meridian line
+    },
+
+    connections: {
+	    maxLineLength: 160,  // Maximum length for visible connection lines (in pixels)
+	    lineColor: 'rgba(255, 255, 255, 0.3)',  // Default connection line color
+	    lineColorHighlight: 'rgba(255, 255, 255, 0.7)', // Color for highlighted connections
+	    lineWidth: 1, // Default line width in pixels
+    },
 };
