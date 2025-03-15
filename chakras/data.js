@@ -1,50 +1,96 @@
 // data.js - Data management for the Chakra Visualizer
 
 const DataManager = {
-    // Data storage
-    data: {
-        circles: [],
-        squares: []
-    },
-    
-    // Load data from localStorage
-    loadData: function() {
-        const savedData = localStorage.getItem('chakraVisualizerData');
-        if (savedData) {
-            try {
-                this.data = JSON.parse(savedData);
-                Utils.debugLog('Loading saved data', { circles: this.data.circles.length, squares: this.data.squares.length });
-                
-                // Render saved circles
-                this.data.circles.forEach(circleData => {
-                    CircleManager.createCircleElement(circleData);
-                });
-                
-                // Render saved squares (they'll be hidden initially)
-                this.data.squares.forEach(squareData => {
-                    SquareManager.createSquareElement(squareData);
-                });
-                
-                // Hide all squares initially
-                const allSquares = document.querySelectorAll('.square');
-                allSquares.forEach(square => {
-                    square.style.display = 'none';
-                });
-                
-                // Update all circle indicators after data is loaded
-                setTimeout(() => {
-                    ConnectionManager.updateAllCircleIndicators();
-                }, 100);
-                
-                Utils.debugLog('Loaded data successfully');
-            } catch (e) {
-                console.error("Error loading saved data:", e);
-                Utils.debugLog("Error loading saved data", e.message);
-            }
-        } else {
-            Utils.debugLog('No saved data found');
-        }
-    },
+	// Data storage
+	data: {
+		circles: [],
+		squares: [],
+		meSquares: [] // New array to track Me square positions
+	},
+
+	// Load data from localStorage
+	loadData: function() {
+		const savedData = localStorage.getItem('chakraVisualizerData');
+		if (savedData) {
+			try {
+				this.data = JSON.parse(savedData);
+				Utils.debugLog('Loading saved data', { 
+					circles: this.data.circles.length, 
+					squares: this.data.squares.length,
+					meSquares: this.data.meSquares ? this.data.meSquares.length : 0
+				});
+
+				// Ensure meSquares exists in data
+				if (!this.data.meSquares) {
+					this.data.meSquares = [];
+				}
+
+				// Render saved circles
+				this.data.circles.forEach(circleData => {
+					CircleManager.createCircleElement(circleData);
+				});
+
+				// Render saved squares (they'll be hidden initially)
+				this.data.squares.forEach(squareData => {
+					SquareManager.createSquareElement(squareData);
+				});
+
+				// Hide all squares initially
+				const allSquares = document.querySelectorAll('.square');
+				allSquares.forEach(square => {
+					square.style.display = 'none';
+				});
+
+				// Update all circle indicators after data is loaded
+				setTimeout(() => {
+					ConnectionManager.updateAllCircleIndicators();
+				}, 100);
+
+				Utils.debugLog('Loaded data successfully');
+			} catch (e) {
+				console.error("Error loading saved data:", e);
+				Utils.debugLog("Error loading saved data", e.message);
+			}
+		} else {
+			Utils.debugLog('No saved data found');
+		}
+	},
+
+	// New method to update Me square position
+	updateMeSquarePosition: function(circleId, x, y) {
+		// Ensure meSquares array exists
+		if (!this.data.meSquares) {
+			this.data.meSquares = [];
+		}
+
+		// Find existing entry or create new one
+		const index = this.data.meSquares.findIndex(item => item.circleId === circleId);
+
+		if (index !== -1) {
+			// Update existing position
+			this.data.meSquares[index].x = x;
+			this.data.meSquares[index].y = y;
+		} else {
+			// Add new position
+			this.data.meSquares.push({
+				circleId: circleId,
+				x: x,
+				y: y
+			});
+		}
+
+		// Save to localStorage
+		this.saveData();
+		Utils.debugLog(`Updated Me square position for circle ${circleId}: (${x}, ${y})`);
+	},
+
+	// Get Me square position for a circle
+	getMeSquarePosition: function(circleId) {
+		if (!this.data.meSquares) return null;
+
+		const meSquareData = this.data.meSquares.find(item => item.circleId === circleId);
+		return meSquareData || null;
+	},
     
     // Save data to localStorage
     saveData: function() {
