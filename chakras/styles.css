@@ -760,27 +760,19 @@ body {
 }
 
 .special-me-square {
-    position: absolute !important; /* Ensure it can't be repositioned */
-    z-index: 5; /* Lower than regular squares (which have z-index 10) to ensure it stays in the background */
-    pointer-events: auto; /* Allow click events */
-    user-select: none; /* Prevent selection */
-    transition: all 0.3s ease;
+    position: absolute !important;
+    z-index: 5;
+    pointer-events: auto;
+    user-select: none;
+    cursor: move !important;
+    transform: scale(1.05);
+    /* Remove transition for more immediate response */
+    transition: box-shadow 0.2s ease;
 }
 
 .special-me-square:hover {
-    transform: translate(-50%, -50%) scale(1.05); /* Slight scale effect on hover */
+    /* Remove transform effects that could slow it down */
     box-shadow: 0 0 15px rgba(255, 255, 255, 0.7) !important;
-}
-
-.special-me-square.selected {
-    box-shadow: 0 0 20px rgba(255, 255, 255, 0.9) !important;
-    z-index: 8; /* Higher than non-selected "Me" square but lower than draggable squares */
-}
-
-.special-me-square .item-name {
-    font-weight: bold;
-    background: rgba(0, 0, 0, 0.7);
-    pointer-events: none; /* Prevent clicks on the name */
 }
 
 /* Connection lines styling */
@@ -896,28 +888,10 @@ body {
     top: calc(120% + 1.5em); /* Position below the circle name */
     left: 50%;
     transform: translateX(-50%);
-    background-color: rgba(255, 215, 0, 0.3); /* Gold background matching the line */
     color: rgba(255, 215, 0, 0.9);
-    font-size: 10px;
-    padding: 2px 8px;
+    font-size: 9px;
     border-radius: 10px;
     white-space: nowrap;
     z-index: 35; /* Above other name elements */
     pointer-events: none; /* Don't interfere with clicks */
-    box-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
-    text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
-    border: 1px solid rgba(255, 215, 0, 0.5);
-    animation: glow-pulse 1.5s infinite alternate;
-    font-weight: bold;
-}
-
-@keyframes glow-pulse {
-    from {
-        box-shadow: 0 0 5px rgba(255, 215, 0, 0.3);
-        text-shadow: 0 0 2px rgba(0, 0, 0, 0.7);
-    }
-    to {
-        box-shadow: 0 0 10px rgba(255, 215, 0, 0.7);
-        text-shadow: 0 0 3px rgba(0, 0, 0, 0.9);
-    }
 }

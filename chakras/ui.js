@@ -333,33 +333,45 @@ const UIManager = {
    
     // Handle keyboard shortcuts
     setupKeyboardShortcuts: function() {
-        document.addEventListener('keydown', function(e) {
-            // Delete key - delete selected item
-            if (e.key === 'Delete') {
-                e.preventDefault();
+	    document.addEventListener('keydown', function(e) {
+		    // Check if we're currently editing a contenteditable element
+		    const activeElement = document.activeElement;
+		    const isEditingContentEditable = activeElement && 
+		    (activeElement.isContentEditable || 
+		     activeElement.tagName.toLowerCase() === 'input' || 
+		     activeElement.tagName.toLowerCase() === 'textarea');
 
-                // Prioritize square deletion if a square is selected
-                // This makes sense because a square can only be selected when a circle is selected,
-                // so the square is likely the user's current focus
-                if (SquareManager.selectedSquare) {
-                    const bottomPanel = document.getElementById('bottom-panel');
-                    Utils.showDeleteDialog(function() {
-                        bottomPanel.removeChild(SquareManager.selectedSquare);
-                        DataManager.deleteSquareData(SquareManager.selectedSquare.dataset.id);
-                        UIManager.deselectSquare();
-                    });
-                }
-                // If only a circle is selected
-                else if (CircleManager.selectedCircle) {
-                    const leftPanel = document.getElementById('left-panel');
-                    Utils.showDeleteDialog(function() {
-                        leftPanel.removeChild(CircleManager.selectedCircle);
-                        DataManager.deleteCircleData(CircleManager.selectedCircle.dataset.id);
-                        UIManager.deselectCircle();
-                    });
-                }
-            }
-        });
+	    // If we're editing, don't process delete key events
+	    if (isEditingContentEditable) {
+		    return; // Exit early - let the default behavior handle it
+	    }
+
+	    // Delete key - delete selected item
+	    if (e.key === 'Delete') {
+		    e.preventDefault();
+
+		    // Prioritize square deletion if a square is selected
+		    // This makes sense because a square can only be selected when a circle is selected,
+		    // so the square is likely the user's current focus
+		    if (SquareManager.selectedSquare) {
+			    const bottomPanel = document.getElementById('bottom-panel');
+			    Utils.showDeleteDialog(function() {
+				    bottomPanel.removeChild(SquareManager.selectedSquare);
+				    DataManager.deleteSquareData(SquareManager.selectedSquare.dataset.id);
+				    UIManager.deselectSquare();
+			    });
+		    }
+		    // If only a circle is selected
+		    else if (CircleManager.selectedCircle) {
+			    const leftPanel = document.getElementById('left-panel');
+			    Utils.showDeleteDialog(function() {
+				    leftPanel.removeChild(CircleManager.selectedCircle);
+				    DataManager.deleteCircleData(CircleManager.selectedCircle.dataset.id);
+				    UIManager.deselectCircle();
+			    });
+		    }
+	    }
+	    });
     },
     
     // Add drag functionality for positioning
@@ -762,72 +774,147 @@ const UIManager = {
 
     // Create the special "Me" square for a given circle
     createSpecialMeSquare: function(circleId) {
-        const bottomPanel = document.getElementById('bottom-panel');
-        
-        // Check if a "Me" square already exists for this circle
-        const existingMeSquare = document.querySelector(`.special-me-square[data-circle-id="${circleId}"]`);
-        if (existingMeSquare) {
-            // If it exists, just make sure it's visible
-            existingMeSquare.style.display = 'flex';
-            return existingMeSquare;
-        }
-        
-        // Create special Me square
-        const meSquare = document.createElement('div');
-        meSquare.className = 'square special-me-square';
-        meSquare.dataset.id = 'me-' + circleId; // Unique ID based on the circle
-        meSquare.dataset.circleId = circleId;
-        
-        // Fixed position
-        meSquare.style.width = '30px';
-        meSquare.style.height = '30px';
-        meSquare.style.left = '200px';
-        meSquare.style.top = '200px';
-        meSquare.style.backgroundColor = '#FFCC88'; // Light skin tone color
-        meSquare.style.cursor = 'default'; // Change cursor to indicate it's not draggable
-        
-        // Add the nonbinary light skinned person emoji
-        const emojiElement = document.createElement('div');
-        emojiElement.className = 'square-content';
-        emojiElement.textContent = '🧑🏼'; // Nonbinary light skinned person emoji
-        meSquare.appendChild(emojiElement);
-        
-        // Add name label
-        const nameElement = document.createElement('div');
-        nameElement.className = 'item-name';
-        nameElement.textContent = 'Me';
-        nameElement.contentEditable = false; // Make it non-editable
-        meSquare.appendChild(nameElement);
-        
-        // Add special styling
-        meSquare.style.boxShadow = '0 0 10px rgba(255, 255, 255, 0.5)';
-        meSquare.style.border = '1px solid rgba(255, 255, 255, 0.7)';
-        
-        // Click handler (just for visual selection effect)
-	meSquare.addEventListener('click', function(e) {
-		e.stopPropagation();
+	    const bottomPanel = document.getElementById('bottom-panel');
 
-		// Toggle selection visual without actual drag functionality
-		if (meSquare.classList.contains('selected')) {
-			meSquare.classList.remove('selected');
-		} else {
-			// Deselect any other square first
-			const selectedSquares = document.querySelectorAll('.square.selected');
-			selectedSquares.forEach(sq => sq.classList.remove('selected'));
+	    // Check if a "Me" square already exists for this circle
+	    const existingMeSquare = document.querySelector(`.special-me-square[data-circle-id="${circleId}"]`);
+	    if (existingMeSquare) {
+		    // If it exists, just make sure it's visible
+		    existingMeSquare.style.display = 'flex';
+		    return existingMeSquare;
+	    }
 
-			meSquare.classList.add('selected');
-		}
+	    // Create special Me square
+	    const meSquare = document.createElement('div');
+	    meSquare.className = 'square special-me-square';
+	    meSquare.dataset.id = 'me-' + circleId; // Unique ID based on the circle
+	    meSquare.dataset.circleId = circleId;
 
-		// This is the new line to update connections when the Me square is clicked
-		ConnectionManager.updateAllConnections();
-	});
-        
-        // Add to bottom panel
-        bottomPanel.appendChild(meSquare);
-	setTimeout(() => {
-		ConnectionManager.updateAllConnections();
-	}, 50);
-        
-        return meSquare;
+	    // Get square position from data or use default position
+	    const meSquareData = DataManager.data.meSquares ? 
+		    DataManager.data.meSquares.find(sq => sq.circleId === circleId) : null;
+
+	    const meX = meSquareData ? meSquareData.x : 200;
+	    const meY = meSquareData ? meSquareData.y : 200;
+
+	    // Set position and style
+	    meSquare.style.width = '30px';
+	    meSquare.style.height = '30px';
+	    meSquare.style.left = `${meX}px`;
+	    meSquare.style.top = `${meY}px`;
+	    meSquare.style.backgroundColor = '#FFCC88'; // Light skin tone color
+	    meSquare.style.cursor = 'move'; // Change cursor to indicate it's draggable
+
+	    // Add the nonbinary light skinned person emoji
+	    const emojiElement = document.createElement('div');
+	    emojiElement.className = 'square-content';
+	    emojiElement.textContent = '🧑🏼'; // Nonbinary light skinned person emoji
+	    meSquare.appendChild(emojiElement);
+
+	    // Add name label
+	    const nameElement = document.createElement('div');
+	    nameElement.className = 'item-name';
+	    nameElement.textContent = 'Me';
+	    nameElement.contentEditable = false; // Make it non-editable
+	    meSquare.appendChild(nameElement);
+
+	    // Add special styling
+	    meSquare.style.boxShadow = '0 0 10px rgba(255, 255, 255, 0.5)';
+	    meSquare.style.border = '1px solid rgba(255, 255, 255, 0.7)';
+
+	    // Add drag functionality
+	    let isDragging = false;
+	    let startX, startY;
+
+	    meSquare.addEventListener('mousedown', function(e) {
+		    e.preventDefault();
+		    e.stopPropagation();
+
+		    // Start dragging
+		    isDragging = true;
+		    startX = e.clientX;
+		    startY = e.clientY;
+
+		    // Increase z-index while dragging
+		    meSquare.style.zIndex = '20';
+
+		    // Add selected effect
+		    meSquare.classList.add('selected');
+
+		    Utils.debugLog('Started dragging Me square');
+	    });
+
+	    document.addEventListener('mousemove', function(e) {
+		    if (!isDragging) return;
+
+		    e.preventDefault();
+
+		    // Direct position calculation instead of delta-based movement
+		    const bottomPanelRect = bottomPanel.getBoundingClientRect();
+		    const newLeft = e.clientX - bottomPanelRect.left - 15; // Half of width (30/2)
+		    const newTop = e.clientY - bottomPanelRect.top - 15;  // Half of height
+
+		    // Apply bounds checking
+		    const boundedLeft = Math.max(0, Math.min(bottomPanelRect.width - 30, newLeft));
+		    const boundedTop = Math.max(0, Math.min(bottomPanelRect.height - 30, newTop));
+
+		    // Apply new position
+		    meSquare.style.left = `${boundedLeft}px`;
+		    meSquare.style.top = `${boundedTop}px`;
+
+		    // Update data less frequently for better performance
+		    if (e.movementX % 3 === 0 || e.movementY % 3 === 0) {
+			    // Save to DataManager
+			    DataManager.updateMeSquarePosition(circleId, boundedLeft, boundedTop);
+
+			    // Only update connections occasionally during drag for performance
+			    ConnectionManager.updateSquareConnections(meSquare);
+		    }
+	    });
+
+	    document.addEventListener('mouseup', function() {
+		    if (!isDragging) return;
+
+		    isDragging = false;
+		    meSquare.style.zIndex = '5';
+
+		    // Update connections after drag is complete
+		    ConnectionManager.updateAllConnections();
+
+		    Utils.debugLog('Stopped dragging Me square');
+	    });
+
+	    // Click handler (for selection visual)
+	    meSquare.addEventListener('click', function(e) {
+		    e.stopPropagation();
+
+		    // Toggle selection visual
+		    if (meSquare.classList.contains('selected') && !isDragging) {
+			    meSquare.classList.remove('selected');
+		    } else {
+			    // Deselect any other square first
+			    const selectedSquares = document.querySelectorAll('.square.selected');
+			    selectedSquares.forEach(sq => sq.classList.remove('selected'));
+
+			    meSquare.classList.add('selected');
+		    }
+
+		    // Update connections
+		    ConnectionManager.updateAllConnections();
+
+		    // Explicitly force a highlight update after a short delay
+		    setTimeout(() => {
+			    ConnectionManager.highlightShortestMeConnection();
+		    }, 50);
+	    });
+
+	    // Add to bottom panel
+	    bottomPanel.appendChild(meSquare);
+
+	    setTimeout(() => {
+		    ConnectionManager.updateAllConnections();
+	    }, 50);
+
+	    return meSquare;
     }
 };
