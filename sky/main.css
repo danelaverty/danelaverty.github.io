@@ -260,6 +260,7 @@ div.aspect-list:hover {
 	position: absolute;
 	top: 100%;
 	left: 100%;
+	transform-style: preserve-3d;
 }
 
 .the-earth {
@@ -270,6 +271,7 @@ div.aspect-list:hover {
 	position: absolute;
 	transform: translate(-50%, -50%);
 	overflow: hidden;
+	transform-style: preserve-3d;
 }
 
 .the-day-text {
@@ -356,6 +358,7 @@ div.aspect-list:hover {
 	position: absolute;
 	height: 300px;
 	z-index: 2;
+	transform-style: preserve-3d;
 }
 
 .dim {
@@ -395,6 +398,8 @@ div.aspect-list:hover {
 	font-size: 16px;
 	line-height: 16px;
 	font-family: "Palatino Linotype";
+	z-index: 10;
+	text-shadow: 1px 1px 0px black;
 }
 
 .planet-name.small {
@@ -427,10 +432,11 @@ div.aspect-list:hover {
 	height: 20px;
 	border-radius: 50%;
 	background-color: #4488BB;
-	transform: translate(-50%, -50%);
 	overflow: hidden;
 	font-size: 7px;
 	color: white;
+	transform-style: preserve-3d;
+	backface-visibility: visible;
 }
 
 .moon-shader {

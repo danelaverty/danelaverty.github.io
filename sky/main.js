@@ -2,10 +2,10 @@ Vue.component('a-planet', {
 	props: { planet: Object, timeOffset: Number, opacity: Number, showName: Boolean, isFlat: Boolean, iteration: Number, reference: Boolean },
 	computed: {
 		planetAngle: function() {
-			return this.$root.planetAngle(this.planet.name, this.$root.dateTime + this.timeOffset);
+			return this.$root.planetAngle(this.planet.name, this.$root.dateTime + this.timeOffset) + this.$root.additionalRotation;
 		},
 		previousPlanetAngle: function() {
-			return this.$root.planetAngle(this.planet.name, this.$root.dateTime + this.timeOffset - 1000000);
+			return this.$root.planetAngle(this.planet.name, this.$root.dateTime + this.timeOffset - 1000000) + this.$root.additionalRotation;
 		},
 		isRetrograde: function() {
 			return this.previousPlanetAngle < this.planetAngle;
@@ -52,7 +52,12 @@ Vue.component('a-planet', {
 				'height: (this.$root.toEcliptic ? 600 : this.$root.tinyView ? 100 : (100 + 32 * planet.order)) + \'px\', ' +
 				'}" ' +
 			'>' +
-			'<div class="planet-name" v-if="!$root.useSymbols && showName && !reference" :class="{ small: $root.sequenceView, node: planet.name == \'NN\' || planet.name == \'SN\', }">{{ planet.name }}</div>' +
+			'<div class="planet-name" v-if="!$root.useSymbols && showName && !reference" ' +
+				':class="{ small: $root.sequenceView, node: planet.name == \'NN\' || planet.name == \'SN\', }" ' +
+				':style="{ ' +
+					'transform: \'translate(-50%, -50%) scale(\' + (1 / $root.scale) + \') rotate(-\' + planetAngle + \'deg) scaleY(\' + (1 / Math.cos($root.rotateX * Math.PI / 180)) + \')\', ' +
+				'}" ' +
+				'>{{ planet.name }}</div>' +
 			'<div class="planet-symbol" v-if="$root.useSymbols && showName" :class="{ node: planet.name == \'NN\' || planet.name == \'SN\', }">{{ planet.symbol }}</div>' +
 			'<div class="planet-disc" ' +
 				':id="planet.name + \'-domal-dignity\'" ' +
@@ -63,6 +68,7 @@ Vue.component('a-planet', {
 					'height: planet.size * 1.5 + \'px\', ' +
 					'filter: \'blur(2px) saturate(5)\', ' +
 					'opacity: opacity, ' +
+					'transform: \'translate(-50%, -50%)\', ' +
 				'}" ' +
 			'>' +
 			'</div>' +
@@ -75,6 +81,7 @@ Vue.component('a-planet', {
 					'height: planet.size * 1.5 + \'px\', ' +
 					'filter: \'blur(2px) saturate(5)\', ' +
 					'opacity: opacity, ' +
+					'transform: \'translate(-50%, -50%)\', ' +
 				'}" ' +
 			'>' +
 			'</div>' +
@@ -86,6 +93,7 @@ Vue.component('a-planet', {
 					'width: planet.size + \'px\', ' +
 					'height: planet.size + \'px\', ' +
 					'opacity: opacity, ' +
+					'transform: \'translate(-50%, -50%) rotate(-\' + planetAngle + \'deg) scaleY(\' + (1 / Math.cos($root.rotateX * Math.PI / 180)) + \')\', ' +
 				'}" ' +
 			'>' +
 				'<div v-if="planet.name == \'Moon\'" class="moon-shader" ' +
@@ -299,7 +307,9 @@ Vue.component('main-frame', {
 								'<td class="control-cell" @click.stop="$root.dateTime += (24 * 60 * 60 * 1000)">&#9650;</td>' +
 								'<td class="control-cell" @click.stop="incrementYear">&#9650;</td>' +
 								'<td class="control-cell"></td>' +
-								'<td class="control-cell" @click.stop="$root.additionalRotation += 5;">&#9650;</td>' +
+								'<td class="control-cell" @click.stop="$root.rotateX += 5;">&#9650;</td>' +
+								'<td class="control-cell" @click.stop="$root.incrementAdditionalRotation()">&#9650;</td>' +
+								'<td class="control-cell" @click.stop="$root.scale += .1;">&#9650;</td>' +
 							'</tr>' +
 							'<tr style="font-size: 16px;">' +
 								'<td>{{ $root.dateShown.getHours() == 0 ? 12 : ($root.dateShown.getHours() > 12 ? $root.dateShown.getHours() - 12 : $root.dateShown.getHours()) }}:</td>' +
@@ -309,7 +319,9 @@ Vue.component('main-frame', {
 								'<td><span v-show="$root.dateShown.getDate() < 10">0</span>{{ $root.dateShown.getDate() }}/</td>' +
 								'<td>{{ $root.dateShown.getFullYear() }}&nbsp;</td>' +
 								'<td class="dst-indicator" :style="{ color: $root.isDST() ? \'white\' : \'black\', }">(DST)</td>' +
+								'<td>&nbsp;{{ $root.rotateX > 0 ? \'+\' : \'\' }}{{ $root.rotateX }}&deg;</td>' +
 								'<td>&nbsp;{{ $root.additionalRotation > 0 ? \'+\' : \'\' }}{{ $root.additionalRotation }}&deg;</td>' +
+								'<td>&nbsp;{{ Math.round($root.scale * 10) / 10 }}x</td>' +
 							'</tr>' +
 							'<tr class="control-row">' +
 								'<td class="control-cell" style="text-align: right;" @click.stop="$root.dateTime -= (60 * 60 * 1000)">&#9660;</td>' +
@@ -319,7 +331,9 @@ Vue.component('main-frame', {
 								'<td class="control-cell" @click.stop="$root.dateTime -= (24 * 60 * 60 * 1000)">&#9660;</td>' +
 								'<td class="control-cell" @click.stop="decrementYear">&#9660;</td>' +
 								'<td class="control-cell"></td>' +
-								'<td class="control-cell" @click.stop="$root.additionalRotation -= 5;">&#9660;</td>' +
+								'<td class="control-cell" @click.stop="$root.rotateX -= 5;">&#9660;</td>' +
+								'<td class="control-cell" @click.stop="$root.decrementAdditionalRotation()">&#9660;</td>' +
+								'<td class="control-cell" @click.stop="$root.scale -= .1;">&#9660;</td>' +
 							'</tr>' +
 						'</table>' +
 						'<div class="date-controls" style="text-align: right; min-width: 0px;">' +
@@ -466,11 +480,15 @@ Vue.component('the-sky', {
 				'<div class="the-center" id="the-center" ' +
 					':style="{ ' +				
 						'transform: ' +
-							'\'rotate(\' + ($root.visibleSkyUp ? $root.theCenterRotation : $root.additionalRotation) + \'deg)\', ' +
+							'\'scale(\' + $root.scale + \') rotate(\' + ($root.visibleSkyUp ? $root.theCenterRotation : 0) + \'deg) rotateX(\' + $root.rotateX + \'deg)\', ' +
 					'} "' +
 					'>' +
-					'<div v-if="!$root.sequenceView" class="the-earth">' +
-						'<div v-if="!$root.sequenceView" class="moon-shader" ' +
+					'<div v-if="!$root.sequenceView" class="the-earth" ' +
+						':style="{ ' +
+							'transform: \'translate(-50%, -50%) scaleY(\' + (1 / Math.cos($root.rotateX * Math.PI / 180)) + \')\', ' +
+						'}" ' +
+						'>' +
+						'<div v-if="!$root.sequenceView && $root.rotateX == 0" class="moon-shader" ' +
 							':style="{ ' +
 								'transform: \'rotate(\' + ($root.dayPercent() * 360) + \'deg)\', ' +
 								'opacity: .9, ' +
@@ -563,7 +581,10 @@ Vue.component('the-sky', {
 						'>' +
 					'</div>' +*/
 					'<div v-if="!$root.sequenceView">' +
-						'<svg width="700" height="700" viewBox="0 0 700 700" style="position: absolute; top: 0px; left: 0px; pointer-events: none; transform: translate(-50%, -50%);">' +
+						'<svg width="700" height="700" viewBox="0 0 700 700" ' +
+							'style="position: absolute; top: 0px; left: 0px; pointer-events: none;" ' +
+							':style="{ transform: \'translate(-50%, -50%)\', }" ' +
+							'>' +
 							'<defs>' +
 								'<filter x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox" id="pencilTexture3">' +
 									'<feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="5" stitchTiles="stitch" result="f1">' +
@@ -822,7 +843,7 @@ Vue.component('the-sky', {
 					'<div v-if="$root.showLasers && !$root.sequenceView" class="planet-laser" ' +
 						'v-for="(planet, i) in $root.thePlanets" ' +
 						':key="planet.order" ' +
-						':style="{ transform: \'rotate(\' + (180 + $root.planetAngle(planet.name, $root.dateTime)) + \'deg)\', }" ' +
+						':style="{ transform: \'rotate(\' + (180 + $root.planetAngle(planet.name, $root.dateTime) + $root.additionalRotation) + \'deg)\', }" ' +
 						'>' +
 					'</div>' +
 					/*'<div class="planet-circle minor" ' +
@@ -854,7 +875,7 @@ Vue.component('the-sky', {
 								'class="planet-laser" ' +
 								':class="[ p2.aspect ]" ' +
 								':style="{ ' +
-									'transform: \'rotate(\' + (180 + $root.planetAngle(p1name, $root.dateTime)) + \'deg)\', ' +
+									'transform: \'rotate(\' + (180 + $root.planetAngle(p1name, $root.dateTime) + $root.additionalRotation) + \'deg)\', ' +
 									'height: ($root.toEcliptic ? 300 : $root.tinyView ? 50 : ((100 + 32 * $root.thePlanets.filter(function(planet) { return planet.name == p1name })[0].order) / 2)) + \'px\', ' +
 									'opacity: p2.strength, ' +
 								'}" ' +
@@ -864,23 +885,23 @@ Vue.component('the-sky', {
 								'v-if="$root.showAspects && !$root.sequenceView && p2.p1order > p2.p2order" ' +
 								'class="planet-laser" ' +
 								':style="{ ' +
-									'transform: \'rotate(\' + (180 + $root.planetAngle(p1name, $root.dateTime)) + \'deg)\', ' +
+									'transform: \'rotate(\' + (180 + $root.planetAngle(p1name, $root.dateTime) + $root.additionalRotation) + \'deg)\', ' +
 									'height: ($root.toEcliptic ? 300 : $root.tinyView ? 50 : ((100 + 32 * $root.thePlanets.filter(function(planet) { return planet.name == p1name })[0].order) / 2)) + \'px\', ' +
 									'opacity: p2.strength, ' +
 								'}" ' +
 								'>' +
-								'<div style="position: absolute; top: 50px;" ' +
+								/*'<div style="position: absolute; top: 50px;" ' +
 									':style="{ ' +
 										'transform: \'translateY(\' + Math.round(p2.p2order * p2.p1order) + \'px) rotate(180deg)\', ' +
 										'color: p2.color, ' +
 									'}" ' +
-									'>{{ p1name }}&nbsp;+ {{ p2name }}</div>' +
+									'>{{ p1name }}&nbsp;+ {{ p2name }}</div>' +*/
 							'</div>' +
 							'<div ' +
 								'v-if="$root.showAspects && !$root.sequenceView && p2.aspect != \'Conjunct\' && p2.aspect != \'Opposition\'" ' +
 								'class="planet-laser" ' +
 								':style="{ ' +
-									'transform: \'rotate(\' + (180 + $root.planetAngle(p1name, $root.dateTime)) + \'deg)\', ' +
+									'transform: \'rotate(\' + (180 + $root.planetAngle(p1name, $root.dateTime) + $root.additionalRotation) + \'deg)\', ' +
 									'height: (20) + \'px\', ' +
 									'borderLeft: \'unset\', ' +
 									'opacity: p2.strength, ' +
@@ -1354,6 +1375,8 @@ Vue.component('the-sky', {
 var app = new Vue({
 	el: '#app',
     data: {
+	    rotateX: 0,
+	    scale: 1,
 	    xiple: 2,
 	    romanNumerals: {
 		    1: 'I',
@@ -7121,6 +7144,20 @@ var app = new Vue({
 	    },
     },
     methods: {
+	    incrementAdditionalRotation() {
+		    if (this.additionalRotation >= 355) {
+			    this.additionalRotation = 0;
+		    } else {
+			    this.additionalRotation += 5;
+		    }
+	    },
+	    decrementAdditionalRotation() {
+		    if (this.additionalRotation <= 0) {
+			    this.additionalRotation = 355;
+		    } else {
+			    this.additionalRotation -= 5;
+		    }
+	    },
 	    dateDSTAdjusted: function(date) {
 		    if (!date) { date = this.dateShown; }
 		    if (!this.isDST(date)) { return new Date(date.getTime()); }
@@ -7348,6 +7385,7 @@ var app = new Vue({
 		    return (this.dateDSTAdjusted(date).getHours() * 60 + this.dateDSTAdjusted(date).getMinutes()) / 1440;
 	    },
 	    planetAngle: function(planetName, dateTime) {
+		    if (!dateTime) { dateTime = this.dateTime; }
 		    if (['NN', 'SN'].indexOf(planetName) > -1) { return 0; }
 		    var $root = this.$root;
 		    var rads;
@@ -7367,7 +7405,9 @@ var app = new Vue({
 		    var secondAngle = Math.atan2(planetY, planetX);
 		    rads = secondAngle - firstAngle;
 		    degs = 50 + (rads * 180 / Math.PI);
-		    return -degs;
+		    degs = -degs;
+		    if (degs < 0) { degs += 360; }
+		    return degs;
 	    },
 	    angleSign: function(angle) {
 		    var t = this;
