@@ -55,7 +55,7 @@ Vue.component('a-planet', {
 			'<div class="planet-name" v-if="!$root.useSymbols && showName && !reference" ' +
 				':class="{ small: $root.sequenceView, node: planet.name == \'NN\' || planet.name == \'SN\', }" ' +
 				':style="{ ' +
-					'transform: \'translate(-50%, -50%) scale(\' + (1 / $root.scale) + \') rotate(-\' + planetAngle + \'deg) scaleY(\' + (1 / Math.cos($root.rotateX * Math.PI / 180)) + \')\', ' +
+					'transform: \'translate(-50%, -50%) scale(\' + (1 / ($root.scale * 6)) + \') rotate(-\' + planetAngle + \'deg) scaleY(\' + (1 / Math.cos($root.rotateX * Math.PI / 180)) + \')\', ' +
 				'}" ' +
 				'>{{ planet.name }}</div>' +
 			'<div class="planet-symbol" v-if="$root.useSymbols && showName" :class="{ node: planet.name == \'NN\' || planet.name == \'SN\', }">{{ planet.symbol }}</div>' +
