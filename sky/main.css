@@ -395,7 +395,7 @@ div.aspect-list:hover {
 	position: absolute;
 	color: white;
 	transform: translate(-50%, -150%);
-	font-size: 96px;
+	font-size: 16px;
 	line-height: 16px;
 	font-family: "Palatino Linotype";
 	z-index: 10;
