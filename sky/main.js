@@ -111,7 +111,7 @@ Vue.component('a-star', {
 	props: ['star'],
 	computed: {
 		starTransform: function() {
-			return 'translate(-50%, -50%) rotate(' + (40 + (15 * -this.star.ra)) + 'deg)';
+			return 'translate(-50%, -50%) rotate(' + (this.$root.additionalRotation + 40 + (15 * -this.star.ra)) + 'deg)';
 			//return 'translate(-50%, -50%) rotate(23deg)';
 		},
 		easingAdjustment: function() {
@@ -307,7 +307,7 @@ Vue.component('main-frame', {
 								'<td class="control-cell" @click.stop="$root.dateTime += (24 * 60 * 60 * 1000)">&#9650;</td>' +
 								'<td class="control-cell" @click.stop="incrementYear">&#9650;</td>' +
 								'<td class="control-cell"></td>' +
-								'<td class="control-cell" @click.stop="$root.rotateX += 5;">&#9650;</td>' +
+								'<td class="control-cell" @click.stop="$root.incrementRotateX()">&#9650;</td>' +
 								'<td class="control-cell" @click.stop="$root.incrementAdditionalRotation()">&#9650;</td>' +
 								'<td class="control-cell" @click.stop="$root.scale += .1;">&#9650;</td>' +
 							'</tr>' +
@@ -331,7 +331,7 @@ Vue.component('main-frame', {
 								'<td class="control-cell" @click.stop="$root.dateTime -= (24 * 60 * 60 * 1000)">&#9660;</td>' +
 								'<td class="control-cell" @click.stop="decrementYear">&#9660;</td>' +
 								'<td class="control-cell"></td>' +
-								'<td class="control-cell" @click.stop="$root.rotateX -= 5;">&#9660;</td>' +
+								'<td class="control-cell" @click.stop="$root.decrementRotateX()">&#9660;</td>' +
 								'<td class="control-cell" @click.stop="$root.decrementAdditionalRotation()">&#9660;</td>' +
 								'<td class="control-cell" @click.stop="$root.scale -= .1;">&#9660;</td>' +
 							'</tr>' +
@@ -469,11 +469,11 @@ Vue.component('the-sky', {
 		'<div class="the-sky" ' +
 			'@click.stop="$root.showButtons = false;" ' +
 			'>' +
-			'<div class="the-sky-color" ' +
+			/*'<div class="the-sky-color" ' +
 				':style="{ ' +				
 					'opacity: .1 * Math.sin($root.dayPercent() * Math.PI) - .03, ' +
 				'} "' +
-			'></div>' +
+			'></div>' +*/
 			'<main-frame></main-frame>' +
 			'<div id="sky-viewer" class="sky-viewer" ' +
 				'>' +
@@ -495,13 +495,29 @@ Vue.component('the-sky', {
 							'}" ' +
 						'></div>' +
 					'</div>' +
+					'<div v-if="!$root.sequenceView && $root.rotateX != 0" ' +
+						'class="hide-the-rings-behind-the-earth" ' +
+						'style="position: absolute; width: 20px; height: 20px; transform-style: preserve-3d; z-index: 10;" ' +
+						':style="{ ' +
+							'transform: \'translate(-10px, -10px) scaleY(\' + (1 / Math.cos($root.rotateX * Math.PI / 180)) + \')\', ' +
+						'}" ' +
+						'>' +
+						'<div v-if="!$root.sequenceView && $root.rotateX != 0" ' +
+							'style="position: absolute; width: 20px; height: 10px; overflow: hidden; transform-style: preserve-3d;" ' +
+							'>' +
+							'<div class="the-earth" ' +
+								'style="background-color: #5599CC; transform: translate(0, 0);" ' +
+								'>' +
+							'</div>' +
+						'</div>' +
+					'</div>' +
 					//'<div class="the-constellations-circle"></div>' +
 					'<div class="sideral" v-if="!$root.showTropical && !$root.videoView">' +
 						'<div class="the-ecliptic" v-if="!$root.sequenceView"></div>' +
 						'<div class="constellation-divider"' + 
 							'v-if="$root.showDivisions && !$root.sequenceView" ' +
 							'v-for="(constellation, i) in $root.theZodiac" ' +
-							':style="{ transform: \'translate(-50%, -50%) rotate(\' + (i * (-360 / 12) + 360 / 24) + \'deg)\', }" ' +
+							':style="{ transform: \'translate(-50%, -50%) rotate(\' + ($root.additionalRotation + i * (-360 / 12) + 360 / 24) + \'deg)\', }" ' +
 						'></div>' +
 						'<div class="the-ecliptic-flat" v-if="$root.sequenceView">' +
 							'<div class="constellation-divider-flat"' + 
@@ -530,7 +546,7 @@ Vue.component('the-sky', {
 						'<div class="constellation-divider"' + 
 							'v-if="$root.showDivisions && !$root.sequenceView" ' +
 							'v-for="(constellation, i) in $root.theZodiac" ' +
-							':style="{ transform: \'translate(-50%, -50%) rotate(\' + (24.2 + i * (-360 / 12) + 360 / 24) + \'deg)\', }" ' +
+							':style="{ transform: \'translate(-50%, -50%) rotate(\' + ($root.additionalRotation + 24.2 + i * (-360 / 12) + 360 / 24) + \'deg)\', }" ' +
 						'></div>' +
 						'<div class="the-ecliptic-flat" v-if="$root.sequenceView">' +
 							'<div class="constellation-divider-flat"' + 
@@ -603,16 +619,16 @@ Vue.component('the-sky', {
 								'<circle cx="50%" cy="50%" r="50px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
 							'</g>' +
 							'<g v-if="!$root.toEcliptic && !$root.tinyView">' +
-								'<circle cx="50%" cy="50%" r="66px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
+								//'<circle cx="50%" cy="50%" r="66px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
 								'<circle cx="50%" cy="50%" r="82px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
 								'<circle cx="50%" cy="50%" r="98px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
 								'<circle cx="50%" cy="50%" r="114px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
 								'<circle cx="50%" cy="50%" r="130px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
 								'<circle cx="50%" cy="50%" r="146px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
 								'<circle cx="50%" cy="50%" r="162px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
-								'<circle cx="50%" cy="50%" r="178px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
-								'<circle cx="50%" cy="50%" r="194px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
-								'<circle cx="50%" cy="50%" r="210px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
+								//'<circle cx="50%" cy="50%" r="178px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
+								//'<circle cx="50%" cy="50%" r="194px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
+								//'<circle cx="50%" cy="50%" r="210px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
 								//'<circle cx="50%" cy="50%" r="300px" stroke="rgb(90, 80, 70)" stroke-width="1" fill="none" />' +
 							'</g>' +
 						'</svg>' +
@@ -624,7 +640,7 @@ Vue.component('the-sky', {
 							'height="700" ' +
 							'viewBox="0 0 700 700" ' +
 							'style="position: absolute; top: 0px; left: 0px; pointer-events: none;" ' +
-							':style="{ transform: \'translate(-50%, -50%) rotate(\' + (-30 * i) + \'deg)\', }" ' +
+							':style="{ transform: \'translate(-50%, -50%) rotate(\' + (-30 * i + $root.additionalRotation) + \'deg)\', }" ' +
 						'>' +
 							'<g>' +
 								'<path id="top-sector" style="fill:none;stroke:none" d="M 90,350 A 46,46.5 0 0 1 610,350" />' +
@@ -639,7 +655,7 @@ Vue.component('the-sky', {
 							'height="670" ' +
 							'viewBox="0 0 700 700" ' +
 							'style="position: absolute; top: 0px; left: 0px; pointer-events: none;" ' +
-							':style="{ transform: \'translate(-50%, -50%) rotate(\' + (-30 * i) + \'deg)\', }" ' +
+							':style="{ transform: \'translate(-50%, -50%) rotate(\' + ($root.additionalRotation + -30 * i) + \'deg)\', }" ' +
 						'>' +
 							'<g>' +
 								'<path id="top-sector" style="fill:none;stroke:none" d="M 90,350 A 46,46.5 0 0 1 610,350" />' +
@@ -655,7 +671,7 @@ Vue.component('the-sky', {
 							'height="740" ' +
 							'viewBox="0 0 700 700" ' +
 							'style="position: absolute; top: 0px; left: 0px; pointer-events: none;" ' +
-							':style="{ transform: \'translate(-50%, -50%) rotate(\' + (-30 * i - $root.houseRotation) + \'deg)\', }" ' +
+							':style="{ transform: \'translate(-50%, -50%) rotate(\' + ($root.additionalRotation + -30 * i - $root.houseRotation) + \'deg)\', }" ' +
 						'>' +
 							'<g>' +
 								'<path id="top-sector" style="fill:none;stroke:none" d="M 90,350 A 46,46.5 0 0 1 610,350" />' +
@@ -1455,10 +1471,10 @@ var app = new Vue({
 		{ order: 12, name: 'Pisces', symbol: String.fromCodePoint(0x2653), planet: 'Jupiter', secondaryPlanet: 'Neptune', }, 
 	    ],
 	    thePlanets: [
-		{ order: 1, placement: 'inner', name: 'Moon', symbol: String.fromCodePoint(0x263D), size: 20, color: '#D8CFC0', 
+		/*{ order: 1, placement: 'inner', name: 'Moon', symbol: String.fromCodePoint(0x263D), size: 20, color: '#D8CFC0', 
 			keyTrait: 'Emotions', 
 			traits: ['Cycles', 'Memory', 'Nurturing', 'Instinct'], 
-		}, 
+		}, */
 		{ order: 2, placement: 'inner', name: 'Mercury', symbol: String.fromCodePoint(0x263F), size: 10, color: '#9A8C98', 
 			keyTrait: 'Communication', 
 			traits: ['Speed', 'Intellect', 'Flexibility', 'Commerce'], 
@@ -1483,7 +1499,7 @@ var app = new Vue({
 			keyTrait: 'Caution', 
 			traits: ['Order', 'Boundaries', 'Time', 'Discipline'], 
 		}, 
-		{ order: 8, placement: 'outer', name: 'Uranus', symbol: String.fromCodePoint(0x2645), size: 10, color: '#BFD3ED', 
+		/*{ order: 8, placement: 'outer', name: 'Uranus', symbol: String.fromCodePoint(0x2645), size: 10, color: '#BFD3ED', 
 			keyTrait: 'Disruption', 
 			traits: ['Awakening', 'New', 'Wild', 'Catastrophe'], 
 		}, 
@@ -1494,7 +1510,7 @@ var app = new Vue({
 		{ order: 10, placement: 'outer', name: 'Pluto', symbol: String.fromCodePoint(0x2647), size: 10, color: '#C9ADA7', 
 			keyTrait: 'Transformation', 
 			traits: ['Death', 'Wealth', 'Secret', 'Rebirth'], 
-		}, 
+		}, */
 		],
 	    theMinorPlanets: [
 		{ order: 1, name: 'Eros', size: 5, color: 'turquoise' }, 
@@ -6795,6 +6811,9 @@ var app = new Vue({
 	    thePlanetsExceptMoon: function() {
 		    return this.thePlanets.filter(function(planet) { return planet.name != 'Moon'; });
 	    },
+	    theKeyPlanets: function() {
+		    return this.thePlanets.filter(function(planet) { return ['Moon', 'Uranus', 'Neptune', 'Pluto'].indexOf(planet.name) > -1; });
+	    },
 	    houseRotation: function() {
 		    var t = this;
 		    var placements = t.placements();
@@ -7144,6 +7163,28 @@ var app = new Vue({
 	    },
     },
     methods: {
+	    incrementRotateX() {
+		    if (this.rotateX >= 355) {
+			    this.rotateX = 0;
+		    } else {
+			    if (this.rotateX >= 85 && this.rotateX < 95) {
+				    this.rotateX += 1;
+			    } else {
+				    this.rotateX += 5;
+			    }
+		    }
+	    },
+	    decrementRotateX() {
+		    if (this.rotateX <= 0) {
+			    this.rotateX = 355;
+		    } else {
+			    if (this.rotateX > 85 && this.rotateX <= 95) {
+				    this.rotateX -= 1;
+			    } else {
+				    this.rotateX -= 5;
+			    }
+		    }
+	    },
 	    incrementAdditionalRotation() {
 		    if (this.additionalRotation >= 355) {
 			    this.additionalRotation = 0;
