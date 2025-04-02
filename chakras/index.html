@@ -5,10 +5,55 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chakra Visualizer</title>
     <link rel="stylesheet" href="styles.css">
+    
+    <!-- Load in dependency order -->
+    
+    <!-- Core configuration and utilities -->
+    <script src="Config.js"></script>
+    <script src="helpers.js"></script>
+    
+    <!-- Event system -->
+    <script src="EventBus.js"></script>
+    <script src="EventTypes.js"></script>
+    
+    <!-- Data models -->
+    <script src="BaseModel.js"></script>
+    <script src="Circle.js"></script>
+    <script src="Square.js"></script>
+    <script src="Connection.js"></script>
+    
+    <!-- State management -->
+    <script src="AppState.js"></script>
+    
+    <!-- View models -->
+    <script src="ViewModels.js"></script>
+    
+    <!-- Views -->
+    <script src="Views.js"></script>
+    
+    <!-- Controllers -->
+    <script src="BaseController.js"></script>
+    <script src="ZoomController.js"></script>
+    <script src="UIController.js"></script>
+    <script src="KeyboardController.js"></script>
+    
+    <!-- Main application -->
+    <script src="App.js"></script>
 </head>
 <body>
     <div id="left-panel">
         <button id="add-circle-btn" class="add-btn">+</button>
+        <!--button id="zoom-in-btn" class="zoom-btn">
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); filter: grayscale(1) invert(1);">🔍</div>
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">+</div>
+        </button>
+        <button id="zoom-out-btn" class="zoom-btn">
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); filter: grayscale(1) invert(1);">🔍</div>
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">−</div>
+        </button-->
+        <div id="zoom-container">
+            <!-- This will contain the background image and chakra circles -->
+        </div>
     </div>
     <div id="right-container">
         <!-- New top panel for controls -->
@@ -36,16 +81,5 @@
 
     <!-- For testing and development -->
     <div id="debug-panel" style="position: fixed; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 10px; border-radius: 5px; z-index: 9999; max-width: 300px; max-height: 200px; overflow: auto; font-family: monospace; font-size: 12px;">Debug info will appear here</div>
-
-    <!-- Load JavaScript modules in the correct order -->
-    <script src="config.js"></script>
-    <script src="utils.js"></script>
-    <script src="data.js"></script>
-    <script src="circle.js"></script>
-    <script src="square.js"></script>
-    <script src="attributes.js"></script>
-    <script src="connection.js"></script>
-    <script src="ui.js"></script>
-    <script src="main.js"></script>
 </body>
 </html>
