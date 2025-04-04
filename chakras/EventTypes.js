@@ -4,6 +4,14 @@
 (function(ChakraApp) {
   // Event type constants
   ChakraApp.EventTypes = {
+	  // Document events
+	  DOCUMENT_CREATED: 'document:created',
+	DOCUMENT_UPDATED: 'document:updated',
+	DOCUMENT_DELETED: 'document:deleted',
+	DOCUMENT_SELECTED: 'document:selected',
+	DOCUMENT_DESELECTED: 'document:deselected',
+	DOCUMENT_LIST_TOGGLED: 'document:list_toggled',
+
     // Circle events
     CIRCLE_CREATED: 'circle:created',
     CIRCLE_UPDATED: 'circle:updated',
@@ -27,6 +35,14 @@
     STATE_SAVED: 'state:saved',
     
     // Connection events
-    CONNECTION_UPDATED: 'connection:updated'
+    CONNECTION_UPDATED: 'connection:updated',
+
+    // Clipboard events
+    CLIPBOARD_UPDATED: 'clipboard:updated',
+    CLIPBOARD_PASTED: 'clipboard:pasted',
+
+    // Multi-selection events (if not already added from previous feature)
+    SQUARES_MULTI_SELECTED: 'squares:multi_selected',
+    SQUARES_MULTI_DESELECTED: 'squares:multi_deselected'
   };
 })(window.ChakraApp = window.ChakraApp || {});
