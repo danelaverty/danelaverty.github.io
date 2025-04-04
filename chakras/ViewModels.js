@@ -114,31 +114,39 @@
   
   // Update view model properties from model
   ChakraApp.CircleViewModel.prototype._updateFromModel = function() {
-    this.name = this.model.name;
-    this.x = this.model.x;
-    this.y = this.model.y;
-    this.color = this.model.color;
-    this.element = this.model.element;
-    this.crystal = this.model.crystal;
-    this.closestSquareName = this.model.closestSquareName;
-    this.characteristics = this.model.characteristics || {};
-    
-    // Check if square count has changed
-    var currentSquareCount = this.model.squareCount || 0;
-    this.squareCountChanged = currentSquareCount !== this._previousSquareCount;
-    
-    // Update chakra form if square count changed
-    if (this.squareCountChanged) {
-      this.chakraForm = ChakraApp.Utils.getChakraFormForCircle(
-        this.model.id,
-        this.model.name,
-        currentSquareCount
-      );
-      this._previousSquareCount = currentSquareCount;
-    }
-    
-    // Notify observers
-    this.notify({ type: 'update' });
+	  // Store previous name to detect changes from/to default
+	  var previousName = this.name;
+
+	  // Update properties from model
+	  this.name = this.model.name;
+	  this.x = this.model.x;
+	  this.y = this.model.y;
+	  this.color = this.model.color;
+	  this.element = this.model.element;
+	  this.crystal = this.model.crystal;
+	  this.closestSquareName = this.model.closestSquareName;
+
+	  // Check if square count has changed
+	  var currentSquareCount = this.model.squareCount || 0;
+	  this.squareCountChanged = currentSquareCount !== this._previousSquareCount;
+
+	  // Check if name changed between default and non-default
+	  var wasDefaultName = previousName === ChakraApp.Config.defaultName;
+	  var isDefaultName = this.name === ChakraApp.Config.defaultName;
+	  var nameStatusChanged = wasDefaultName !== isDefaultName;
+
+	  // Update chakra form if square count changed OR name changed between default/non-default
+	  if (this.squareCountChanged || nameStatusChanged) {
+		  this.chakraForm = ChakraApp.Utils.getChakraFormForCircle(
+				  this.model.id,
+				  this.model.name,
+				  currentSquareCount
+				  );
+		  this._previousSquareCount = currentSquareCount;
+	  }
+
+	  // Notify observers
+	  this.notify({ type: 'update' });
   };
 
   ChakraApp.CircleViewModel.prototype.updateCharacteristic = function(key, value) {
@@ -244,6 +252,7 @@
     this.isSelected = squareModel.selected;
     this.isVisible = squareModel.visible;
     this.size = squareModel.size || 30;
+    this.isBold = squareModel.isBold || false;
     
     // Emoji for the attribute
     this.emoji = this._getEmojiForAttribute();
@@ -267,6 +276,11 @@
     }
     
     return null;
+  };
+
+  ChakraApp.SquareViewModel.prototype.toggleBold = function() {
+	  // Toggle bold state
+	  ChakraApp.appState.updateSquare(this.id, { isBold: !this.isBold });
   };
   
   // Set up subscriptions to model changes
@@ -298,6 +312,7 @@
     this.y = this.model.y;
     this.color = this.model.color;
     this.attribute = this.model.attribute;
+    this.isBold = this.model.isBold;
     
     // Update emoji if attribute changed
     this.emoji = this._getEmojiForAttribute();

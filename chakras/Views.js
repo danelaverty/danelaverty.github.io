@@ -472,7 +472,22 @@ ChakraApp.CircleView.prototype._findCharOption = function(value, charDef) {
     
     // Name input events
     this.nameElement.addEventListener('blur', function() {
-      self.viewModel.updateName(this.textContent);
+	    var oldName = self.viewModel.name;
+	    var newName = this.textContent;
+
+	    // Only update if the name actually changed
+	    if (oldName !== newName) {
+		    self.viewModel.updateName(newName);
+
+		    // Check if name changed between default and non-default
+		    var wasDefaultName = oldName === ChakraApp.Config.defaultName;
+		    var isDefaultName = newName === ChakraApp.Config.defaultName;
+
+		    if (wasDefaultName !== isDefaultName) {
+			    // Name changed between default and non-default, force chakra form update
+			    self._updateChakraForm();
+		    }
+	    }
     });
     
     this.nameElement.addEventListener('keydown', function(e) {
@@ -488,6 +503,7 @@ ChakraApp.CircleView.prototype._findCharOption = function(value, charDef) {
     
     // Add drag functionality
     this._addDragFunctionality();
+
   };
   
   // Add drag functionality
@@ -670,6 +686,15 @@ ChakraApp.CircleView.prototype._findCharOption = function(value, charDef) {
     }
     
     this.nameElement.textContent = this.viewModel.name;
+    if (this.viewModel.isBold) {
+	    this.nameElement.style.fontWeight = 'bold';
+	    this.element.style.filter = 'brightness(1.4)';
+
+	    // Lighten the background color of the square
+	    /*var originalColor = this.element.style.backgroundColor;
+	    var lighterColor = this._lightenColor(originalColor, 40); // Lighten by 20%
+	    this.element.style.backgroundColor = lighterColor;*/
+    }
     this.element.appendChild(this.nameElement);
     
     // Apply selection state
@@ -705,6 +730,20 @@ ChakraApp.CircleView.prototype._findCharOption = function(value, charDef) {
     
     // Update name
     this.nameElement.textContent = this.viewModel.name;
+    if (this.viewModel.isBold) {
+	    this.nameElement.style.fontWeight = 'bold';
+	    this.element.style.filter = 'brightness(1.4)';
+
+	    // Lighten the background color
+	    /*var originalColor = this.viewModel.color;
+	    var lighterColor = this._lightenColor(originalColor, 40); // Lighten by 20%
+	    this.element.style.backgroundColor = lighterColor;*/
+    } else {
+	    this.nameElement.style.fontWeight = 'normal';
+	    this.element.style.filter = 'none';
+	    // Reset to original color
+	    this.element.style.backgroundColor = this.viewModel.color;
+    }
     
     // Update visibility
     this.element.style.display = this.viewModel.isVisible ? 'flex' : 'none';
@@ -734,41 +773,119 @@ ChakraApp.CircleView.prototype._findCharOption = function(value, charDef) {
       }
     });
   };
+
+  ChakraApp.SquareView.prototype._lightenColor = function(color, percent) {
+	  // If color is in named format or rgba, return as is (could be enhanced to handle these)
+	  if (!color.startsWith('#') && !color.startsWith('rgb(')) {
+		  return color;
+	  }
+
+	  var rgb;
+
+	  // Parse hex color
+	  if (color.startsWith('#')) {
+		  var hex = color.substring(1);
+		  // Convert from shorthand hex if needed
+		  if (hex.length === 3) {
+			  hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+		  }
+		  // Parse to RGB
+		  rgb = [
+		  parseInt(hex.substring(0, 2), 16),
+	     parseInt(hex.substring(2, 4), 16),
+	     parseInt(hex.substring(4, 6), 16)
+		  ];
+	  } 
+	  // Parse rgb() format
+	  else if (color.startsWith('rgb(')) {
+		  var rgbStr = color.match(/\d+/g);
+		  rgb = [
+		  parseInt(rgbStr[0]),
+	       parseInt(rgbStr[1]),
+	       parseInt(rgbStr[2])
+		  ];
+	  }
+
+	  // Lighten each component
+	  for (var i = 0; i < 3; i++) {
+		  rgb[i] = Math.min(255, Math.floor(rgb[i] + (255 - rgb[i]) * (percent / 100)));
+	  }
+
+	  // Convert back to rgb format
+	  return 'rgb(' + rgb[0] + ', ' + rgb[1] + ', ' + rgb[2] + ')';
+		  };
   
   // Setup event listeners
   ChakraApp.SquareView.prototype._setupEventListeners = function() {
-    var self = this;
-    
-    // Click handler for selection
-    this.element.addEventListener('click', function(e) {
-      e.stopPropagation();
-      
-      // Only select if we weren't just dragging
-      if (!window.wasDragged) {
-        self.viewModel.select();
-      }
-    });
-    
-    // Name input events
-    if (!this.viewModel.isMe) {
-      this.nameElement.addEventListener('blur', function() {
-        self.viewModel.updateName(this.textContent);
-      });
-      
-      this.nameElement.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          this.blur();
-        }
-      });
-    }
-    
-    this.nameElement.addEventListener('click', function(e) {
-      e.stopPropagation();
-    });
-    
-    // Add drag functionality
-    this._addDragFunctionality();
+	  var self = this;
+
+	  // Click handler for selection
+	  this.element.addEventListener('click', function(e) {
+		  e.stopPropagation();
+
+		  // Only select if we weren't just dragging
+		  if (!window.wasDragged) {
+			  if (e.shiftKey) {
+				  // Multi-select mode - select this square and all connected squares
+				  self._selectWithConnected();
+			  } else {
+				  // Normal selection
+				  self.viewModel.select();
+			  }
+		  }
+	  });
+
+	  // Name input events
+	  this.nameElement.addEventListener('blur', function() {
+		  self.viewModel.updateName(this.textContent);
+	  });
+
+	  this.nameElement.addEventListener('keydown', function(e) {
+		  if (e.key === 'Enter') {
+			  e.preventDefault();
+			  this.blur();
+		  }
+	  });
+
+	  this.nameElement.addEventListener('click', function(e) {
+		  e.stopPropagation();
+	  });
+
+	  // Add drag functionality
+	  this._addDragFunctionality();
+  };
+
+  // Add a new method to select a square and all its connected squares
+  ChakraApp.SquareView.prototype._selectWithConnected = function() {
+	  // First, select this square
+	  this.viewModel.select();
+
+	  // Find all connected squares
+	  var connectedSquares = this._findConnectedSquares(this.viewModel.id, []);
+
+	  // Create a visual selection effect for all connected squares
+	  connectedSquares.forEach(function(squareId) {
+		  var square = ChakraApp.appState.getSquare(squareId);
+		  if (square) {
+			  // Add a "multi-selected" class to the square's DOM element
+			  var squareElement = document.querySelector('.square[data-id="' + squareId + '"]');
+			  if (squareElement) {
+				  squareElement.classList.add('multi-selected');
+			  }
+		  }
+	  });
+
+	  // Store the list of multi-selected squares in a global state
+	  if (!ChakraApp.multiSelectedSquares) {
+		  ChakraApp.multiSelectedSquares = [];
+	  }
+	  ChakraApp.multiSelectedSquares = connectedSquares;
+
+	  // Publish a custom event for multi-selection
+	  ChakraApp.EventBus.publish('SQUARES_MULTI_SELECTED', {
+		  primarySquareId: this.viewModel.id,
+		  connectedSquareIds: connectedSquares
+	  });
   };
   
   // Add drag functionality
@@ -1047,33 +1164,38 @@ ChakraApp.CircleView.prototype._findCharOption = function(value, charDef) {
   
   // Render method
   ChakraApp.ConnectionView.prototype.render = function() {
-    // Create line element
-    this.element = document.createElement('div');
-    this.element.id = this.viewModel.id;
-    this.element.className = 'connection-line';
-    
-    // Apply styling
-    this.element.style.position = 'absolute';
-    this.element.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
-    this.element.style.height = '1px';
-    this.element.style.transformOrigin = 'left center';
-    this.element.style.zIndex = '1';
-    
-    // Set visibility
-    if (!this.viewModel.isVisible) {
-      this.element.style.display = 'none';
-    }
-    
-    // Apply highlight if needed
-    if (this.viewModel.isHighlighted) {
-      this.element.classList.add('connecting-line-highlight');
-    }
-    
-    // Calculate and update line position
-    this._updateLinePosition();
-    
-    // Add to parent element
-    this.parentElement.appendChild(this.element);
+	  // Create line element
+	  this.element = document.createElement('div');
+	  this.element.id = this.viewModel.id;
+	  this.element.className = 'connection-line';
+
+	  // Apply styling
+	  this.element.style.position = 'absolute';
+	  this.element.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+	  this.element.style.height = '1px';
+	  this.element.style.transformOrigin = 'left center';
+	  this.element.style.zIndex = '1';
+
+	  // Set visibility
+	  if (!this.viewModel.isVisible) {
+		  this.element.style.display = 'none';
+	  }
+
+	  // Apply highlight if needed
+	  if (this.viewModel.isHighlighted) {
+		  this.element.classList.add('connecting-line-highlight');
+	  }
+
+	  // Apply multi-select highlight if needed
+	  if (this._checkIfMultiSelected()) {
+		  this.element.classList.add('connecting-line-multi-selected');
+	  }
+
+	  // Calculate and update line position
+	  this._updateLinePosition();
+
+	  // Add to parent element
+	  this.parentElement.appendChild(this.element);
   };
   
   // Update line position
@@ -1133,34 +1255,72 @@ ChakraApp.CircleView.prototype._findCharOption = function(value, charDef) {
   
   // Update view based on model changes
   ChakraApp.ConnectionView.prototype.update = function() {
-    // Update visibility
-    if (!this.viewModel.isVisible) {
-      this.element.style.display = 'none';
-      return;
-    }
-    
-    // Update highlight state
-    if (this.viewModel.isHighlighted) {
-      this.element.classList.add('connecting-line-highlight');
-    } else {
-      this.element.classList.remove('connecting-line-highlight');
-    }
-    
-    // Update position
-    this._updateLinePosition();
+	  // Update visibility
+	  if (!this.viewModel.isVisible) {
+		  this.element.style.display = 'none';
+		  return;
+	  }
+
+	  // Check if both squares are multi-selected
+	  var isMultiSelected = this._checkIfMultiSelected();
+
+	  // Update highlight state
+	  if (this.viewModel.isHighlighted) {
+		  this.element.classList.add('connecting-line-highlight');
+	  } else {
+		  this.element.classList.remove('connecting-line-highlight');
+	  }
+
+	  // Add multi-selected highlighting
+	  if (isMultiSelected) {
+		  this.element.classList.add('connecting-line-multi-selected');
+	  } else {
+		  this.element.classList.remove('connecting-line-multi-selected');
+	  }
+
+	  // Update position
+	  this._updateLinePosition();
+  };
+
+  // Add a helper method to check if both endpoints are multi-selected
+  ChakraApp.ConnectionView.prototype._checkIfMultiSelected = function() {
+	  // If multi-selected squares array doesn't exist, return false
+	  if (!ChakraApp.multiSelectedSquares) return false;
+
+	  // Get the source and target IDs
+	  var sourceId = this.viewModel.sourceId;
+	  var targetId = this.viewModel.targetId;
+
+	  // Check if both squares are in the multi-selected array or are the primary selected square
+	  var primarySelectedId = ChakraApp.appState.selectedSquareId;
+	  var isSourceSelected = ChakraApp.multiSelectedSquares.includes(sourceId) || sourceId === primarySelectedId;
+	  var isTargetSelected = ChakraApp.multiSelectedSquares.includes(targetId) || targetId === primarySelectedId;
+
+	  return isSourceSelected && isTargetSelected;
   };
   
   // Subscribe to view model changes
   ChakraApp.ConnectionView.prototype._setupViewModelSubscription = function() {
-    var self = this;
-    
-    // Subscribe to view model changes
-    this.viewModelSubscription = this.viewModel.subscribe(function(change) {
-      if (change.type === 'update') {
-        self.update();
-      }
-    });
+	  var self = this;
+
+	  // Subscribe to view model changes
+	  this.viewModelSubscription = this.viewModel.subscribe(function(change) {
+		  if (change.type === 'update') {
+			  self.update();
+		  }
+	  });
+
+	  // Subscribe to multi-selection events
+	  this.multiSelectSubscription = ChakraApp.EventBus.subscribe('SQUARES_MULTI_SELECTED', function() {
+		  self.update();
+	  });
+
+	  // Subscribe to multi-deselection events
+	  this.multiDeselectSubscription = ChakraApp.EventBus.subscribe('SQUARES_MULTI_DESELECTED', function() {
+		  self.update();
+	  });
   };
+  
   
   // Clean up resources
   ChakraApp.ConnectionView.prototype.destroy = function() {
@@ -1171,6 +1331,21 @@ ChakraApp.CircleView.prototype._findCharOption = function(value, charDef) {
     if (this.viewModelSubscription) {
       this.viewModelSubscription();
     }
+  };
+
+  var originalConnectionViewDestroy = ChakraApp.ConnectionView.prototype.destroy;
+  ChakraApp.ConnectionView.prototype.destroy = function() {
+	  // Call original destroy method
+	  originalConnectionViewDestroy.call(this);
+
+	  // Clean up additional subscriptions
+	  if (this.multiSelectSubscription) {
+		  this.multiSelectSubscription();
+	  }
+
+	  if (this.multiDeselectSubscription) {
+		  this.multiDeselectSubscription();
+	  }
   };
   
 })(window.ChakraApp = window.ChakraApp || {});
@@ -1223,37 +1398,53 @@ ChakraApp.CircleView.prototype._findCharOption = function(value, charDef) {
   };
   
   ChakraApp.ViewManager.prototype._setupEventListeners = function() {
-    var self = this;
-    
-    // Listen for circle events
-    ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.CIRCLE_CREATED, function(circle) {
+  var self = this;
+  
+  // Listen for circle events
+  ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.CIRCLE_CREATED, function(circle) {
+    // Only create view if circle belongs to selected document or no document selected
+    var selectedDocumentId = ChakraApp.appState.selectedDocumentId;
+    if (!selectedDocumentId || circle.documentId === selectedDocumentId) {
       self.createCircleView(circle);
-    });
-    
-    ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.CIRCLE_DELETED, function(circle) {
-      self.removeCircleView(circle.id);
-    });
-    
-    // Listen for square events
-    ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.SQUARE_CREATED, function(square) {
-      self.createSquareView(square);
-    });
-    
-    ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.SQUARE_DELETED, function(square) {
-      self.removeSquareView(square.id);
-    });
-    
-    // Listen for connection events
-    ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.CONNECTION_UPDATED, function(circleId) {
-      // When connections are updated, refresh all connection views
-      self._updateConnectionViews();
-    });
-    
-    // Listen for state loaded event
-    ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.STATE_LOADED, function() {
-      self.renderAllViews();
-    });
-  };
+    }
+  });
+  
+  ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.CIRCLE_DELETED, function(circle) {
+    self.removeCircleView(circle.id);
+  });
+  
+  // Listen for square events
+  ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.SQUARE_CREATED, function(square) {
+    self.createSquareView(square);
+  });
+  
+  ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.SQUARE_DELETED, function(square) {
+    self.removeSquareView(square.id);
+  });
+  
+  // Listen for connection events
+  ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.CONNECTION_UPDATED, function(circleId) {
+    // When connections are updated, refresh all connection views
+    self._updateConnectionViews();
+  });
+  
+  // Listen for state loaded event
+  ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.STATE_LOADED, function() {
+    self.renderAllViews();
+  });
+  
+  // Listen for document selection events
+  ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.DOCUMENT_SELECTED, function(doc) {
+    // Re-render all views when document is selected
+    self.renderAllViews();
+  });
+  
+  // Listen for document deletion events
+  ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.DOCUMENT_DELETED, function(doc) {
+    // Re-render all views when document is deleted
+    self.renderAllViews();
+  });
+};
   
   /**
    * Create a circle view
@@ -1367,43 +1558,62 @@ ChakraApp.CircleView.prototype._findCharOption = function(value, charDef) {
    * @private
    */
   ChakraApp.ViewManager.prototype._updateConnectionViews = function() {
-    // Clear existing connection views
-    var self = this;
-    this.connectionViews.forEach(function(view) {
-      view.destroy();
-    });
-    this.connectionViews.clear();
-    
-    // Create views for all current connections
-    ChakraApp.appState.connections.forEach(function(connectionModel, connectionId) {
-      self.createConnectionView(connectionModel);
-    });
+	  // Clear existing connection views
+	  var self = this;
+	  this.connectionViews.forEach(function(view) {
+		  view.destroy();
+	  });
+	  this.connectionViews.clear();
+
+	  // Verify that the line container is empty
+	  if (this.lineContainer) {
+		  // Remove all child elements to ensure a clean start
+		  while (this.lineContainer.firstChild) {
+			  this.lineContainer.removeChild(this.lineContainer.firstChild);
+		  }
+	  }
+
+	  // Create views for all current connections
+	  ChakraApp.appState.connections.forEach(function(connectionModel, connectionId) {
+		  // Verify connection belongs to the selected circle before creating view
+		  var sourceSquare = ChakraApp.appState.getSquare(connectionModel.sourceId);
+		  var targetSquare = ChakraApp.appState.getSquare(connectionModel.targetId);
+
+		  // Only create connection if both squares exist and are visible
+		  if (sourceSquare && targetSquare && sourceSquare.visible && targetSquare.visible) {
+			  self.createConnectionView(connectionModel);
+		  }
+	  });
   };
   
   /**
    * Render all views from current state
    */
   ChakraApp.ViewManager.prototype.renderAllViews = function() {
-    // Clear existing views
-    this.clearAllViews();
-    
-    var self = this;
-    
-    // Create views for circles
-    ChakraApp.appState.circles.forEach(function(circleModel) {
+  // Clear existing views
+  this.clearAllViews();
+  
+  var self = this;
+  var selectedDocumentId = ChakraApp.appState.selectedDocumentId;
+  
+  // Create views for circles that belong to the selected document
+  ChakraApp.appState.circles.forEach(function(circleModel) {
+    // Only render circles for the selected document, or all if no document selected
+    if (!selectedDocumentId || circleModel.documentId === selectedDocumentId) {
       self.createCircleView(circleModel);
-    });
-    
-    // Create views for squares
-    ChakraApp.appState.squares.forEach(function(squareModel) {
-      self.createSquareView(squareModel);
-    });
-    
-    // Create views for connections
-    ChakraApp.appState.connections.forEach(function(connectionModel) {
-      self.createConnectionView(connectionModel);
-    });
-  };
+    }
+  });
+  
+  // Create views for squares
+  ChakraApp.appState.squares.forEach(function(squareModel) {
+    self.createSquareView(squareModel);
+  });
+  
+  // Create views for connections
+  ChakraApp.appState.connections.forEach(function(connectionModel) {
+    self.createConnectionView(connectionModel);
+  });
+};
   
   /**
    * Clear all views

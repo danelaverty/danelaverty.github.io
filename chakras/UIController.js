@@ -40,6 +40,8 @@
 	  // Create action buttons if they don't exist
 	  this._createActionButtons();
 
+	  this._createDocumentControls();
+
 	  // Initialize meridian line
 	  this._createMeridianLine();
 
@@ -95,7 +97,89 @@
 				  self._toggleRightPanelVisibility(visible);
 			  }
 			  );
+
+	  // Set up clipboard UI
+  this._setupClipboardUI();
+  
+  // Set up multi-selection listeners
+  this._setupMultiSelectionListeners();
+  
+  // Set up click outside handler
+  this._setupClickOutsideHandler();
   }; 
+
+  ChakraApp.UIController.prototype._setupClipboardUI = function() {
+	  var self = this;
+
+	  // Create clipboard status indicator
+	  this.clipboardStatus = document.createElement('div');
+	  this.clipboardStatus.className = 'clipboard-status';
+
+	  // Create icon and text elements
+	  var icon = document.createElement('span');
+	  icon.className = 'icon';
+
+	  var text = document.createElement('span');
+	  text.className = 'text';
+
+	  this.clipboardStatus.appendChild(icon);
+	  this.clipboardStatus.appendChild(text);
+
+	  // Add to document
+	  document.body.appendChild(this.clipboardStatus);
+
+	  // Setup clipboard event listeners
+	  this.clipboardUpdatedHandler = function(data) {
+		  // Update the clipboard status
+		  var operation = data.operation;
+		  var count = data.count;
+
+		  // Update class for icon
+		  self.clipboardStatus.className = 'clipboard-status visible ' + operation;
+
+		  // Update text
+		  text.textContent = count + ' squares ' + (operation === 'copy' ? 'copied' : 'cut');
+
+		  // Hide after a delay
+		  clearTimeout(self.clipboardStatusTimeout);
+		  self.clipboardStatusTimeout = setTimeout(function() {
+			  self.clipboardStatus.className = 'clipboard-status';
+		  }, 3000);
+	  };
+
+	  this.clipboardPastedHandler = function(data) {
+		  // Animate the pasted squares
+		  data.squareIds.forEach(function(squareId) {
+			  var squareElement = document.querySelector('.square[data-id="' + squareId + '"]');
+			  if (squareElement) {
+				  // Add the pasted class temporarily
+				  squareElement.classList.add('pasted');
+
+				  // Remove after animation completes
+				  setTimeout(function() {
+					  squareElement.classList.remove('pasted');
+				  }, 1000);
+			  }
+		  });
+
+		  // Hide clipboard status
+		  self.clipboardStatus.className = 'clipboard-status';
+	  };
+
+	  // Subscribe to clipboard events
+	  ChakraApp.EventBus.subscribe('CLIPBOARD_UPDATED', this.clipboardUpdatedHandler);
+	  ChakraApp.EventBus.subscribe('CLIPBOARD_PASTED', this.clipboardPastedHandler);
+  };
+
+  // Modify the UIController.init method to call _setupClipboardUI
+  var originalUIControllerInit = ChakraApp.UIController.prototype.init;
+  ChakraApp.UIController.prototype.init = function() {
+	  // Call the original init method
+	  originalUIControllerInit.call(this);
+
+	  // Setup clipboard UI
+	  this._setupClipboardUI();
+  };
 
   
   ChakraApp.UIController.prototype._showElementPicker = function(button) {
@@ -973,8 +1057,9 @@ ChakraApp.UIController.prototype._createAttributeGrid = function() {
 	if (this.attributeGrid && this.attributeGrid.children.length === 0) {
 		// Define the order for attributes to control their placement
 		// Updated to include the new chain button in the demon/sword group
-		var attributeOrder = ['treasure', 'door', 'key', 'demon', 'sword', 'chain', 'ally', 
-		    //'push', 'stop'
+		var attributeOrder = [
+		    'cause', 'push', 'stop',
+			'treasure', 'door', 'key', 'demon', 'sword', 'chain', 'ally', 
 			    ];
 
 		// Loop through each attribute in the specified order
@@ -1405,6 +1490,56 @@ ChakraApp.UIController.prototype._toggleAttributeGrid = function(show) {
 		  this.panelVisibilitySubscription();
 	  }
   };
+
+// Modify the UIController.destroy method to clean up clipboard event handlers
+var originalUIControllerDestroy = ChakraApp.UIController.prototype.destroy;
+ChakraApp.UIController.prototype.destroy = function() {
+	// Call the original destroy method
+	originalUIControllerDestroy.call(this);
+
+	// Clean up clipboard event handlers
+	if (this.clipboardUpdatedHandler) {
+		ChakraApp.EventBus.unsubscribe('CLIPBOARD_UPDATED', this.clipboardUpdatedHandler);
+	}
+
+	if (this.clipboardPastedHandler) {
+		ChakraApp.EventBus.unsubscribe('CLIPBOARD_PASTED', this.clipboardPastedHandler);
+	}
+
+	// Clear any pending timeouts
+	if (this.clipboardStatusTimeout) {
+		clearTimeout(this.clipboardStatusTimeout);
+	}
+
+	// Clean up document event subscriptions
+  if (this.documentSelectedSubscription) {
+    this.documentSelectedSubscription();
+  }
+  
+  if (this.documentUpdatedSubscription) {
+    this.documentUpdatedSubscription();
+  }
+  
+  if (this.documentListToggledSubscription) {
+    this.documentListToggledSubscription();
+  }
+  
+  if (this.stateLoadedSubscription) {
+    this.stateLoadedSubscription();
+  }
+
+    if (this.circleCreatedSubscription) {
+    this.circleCreatedSubscription();
+  }
+  
+  if (this.circleDeletedSubscription) {
+    this.circleDeletedSubscription();
+  }
+  
+  if (this.circleUpdatedSubscription) {
+    this.circleUpdatedSubscription();
+  }
+};
   
 
   ChakraApp.UIController.prototype._showColorPicker = function(button) {
@@ -1614,4 +1749,515 @@ ChakraApp.UIController.prototype._toggleAttributeGrid = function(show) {
 
 	return colorPicker;
 };
+
+// Add an event subscription in UIController to listen for multi-selection events
+// (This should be added to UIController.js init method)
+ChakraApp.UIController.prototype._setupMultiSelectionListeners = function() {
+  var self = this;
+  
+  // Listen for multi-selection events
+  this.multiSelectSubscription = ChakraApp.EventBus.subscribe('SQUARES_MULTI_SELECTED', function(data) {
+    // You can add UI feedback or controls here for multi-selection mode
+    console.log('Multi-selected squares:', data.connectedSquareIds);
+    
+    // Optionally show a special UI indicator for multi-selection mode
+    // Example: Show a counter of how many squares are selected
+    self._showMultiSelectionCounter(data.connectedSquareIds.length + 1); // +1 for the primary square
+  });
+  
+  // Listen for multi-deselection events
+  this.multiDeselectSubscription = ChakraApp.EventBus.subscribe('SQUARES_MULTI_DESELECTED', function() {
+    // Hide multi-selection UI elements
+    self._hideMultiSelectionCounter();
+  });
+};
+
+// Helper method to show multi-selection counter
+// (This should be added to UIController.js)
+ChakraApp.UIController.prototype._showMultiSelectionCounter = function(count) {
+  // Create or update a counter element
+  var counter = document.getElementById('multi-selection-counter');
+  if (!counter) {
+    counter = document.createElement('div');
+    counter.id = 'multi-selection-counter';
+    counter.className = 'multi-selection-counter';
+    document.body.appendChild(counter);
+  }
+  
+  counter.textContent = count + ' squares selected';
+  counter.style.display = 'block';
+};
+
+// Helper method to hide multi-selection counter
+// (This should be added to UIController.js)
+ChakraApp.UIController.prototype._hideMultiSelectionCounter = function() {
+  var counter = document.getElementById('multi-selection-counter');
+  if (counter) {
+    counter.style.display = 'none';
+  }
+};
+
+// Add cleanup for new event subscriptions in UIController.destroy
+// (This should be modified in UIController.js destroy method)
+var originalUIControllerDestroy = ChakraApp.UIController.prototype.destroy;
+ChakraApp.UIController.prototype.destroy = function() {
+  // Call original destroy method
+  originalUIControllerDestroy.call(this);
+  
+  // Clean up multi-selection subscriptions
+  if (this.multiSelectSubscription) {
+    this.multiSelectSubscription();
+  }
+  
+  if (this.multiDeselectSubscription) {
+    this.multiDeselectSubscription();
+  }
+};
+
+// Add to UIController.prototype.init method after getting DOM elements
+ChakraApp.UIController.prototype._createNewDocumentButton = function() {
+  // This method is intentionally empty to remove the New Document button
+  // We're keeping the method for compatibility but making it do nothing
+};
+
+// Add method to set up click outside handler for document list
+ChakraApp.UIController.prototype._setupClickOutsideHandler = function() {
+  var self = this;
+  
+  // Create document click handler if it doesn't exist
+  if (!this.documentClickHandler) {
+    this.documentClickHandler = function(e) {
+      // Check if document list is visible
+      if (ChakraApp.appState.documentListVisible) {
+        // Check if click was outside the document list and toggle button
+        var isOutsideList = !self.documentListContainer.contains(e.target);
+        var isOutsideToggle = !self.toggleDocumentListBtn.contains(e.target);
+        
+        // If click was outside both elements, hide the document list
+        if (isOutsideList && isOutsideToggle) {
+          // Hide the document list
+          ChakraApp.appState.documentListVisible = false;
+          
+          // Update UI
+          self._updateDocumentList();
+          
+          // Update arrow icon
+          var arrowIcon = self.toggleDocumentListBtn.querySelector('.arrow-icon');
+          if (arrowIcon) {
+            arrowIcon.innerHTML = '▼';
+          }
+          
+          // Publish event
+          ChakraApp.EventBus.publish(ChakraApp.EventTypes.DOCUMENT_LIST_TOGGLED, false);
+        }
+      }
+    };
+    
+    // Add event listener
+    document.addEventListener('click', this.documentClickHandler);
+  }
+};
+
+ChakraApp.UIController.prototype._createDocumentControls = function() {
+  var self = this;
+  
+  // Skip creating New Document Button since that functionality is available in the document list
+  
+  // Create Toggle Arrow Button
+  if (!this.toggleDocumentListBtn) {
+    this.toggleDocumentListBtn = document.createElement('button');
+    this.toggleDocumentListBtn.id = 'toggle-document-list-btn';
+    this.toggleDocumentListBtn.className = 'add-btn toggle-btn';
+    this.toggleDocumentListBtn.title = 'Toggle Document List';
+    
+    // Create arrow icon
+    var arrowIcon = document.createElement('span');
+    arrowIcon.innerHTML = '▼';
+    arrowIcon.className = 'arrow-icon';
+    this.toggleDocumentListBtn.appendChild(arrowIcon);
+    
+    // Position it where the add document button was
+    this.toggleDocumentListBtn.style.top = '80px';
+    this.toggleDocumentListBtn.style.left = '20px';
+    
+    // Add toggle functionality
+    this.toggleDocumentListBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      
+      // Toggle document list visibility
+      var isVisible = ChakraApp.appState.toggleDocumentList();
+      
+      // Update arrow direction
+      arrowIcon.innerHTML = isVisible ? '▲' : '▼';
+      
+      // Update document list
+      self._updateDocumentList();
+    });
+    
+    // Add to left panel
+    var leftPanel = document.getElementById('left-panel');
+    if (leftPanel) {
+      leftPanel.appendChild(this.toggleDocumentListBtn);
+    }
+  }
+  
+  // Create Document List Container
+  if (!this.documentListContainer) {
+    this.documentListContainer = document.createElement('div');
+    this.documentListContainer.id = 'document-list-container';
+    this.documentListContainer.className = 'document-list-container';
+    
+    // Initially hidden
+    this.documentListContainer.style.display = 'none';
+    
+    // Add to left panel
+    var leftPanel = document.getElementById('left-panel');
+    if (leftPanel) {
+      leftPanel.appendChild(this.documentListContainer);
+    }
+  }
+  
+  // Create Current Document Display
+  if (!this.currentDocumentDisplay) {
+    this.currentDocumentDisplay = document.createElement('div');
+    this.currentDocumentDisplay.id = 'current-document-display';
+    this.currentDocumentDisplay.className = 'current-document-display';
+    
+    // Set initial text
+    this.currentDocumentDisplay.textContent = 'No Document Selected';
+    
+    // Add to left panel
+    var leftPanel = document.getElementById('left-panel');
+    if (leftPanel) {
+      leftPanel.appendChild(this.currentDocumentDisplay);
+    }
+  }
+  
+  // Add event listeners for document events
+  this._setupDocumentEventListeners();
+  
+  // Add click outside handler to close document list
+  this._setupClickOutsideHandler();
+  
+  // Initialize document list
+  this._updateDocumentList();
+  this._updateCurrentDocumentDisplay();
+};
+
+// Add method to update document list
+ChakraApp.UIController.prototype._updateDocumentList = function() {
+  if (!this.documentListContainer) return;
+  
+  // Check visibility state
+  var isVisible = ChakraApp.appState.documentListVisible;
+  this.documentListContainer.style.display = isVisible ? 'block' : 'none';
+  
+  // If not visible, no need to update content
+  if (!isVisible) return;
+  
+  // Clear existing list
+  this.documentListContainer.innerHTML = '';
+  
+  // Add "New Document" option at the top of the list
+  var newDocItem = this._createNewDocumentListItem();
+  this.documentListContainer.appendChild(newDocItem);
+  
+  // Get all documents
+  var documents = ChakraApp.appState.getAllDocuments();
+  var selectedId = ChakraApp.appState.selectedDocumentId;
+  
+  // Create list items for each document
+  var self = this;
+  documents.forEach(function(doc) {
+    var listItem = doc.id === selectedId ? 
+      self._createSelectedDocumentListItem(doc) : 
+      self._createDocumentListItem(doc);
+    
+    self.documentListContainer.appendChild(listItem);
+  });
+  
+  // If no documents, show message
+  if (documents.length === 0) {
+    var noDocsMessage = document.createElement('div');
+    noDocsMessage.className = 'no-documents-message';
+    noDocsMessage.textContent = 'No documents available';
+    this.documentListContainer.appendChild(noDocsMessage);
+  }
+};
+
+ChakraApp.UIController.prototype._createNewDocumentListItem = function() {
+  var self = this;
+  
+  var listItem = document.createElement('div');
+  listItem.className = 'document-list-item new-document-item';
+  
+  // Add icon
+  var icon = document.createElement('span');
+  icon.className = 'document-icon';
+  icon.innerHTML = '➕';  // Plus sign icon
+  listItem.appendChild(icon);
+  
+  // Add text
+  var name = document.createElement('span');
+  name.className = 'document-name';
+  name.textContent = 'New Document';
+  listItem.appendChild(name);
+  
+  // Add click handler with the same functionality as the new document button
+  listItem.addEventListener('click', function(e) {
+    e.stopPropagation();
+    
+    // Create a new document with default name (current date/time)
+    var doc = ChakraApp.appState.addDocument();
+    
+    // Select the new document
+    ChakraApp.appState.selectDocument(doc.id);
+    
+    // Update the UI
+    self._updateDocumentList();
+    self._updateCurrentDocumentDisplay();
+    
+    // Provide visual feedback
+    var currentDocDisplay = document.getElementById('current-document-display');
+    if (currentDocDisplay) {
+      currentDocDisplay.classList.add('flash-success');
+      setTimeout(function() {
+        currentDocDisplay.classList.remove('flash-success');
+      }, 1000);
+    }
+  });
+  
+  return listItem;
+};
+
+// Create a document list item
+ChakraApp.UIController.prototype._createDocumentListItem = function(doc) {
+  var self = this;
+  
+  var listItem = document.createElement('div');
+  listItem.className = 'document-list-item';
+  listItem.dataset.id = doc.id;
+  
+  // Document icon
+  var icon = document.createElement('span');
+  icon.className = 'document-icon';
+  icon.innerHTML = '📄';
+  listItem.appendChild(icon);
+  
+  // Document name container - adding a container for better styling
+  var nameContainer = document.createElement('div');
+  nameContainer.className = 'document-name-container';
+  
+  // Document name
+  var name = document.createElement('span');
+  name.className = 'document-name';
+  name.textContent = doc.name;
+  nameContainer.appendChild(name);
+  
+  // Document circle count
+  var circleCount = document.createElement('span');
+  circleCount.className = 'document-circle-count';
+  var count = this._getCircleCountForDocument(doc.id);
+  circleCount.textContent = ' (' + count + ')';
+  nameContainer.appendChild(circleCount);
+  
+  // Add name container to list item
+  listItem.appendChild(nameContainer);
+  
+  // Click handler to select document
+  listItem.addEventListener('click', function(e) {
+    e.stopPropagation();
+    
+    // Select the document
+    ChakraApp.appState.selectDocument(doc.id);
+    
+    // Update the UI
+    self._updateDocumentList();
+    self._updateCurrentDocumentDisplay();
+  });
+  
+  return listItem;
+};
+
+// Create a selected document list item (with edit/delete options)
+ChakraApp.UIController.prototype._createSelectedDocumentListItem = function(doc) {
+  var self = this;
+  
+  var listItem = document.createElement('div');
+  listItem.className = 'document-list-item selected';
+  listItem.dataset.id = doc.id;
+  
+  // Document icon
+  var icon = document.createElement('span');
+  icon.className = 'document-icon';
+  icon.innerHTML = '📄';
+  listItem.appendChild(icon);
+  
+  // Document name container for better styling
+  var nameContainer = document.createElement('div');
+  nameContainer.className = 'document-name-container';
+  
+  // Document name (editable)
+  var name = document.createElement('span');
+  name.className = 'document-name editable';
+  name.contentEditable = true;
+  name.spellcheck = false;
+  name.textContent = doc.name;
+  nameContainer.appendChild(name);
+  
+  // Document circle count
+  var circleCount = document.createElement('span');
+  circleCount.className = 'document-circle-count';
+  var count = this._getCircleCountForDocument(doc.id);
+  circleCount.textContent = ' (' + count + ')';
+  nameContainer.appendChild(circleCount);
+  
+  // Add name container to list item
+  listItem.appendChild(nameContainer);
+  
+  // Edit blur handler
+  name.addEventListener('blur', function() {
+    var newName = this.textContent.trim();
+    if (newName && newName !== doc.name) {
+      ChakraApp.appState.updateDocument(doc.id, { name: newName });
+      self._updateCurrentDocumentDisplay();
+    } else {
+      this.textContent = doc.name;
+    }
+  });
+  
+  // Enter key handler
+  name.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      this.blur();
+    }
+  });
+  
+  // Delete button
+  var deleteBtn = document.createElement('button');
+  deleteBtn.className = 'document-delete-btn';
+  deleteBtn.innerHTML = '🗑️';
+  deleteBtn.title = 'Delete Document';
+  listItem.appendChild(deleteBtn);
+  
+  // Delete click handler
+  deleteBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    
+    // Confirm before deleting
+    if (confirm('Are you sure you want to delete this document? This will also delete all content within it.')) {
+      ChakraApp.appState.removeDocument(doc.id);
+      
+      // Update UI
+      self._updateDocumentList();
+      self._updateCurrentDocumentDisplay();
+    }
+  });
+  
+  return listItem;
+};
+
+// Update current document display
+ChakraApp.UIController.prototype._updateCurrentDocumentDisplay = function() {
+  if (!this.currentDocumentDisplay) return;
+  
+  var selectedId = ChakraApp.appState.selectedDocumentId;
+  var doc = ChakraApp.appState.getDocument(selectedId);
+  
+  if (doc) {
+    var count = this._getCircleCountForDocument(doc.id);
+    this.currentDocumentDisplay.textContent = doc.name + ' (' + count + ')';
+    this.currentDocumentDisplay.title = 'Current Document: ' + doc.name + ' (' + count + ' circles)';
+  } else {
+    this.currentDocumentDisplay.textContent = 'No Document Selected';
+    this.currentDocumentDisplay.title = 'No Document Selected';
+  }
+};
+
+// Setup document event listeners
+ChakraApp.UIController.prototype._setupDocumentEventListeners = function() {
+  var self = this;
+  
+  // Listen for document selection events
+  this.documentSelectedSubscription = ChakraApp.EventBus.subscribe(
+    ChakraApp.EventTypes.DOCUMENT_SELECTED,
+    function(doc) {
+      self._updateDocumentList();
+      self._updateCurrentDocumentDisplay();
+    }
+  );
+  
+  // Listen for document update events
+  this.documentUpdatedSubscription = ChakraApp.EventBus.subscribe(
+    ChakraApp.EventTypes.DOCUMENT_UPDATED,
+    function(doc) {
+      self._updateDocumentList();
+      self._updateCurrentDocumentDisplay();
+    }
+  );
+  
+  // Listen for document list toggled events
+  this.documentListToggledSubscription = ChakraApp.EventBus.subscribe(
+    ChakraApp.EventTypes.DOCUMENT_LIST_TOGGLED,
+    function(isVisible) {
+      self._updateDocumentList();
+    }
+  );
+  
+  // Listen for state loaded events
+  this.stateLoadedSubscription = ChakraApp.EventBus.subscribe(
+    ChakraApp.EventTypes.STATE_LOADED,
+    function() {
+      self._updateDocumentList();
+      self._updateCurrentDocumentDisplay();
+    }
+  );
+  
+  // Add new subscriptions for circle events
+  this.circleCreatedSubscription = ChakraApp.EventBus.subscribe(
+    ChakraApp.EventTypes.CIRCLE_CREATED,
+    function(circle) {
+      // Update document list when a circle is created
+      self._updateDocumentList();
+      self._updateCurrentDocumentDisplay();
+    }
+  );
+  
+  this.circleDeletedSubscription = ChakraApp.EventBus.subscribe(
+    ChakraApp.EventTypes.CIRCLE_DELETED,
+    function(circle) {
+      // Update document list when a circle is deleted
+      self._updateDocumentList();
+      self._updateCurrentDocumentDisplay();
+    }
+  );
+  
+  this.circleUpdatedSubscription = ChakraApp.EventBus.subscribe(
+    ChakraApp.EventTypes.CIRCLE_UPDATED,
+    function(circle) {
+      // Update document list when a circle is updated (in case documentId changed)
+      self._updateDocumentList();
+      self._updateCurrentDocumentDisplay();
+    }
+  );
+};
+
+ChakraApp.UIController.prototype._getCircleCountForDocument = function(documentId) {
+  // Initialize counter
+  var count = 0;
+  
+  // If no document ID, return 0
+  if (!documentId) return count;
+  
+  // Iterate through all circles and count those that belong to this document
+  ChakraApp.appState.circles.forEach(function(circle) {
+    if (circle.documentId === documentId) {
+      count++;
+    }
+  });
+  
+  return count;
+};
+
 })(window.ChakraApp = window.ChakraApp || {});

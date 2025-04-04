@@ -170,7 +170,7 @@ options: [
     [{ sides: 21, starFactor: 8, borderPercent: .08 }, { sides: 17, starFactor: 4, borderPercent: .04, reverse: 1, scale: 1.2, spinTime: 32 }],
     
     // Level 9: Triple layer complex pattern
-    [{ sides: 21, starFactor: 8, borderPercent: .08 }, { sides: 17, starFactor: 4, borderPercent: .04, reverse: 1, scale: 1.2, spinTime: 32 }, { sides: 25, starFactor: 4, borderPercent: .02, scale: 1.5, spinTime: 64 }],
+    //[{ sides: 21, starFactor: 8, borderPercent: .08 }, { sides: 17, starFactor: 4, borderPercent: .04, reverse: 1, scale: 1.2, spinTime: 32 }, { sides: 25, starFactor: 4, borderPercent: .02, scale: 1.5, spinTime: 64 }],
     
     // Level 10: Very complex pattern
     //[{ sides: 30, starFactor: 1, borderPercent: .18 }, { sides: 61, starFactor: 23, borderPercent: .01, reverse: 1, scale: 3.4, spinTime: 32 }],
@@ -401,8 +401,9 @@ options: [
     
     // Attribute information
     attributeInfo: {
-	    //push: { emoji: '🎈', color: '#FFFFB0', displayName: 'Pushes', description: 'Motivates' },
-	    //stop: { emoji: '⚓', color: '#AD4C4C', displayName: 'Stops', description: 'Demotivates' },
+	    cause: { emoji: '⚡', color: '#9999CC', displayName: 'Cause', description: 'Caused by' },
+	    push: { emoji: '🎈', color: '#FFFFB0', displayName: 'Pushes', description: 'Compels' },
+	    stop: { emoji: '⚓', color: '#BD2C2C', displayName: 'Stops', description: 'Inhibits' },
         treasure: { emoji: '💎', color: '#66D6FF', displayName: 'Gems', description: 'Proxy success criteria' },
         door: { emoji: '⛰️', color: '#8B4513', displayName: 'Mountains', description: 'Activity areas' },
         key: { emoji: '⛏️', color: '#555555', displayName: 'Tools', description: 'Skills & resources' },

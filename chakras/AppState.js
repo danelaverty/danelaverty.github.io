@@ -9,18 +9,9 @@
   ChakraApp.AppState = function() {
     // Inherit from Observable
     ChakraApp.Observable.call(this);
-    
-    // Core state
-    this.circles = new Map();
-    this.squares = new Map();
-    this.connections = new Map();
-    
-    // UI state
-    this.selectedCircleId = null;
-    this.selectedSquareId = null;
-    this.zoomLevel = 1.0;
-    this.containerPosition = { x: 0, y: 0 };
-    this.rightPanelVisible = false;
+
+    // Initialize state collections
+    this._initializeState();
     
     // Setup event listeners
     this._setupEventListeners();
@@ -30,12 +21,37 @@
   ChakraApp.AppState.prototype = Object.create(ChakraApp.Observable.prototype);
   ChakraApp.AppState.prototype.constructor = ChakraApp.AppState;
   
-  // State notification
-  ChakraApp.AppState.prototype._notifyStateChanged = function(section, data) {
-    this.notify({ section: section, data: data });
+  //====================================================
+  // INITIALIZATION
+  //====================================================
+  
+  /**
+   * Initialize the state collections and properties
+   * @private
+   */
+  ChakraApp.AppState.prototype._initializeState = function() {
+    // Core state collections
+    this.documents = new Map();
+    this.circles = new Map();
+    this.squares = new Map();
+    this.connections = new Map();
+
+    // Selection state
+    this.selectedDocumentId = null;
+    this.selectedCircleId = null;
+    this.selectedSquareId = null;
+    
+    // UI state
+    this.zoomLevel = 1.0;
+    this.containerPosition = { x: 0, y: 0 };
+    this.rightPanelVisible = false;
+    this.documentListVisible = false;
   };
   
-  // Event Listeners
+  /**
+   * Set up global event listeners
+   * @private
+   */
   ChakraApp.AppState.prototype._setupEventListeners = function() {
     var self = this;
     
@@ -54,38 +70,328 @@
       self._handleCircleDeselection();
     });
   };
+
+  /**
+   * Notify observers about state changes
+   * @private
+   * @param {string} section - State section that changed
+   * @param {*} data - Changed data
+   */
+  ChakraApp.AppState.prototype._notifyStateChanged = function(section, data) {
+    this.notify({ section: section, data: data });
+  };
   
-  // ----- Circle Operations -----
+  //====================================================
+  // DOCUMENT OPERATIONS
+  //====================================================
   
+  /**
+   * Add a document to the app state
+   * @param {Object|ChakraApp.Document} documentData - Document data or instance
+   * @returns {ChakraApp.Document} The created document
+   */
+  ChakraApp.AppState.prototype.addDocument = function(documentData) {
+    var doc;
+    
+    if (documentData instanceof ChakraApp.Document) {
+      doc = documentData;
+    } else {
+      doc = new ChakraApp.Document(documentData);
+    }
+    
+    this.documents.set(doc.id, doc);
+    
+    // Subscribe to document changes
+    var self = this;
+    doc.subscribe(function(change) {
+      if (change.type === 'update') {
+        self._notifyStateChanged('documents', doc);
+      }
+    });
+    
+    // Notify and publish event
+    this._notifyStateChanged('documents', doc);
+    ChakraApp.EventBus.publish(ChakraApp.EventTypes.DOCUMENT_CREATED, doc);
+    
+    // Save state to localStorage
+    this.saveToStorage();
+    
+    return doc;
+  };
+
+  /**
+   * Update a document's properties
+   * @param {string} id - Document ID
+   * @param {Object} changes - Properties to update
+   * @returns {ChakraApp.Document|null} Updated document or null if not found
+   */
+  ChakraApp.AppState.prototype.updateDocument = function(id, changes) {
+    var doc = this.documents.get(id);
+    if (!doc) return null;
+    
+    doc.update(changes);
+    
+    // Save state to localStorage
+    this.saveToStorage();
+    
+    return doc;
+  };
+
+  /**
+   * Remove a document and all related circles and squares
+   * @param {string} id - Document ID to remove
+   * @returns {boolean} Success indicator
+   */
+  ChakraApp.AppState.prototype.removeDocument = function(id) {
+    if (!this.documents.has(id)) return false;
+    
+    var doc = this.documents.get(id);
+    
+    // Deselect if this was the selected document
+    if (this.selectedDocumentId === id) {
+      this.deselectDocument();
+    }
+
+    // Check if we're removing the last viewed document
+    var lastViewedId = this.getLastViewedDocument();
+    var isRemovingLastViewed = lastViewedId === id;
+    
+    // Remove the document
+    this.documents.delete(id);
+    
+    // Get all circles for this document
+    var circlesToRemove = [];
+    this.circles.forEach(function(circle, circleId) {
+      if (circle.documentId === id) {
+        circlesToRemove.push(circleId);
+      }
+    });
+    
+    // Remove all associated circles
+    var self = this;
+    circlesToRemove.forEach(function(circleId) {
+      self.removeCircle(circleId);
+    });
+    
+    // Notify and publish event
+    this._notifyStateChanged('documents', null);
+    ChakraApp.EventBus.publish(ChakraApp.EventTypes.DOCUMENT_DELETED, doc);
+    
+    // Update the last viewed document if needed
+    if (isRemovingLastViewed && this.documents.size > 0) {
+      var nextDocument = this.getAllDocuments()[0];
+      if (nextDocument) {
+        this.saveLastViewedDocument(nextDocument.id);
+        
+        // Only auto-select if the removed document was the selected one
+        if (this.selectedDocumentId === null) {
+          this.selectDocument(nextDocument.id);
+        }
+      } else {
+        // If no documents left, clear the last viewed
+        localStorage.removeItem('chakraLastViewedDocumentId');
+      }
+    }
+    
+    // Save state to localStorage
+    this.saveToStorage();
+    
+    return true;
+  };
+
+  /**
+   * Get a document by ID
+   * @param {string} id - Document ID
+   * @returns {ChakraApp.Document|null} Document or null if not found
+   */
+  ChakraApp.AppState.prototype.getDocument = function(id) {
+    return this.documents.get(id) || null;
+  };
+
+  /**
+   * Get all documents
+   * @returns {Array<ChakraApp.Document>} Array of all documents
+   */
+  ChakraApp.AppState.prototype.getAllDocuments = function() {
+    return Array.from(this.documents.values());
+  };
+
+  /**
+   * Select a document and show its circles
+   * @param {string} id - Document ID to select
+   * @returns {ChakraApp.Document|null} Selected document or null if not found
+   */
+  ChakraApp.AppState.prototype.selectDocument = function(id) {
+    // Deselect current selection if different
+    if (this.selectedDocumentId && this.selectedDocumentId !== id) {
+      this.deselectDocument();
+    }
+    
+    var doc = this.documents.get(id);
+    if (!doc) return null;
+    
+    this.selectedDocumentId = id;
+    doc.select();
+    
+    // Deselect any selected circle
+    if (this.selectedCircleId) {
+      this.deselectCircle();
+    }
+    
+    // Show only circles for this document
+    this._filterCirclesByDocument(id);
+
+    if (doc) {
+      this.saveLastViewedDocument(id);
+    }
+    
+    return doc;
+  };
+
+  /**
+   * Deselect the current document
+   * @returns {boolean} Success indicator
+   */
+  ChakraApp.AppState.prototype.deselectDocument = function() {
+    if (!this.selectedDocumentId) return false;
+    
+    var doc = this.documents.get(this.selectedDocumentId);
+    if (doc) {
+      doc.deselect();
+    }
+    
+    this.selectedDocumentId = null;
+    
+    // Hide all circles
+    this._hideAllCircles();
+    
+    return true;
+  };
+
+  /**
+   * Toggle document list visibility
+   * @returns {boolean} New visibility state
+   */
+  ChakraApp.AppState.prototype.toggleDocumentList = function() {
+    this.documentListVisible = !this.documentListVisible;
+    ChakraApp.EventBus.publish(ChakraApp.EventTypes.DOCUMENT_LIST_TOGGLED, this.documentListVisible);
+    return this.documentListVisible;
+  };
+
+  /**
+   * Save the last viewed document ID to localStorage
+   * @param {string} documentId - Document ID
+   */
+  ChakraApp.AppState.prototype.saveLastViewedDocument = function(documentId) {
+    if (documentId) {
+      localStorage.setItem('chakraLastViewedDocumentId', documentId);
+    }
+  };
+
+  /**
+   * Get the last viewed document ID from localStorage
+   * @returns {string|null} Document ID or null if none
+   */
+  ChakraApp.AppState.prototype.getLastViewedDocument = function() {
+    return localStorage.getItem('chakraLastViewedDocumentId');
+  };
+
+  /**
+   * Show only circles for a specific document
+   * @private
+   * @param {string} documentId - Document ID to filter by
+   */
+  ChakraApp.AppState.prototype._filterCirclesByDocument = function(documentId) {
+    var self = this;
+    
+    // Hide all circles first
+    this._hideAllCircles();
+    
+    // Show only circles for the selected document
+    this.circles.forEach(function(circle, circleId) {
+      if (circle.documentId === documentId) {
+        // Force update to ensure visibility
+        self._notifyStateChanged('circles', circle);
+      }
+    });
+  };
+
+  /**
+   * Hide all circles
+   * @private
+   */
+  ChakraApp.AppState.prototype._hideAllCircles = function() {
+    var self = this;
+    
+    // Hide all circles
+    this.circles.forEach(function(circle) {
+      // Force update to ensure visibility reset
+      self._notifyStateChanged('circles', circle);
+    });
+  };
+  
+  //====================================================
+  // CIRCLE OPERATIONS
+  //====================================================
+  
+  /**
+   * Add a circle to the app state
+   * @param {Object|ChakraApp.Circle} circleData - Circle data or instance
+   * @returns {ChakraApp.Circle|null} The created circle or null if invalid
+   */
   ChakraApp.AppState.prototype.addCircle = function(circleData) {
     var circle;
-    
+
     if (circleData instanceof ChakraApp.Circle) {
       circle = circleData;
     } else {
       circle = new ChakraApp.Circle(circleData);
     }
-    
-    this.circles.set(circle.id, circle);
-    
-    // Subscribe to circle changes
-    var self = this;
-    circle.subscribe(function(change) {
-      if (change.type === 'update') {
-        self._notifyStateChanged('circles', circle);
+
+    // If no document ID is provided, assign to selected document if any
+    if (!circle.documentId && this.selectedDocumentId) {
+      circle.documentId = this.selectedDocumentId;
+    }
+
+    // If still no document ID and there are documents, assign to first document
+    if (!circle.documentId && this.documents.size > 0) {
+      var firstDocument = this.getAllDocuments()[0];
+      if (firstDocument) {
+        circle.documentId = firstDocument.id;
       }
-    });
-    
-    // Notify and publish event
-    this._notifyStateChanged('circles', circle);
-    ChakraApp.EventBus.publish(ChakraApp.EventTypes.CIRCLE_CREATED, circle);
-    
-    // Save state to localStorage
-    this.saveToStorage();
-    
-    return circle;
+    }
+
+    // Only add the circle if it has a document ID or if there are no documents yet
+    if (circle.documentId || this.documents.size === 0) {
+      this.circles.set(circle.id, circle);
+
+      // Subscribe to circle changes
+      var self = this;
+      circle.subscribe(function(change) {
+        if (change.type === 'update') {
+          self._notifyStateChanged('circles', circle);
+        }
+      });
+
+      // Notify and publish event
+      this._notifyStateChanged('circles', circle);
+      ChakraApp.EventBus.publish(ChakraApp.EventTypes.CIRCLE_CREATED, circle);
+
+      // Save state to localStorage
+      this.saveToStorage();
+
+      return circle;
+    }
+
+    return null;
   };
-  
+
+  /**
+   * Update a circle's properties
+   * @param {string} id - Circle ID
+   * @param {Object} changes - Properties to update
+   * @returns {ChakraApp.Circle|null} Updated circle or null if not found
+   */
   ChakraApp.AppState.prototype.updateCircle = function(id, changes) {
     var circle = this.circles.get(id);
     if (!circle) return null;
@@ -97,7 +403,12 @@
     
     return circle;
   };
-  
+
+  /**
+   * Remove a circle and all related squares
+   * @param {string} id - Circle ID to remove
+   * @returns {boolean} Success indicator
+   */
   ChakraApp.AppState.prototype.removeCircle = function(id) {
     if (!this.circles.has(id)) return false;
     
@@ -128,15 +439,29 @@
     
     return true;
   };
-  
+
+  /**
+   * Get a circle by ID
+   * @param {string} id - Circle ID
+   * @returns {ChakraApp.Circle|null} Circle or null if not found
+   */
   ChakraApp.AppState.prototype.getCircle = function(id) {
     return this.circles.get(id) || null;
   };
-  
+
+  /**
+   * Get all circles
+   * @returns {Array<ChakraApp.Circle>} Array of all circles
+   */
   ChakraApp.AppState.prototype.getAllCircles = function() {
     return Array.from(this.circles.values());
   };
-  
+
+  /**
+   * Select a circle and show the right panel
+   * @param {string} id - Circle ID to select
+   * @returns {ChakraApp.Circle|null} Selected circle or null if not found
+   */
   ChakraApp.AppState.prototype.selectCircle = function(id) {
     // Deselect current selection if different
     if (this.selectedCircleId && this.selectedCircleId !== id) {
@@ -155,7 +480,11 @@
     
     return circle;
   };
-  
+
+  /**
+   * Deselect the current circle
+   * @returns {boolean} Success indicator
+   */
   ChakraApp.AppState.prototype.deselectCircle = function() {
     if (!this.selectedCircleId) return false;
     
@@ -172,9 +501,121 @@
     
     return true;
   };
+
+  /**
+   * Handle circle selection event
+   * @private
+   * @param {string} circleId - Circle ID
+   */
+  ChakraApp.AppState.prototype._handleCircleSelection = function(circleId) {
+    var self = this;
+
+    // Hide all squares first
+    this.squares.forEach(function(square) {
+      square.hide();
+    });
+
+    // Show only squares for the selected circle
+    this.getSquaresForCircle(circleId).forEach(function(square) {
+      square.show();
+    });
+
+    // Create or show the "Me" square for this circle if it doesn't exist
+    this._ensureMeSquareExists(circleId);
+
+    // Clear all connections first
+    this.connections.clear();
+    ChakraApp.EventBus.publish(ChakraApp.EventTypes.CONNECTION_UPDATED, null);
+
+    // Then update connections for this circle
+    this._updateConnectionsForCircleId(circleId);
+  };
+
+  /**
+   * Handle circle deselection event
+   * @private
+   */
+  ChakraApp.AppState.prototype._handleCircleDeselection = function() {
+    var self = this;
+    
+    // Hide all squares
+    this.squares.forEach(function(square) {
+      square.hide();
+    });
+    
+    // Deselect any selected square
+    this.deselectSquare();
+    
+    // Clear connections
+    this.connections.clear();
+    ChakraApp.EventBus.publish(ChakraApp.EventTypes.CONNECTION_UPDATED, null);
+  };
+
+  /**
+   * Ensure a "Me" square exists for a circle
+   * @private
+   * @param {string} circleId - Circle ID
+   */
+  ChakraApp.AppState.prototype._ensureMeSquareExists = function(circleId) {
+    // Check if a "Me" square already exists for this circle
+    var meSquare = null;
+    
+    this.squares.forEach(function(square) {
+      if (square.circleId === circleId && square.isMe) {
+        meSquare = square;
+      }
+    });
+    
+    if (meSquare) {
+      // If exists, make sure it's visible
+      meSquare.show();
+    } else {
+      // Create a new "Me" square
+      this.addSquare({
+        circleId: circleId,
+        x: 200,
+        y: 200,
+        color: '#FFCC88',
+        name: 'Me',
+        isMe: true
+      });
+    }
+  };
+
+  /**
+   * Update chakra form for a circle based on its squares
+   * @private
+   * @param {string} circleId - Circle ID
+   */
+  ChakraApp.AppState.prototype._updateChakraFormForCircle = function(circleId) {
+    var circle = this.circles.get(circleId);
+    if (!circle) return;
+    
+    // Count the non-Me squares for this circle
+    var squareCount = 0;
+    
+    this.squares.forEach(function(square) {
+      if (square.circleId === circleId && !square.isMe) {
+        squareCount++;
+      }
+    });
+    
+    // Notify about the chakra form update
+    circle.update({ squareCount: squareCount });
+    
+    // Save state to localStorage after updating chakra form
+    this.saveToStorage();
+  };
   
-  // ----- Square Operations -----
+  //====================================================
+  // SQUARE OPERATIONS
+  //====================================================
   
+  /**
+   * Add a square to the app state
+   * @param {Object|ChakraApp.Square} squareData - Square data or instance
+   * @returns {ChakraApp.Square} The created square
+   */
   ChakraApp.AppState.prototype.addSquare = function(squareData) {
     var square;
     
@@ -212,7 +653,13 @@
     
     return square;
   };
-  
+
+  /**
+   * Update a square's properties
+   * @param {string} id - Square ID
+   * @param {Object} changes - Properties to update
+   * @returns {ChakraApp.Square|null} Updated square or null if not found
+   */
   ChakraApp.AppState.prototype.updateSquare = function(id, changes) {
     var square = this.squares.get(id);
     if (!square) return null;
@@ -224,7 +671,12 @@
     
     return square;
   };
-  
+
+  /**
+   * Remove a square and its connections
+   * @param {string} id - Square ID to remove
+   * @returns {boolean} Success indicator
+   */
   ChakraApp.AppState.prototype.removeSquare = function(id) {
     if (!this.squares.has(id)) return false;
     
@@ -255,15 +707,29 @@
     
     return true;
   };
-  
+
+  /**
+   * Get a square by ID
+   * @param {string} id - Square ID
+   * @returns {ChakraApp.Square|null} Square or null if not found
+   */
   ChakraApp.AppState.prototype.getSquare = function(id) {
     return this.squares.get(id) || null;
   };
-  
+
+  /**
+   * Get all squares
+   * @returns {Array<ChakraApp.Square>} Array of all squares
+   */
   ChakraApp.AppState.prototype.getAllSquares = function() {
     return Array.from(this.squares.values());
   };
-  
+
+  /**
+   * Get squares for a specific circle
+   * @param {string} circleId - Circle ID
+   * @returns {Array<ChakraApp.Square>} Array of squares
+   */
   ChakraApp.AppState.prototype.getSquaresForCircle = function(circleId) {
     var result = [];
     this.squares.forEach(function(square) {
@@ -273,7 +739,12 @@
     });
     return result;
   };
-  
+
+  /**
+   * Select a square
+   * @param {string} id - Square ID to select
+   * @returns {ChakraApp.Square|null} Selected square or null if not found
+   */
   ChakraApp.AppState.prototype.selectSquare = function(id) {
     // Deselect current selection if different
     if (this.selectedSquareId && this.selectedSquareId !== id) {
@@ -288,7 +759,11 @@
     
     return square;
   };
-  
+
+  /**
+   * Deselect the current square and clear multi-selection
+   * @returns {boolean} Success indicator
+   */
   ChakraApp.AppState.prototype.deselectSquare = function() {
     if (!this.selectedSquareId) return false;
     
@@ -298,12 +773,34 @@
     }
     
     this.selectedSquareId = null;
+
+    // Clear multi-selection if it exists
+    if (ChakraApp.multiSelectedSquares && ChakraApp.multiSelectedSquares.length > 0) {
+      ChakraApp.multiSelectedSquares.forEach(function(squareId) {
+        var squareElement = document.querySelector('.square[data-id="' + squareId + '"]');
+        if (squareElement) {
+          squareElement.classList.remove('multi-selected');
+        }
+      });
+
+      ChakraApp.multiSelectedSquares = [];
+      ChakraApp.EventBus.publish('SQUARES_MULTI_DESELECTED', {});
+    }
     
     return true;
   };
   
-  // ----- Connection Operations -----
+  //====================================================
+  // CONNECTION OPERATIONS
+  //====================================================
   
+  /**
+   * Create a connection between two squares
+   * @private
+   * @param {ChakraApp.Square} square1 - First square
+   * @param {ChakraApp.Square} square2 - Second square
+   * @returns {ChakraApp.Connection} Created or updated connection
+   */
   ChakraApp.AppState.prototype._createConnection = function(square1, square2) {
     var connectionId = ChakraApp.Utils.getLineId(square1.id, square2.id);
     
@@ -345,7 +842,12 @@
     
     return this.connections.get(connectionId);
   };
-  
+
+  /**
+   * Update closest "Me" square connection
+   * @private
+   * @param {string} circleId - Circle ID
+   */
   ChakraApp.AppState.prototype._updateClosestMeConnection = function(circleId) {
     // Find the Me square
     var meSquare = null;
@@ -402,14 +904,25 @@
     // Save state to localStorage after updating connections
     this.saveToStorage();
   };
-  
+
+  /**
+   * Update the closest square name for a circle
+   * @private
+   * @param {string} circleId - Circle ID
+   * @param {string|null} squareName - Square name or null to clear
+   */
   ChakraApp.AppState.prototype._updateClosestSquareName = function(circleId, squareName) {
     var circle = this.circles.get(circleId);
     if (circle) {
       circle.update({ closestSquareName: squareName });
     }
   };
-  
+
+  /**
+   * Remove connections for a square
+   * @private
+   * @param {string} squareId - Square ID
+   */
   ChakraApp.AppState.prototype._removeConnectionsForSquare = function(squareId) {
     var connectionsToRemove = [];
     
@@ -431,14 +944,24 @@
     // Save state to localStorage after removing connections
     this.saveToStorage();
   };
-  
+
+  /**
+   * Update connections for a square
+   * @private
+   * @param {string} squareId - Square ID
+   */
   ChakraApp.AppState.prototype._updateConnectionsForSquare = function(squareId) {
     var square = this.squares.get(squareId);
     if (!square || !square.visible) return;
     
     this._updateConnectionsForCircleId(square.circleId);
   };
-  
+
+  /**
+   * Update connections for all squares in a circle
+   * @private
+   * @param {string} circleId - Circle ID
+   */
   ChakraApp.AppState.prototype._updateConnectionsForCircleId = function(circleId) {
     // Get all visible squares for this circle
     var visibleSquares = this.getSquaresForCircle(circleId).filter(function(square) {
@@ -461,7 +984,11 @@
     // Save state to localStorage after updating connections
     this.saveToStorage();
   };
-  
+
+  /**
+   * Update all connections
+   * @private
+   */
   ChakraApp.AppState.prototype._updateAllConnections = function() {
     // Clear all existing connections
     this.connections.clear();
@@ -475,8 +1002,14 @@
     this.saveToStorage();
   };
   
-  // ----- UI State Operations -----
+  //====================================================
+  // UI STATE OPERATIONS
+  //====================================================
   
+  /**
+   * Update the zoom level
+   * @param {number} level - New zoom level
+   */
   ChakraApp.AppState.prototype.updateZoomLevel = function(level) {
     // Constrain zoom level
     this.zoomLevel = Math.max(0.5, Math.min(2.5, level));
@@ -492,7 +1025,11 @@
     // Save state to localStorage after updating zoom level
     this.saveToStorage();
   };
-  
+
+  /**
+   * Update the container position
+   * @param {Object} position - Position object with x and y coordinates
+   */
   ChakraApp.AppState.prototype.updateContainerPosition = function(position) {
     this.containerPosition = { x: position.x, y: position.y };
     this._notifyStateChanged('ui', { containerPosition: this.containerPosition });
@@ -501,106 +1038,41 @@
     this.saveToStorage();
   };
   
-  // ----- Circle Selection Handlers -----
+  //====================================================
+  // STORAGE OPERATIONS
+  //====================================================
   
-  ChakraApp.AppState.prototype._handleCircleSelection = function(circleId) {
-    var self = this;
-    
-    // Hide all squares first
-    this.squares.forEach(function(square) {
-      square.hide();
-    });
-    
-    // Show only squares for the selected circle
-    this.getSquaresForCircle(circleId).forEach(function(square) {
-      square.show();
-    });
-    
-    // Create or show the "Me" square for this circle if it doesn't exist
-    this._ensureMeSquareExists(circleId);
-    
-    // Update connections
-    this._updateConnectionsForCircleId(circleId);
-  };
-  
-  ChakraApp.AppState.prototype._handleCircleDeselection = function() {
-    var self = this;
-    
-    // Hide all squares
-    this.squares.forEach(function(square) {
-      square.hide();
-    });
-    
-    // Deselect any selected square
-    this.deselectSquare();
-    
-    // Clear connections
-    this.connections.clear();
-    ChakraApp.EventBus.publish(ChakraApp.EventTypes.CONNECTION_UPDATED, null);
-  };
-  
-  ChakraApp.AppState.prototype._ensureMeSquareExists = function(circleId) {
-    // Check if a "Me" square already exists for this circle
-    var meSquare = null;
-    
-    this.squares.forEach(function(square) {
-      if (square.circleId === circleId && square.isMe) {
-        meSquare = square;
-      }
-    });
-    
-    if (meSquare) {
-      // If exists, make sure it's visible
-      meSquare.show();
-    } else {
-      // Create a new "Me" square
-      this.addSquare({
-        circleId: circleId,
-        x: 200,
-        y: 200,
-        color: '#FFCC88',
-        name: 'Me',
-        isMe: true
-      });
-    }
-  };
-  
-  ChakraApp.AppState.prototype._updateChakraFormForCircle = function(circleId) {
-    var circle = this.circles.get(circleId);
-    if (!circle) return;
-    
-    // Count the non-Me squares for this circle
-    var squareCount = 0;
-    
-    this.squares.forEach(function(square) {
-      if (square.circleId === circleId && !square.isMe) {
-        squareCount++;
-      }
-    });
-    
-    // Notify about the chakra form update
-    circle.update({ squareCount: squareCount });
-    
-    // Save state to localStorage after updating chakra form
-    this.saveToStorage();
-  };
-  
-  // ----- Storage Operations -----
-  
+  /**
+   * Load state from localStorage
+   * @returns {boolean} Success indicator
+   */
   ChakraApp.AppState.prototype.loadFromStorage = function() {
     try {
       var savedData = localStorage.getItem('chakraVisualizerData');
       if (!savedData) return false;
-      
+
       var data = JSON.parse(savedData);
-      
+
       // Reset current state
+      this.documents.clear();
       this.circles.clear();
       this.squares.clear();
       this.connections.clear();
+      this.selectedDocumentId = null;
       this.selectedCircleId = null;
       this.selectedSquareId = null;
-      
+
+      // Load documents
+      if (data.documents && Array.isArray(data.documents)) {
+        var self = this;
+        data.documents.forEach(function(documentData) {
+          self.addDocument(documentData);
+        });
+      } else {
+        // If no documents in storage, create a default one
+        this.addDocument(); // This will create with default name
+      }
+
       // Load circles
       if (data.circles && Array.isArray(data.circles)) {
         var self = this;
@@ -608,7 +1080,7 @@
           self.addCircle(circleData);
         });
       }
-      
+
       // Load squares
       if (data.squares && Array.isArray(data.squares)) {
         var self = this;
@@ -616,36 +1088,57 @@
           self.addSquare(squareData);
         });
       }
-      
+
       // Load UI state
       if (data.zoomLevel) {
         this.zoomLevel = data.zoomLevel;
         ChakraApp.EventBus.publish(ChakraApp.EventTypes.ZOOM_CHANGED, this.zoomLevel);
       }
-      
+
       if (data.containerPosition) {
         this.containerPosition = data.containerPosition;
       }
+
+      // Get the last viewed document
+      var lastViewedDocumentId = this.getLastViewedDocument();
       
-      // Hide all squares initially
-      var self = this;
-      this.squares.forEach(function(square) {
-        square.hide();
-      });
-      
+      // Select document if available
+      if (lastViewedDocumentId && this.documents.has(lastViewedDocumentId)) {
+        this.selectDocument(lastViewedDocumentId);
+      } else if (data.selectedDocumentId && this.documents.has(data.selectedDocumentId)) {
+        this.selectDocument(data.selectedDocumentId);
+      } else if (this.documents.size > 0) {
+        // Select first document if none selected
+        var firstDocument = this.getAllDocuments()[0];
+        if (firstDocument) {
+          this.selectDocument(firstDocument.id);
+          // Also save this as the last viewed document
+          this.saveLastViewedDocument(firstDocument.id);
+        }
+      }
+
       // Notify and publish event
       this._notifyStateChanged('all', data);
       ChakraApp.EventBus.publish(ChakraApp.EventTypes.STATE_LOADED, data);
-      
+
       return true;
     } catch (error) {
       console.error('Error loading state from localStorage:', error);
       return false;
     }
   };
-  
+
+  /**
+   * Save state to localStorage
+   * @returns {boolean} Success indicator
+   */
   ChakraApp.AppState.prototype.saveToStorage = function() {
     try {
+      var documents = [];
+      this.documents.forEach(function(doc) {
+        documents.push(doc.toJSON());
+      });
+      
       var circles = [];
       this.circles.forEach(function(circle) {
         circles.push(circle.toJSON());
@@ -657,10 +1150,12 @@
       });
       
       var data = {
+        documents: documents,
         circles: circles,
         squares: squares,
         zoomLevel: this.zoomLevel,
-        containerPosition: this.containerPosition
+        containerPosition: this.containerPosition,
+        selectedDocumentId: this.selectedDocumentId
       };
       
       localStorage.setItem('chakraVisualizerData', JSON.stringify(data));
@@ -677,7 +1172,7 @@
     }
   };
   
-  // ----- Create the singleton instance -----
+  // Create the singleton instance
   ChakraApp.appState = new ChakraApp.AppState();
   
 })(window.ChakraApp = window.ChakraApp || {});
