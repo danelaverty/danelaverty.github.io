@@ -190,6 +190,12 @@ body.right-panel-visible {
     -webkit-spellcheck: false;
 }
 
+.square .item-name {
+	white-space: normal;
+	max-width: 100px;
+	width: max-content;
+}
+
 .circle.selected .item-name,
 .square.selected .item-name {
     z-index: 30;
@@ -835,7 +841,7 @@ body.right-panel-visible {
 .connection-line {
     position: absolute;
     height: 1px;
-    background-color: rgba(255, 255, 255, 0.3);
+    background-color: rgba(255, 255, 255, 0.5);
     transform-origin: left center;
     z-index: 1;
     pointer-events: none;
@@ -942,42 +948,6 @@ body.right-panel-visible {
     pointer-events: none; /* Don't interfere with clicks */
 }
 
-/* Zoom button styles */
-.zoom-btn {
-    position: absolute;
-    left: 20px;
-    width: 40px;
-    height: 40px;
-    background-color: #555;
-    color: white;
-    border: none;
-    border-radius: 50%;
-    font-size: 24px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-    z-index: 100;
-    transition: background-color 0.2s ease, transform 0.2s ease;
-}
-
-.zoom-btn:hover {
-    background-color: #777;
-    transform: scale(1.05);
-}
-
-.zoom-btn:active {
-    transform: scale(0.95);
-}
-
-#zoom-in-btn {
-    top: 80px;
-}
-
-#zoom-out-btn {
-    top: 140px;
-}
-
 /* Zoom container styles */
 #zoom-container {
     position: absolute;
@@ -985,8 +955,6 @@ body.right-panel-visible {
     left: 0;
     width: 100%;
     height: 100%;
-    transform-origin: center;
-    transition: transform 0.3s ease;
 }
 
 /* Update the silhouette background to be attached to the zoom container instead of the left panel */
@@ -1008,14 +976,6 @@ body.right-panel-visible {
     opacity: 0.3;
     pointer-events: none;
     z-index: 1;
-}
-
-#zoom-container.zoomed {
-    cursor: move;
-}
-
-#zoom-container.dragging {
-    transition: none;
 }
 
 .no-transition {
@@ -2145,3 +2105,91 @@ ChakraApp.UIController.prototype._toggleActionButtons = function(show) {
     .document-name.editable:focus + .document-circle-count {
       display: none; /* Hide count while editing name */
     }
+
+    /* Overlapping circles effect for close squares */
+.square.overlapping {
+  width: 45px !important;
+  height: 45px !important;
+  border-radius: 50% !important;
+  transition: width 0.3s ease, height 0.3s ease, border-radius 0.3s ease;
+  z-index: 12; /* Higher than normal squares but lower than selected */
+}
+
+.square.overlapping .item-name {
+  opacity: 0; /* Hide individual names when overlapping */
+  transition: opacity 0.3s ease;
+}
+
+.square.overlapping.selected {
+  z-index: 16; /* Higher than normal overlapping squares */
+}
+
+/* Glowing effect for overlapping squares */
+.square.overlapping::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  right: -5px;
+  bottom: -5px;
+  border-radius: 50%;
+  z-index: -1;
+  pointer-events: none;
+}
+
+@keyframes pulse-overlap {
+  0% { opacity: 0.3; }
+  100% { opacity: 0.6; }
+}
+
+/* Special connection line for overlapping squares */
+.connection-line.overlap-connection {
+  display: none !important; /* Hide the normal line for overlapping squares */
+}
+
+/* Connection indicator between overlapping squares */
+.overlap-indicator {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background-color: rgba(255, 255, 255, 0.7);
+  border-radius: 50%;
+  z-index: 13;
+  pointer-events: none;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+  animation: pulse-indicator 1.5s infinite alternate;
+}
+
+@keyframes pulse-indicator {
+  0% { transform: scale(0.8); opacity: 0.6; }
+  100% { transform: scale(1.2); opacity: 0.9; }
+}
+
+/* Combined names list for overlapping squares */
+.combined-names-list {
+  position: absolute;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  border-radius: 5px;
+  font-size: 10px;
+  z-index: 20;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  min-width: 100px;
+  max-width: 200px;
+  pointer-events: none; /* Allow clicking through */
+  transform: translateX(-50%); /* Center horizontally */
+  transition: opacity 0.3s ease;
+}
+
+.combined-names-list ul {
+  margin: 0;
+  padding: 0 0 0 18px;
+  list-style-type: disc;
+  text-align: left;
+}
+
+.combined-names-list li {
+  margin: 3px 0;
+  line-height: 1.2;
+  white-space: normal;
+}

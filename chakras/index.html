@@ -12,10 +12,10 @@
     <script src="Config.js"></script>
     <script src="helpers.js"></script>
     <script src="ClipboardManager.js"></script>
+    <script src="OverlappingSquaresManager.js"></script>
     
     <!-- Event system -->
-    <script src="EventBus.js"></script>
-    <script src="EventTypes.js"></script>
+    <script src="Events.js"></script>
     
     <!-- Data models -->
     <script src="BaseModel.js"></script>
@@ -35,7 +35,7 @@
     
     <!-- Controllers -->
     <script src="BaseController.js"></script>
-    <script src="ZoomController.js"></script>
+    <!-- ZoomController.js removed -->
     <script src="UIController.js"></script>
     <script src="KeyboardController.js"></script>
     
@@ -45,14 +45,7 @@
 <body>
     <div id="left-panel">
         <button id="add-circle-btn" class="add-btn">+</button>
-        <!--button id="zoom-in-btn" class="zoom-btn">
-            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); filter: grayscale(1) invert(1);">🔍</div>
-            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">+</div>
-        </button>
-        <button id="zoom-out-btn" class="zoom-btn">
-            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); filter: grayscale(1) invert(1);">🔍</div>
-            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">−</div>
-        </button-->
+        <!-- Zoom buttons removed -->
         <div id="zoom-container">
             <!-- This will contain the background image and chakra circles -->
         </div>
