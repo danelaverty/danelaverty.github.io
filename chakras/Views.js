@@ -536,11 +536,10 @@ ChakraApp.CircleView.prototype._findCharOption = function(value, charDef) {
 			  // Get cursor position within the zoom container
 			  var zoomContainer = document.getElementById('zoom-container');
 			  var containerRect = zoomContainer.getBoundingClientRect();
-			  var zoomLevel = ChakraApp.appState.zoomLevel;
 
 			  // Calculate raw position - no adjustment needed
-			  var newX = (e.clientX - containerRect.left) / zoomLevel;
-			  var newY = (e.clientY - containerRect.top) / zoomLevel;
+			  var newX = (e.clientX - containerRect.left);
+			  var newY = (e.clientY - containerRect.top);
 
 			  // Set position directly on DOM element - bypass view model for dragging
 			  self.element.style.left = newX + 'px';
@@ -576,6 +575,9 @@ ChakraApp.CircleView.prototype._findCharOption = function(value, charDef) {
 
 			  // Re-enable transitions
 			  self.element.classList.remove('no-transition');
+
+			  // Save state when drag completes
+			  ChakraApp.appState.saveToStorageNow();
 
 			  // Reset drag state after a short delay
 			  setTimeout(function() {
@@ -1000,7 +1002,7 @@ ChakraApp.CircleView.prototype._findCharOption = function(value, charDef) {
 	  var mouseUpHandler = function(e) {
 		  if (isDragging) {
 			  isDragging = false;
-			  self.element.style.zIndex = self.viewModel.isSelected ? 15 : 10;
+			  self.element.style.zIndex = self.viewModel.isSelected ? 15 : (self.element.classList.contains('overlapping') ? 12 : 10);
 
 			  // Remove group-dragging highlighting
 			  if (isGroupDragging) {
@@ -1028,6 +1030,8 @@ ChakraApp.CircleView.prototype._findCharOption = function(value, charDef) {
 			  }
 
 			  currentHoverBox = null;
+
+			  ChakraApp.appState.saveToStorageNow();
 
 			  // Reset drag state after a short delay
 			  setTimeout(function() {
@@ -1171,7 +1175,7 @@ ChakraApp.CircleView.prototype._findCharOption = function(value, charDef) {
 
 	  // Apply styling
 	  this.element.style.position = 'absolute';
-	  this.element.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+	  this.element.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
 	  this.element.style.height = '1px';
 	  this.element.style.transformOrigin = 'left center';
 	  this.element.style.zIndex = '1';
@@ -1199,60 +1203,80 @@ ChakraApp.CircleView.prototype._findCharOption = function(value, charDef) {
   };
   
   // Update line position
-  // Update line position
   ChakraApp.ConnectionView.prototype._updateLinePosition = function() {
-	  // Get the squares
-	  var square1 = ChakraApp.appState.getSquare(this.viewModel.sourceId);
-	  var square2 = ChakraApp.appState.getSquare(this.viewModel.targetId);
+  // Get the squares
+  var square1 = ChakraApp.appState.getSquare(this.viewModel.sourceId);
+  var square2 = ChakraApp.appState.getSquare(this.viewModel.targetId);
 
-	  if (!square1 || !square2) {
-		  this.element.style.display = 'none';
-		  return;
-	  }
+  if (!square1 || !square2) {
+    this.element.style.display = 'none';
+    return;
+  }
 
-	  // Get the DOM elements for the squares
-	  var square1Element = document.querySelector('.square[data-id="' + square1.id + '"]');
-	  var square2Element = document.querySelector('.square[data-id="' + square2.id + '"]');
+  // Get the DOM elements for the squares
+  var square1Element = document.querySelector('.square[data-id="' + square1.id + '"]');
+  var square2Element = document.querySelector('.square[data-id="' + square2.id + '"]');
 
-	  if (!square1Element || !square2Element) {
-		  this.element.style.display = 'none';
-		  return;
-	  }
+  if (!square1Element || !square2Element) {
+    this.element.style.display = 'none';
+    return;
+  }
 
-	  // Use square size to calculate centers
-	  var squareSize = parseInt(square1Element.style.width) || 30; // Default to 30px
-	  var halfSize = squareSize / 2;
+  // Use square size to calculate centers
+  var squareSize = parseInt(square1Element.style.width) || 30; // Default to 30px
+  var halfSize = squareSize / 2;
 
-	  // Calculate center points of squares (x and y are already the center due to CSS transform)
-	  var x1 = square1.x;
-	  var y1 = square1.y;
-	  var x2 = square2.x;
-	  var y2 = square2.y;
+  // Calculate center points of squares
+  var x1 = square1.x;
+  var y1 = square1.y;
+  var x2 = square2.x;
+  var y2 = square2.y;
 
-	  // Calculate line length and angle using the centers of the squares
-	  var dx = x2 - x1;
-	  var dy = y2 - y1;
-	  var length = Math.sqrt(dx * dx + dy * dy);
-	  var angle = Math.atan2(dy, dx) * 180 / Math.PI;
+  // Calculate line length and angle
+  var dx = x2 - x1;
+  var dy = y2 - y1;
+  var length = Math.sqrt(dx * dx + dy * dy);
+  var angle = Math.atan2(dy, dx) * 180 / Math.PI;
 
-	  // Get max line length from config
-	  var maxLineLength = ChakraApp.Config.connections ? 
-		  ChakraApp.Config.connections.maxLineLength : 120;
-
-	  // Hide lines that are longer than the specified max length
-	  if (length > maxLineLength) {
-		  this.element.style.display = 'none';
-	  } else {
-		  this.element.style.display = 'block';
-
-		  // Position line at center of first square
-		  this.element.style.width = length + 'px';
-		  this.element.style.left = x1 + 'px';
-		  this.element.style.top = y1 + 'px';
-		  this.element.style.transform = 'rotate(' + angle + 'deg)';
-	  }
-  };
+  // Get max line length from config
+  var maxLineLength = ChakraApp.Config.connections ? 
+    ChakraApp.Config.connections.maxLineLength : 120;
   
+  // Define the overlap threshold (squares closer than this will overlap)
+  var overlapThreshold = ChakraApp.Config.connections ? 
+    ChakraApp.Config.connections.overlapThreshold : 40;
+
+  // Set line position, accounting for squares being centered using transform
+  this.element.style.width = length + 'px';
+  this.element.style.left = x1 + 'px';
+  this.element.style.top = y1 + 'px';
+  this.element.style.transform = 'rotate(' + angle + 'deg)';
+  
+  // Show/hide line based on length
+  this.element.style.display = this.viewModel.isVisible ? 'block' : 'none';
+
+  // Check if squares are close enough to overlap
+  if (length < overlapThreshold) {
+    // Add the overlap-connection class to the line
+    this.element.classList.add('overlap-connection');
+    
+    // Register the overlap with our manager
+    if (square1 && square2) {
+      ChakraApp.OverlappingSquaresManager.registerOverlap(square1, square2);
+    }
+  } else {
+    // Remove the overlap-connection class
+    this.element.classList.remove('overlap-connection');
+    
+    // Unregister the overlap
+    ChakraApp.OverlappingSquaresManager.removeOverlap(
+      this.viewModel.sourceId, 
+      this.viewModel.targetId
+    );
+  }
+};
+
+
   // Update view based on model changes
   ChakraApp.ConnectionView.prototype.update = function() {
 	  // Update visibility
@@ -1335,18 +1359,31 @@ ChakraApp.CircleView.prototype._findCharOption = function(value, charDef) {
 
   var originalConnectionViewDestroy = ChakraApp.ConnectionView.prototype.destroy;
   ChakraApp.ConnectionView.prototype.destroy = function() {
-	  // Call original destroy method
-	  originalConnectionViewDestroy.call(this);
+	  // Get the squares
+  var square1 = ChakraApp.appState.getSquare(this.viewModel.sourceId);
+  var square2 = ChakraApp.appState.getSquare(this.viewModel.targetId);
+  
+  // Remove any overlap registration if this connection is being destroyed
+  if (square1 && square2) {
+    ChakraApp.OverlappingSquaresManager.removeOverlap(square1.id, square2.id);
+  }
+  
+  // Clean up view model subscription
+  if (this.viewModelSubscription) {
+    this.viewModelSubscription();
+  }
+  
+  // Clean up additional subscriptions
+  if (this.multiSelectSubscription) {
+    this.multiSelectSubscription();
+  }
 
-	  // Clean up additional subscriptions
-	  if (this.multiSelectSubscription) {
-		  this.multiSelectSubscription();
-	  }
-
-	  if (this.multiDeselectSubscription) {
-		  this.multiDeselectSubscription();
-	  }
+  if (this.multiDeselectSubscription) {
+    this.multiDeselectSubscription();
+  }
+  originalConnectionViewDestroy.call(this);
   };
+
   
 })(window.ChakraApp = window.ChakraApp || {});
 

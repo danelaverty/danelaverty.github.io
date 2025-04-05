@@ -7,7 +7,6 @@
    */
   ChakraApp.App = function() {
     // Controllers
-    this.zoomController = null;
     this.uiController = null;
     this.keyboardController = null;
     this.viewManager = null;
@@ -39,39 +38,42 @@
    * @private
    */
   ChakraApp.App.prototype._initializeApp = function() {
-    // Create view manager
-    this.viewManager = new ChakraApp.ViewManager();
-    
-    // Create controllers
-    this.zoomController = new ChakraApp.ZoomController();
-    this.uiController = new ChakraApp.UIController();
-    this.keyboardController = new ChakraApp.KeyboardController();
-    
-    // Initialize controllers
-    this.zoomController.init();
-    this.uiController.init();
-    this.keyboardController.init();
-    
-    // Initialize view manager
-    this.viewManager.init();
-    
-    // Load data from storage
-    var dataLoaded = ChakraApp.appState.loadFromStorage();
-    
-    // If no data was loaded, create a sample circle
-    if (!dataLoaded) {
-      this._createSampleData();
-    }
-    
-    // Render all views based on state
-    this.viewManager.renderAllViews();
-    
-    // Set initialized flag
-    this.initialized = true;
-    
-    console.log('Application initialized');
-  };
+  // Initialize overlapping groups array
+  ChakraApp.overlappingGroups = [];
   
+  // Create view manager
+  this.viewManager = new ChakraApp.ViewManager();
+  
+  // Create controllers
+  this.uiController = new ChakraApp.UIController();
+  this.keyboardController = new ChakraApp.KeyboardController();
+  
+  // Initialize controllers
+  this.uiController.init();
+  this.keyboardController.init();
+  
+  // Initialize view manager
+  this.viewManager.init();
+
+  ChakraApp.OverlappingSquaresManager.init();
+  
+  // Load data from storage
+  var dataLoaded = ChakraApp.appState.loadFromStorage();
+  
+  // If no data was loaded, create a sample circle
+  if (!dataLoaded) {
+    this._createSampleData();
+  }
+  
+  // Render all views based on state
+  this.viewManager.renderAllViews();
+  
+  // Set initialized flag
+  this.initialized = true;
+
+  console.log('Application initialized');
+};
+
   /**
    * Create sample data for first-time users
    * @private
@@ -124,10 +126,6 @@
    */
   ChakraApp.App.prototype.destroy = function() {
     // Clean up controllers
-    if (this.zoomController) {
-      this.zoomController.destroy();
-    }
-    
     if (this.uiController) {
       this.uiController.destroy();
     }

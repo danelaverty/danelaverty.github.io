@@ -2,6 +2,29 @@
 // Utility helper functions
 
 (function(ChakraApp) {
+	// Create the cleanupOverlappingGroups function in the global ChakraApp namespace
+  ChakraApp.cleanupOverlappingGroups = function() {
+    if (!ChakraApp.overlappingGroups) return;
+    
+    // Remove all combined names lists
+    ChakraApp.overlappingGroups.forEach(function(group) {
+      var namesListElement = document.getElementById('combined-names-' + group.id);
+      if (namesListElement) {
+        namesListElement.parentNode.removeChild(namesListElement);
+      }
+    });
+    
+    // Reset the groups array
+    ChakraApp.overlappingGroups = [];
+    
+    // Remove overlapping class from all squares
+    var overlappingSquares = document.querySelectorAll('.square.overlapping');
+    overlappingSquares.forEach(function(square) {
+      square.classList.remove('overlapping');
+      delete square.dataset.overlapConnectionId;
+    });
+  };
+
   // Create Utils namespace
   ChakraApp.Utils = {
     /**

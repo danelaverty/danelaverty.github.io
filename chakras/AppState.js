@@ -42,8 +42,6 @@
     this.selectedSquareId = null;
     
     // UI state
-    this.zoomLevel = 1.0;
-    this.containerPosition = { x: 0, y: 0 };
     this.rightPanelVisible = false;
     this.documentListVisible = false;
   };
@@ -114,7 +112,9 @@
     ChakraApp.EventBus.publish(ChakraApp.EventTypes.DOCUMENT_CREATED, doc);
     
     // Save state to localStorage
-    this.saveToStorage();
+    if (!this._isLoading) {
+	    this.saveToStorage();
+    }
     
     return doc;
   };
@@ -132,7 +132,9 @@
     doc.update(changes);
     
     // Save state to localStorage
-    this.saveToStorage();
+    if (!this._isLoading) {
+	    this.saveToStorage();
+    }
     
     return doc;
   };
@@ -194,7 +196,9 @@
     }
     
     // Save state to localStorage
-    this.saveToStorage();
+    if (!this._isLoading) {
+	    this.saveToStorage();
+    }
     
     return true;
   };
@@ -378,7 +382,9 @@
       ChakraApp.EventBus.publish(ChakraApp.EventTypes.CIRCLE_CREATED, circle);
 
       // Save state to localStorage
-      this.saveToStorage();
+      if (!this._isLoading) {
+	      this.saveToStorage();
+      }
 
       return circle;
     }
@@ -399,7 +405,9 @@
     circle.update(changes);
     
     // Save state to localStorage
-    this.saveToStorage();
+    if (!this._isLoading) {
+	    this.saveToStorage();
+    }
     
     return circle;
   };
@@ -435,7 +443,9 @@
     ChakraApp.EventBus.publish(ChakraApp.EventTypes.CIRCLE_DELETED, circle);
     
     // Save state to localStorage
-    this.saveToStorage();
+    if (!this._isLoading) {
+	    this.saveToStorage();
+    }
     
     return true;
   };
@@ -510,6 +520,11 @@
   ChakraApp.AppState.prototype._handleCircleSelection = function(circleId) {
     var self = this;
 
+    // Clean up any overlapping groups
+  if (typeof ChakraApp.cleanupOverlappingGroups === 'function') {
+    ChakraApp.cleanupOverlappingGroups();
+  }
+
     // Hide all squares first
     this.squares.forEach(function(square) {
       square.hide();
@@ -548,6 +563,7 @@
     
     // Clear connections
     this.connections.clear();
+    ChakraApp.OverlappingSquaresManager.cleanup();
     ChakraApp.EventBus.publish(ChakraApp.EventTypes.CONNECTION_UPDATED, null);
   };
 
@@ -604,7 +620,9 @@
     circle.update({ squareCount: squareCount });
     
     // Save state to localStorage after updating chakra form
-    this.saveToStorage();
+    if (!this._isLoading) {
+	    this.saveToStorage();
+    }
   };
   
   //====================================================
@@ -649,7 +667,9 @@
     this._updateConnectionsForCircleId(square.circleId);
     
     // Save state to localStorage
-    this.saveToStorage();
+    if (!this._isLoading) {
+	    this.saveToStorage();
+    }
     
     return square;
   };
@@ -667,7 +687,9 @@
     square.update(changes);
     
     // Save state to localStorage
-    this.saveToStorage();
+    if (!this._isLoading) {
+	    this.saveToStorage();
+    }
     
     return square;
   };
@@ -703,7 +725,9 @@
     }
     
     // Save state to localStorage
-    this.saveToStorage();
+    if (!this._isLoading) {
+	    this.saveToStorage();
+    }
     
     return true;
   };
@@ -902,7 +926,9 @@
     }
     
     // Save state to localStorage after updating connections
-    this.saveToStorage();
+    if (!this._isLoading) {
+	    this.saveToStorage();
+    }
   };
 
   /**
@@ -942,7 +968,9 @@
     ChakraApp.EventBus.publish(ChakraApp.EventTypes.CONNECTION_UPDATED, null);
     
     // Save state to localStorage after removing connections
-    this.saveToStorage();
+    if (!this._isLoading) {
+	    this.saveToStorage();
+    }
   };
 
   /**
@@ -982,7 +1010,9 @@
     ChakraApp.EventBus.publish(ChakraApp.EventTypes.CONNECTION_UPDATED, circleId);
     
     // Save state to localStorage after updating connections
-    this.saveToStorage();
+    if (!this._isLoading) {
+	    this.saveToStorage();
+    }
   };
 
   /**
@@ -999,44 +1029,11 @@
     }
     
     // Save state to localStorage after updating all connections
-    this.saveToStorage();
-  };
-  
-  //====================================================
-  // UI STATE OPERATIONS
-  //====================================================
-  
-  /**
-   * Update the zoom level
-   * @param {number} level - New zoom level
-   */
-  ChakraApp.AppState.prototype.updateZoomLevel = function(level) {
-    // Constrain zoom level
-    this.zoomLevel = Math.max(0.5, Math.min(2.5, level));
-    
-    // Reset container position if zoom is back to default
-    if (this.zoomLevel === 1.0) {
-      this.containerPosition = { x: 0, y: 0 };
+    if (!this._isLoading) {
+	    this.saveToStorage();
     }
-    
-    this._notifyStateChanged('ui', { zoomLevel: this.zoomLevel });
-    ChakraApp.EventBus.publish(ChakraApp.EventTypes.ZOOM_CHANGED, this.zoomLevel);
-    
-    // Save state to localStorage after updating zoom level
-    this.saveToStorage();
   };
-
-  /**
-   * Update the container position
-   * @param {Object} position - Position object with x and y coordinates
-   */
-  ChakraApp.AppState.prototype.updateContainerPosition = function(position) {
-    this.containerPosition = { x: position.x, y: position.y };
-    this._notifyStateChanged('ui', { containerPosition: this.containerPosition });
-    
-    // Save state to localStorage after updating container position
-    this.saveToStorage();
-  };
+  
   
   //====================================================
   // STORAGE OPERATIONS
@@ -1047,131 +1044,170 @@
    * @returns {boolean} Success indicator
    */
   ChakraApp.AppState.prototype.loadFromStorage = function() {
-    try {
-      var savedData = localStorage.getItem('chakraVisualizerData');
-      if (!savedData) return false;
-
-      var data = JSON.parse(savedData);
-
-      // Reset current state
-      this.documents.clear();
-      this.circles.clear();
-      this.squares.clear();
-      this.connections.clear();
-      this.selectedDocumentId = null;
-      this.selectedCircleId = null;
-      this.selectedSquareId = null;
-
-      // Load documents
-      if (data.documents && Array.isArray(data.documents)) {
-        var self = this;
-        data.documents.forEach(function(documentData) {
-          self.addDocument(documentData);
-        });
-      } else {
-        // If no documents in storage, create a default one
-        this.addDocument(); // This will create with default name
-      }
-
-      // Load circles
-      if (data.circles && Array.isArray(data.circles)) {
-        var self = this;
-        data.circles.forEach(function(circleData) {
-          self.addCircle(circleData);
-        });
-      }
-
-      // Load squares
-      if (data.squares && Array.isArray(data.squares)) {
-        var self = this;
-        data.squares.forEach(function(squareData) {
-          self.addSquare(squareData);
-        });
-      }
-
-      // Load UI state
-      if (data.zoomLevel) {
-        this.zoomLevel = data.zoomLevel;
-        ChakraApp.EventBus.publish(ChakraApp.EventTypes.ZOOM_CHANGED, this.zoomLevel);
-      }
-
-      if (data.containerPosition) {
-        this.containerPosition = data.containerPosition;
-      }
-
-      // Get the last viewed document
-      var lastViewedDocumentId = this.getLastViewedDocument();
-      
-      // Select document if available
-      if (lastViewedDocumentId && this.documents.has(lastViewedDocumentId)) {
-        this.selectDocument(lastViewedDocumentId);
-      } else if (data.selectedDocumentId && this.documents.has(data.selectedDocumentId)) {
-        this.selectDocument(data.selectedDocumentId);
-      } else if (this.documents.size > 0) {
-        // Select first document if none selected
-        var firstDocument = this.getAllDocuments()[0];
-        if (firstDocument) {
-          this.selectDocument(firstDocument.id);
-          // Also save this as the last viewed document
-          this.saveLastViewedDocument(firstDocument.id);
-        }
-      }
-
-      // Notify and publish event
-      this._notifyStateChanged('all', data);
-      ChakraApp.EventBus.publish(ChakraApp.EventTypes.STATE_LOADED, data);
-
-      return true;
-    } catch (error) {
-      console.error('Error loading state from localStorage:', error);
+  try {
+    // Set a flag to prevent saving during load
+    this._isLoading = true;
+    
+    var savedData = localStorage.getItem('chakraVisualizerData');
+    if (!savedData) {
+      this._isLoading = false;
       return false;
     }
-  };
+
+    var data = JSON.parse(savedData);
+
+    // Reset current state
+    this.documents.clear();
+    this.circles.clear();
+    this.squares.clear();
+    this.connections.clear();
+    this.selectedDocumentId = null;
+    this.selectedCircleId = null;
+    this.selectedSquareId = null;
+
+    // Load documents
+    if (data.documents && Array.isArray(data.documents)) {
+      var self = this;
+      data.documents.forEach(function(documentData) {
+        self.addDocument(documentData);
+      });
+    } else {
+      // If no documents in storage, create a default one
+      this.addDocument(); // This will create with default name
+    }
+
+    // Load circles
+    if (data.circles && Array.isArray(data.circles)) {
+      var self = this;
+      data.circles.forEach(function(circleData) {
+        self.addCircle(circleData);
+      });
+    }
+
+    // Load squares
+    if (data.squares && Array.isArray(data.squares)) {
+      var self = this;
+      data.squares.forEach(function(squareData) {
+        self.addSquare(squareData);
+      });
+    }
+
+    // Get the last viewed document
+    var lastViewedDocumentId = this.getLastViewedDocument();
+    
+    // Select document if available
+    if (lastViewedDocumentId && this.documents.has(lastViewedDocumentId)) {
+      this.selectDocument(lastViewedDocumentId);
+    } else if (data.selectedDocumentId && this.documents.has(data.selectedDocumentId)) {
+      this.selectDocument(data.selectedDocumentId);
+    } else if (this.documents.size > 0) {
+      // Select first document if none selected
+      var firstDocument = this.getAllDocuments()[0];
+      if (firstDocument) {
+        this.selectDocument(firstDocument.id);
+        // Also save this as the last viewed document
+        this.saveLastViewedDocument(firstDocument.id);
+      }
+    }
+
+    // Notify and publish event
+    this._notifyStateChanged('all', data);
+    ChakraApp.EventBus.publish(ChakraApp.EventTypes.STATE_LOADED, data);
+
+    // Clean up any overlapping groups
+    if (typeof ChakraApp.cleanupOverlappingGroups === 'function') {
+      ChakraApp.cleanupOverlappingGroups();
+    }
+    
+    // Clear loading flag and save once after loading
+    this._isLoading = false;
+    this.saveToStorageNow();
+
+    return true;
+  } catch (error) {
+    console.error('Error loading state from localStorage:', error);
+    this._isLoading = false;
+    return false;
+  }
+};
 
   /**
-   * Save state to localStorage
-   * @returns {boolean} Success indicator
-   */
+ * Save state to localStorage with debouncing
+ * @returns {boolean} Success indicator
+ */
   ChakraApp.AppState.prototype.saveToStorage = function() {
-    try {
-      var documents = [];
-      this.documents.forEach(function(doc) {
-        documents.push(doc.toJSON());
-      });
-      
-      var circles = [];
-      this.circles.forEach(function(circle) {
-        circles.push(circle.toJSON());
-      });
-      
-      var squares = [];
-      this.squares.forEach(function(square) {
-        squares.push(square.toJSON());
-      });
-      
-      var data = {
-        documents: documents,
-        circles: circles,
-        squares: squares,
-        zoomLevel: this.zoomLevel,
-        containerPosition: this.containerPosition,
-        selectedDocumentId: this.selectedDocumentId
-      };
-      
-      localStorage.setItem('chakraVisualizerData', JSON.stringify(data));
-      
-      // Publish event
-      ChakraApp.EventBus.publish(ChakraApp.EventTypes.STATE_SAVED, data);
-      
-      console.log('State saved to localStorage');
-      
-      return true;
-    } catch (error) {
-      console.error('Error saving state to localStorage:', error);
-      return false;
-    }
+	  try {
+		  // Clear any existing save timeout
+		  if (this._saveTimeout) {
+			  clearTimeout(this._saveTimeout);
+		  }
+
+		  // Set a new timeout to save after a short delay (prevents rapid-fire saves)
+		  var self = this;
+		  this._saveTimeout = setTimeout(function() {
+			  self._actualSaveToStorage();
+		  }, 300); // 300ms debounce
+
+		  return true;
+	  } catch (error) {
+		  console.error('Error scheduling state save to localStorage:', error);
+		  return false;
+	  }
   };
+
+/**
+ * Actual save operation (separated from the debounced public method)
+ * @private
+ */
+ChakraApp.AppState.prototype._actualSaveToStorage = function() {
+	try {
+		var documents = [];
+		this.documents.forEach(function(doc) {
+			documents.push(doc.toJSON());
+		});
+
+		var circles = [];
+		this.circles.forEach(function(circle) {
+			circles.push(circle.toJSON());
+		});
+
+		var squares = [];
+		this.squares.forEach(function(square) {
+			squares.push(square.toJSON());
+		});
+
+		var data = {
+			documents: documents,
+			circles: circles,
+			squares: squares,
+			selectedDocumentId: this.selectedDocumentId
+		};
+
+		localStorage.setItem('chakraVisualizerData', JSON.stringify(data));
+
+		// Publish event
+		ChakraApp.EventBus.publish(ChakraApp.EventTypes.STATE_SAVED, data);
+
+		console.log('State saved to localStorage');
+
+		return true;
+	} catch (error) {
+		console.error('Error saving state to localStorage:', error);
+		return false;
+	}
+};
+
+ChakraApp.AppState.prototype.saveToStorageNow = function() {
+  // Clear any existing timeout
+  if (this._saveTimeout) {
+    clearTimeout(this._saveTimeout);
+    this._saveTimeout = null;
+  }
   
+  // Call the actual save method directly
+  return this._actualSaveToStorage();
+};
+
   // Create the singleton instance
   ChakraApp.appState = new ChakraApp.AppState();
   

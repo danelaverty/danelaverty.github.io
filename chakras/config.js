@@ -429,6 +429,7 @@ options: [
 
     connections: {
         maxLineLength: 120,  // Maximum length for visible connection lines (in pixels)
+	overlapThreshold: 40,
         lineColor: 'rgba(255, 255, 255, 0.3)',  // Default connection line color
         lineColorHighlight: 'rgba(255, 255, 255, 0.7)', // Color for highlighted connections
         lineWidth: 1, // Default line width in pixels
