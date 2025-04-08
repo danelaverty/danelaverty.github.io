@@ -2193,3 +2193,23 @@ ChakraApp.UIController.prototype._toggleActionButtons = function(show) {
   line-height: 1.2;
   white-space: normal;
 }
+
+/* Connection radius indicator */
+.connection-radius-indicator {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  background-color: rgba(255, 255, 255, 1);
+  z-index: 4;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Only show indicators during drag operations */
+.square.dragging .connection-radius-indicator
+{
+  opacity: 0.1;
+}

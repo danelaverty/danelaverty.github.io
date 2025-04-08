@@ -829,31 +829,24 @@
    * Deselect the current square and clear multi-selection
    * @returns {boolean} Success indicator
    */
-  ChakraApp.AppState.prototype.deselectSquare = function() {
-    if (!this.selectedSquareId) return false;
-    
-    var square = this.squares.get(this.selectedSquareId);
-    if (square) {
-      square.deselect();
-    }
-    
-    this.selectedSquareId = null;
+ChakraApp.AppState.prototype.deselectSquare = function() {
+  if (!this.selectedSquareId) return false;
+  
+  var square = this.squares.get(this.selectedSquareId);
+  if (square) {
+    square.deselect();
+  }
+  
+  this.selectedSquareId = null;
 
-    // Clear multi-selection if it exists
-    if (ChakraApp.multiSelectedSquares && ChakraApp.multiSelectedSquares.length > 0) {
-      ChakraApp.multiSelectedSquares.forEach(function(squareId) {
-        var squareElement = document.querySelector('.square[data-id="' + squareId + '"]');
-        if (squareElement) {
-          squareElement.classList.remove('multi-selected');
-        }
-      });
-
-      ChakraApp.multiSelectedSquares = [];
-      ChakraApp.EventBus.publish('SQUARES_MULTI_DESELECTED', {});
-    }
-    
-    return true;
-  };
+  // Clear multi-selection if it exists
+  if (ChakraApp.MultiSelectionManager && ChakraApp.MultiSelectionManager.hasSelection()) {
+    ChakraApp.MultiSelectionManager.clearSelection();
+  }
+  
+  return true;
+};
+  
   
   //====================================================
   // CONNECTION OPERATIONS
