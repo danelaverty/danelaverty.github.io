@@ -40,16 +40,16 @@
      * Clear multi-selection
      */
     clearSelection: function() {
-      // Remove multi-selected class from all squares
-      this._removeMultiSelectedClass();
-      
-      // Clear selection arrays
-      this.selectedSquareIds = [];
-      this.primarySquareId = null;
-      
-      // Publish multi-deselection event
-      ChakraApp.EventBus.publish('SQUARES_MULTI_DESELECTED', {});
-    },
+  // Remove multi-selected class from all squares
+  this._removeMultiSelectedClass();
+  
+  // Clear selection arrays
+  this.selectedSquareIds = [];
+  this.primarySquareId = null;
+  
+  // Publish multi-deselection event
+  ChakraApp.EventBus.publish('SQUARES_MULTI_DESELECTED', {});
+},
     
     /**
      * Check if multi-selection is active

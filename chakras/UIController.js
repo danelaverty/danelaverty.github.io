@@ -165,29 +165,34 @@
    * @private
    */
   ChakraApp.UIController.prototype._setupPanelClickHandlers = function() {
-    var zoomContainer = document.getElementById('zoom-container');
-    var bottomPanel = document.getElementById('bottom-panel');
-    
-    // Left panel click - deselect circle
-    zoomContainer.addEventListener('click', function(e) {
-      // Only handle clicks directly on the panel (not on children)
-      if (e.target === zoomContainer) {
-        if (ChakraApp.appState.selectedCircleId) {
-          ChakraApp.appState.deselectCircle();
-        }
+  var zoomContainer = document.getElementById('zoom-container');
+  var bottomPanel = document.getElementById('bottom-panel');
+  
+  // Left panel click - deselect circle
+  zoomContainer.addEventListener('click', function(e) {
+    // Only handle clicks directly on the panel (not on children)
+    if (e.target === zoomContainer) {
+      if (ChakraApp.appState.selectedCircleId) {
+        ChakraApp.appState.deselectCircle();
       }
-    });
-    
-    // Bottom panel click - deselect square
-    bottomPanel.addEventListener('click', function(e) {
-      // Only handle clicks directly on the panel (not on children)
-      if (e.target === bottomPanel) {
-        if (ChakraApp.appState.selectedSquareId) {
-          ChakraApp.appState.deselectSquare();
-        }
+    }
+  });
+  
+  // Bottom panel click - deselect square and clear multi-selection
+  bottomPanel.addEventListener('click', function(e) {
+    // Only handle clicks directly on the panel (not on children)
+    if (e.target === bottomPanel) {
+      if (ChakraApp.appState.selectedSquareId) {
+        ChakraApp.appState.deselectSquare();
       }
-    });
-  };
+      
+      // Ensure multi-selection is cleared even if no primary square is selected
+      if (ChakraApp.MultiSelectionManager && ChakraApp.MultiSelectionManager.hasSelection()) {
+        ChakraApp.MultiSelectionManager.clearSelection();
+      }
+    }
+  });
+};
   
   /**
    * Set up circle event listeners
