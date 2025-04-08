@@ -37,9 +37,9 @@
       this.clipboard.push(this._serializeSquare(primarySquare));
       
       // Add multi-selected squares if any
-      if (ChakraApp.multiSelectedSquares && ChakraApp.multiSelectedSquares.length > 0) {
+      if (ChakraApp.MultiSelectionManager && ChakraApp.MultiSelectionManager.hasSelection()) {
         var self = this;
-        ChakraApp.multiSelectedSquares.forEach(function(squareId) {
+        ChakraApp.MultiSelectionManager.selectedSquareIds.forEach(function(squareId) {
           var square = ChakraApp.appState.getSquare(squareId);
           if (square) {
             self.clipboard.push(self._serializeSquare(square));
@@ -67,24 +67,16 @@
       // Set the cut flag
       this.isCutOperation = true;
       
-      // Delete the cut squares (we need to take care with multi-selection)
-      var squaresToRemove = [];
-      
-      // Add primary square to removal list
-      var primarySquareId = ChakraApp.appState.selectedSquareId;
-      if (primarySquareId) {
-        squaresToRemove.push(primarySquareId);
+      // Delete the squares using MultiSelectionManager if there's a multi-selection
+      if (ChakraApp.MultiSelectionManager && ChakraApp.MultiSelectionManager.hasSelection()) {
+        ChakraApp.MultiSelectionManager.deleteAllSelected();
+      } else {
+        // Otherwise just remove the primary square
+        var primarySquareId = ChakraApp.appState.selectedSquareId;
+        if (primarySquareId) {
+          ChakraApp.appState.removeSquare(primarySquareId);
+        }
       }
-      
-      // Add multi-selected squares to removal list
-      if (ChakraApp.multiSelectedSquares && ChakraApp.multiSelectedSquares.length > 0) {
-        squaresToRemove = squaresToRemove.concat(ChakraApp.multiSelectedSquares);
-      }
-      
-      // Remove squares in reverse order to avoid index shifting issues
-      squaresToRemove.sort().reverse().forEach(function(squareId) {
-        ChakraApp.appState.removeSquare(squareId);
-      });
       
       // Publish clipboard event
       ChakraApp.EventBus.publish('CLIPBOARD_UPDATED', {
@@ -111,15 +103,20 @@
       var targetCircle = ChakraApp.appState.getCircle(targetCircleId);
       if (!targetCircle) return false;
       
+      // Calculate offset from the center for pasting
+      var offset = this._calculatePasteOffset();
+      
       // Keep track of new squares for connection recreation
       var newSquareIds = [];
       var oldToNewIdMap = {};
       
-      // Create all squares first, preserving original coordinates
+      // Create all squares first
       this.clipboard.forEach(function(squareData) {
-        // Create a new square with the same position
+        // Create a new square with the same position plus offset
         var newSquare = Object.assign({}, squareData, {
-          circleId: targetCircleId // Assign to target circle
+          circleId: targetCircleId, // Assign to target circle
+          x: squareData.x + offset.x,
+          y: squareData.y + offset.y
         });
         
         // Remove the ID so a new one will be generated
@@ -143,11 +140,6 @@
           
           // Check if both endpoints are in our old-to-new mapping
           if (oldToNewIdMap[sourceId] && oldToNewIdMap[targetId]) {
-            // These squares had a connection in the original group
-            // Create a connection between the new squares
-            var newSourceId = oldToNewIdMap[sourceId];
-            var newTargetId = oldToNewIdMap[targetId];
-            
             // Force connection update
             ChakraApp.appState._updateConnectionsForCircleId(targetCircleId);
           }
@@ -168,6 +160,29 @@
       });
       
       return true;
+    },
+    
+    /**
+     * Calculate an offset for pasting
+     * @private
+     * @returns {Object} Offset with x and y properties
+     */
+    _calculatePasteOffset: function() {
+      // Default offset
+      var offset = {
+        x: 20, // Slightly to the right
+        y: 20  // Slightly down
+      };
+      
+      // If this is a self-paste (same circle), use offset to make it clear
+      if (this.sourceCircleId === ChakraApp.appState.selectedCircleId) {
+        offset = {
+          x: 40,
+          y: 40
+        };
+      }
+      
+      return offset;
     },
     
     /**
@@ -201,7 +216,8 @@
         color: square.color,
         name: square.name,
         attribute: square.attribute,
-        isMe: square.isMe
+        isMe: square.isMe,
+        isBold: square.isBold
       };
     }
   };

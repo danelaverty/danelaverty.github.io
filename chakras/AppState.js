@@ -518,32 +518,49 @@
    * @param {string} circleId - Circle ID
    */
   ChakraApp.AppState.prototype._handleCircleSelection = function(circleId) {
-    var self = this;
+	  var self = this;
 
-    // Clean up any overlapping groups
-  if (typeof ChakraApp.cleanupOverlappingGroups === 'function') {
-    ChakraApp.cleanupOverlappingGroups();
-  }
+	  // Clean up any overlapping groups
+	  if (typeof ChakraApp.cleanupOverlappingGroups === 'function') {
+		  ChakraApp.cleanupOverlappingGroups();
+	  }
 
-    // Hide all squares first
-    this.squares.forEach(function(square) {
-      square.hide();
-    });
+	  // Hide all squares first
+	  this.squares.forEach(function(square) {
+		  square.hide();
+	  });
 
-    // Show only squares for the selected circle
-    this.getSquaresForCircle(circleId).forEach(function(square) {
-      square.show();
-    });
+	  // Get squares for the selected circle
+	  var squaresForCircle = this.getSquaresForCircle(circleId);
 
-    // Create or show the "Me" square for this circle if it doesn't exist
-    this._ensureMeSquareExists(circleId);
+	  // Create views for these squares if they don't exist
+	  if (ChakraApp.app && ChakraApp.app.viewManager) {
+		  squaresForCircle.forEach(function(square) {
+			  // Check if view already exists
+			  if (!ChakraApp.app.viewManager.squareViews.has(square.id)) {
+				  // Create the view
+				  ChakraApp.app.viewManager.createSquareView(square);
+			  }
 
-    // Clear all connections first
-    this.connections.clear();
-    ChakraApp.EventBus.publish(ChakraApp.EventTypes.CONNECTION_UPDATED, null);
+			  // Show the square
+			  square.show();
+		  });
+	  } else {
+		  // Fallback if viewManager isn't available
+		  squaresForCircle.forEach(function(square) {
+			  square.show();
+		  });
+	  }
 
-    // Then update connections for this circle
-    this._updateConnectionsForCircleId(circleId);
+	  // Create or show the "Me" square for this circle if it doesn't exist
+	  this._ensureMeSquareExists(circleId);
+
+	  // Clear all connections first
+	  this.connections.clear();
+	  ChakraApp.EventBus.publish(ChakraApp.EventTypes.CONNECTION_UPDATED, null);
+
+	  // Then update connections for this circle
+	  this._updateConnectionsForCircleId(circleId);
   };
 
   /**
@@ -551,20 +568,44 @@
    * @private
    */
   ChakraApp.AppState.prototype._handleCircleDeselection = function() {
-    var self = this;
-    
-    // Hide all squares
-    this.squares.forEach(function(square) {
-      square.hide();
-    });
-    
-    // Deselect any selected square
-    this.deselectSquare();
-    
-    // Clear connections
-    this.connections.clear();
-    ChakraApp.OverlappingSquaresManager.cleanup();
-    ChakraApp.EventBus.publish(ChakraApp.EventTypes.CONNECTION_UPDATED, null);
+	  var self = this;
+
+	  // Hide all squares
+	  this.squares.forEach(function(square) {
+		  square.hide();
+	  });
+
+	  // Optional: Remove square views to free up memory
+	  // Only do this if memory usage is a concern
+	  if (ChakraApp.app && ChakraApp.app.viewManager) {
+		  var viewManager = ChakraApp.app.viewManager;
+
+		  // Keep track of which squares to remove (all except "me" squares)
+		  var squaresToRemove = [];
+		  viewManager.squareViews.forEach(function(view, squareId) {
+			  var square = self.getSquare(squareId);
+			  if (square && !square.isMe) {
+				  squaresToRemove.push(squareId);
+			  }
+		  });
+
+		  // Remove the views
+		  squaresToRemove.forEach(function(squareId) {
+			  var view = viewManager.squareViews.get(squareId);
+			  if (view) {
+				  view.destroy();
+				  viewManager.squareViews.delete(squareId);
+			  }
+		  });
+	  }
+
+	  // Deselect any selected square
+	  this.deselectSquare();
+
+	  // Clear connections
+	  this.connections.clear();
+	  ChakraApp.OverlappingSquaresManager.cleanup();
+	  ChakraApp.EventBus.publish(ChakraApp.EventTypes.CONNECTION_UPDATED, null);
   };
 
   /**

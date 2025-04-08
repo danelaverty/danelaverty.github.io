@@ -14,6 +14,9 @@
     
     // Keep track of event handlers
     this.keydownHandler = null;
+    
+    // For notification timeouts
+    this.notificationTimeout = null;
   };
   
   // Inherit from BaseController
@@ -39,187 +42,202 @@
   
   // Register keyboard shortcuts
   ChakraApp.KeyboardController.prototype._registerKeyboardShortcuts = function() {
-	  var self = this;
+    var self = this;
 
-	  // Delete key - delete selected item
-	  this.keyHandlers['Delete'] = function(e) {
-		  // Don't handle if we're editing text
-		  if (self._isEditingText()) return;
+    // Delete key - delete selected item
+    this.keyHandlers['Delete'] = function(e) {
+      // Don't handle if we're editing text
+      if (self._isEditingText()) return;
 
-		  e.preventDefault();
+      e.preventDefault();
 
-		  // Prioritize square deletion if a square is selected
-		  if (ChakraApp.appState.selectedSquareId) {
-			  self._showDeleteDialog(function() {
-				  // If there are multi-selected squares, delete them all
-				  if (ChakraApp.multiSelectedSquares && ChakraApp.multiSelectedSquares.length > 0) {
-					  // First delete the primary selected square
-					  ChakraApp.appState.removeSquare(ChakraApp.appState.selectedSquareId);
+      // Check if there is a multi-selection
+      if (ChakraApp.MultiSelectionManager.hasSelection()) {
+        self._showDeleteDialog(function() {
+          // Delete all selected squares
+          var count = ChakraApp.MultiSelectionManager.deleteAllSelected();
+          self._showNotification(`Deleted ${count} squares`);
+        });
+      }
+      // Prioritize square deletion if a square is selected
+      else if (ChakraApp.appState.selectedSquareId) {
+        self._showDeleteDialog(function() {
+          ChakraApp.appState.removeSquare(ChakraApp.appState.selectedSquareId);
+        });
+      }
+      // If only a circle is selected
+      else if (ChakraApp.appState.selectedCircleId) {
+        self._showDeleteDialog(function() {
+          ChakraApp.appState.removeCircle(ChakraApp.appState.selectedCircleId);
+        });
+      }
+    };
 
-					  // Then delete all multi-selected squares
-					  ChakraApp.multiSelectedSquares.sort().reverse().forEach(function(squareId) {
-						  ChakraApp.appState.removeSquare(squareId);
-					  });
+    // Escape key - deselect current item
+    this.keyHandlers['Escape'] = function(e) {
+      // Don't handle if we're editing text
+      if (self._isEditingText()) return;
 
-					  // Clear the multi-selected squares array
-					  ChakraApp.multiSelectedSquares = [];
-				  } else {
-					  // Just delete the selected square
-					  ChakraApp.appState.removeSquare(ChakraApp.appState.selectedSquareId);
-				  }
-			  });
-		  }
-		  // If only a circle is selected
-		  else if (ChakraApp.appState.selectedCircleId) {
-			  self._showDeleteDialog(function() {
-				  ChakraApp.appState.removeCircle(ChakraApp.appState.selectedCircleId);
-			  });
-		  }
-	  };
+      e.preventDefault();
 
-	  // Escape key - deselect current item
-	  this.keyHandlers['Escape'] = function(e) {
-		  // Don't handle if we're editing text
-		  if (self._isEditingText()) return;
+      // Clear multi-selection if active
+      if (ChakraApp.MultiSelectionManager.hasSelection()) {
+        ChakraApp.MultiSelectionManager.clearSelection();
+      }
 
-		  e.preventDefault();
+      // Deselect square first if selected
+      if (ChakraApp.appState.selectedSquareId) {
+        ChakraApp.appState.deselectSquare();
+      }
+      // Then deselect circle if selected
+      else if (ChakraApp.appState.selectedCircleId) {
+        ChakraApp.appState.deselectCircle();
+      }
+    };
 
-		  // Deselect square first if selected
-		  if (ChakraApp.appState.selectedSquareId) {
-			  ChakraApp.appState.deselectSquare();
-		  }
-		  // Then deselect circle if selected
-		  else if (ChakraApp.appState.selectedCircleId) {
-			  ChakraApp.appState.deselectCircle();
-		  }
-	  };
+    // Ctrl+C - Copy selected squares
+    this.keyHandlers['c'] = function(e) {
+      // Must be ctrl/cmd key
+      if (!(e.ctrlKey || e.metaKey)) return;
 
-	  // Ctrl+C - Copy selected squares
-	  this.keyHandlers['c'] = function(e) {
-		  // Must be ctrl/cmd key
-		  if (!(e.ctrlKey || e.metaKey)) return;
+      // Don't handle if we're editing text
+      if (self._isEditingText()) return;
 
-		  // Don't handle if we're editing text
-		  if (self._isEditingText()) return;
+      e.preventDefault();
 
-		  e.preventDefault();
+      // Must have a square selected
+      if (ChakraApp.appState.selectedSquareId) {
+        // Copy the selected squares
+        var success = ChakraApp.ClipboardManager.copySelectedSquares();
 
-		  // Must have a square selected
-		  if (ChakraApp.appState.selectedSquareId) {
-			  // Copy the selected squares
-			  var success = ChakraApp.ClipboardManager.copySelectedSquares();
+        // Provide visual feedback
+        if (success) {
+          self._showNotification('✓ Copied ' + ChakraApp.ClipboardManager.getSquareCount() + ' squares');
+        }
+      }
+    };
 
-			  // Provide visual feedback
-			  if (success) {
-				  self._showNotification('✓ Copied ' + ChakraApp.ClipboardManager.getSquareCount() + ' squares');
-			  }
-		  }
-	  };
+    // Ctrl+X - Cut selected squares
+    this.keyHandlers['x'] = function(e) {
+      // Must be ctrl/cmd key
+      if (!(e.ctrlKey || e.metaKey)) return;
 
-	  // Ctrl+X - Cut selected squares
-	  this.keyHandlers['x'] = function(e) {
-		  // Must be ctrl/cmd key
-		  if (!(e.ctrlKey || e.metaKey)) return;
+      // Don't handle if we're editing text
+      if (self._isEditingText()) return;
 
-		  // Don't handle if we're editing text
-		  if (self._isEditingText()) return;
+      e.preventDefault();
 
-		  e.preventDefault();
+      // Must have a square selected
+      if (ChakraApp.appState.selectedSquareId) {
+        // Cut the selected squares
+        var success = ChakraApp.ClipboardManager.cutSelectedSquares();
 
-		  // Must have a square selected
-		  if (ChakraApp.appState.selectedSquareId) {
-			  // Cut the selected squares
-			  var success = ChakraApp.ClipboardManager.cutSelectedSquares();
+        // Provide visual feedback
+        if (success) {
+          self._showNotification('✂️ Cut ' + ChakraApp.ClipboardManager.getSquareCount() + ' squares');
+        }
+      }
+    };
 
-			  // Provide visual feedback
-			  if (success) {
-				  self._showNotification('✂️ Cut ' + ChakraApp.ClipboardManager.getSquareCount() + ' squares');
-			  }
-		  }
-	  };
+    // Ctrl+V - Paste squares
+    this.keyHandlers['v'] = function(e) {
+      // Must be ctrl/cmd key
+      if (!(e.ctrlKey || e.metaKey)) return;
 
-	  // Ctrl+V - Paste squares
-	  this.keyHandlers['v'] = function(e) {
-		  // Must be ctrl/cmd key
-		  if (!(e.ctrlKey || e.metaKey)) return;
+      // Don't handle if we're editing text
+      if (self._isEditingText()) return;
 
-		  // Don't handle if we're editing text
-		  if (self._isEditingText()) return;
+      e.preventDefault();
 
-		  e.preventDefault();
+      // Must have a circle selected and squares in clipboard
+      if (ChakraApp.appState.selectedCircleId && ChakraApp.ClipboardManager.hasSquares()) {
+        // Paste the squares
+        var success = ChakraApp.ClipboardManager.pasteSquares();
 
-		  // Must have a circle selected and squares in clipboard
-		  if (ChakraApp.appState.selectedCircleId && ChakraApp.ClipboardManager.hasSquares()) {
-			  // Paste the squares
-			  var success = ChakraApp.ClipboardManager.pasteSquares();
+        // Provide visual feedback
+        if (success) {
+          self._showNotification('📋 Pasted ' + ChakraApp.ClipboardManager.getSquareCount() + ' squares');
+        }
+      } else if (!ChakraApp.appState.selectedCircleId) {
+        self._showNotification('⚠️ Please select a circle first');
+      } else if (!ChakraApp.ClipboardManager.hasSquares()) {
+        self._showNotification('⚠️ Clipboard is empty');
+      }
+    };
 
-			  // Provide visual feedback
-			  if (success) {
-				  self._showNotification('📋 Pasted ' + ChakraApp.ClipboardManager.getSquareCount() + ' squares');
-			  }
-		  } else if (!ChakraApp.appState.selectedCircleId) {
-			  self._showNotification('⚠️ Please select a circle first');
-		  } else if (!ChakraApp.ClipboardManager.hasSquares()) {
-			  self._showNotification('⚠️ Clipboard is empty');
-		  }
-	  };
+    // Ctrl+B - Toggle bold for selected squares
+    this.keyHandlers['b'] = function(e) {
+      // Must be ctrl/cmd key
+      if (!(e.ctrlKey || e.metaKey)) return;
 
-	  this.keyHandlers['b'] = function(e) {
-		  // Must be ctrl/cmd key
-		  if (!(e.ctrlKey || e.metaKey)) return;
+      // Don't handle if we're editing text
+      if (self._isEditingText()) return;
 
-		  // Don't handle if we're editing text
-		  if (self._isEditingText()) return;
+      e.preventDefault();
 
-		  e.preventDefault();
+      // Check if there is a multi-selection
+      if (ChakraApp.MultiSelectionManager.hasSelection()) {
+        // Toggle bold for all selected squares
+        var count = ChakraApp.MultiSelectionManager.toggleBoldForAll();
+        self._showNotification(`Changed ${count} squares`);
+      }
+      // Single square case
+      else if (ChakraApp.appState.selectedSquareId) {
+        var squareId = ChakraApp.appState.selectedSquareId;
+        var square = ChakraApp.appState.getSquare(squareId);
 
-		  // Must have a square selected
-		  if (ChakraApp.appState.selectedSquareId) {
-			  var squareId = ChakraApp.appState.selectedSquareId;
-			  var square = ChakraApp.appState.getSquare(squareId);
+        if (square) {
+          // Toggle bold state
+          ChakraApp.appState.updateSquare(squareId, { isBold: !square.isBold });
+        }
+      }
+    };
 
-			  if (square) {
-				  // Toggle bold state
-				  ChakraApp.appState.updateSquare(squareId, { isBold: !square.isBold });
+    // Ctrl+A - Select all squares in the current circle
+    this.keyHandlers['a'] = function(e) {
+      // Must be ctrl/cmd key
+      if (!(e.ctrlKey || e.metaKey)) return;
 
-				  // Provide visual feedback
-				  //self._showNotification('Font style ' + (square.isBold ? 'normal' : 'bold'));
+      // Don't handle if we're editing text
+      if (self._isEditingText()) return;
 
-				  // Also update any multi-selected squares
-				  if (ChakraApp.multiSelectedSquares && ChakraApp.multiSelectedSquares.length > 0) {
-					  ChakraApp.multiSelectedSquares.forEach(function(multiSquareId) {
-						  var multiSquare = ChakraApp.appState.getSquare(multiSquareId);
-						  if (multiSquare) {
-							  ChakraApp.appState.updateSquare(multiSquareId, { isBold: !square.isBold });
-						  }
-					  });
-				  }
-			  }
-		  }
-	  };
+      e.preventDefault();
 
-	  // Add a helper method for notifications
-	  this._showNotification = function(message) {
-		  // Create or get the notification element
-		  var notification = document.getElementById('keyboard-notification');
+      // Must have a circle selected
+      if (ChakraApp.appState.selectedCircleId) {
+        // Get all visible squares for this circle
+        var circleId = ChakraApp.appState.selectedCircleId;
+        var squares = ChakraApp.appState.getSquaresForCircle(circleId).filter(function(square) {
+          return square.visible;
+        });
 
-		  if (!notification) {
-			  notification = document.createElement('div');
-			  notification.id = 'keyboard-notification';
-			  notification.className = 'keyboard-notification';
-			  document.body.appendChild(notification);
-		  }
-
-		  // Set the message and show the notification
-		  notification.textContent = message;
-		  notification.classList.add('visible');
-
-		  // Hide the notification after a delay
-		  clearTimeout(this.notificationTimeout);
-		  this.notificationTimeout = setTimeout(function() {
-			  notification.classList.remove('visible');
-		  }, 2000);
-	  };
+        // Select the first square as primary
+        if (squares.length > 0) {
+          // Select the first square
+          ChakraApp.appState.selectSquare(squares[0].id);
+          
+          // Select all other squares as secondary
+          if (squares.length > 1) {
+            var secondaryIds = squares.slice(1).map(function(square) {
+              return square.id;
+            });
+            
+            // Manually set selection (skipping the connection logic)
+            ChakraApp.MultiSelectionManager.primarySquareId = squares[0].id;
+            ChakraApp.MultiSelectionManager.selectedSquareIds = secondaryIds;
+            ChakraApp.MultiSelectionManager._applyMultiSelectedClass();
+            
+            // Publish selection event
+            ChakraApp.EventBus.publish('SQUARES_MULTI_SELECTED', {
+              primarySquareId: squares[0].id,
+              connectedSquareIds: secondaryIds
+            });
+            
+            self._showNotification(`Selected ${squares.length} squares`);
+          }
+        }
+      }
+    };
   };
   
   // Handle keydown events
@@ -287,6 +305,29 @@
     document.addEventListener('keydown', keyHandler);
   };
   
+  // Helper method for notifications
+  ChakraApp.KeyboardController.prototype._showNotification = function(message) {
+    // Create or get the notification element
+    var notification = document.getElementById('keyboard-notification');
+
+    if (!notification) {
+      notification = document.createElement('div');
+      notification.id = 'keyboard-notification';
+      notification.className = 'keyboard-notification';
+      document.body.appendChild(notification);
+    }
+
+    // Set the message and show the notification
+    notification.textContent = message;
+    notification.classList.add('visible');
+
+    // Hide the notification after a delay
+    clearTimeout(this.notificationTimeout);
+    this.notificationTimeout = setTimeout(function() {
+      notification.classList.remove('visible');
+    }, 2000);
+  };
+  
   // Clean up
   ChakraApp.KeyboardController.prototype.destroy = function() {
     // Call parent destroy
@@ -300,6 +341,12 @@
     
     // Clear key handlers
     this.keyHandlers = {};
+    
+    // Clear any pending notification timeout
+    if (this.notificationTimeout) {
+      clearTimeout(this.notificationTimeout);
+      this.notificationTimeout = null;
+    }
   };
   
 })(window.ChakraApp = window.ChakraApp || {});
