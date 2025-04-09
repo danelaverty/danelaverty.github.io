@@ -217,7 +217,7 @@
    * @returns {Array<ChakraApp.Document>} Array of all documents
    */
   ChakraApp.AppState.prototype.getAllDocuments = function() {
-    return Array.from(this.documents.values());
+    return Array.from(this.documents.values()).reverse();
   };
 
   /**

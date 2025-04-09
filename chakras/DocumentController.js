@@ -267,6 +267,14 @@
       // Update the UI
       self._updateDocumentList();
       self._updateCurrentDocumentDisplay();
+
+      ChakraApp.appState.documentListVisible = false;
+      self._updateDocumentList();
+
+      var arrowIcon = self.toggleDocumentListBtn.querySelector('.arrow-icon');
+      if (arrowIcon) {
+	      arrowIcon.innerHTML = '▼';
+      }
     });
     
     return listItem;

@@ -227,22 +227,6 @@ body.right-panel-visible {
     background-color: #777;
 }
 
-#attribute-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr;
-    grid-template-rows: auto auto;
-    gap: 8px;
-    padding: 15px;
-    width: auto;
-    max-width: 500px;
-    margin: 0px;
-    height: auto;
-    opacity: 0; /* Start invisible */
-    transform: scale(0.95); /* Start slightly scaled down */
-    //pointer-events: none; /* No interaction when invisible */
-    transition: opacity 0.3s ease, transform 0.3s ease; /* Smooth transition */
-}
-
 /* Animation for when attribute grid becomes visible */
 @keyframes fadeIn {
     from {
@@ -260,16 +244,10 @@ body.right-panel-visible {
 }
 
 .attribute-box {
-    height: 50px; /* Reduced height */
-    padding: 8px; /* Smaller padding */
-    border-radius: 4px; /* Slightly smaller border radius */
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5); /* Add shadow for depth */
-    border: 1px solid rgba(255, 255, 255, 0.1); /* Subtle border */
-    cursor: pointer;
+	width: 62px !important;
+	min-width: 62px !important;
+	flex-shrink: 0;
+	flex-grow: 0;
 }
 
 .attribute-box.highlight {
@@ -998,13 +976,17 @@ body.right-panel-visible {
 
 /* Adjust attribute grid layout */
 #attribute-grid {
-    display: flex;
-    flex-direction: row;
-    padding: 10px;
-    gap: 8px;
-    width: auto;
-    max-width: 500px;
-    justify-content: left;
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	padding: 10px;
+	gap: 8px;
+	width: auto;
+	max-width: none;
+	margin: 0;
+	overflow-x: auto;
+	overflow-y: hidden;
+	-webkit-overflow-scrolling: touch;
 }
 
 /* Set fixed width for all attribute boxes */
