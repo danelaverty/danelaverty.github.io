@@ -113,7 +113,7 @@
         #attribute-grid {
           display: flex;
           flex-direction: row;
-          flex-wrap: wrap;
+          flex-wrap: nowrap;
           padding: 10px;
           gap: 8px;
           width: auto;
