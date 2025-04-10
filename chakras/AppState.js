@@ -35,11 +35,13 @@
     this.circles = new Map();
     this.squares = new Map();
     this.connections = new Map();
+    this.tabs = new Map();
 
     // Selection state
     this.selectedDocumentId = null;
     this.selectedCircleId = null;
     this.selectedSquareId = null;
+    this.selectedTabId = null;
     
     // UI state
     this.rightPanelVisible = false;
@@ -78,6 +80,165 @@
   ChakraApp.AppState.prototype._notifyStateChanged = function(section, data) {
     this.notify({ section: section, data: data });
   };
+
+
+  // Add tab operations
+ChakraApp.AppState.prototype.addTab = function(tabData) {
+  var tab;
+  
+  if (tabData instanceof ChakraApp.Tab) {
+    tab = tabData;
+  } else {
+    tab = new ChakraApp.Tab(tabData);
+  }
+  
+  this.tabs.set(tab.id, tab);
+  
+  // Subscribe to tab changes
+  var self = this;
+  tab.subscribe(function(change) {
+    if (change.type === 'update') {
+      self._notifyStateChanged('tabs', tab);
+    }
+  });
+  
+  // Notify and publish event
+  this._notifyStateChanged('tabs', tab);
+  ChakraApp.EventBus.publish(ChakraApp.EventTypes.TAB_CREATED, tab);
+  
+  // Save state to localStorage
+  if (!this._isLoading) {
+    this.saveToStorage();
+  }
+  
+  return tab;
+};
+
+ChakraApp.AppState.prototype.updateTab = function(id, changes) {
+  var tab = this.tabs.get(id);
+  if (!tab) return null;
+  
+  tab.update(changes);
+  
+  // Save state to localStorage
+  if (!this._isLoading) {
+    this.saveToStorage();
+  }
+  
+  return tab;
+};
+
+ChakraApp.AppState.prototype.removeTab = function(id) {
+  if (!this.tabs.has(id)) return false;
+  
+  var tab = this.tabs.get(id);
+  
+  // Deselect if this was the selected tab
+  if (this.selectedTabId === id) {
+    this.deselectTab();
+  }
+  
+  // Remove the tab
+  this.tabs.delete(id);
+  
+  // Find all squares for this tab
+  var squaresToRemove = [];
+  this.squares.forEach(function(square, squareId) {
+    if (square.tabId === id) {
+      squaresToRemove.push(squareId);
+    }
+  });
+  
+  // Remove all associated squares
+  var self = this;
+  squaresToRemove.forEach(function(squareId) {
+    self.removeSquare(squareId);
+  });
+  
+  // Notify and publish event
+  this._notifyStateChanged('tabs', null);
+  ChakraApp.EventBus.publish(ChakraApp.EventTypes.TAB_DELETED, tab);
+  
+  // Save state to localStorage
+  if (!this._isLoading) {
+    this.saveToStorage();
+  }
+  
+  return true;
+};
+
+ChakraApp.AppState.prototype.getTab = function(id) {
+  return this.tabs.get(id) || null;
+};
+
+ChakraApp.AppState.prototype.getTabsForCircle = function(circleId) {
+  var result = [];
+  this.tabs.forEach(function(tab) {
+    if (tab.circleId === circleId) {
+      result.push(tab);
+    }
+  });
+  
+  // Sort by index
+  result.sort(function(a, b) {
+    return a.index - b.index;
+  });
+  
+  return result;
+};
+
+ChakraApp.AppState.prototype.selectTab = function(id) {
+  // Deselect current selection if different
+  if (this.selectedTabId && this.selectedTabId !== id) {
+    this.deselectTab();
+  }
+  
+  var tab = this.tabs.get(id);
+  if (!tab) return null;
+  
+  this.selectedTabId = id;
+  tab.select();
+  
+  // Show squares for this tab only
+  this._filterSquaresByTab(id);
+  
+  return tab;
+};
+
+ChakraApp.AppState.prototype.deselectTab = function() {
+  if (!this.selectedTabId) return false;
+  
+  var tab = this.tabs.get(this.selectedTabId);
+  if (tab) {
+    tab.deselect();
+  }
+  
+  this.selectedTabId = null;
+  
+  return true;
+};
+
+// Method to show only squares for a specific tab
+ChakraApp.AppState.prototype._filterSquaresByTab = function(tabId) {
+  var self = this;
+  
+  // Hide all squares first
+  this.squares.forEach(function(square) {
+    if (square.circleId === self.selectedCircleId) {
+      square.hide();
+    }
+  });
+  
+  // Show only squares for the selected tab
+  this.squares.forEach(function(square) {
+    if (square.tabId === tabId && square.circleId === self.selectedCircleId) {
+      square.show();
+    }
+  });
+  
+  // Update connections
+  this._updateConnectionsForCircleId(this.selectedCircleId);
+};
   
   //====================================================
   // DOCUMENT OPERATIONS
@@ -472,24 +633,24 @@
    * @param {string} id - Circle ID to select
    * @returns {ChakraApp.Circle|null} Selected circle or null if not found
    */
-  ChakraApp.AppState.prototype.selectCircle = function(id) {
-    // Deselect current selection if different
-    if (this.selectedCircleId && this.selectedCircleId !== id) {
-      this.deselectCircle();
-    }
-    
-    var circle = this.circles.get(id);
-    if (!circle) return null;
-    
-    this.selectedCircleId = id;
-    circle.select();
-    
-    // Show right panel
-    this.rightPanelVisible = true;
-    ChakraApp.EventBus.publish(ChakraApp.EventTypes.PANEL_VISIBILITY_CHANGED, this.rightPanelVisible);
-    
-    return circle;
-  };
+ChakraApp.AppState.prototype.selectCircle = function(id) {
+	// Deselect current selection if different
+	if (this.selectedCircleId && this.selectedCircleId !== id) {
+		this.deselectCircle();
+	}
+
+	var circle = this.circles.get(id);
+	if (!circle) return null;
+
+	this.selectedCircleId = id;
+	circle.select();
+
+	// Show right panel
+	this.rightPanelVisible = true;
+	ChakraApp.EventBus.publish(ChakraApp.EventTypes.PANEL_VISIBILITY_CHANGED, this.rightPanelVisible);
+
+	return circle;
+};
 
   /**
    * Deselect the current circle
@@ -1095,9 +1256,11 @@ ChakraApp.AppState.prototype.deselectSquare = function() {
     this.circles.clear();
     this.squares.clear();
     this.connections.clear();
+    this.tabs.clear();
     this.selectedDocumentId = null;
     this.selectedCircleId = null;
     this.selectedSquareId = null;
+    this.selectedTabId = null;
 
     // Load documents
     if (data.documents && Array.isArray(data.documents)) {
@@ -1123,6 +1286,14 @@ ChakraApp.AppState.prototype.deselectSquare = function() {
       var self = this;
       data.squares.forEach(function(squareData) {
         self.addSquare(squareData);
+      });
+    }
+
+    // Load tabs
+    if (data.tabs && Array.isArray(data.tabs)) {
+      var self = this;
+      data.tabs.forEach(function(tabData) {
+        self.addTab(tabData);
       });
     }
 
@@ -1210,10 +1381,16 @@ ChakraApp.AppState.prototype._actualSaveToStorage = function() {
 			squares.push(square.toJSON());
 		});
 
+		var tabs = [];
+		this.tabs.forEach(function(tab) {
+			tabs.push(tab.toJSON());
+		});
+
 		var data = {
 			documents: documents,
 			circles: circles,
 			squares: squares,
+			tabs: tabs,
 			selectedDocumentId: this.selectedDocumentId
 		};
 

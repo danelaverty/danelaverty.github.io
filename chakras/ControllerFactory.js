@@ -6,15 +6,16 @@
      * @returns {Object} Map of controller instances
      */
     createControllers: function() {
-      var controllers = {
-        document: new ChakraApp.DocumentController(),
-        characteristic: new ChakraApp.CharacteristicController(),
-        attribute: new ChakraApp.AttributeController(),
-        dialog: new ChakraApp.DialogController(),
-        notification: new ChakraApp.NotificationController(),
-        panel: new ChakraApp.PanelController(), // Add panel controller
-        ui: new ChakraApp.UIController()
-      };
+	    var controllers = {
+		    document: new ChakraApp.DocumentController(),
+characteristic: new ChakraApp.CharacteristicController(),
+attribute: new ChakraApp.AttributeController(),
+dialog: new ChakraApp.DialogController(),
+notification: new ChakraApp.NotificationController(),
+panel: new ChakraApp.PanelController(),
+ui: new ChakraApp.UIController(),
+tab: new ChakraApp.TabController()
+	    };
       
       // Initialize all controllers
       Object.values(controllers).forEach(function(controller) {

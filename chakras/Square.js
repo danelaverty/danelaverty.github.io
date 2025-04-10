@@ -22,6 +22,7 @@
     this.circleId = data.circleId || null;
     this.isMe = data.isMe || false;
     this.isBold = data.isBold || false;
+    this.tabId = data.tabId || null;
     
     // Additional properties
     this.size = data.size || 30; // Fixed size
@@ -91,7 +92,7 @@
     json.isMe = this.isMe;
     json.size = this.size;
     json.isBold = this.isBold;
-    
+    json.tabId = this.tabId;
     
     return json;
   };

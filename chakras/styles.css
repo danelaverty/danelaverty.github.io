@@ -499,48 +499,6 @@ body.right-panel-visible {
     overflow: hidden;
 }
 
-.attribute-box.create-button.interactive {
-	cursor: pointer;
-	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
-	border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.attribute-box.create-button.interactive:hover {
-	transform: translateY(-2px);
-	box-shadow: 0 6px 15px rgba(0, 0, 0, 0.7), inset 0 0 10px rgba(255, 255, 255, 0.2);
-	border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-.attribute-box.create-button.interactive:active {
-    transform: translateY(1px);
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2), inset 0 0 10px rgba(0, 0, 0, 0.3);
-}
-
-/* Add click effect */
-.attribute-box.create-button.interactive::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 5px;
-    height: 5px;
-    background: rgba(255, 255, 255, 0.8);
-    opacity: 0;
-    border-radius: 100%;
-    transform: scale(1, 1) translate(-50%, -50%);
-    transform-origin: 50% 50%;
-}
-
-.attribute-box.create-button.interactive:active::after {
-    animation: ripple 0.6s ease-out;
-}
-
-/* Visual feedback when boxes are not interactive */
-.attribute-box.create-button:not(.interactive) {
-    opacity: 0.6;
-    filter: grayscale(30%);
-}
-
 @keyframes ripple {
     0% {
         opacity: 1;
@@ -979,7 +937,7 @@ body.right-panel-visible {
 	display: flex;
 	flex-direction: row;
 	flex-wrap: nowrap;
-	padding: 10px;
+	padding: 5px;
 	gap: 8px;
 	width: auto;
 	max-width: none;
@@ -2194,4 +2152,88 @@ ChakraApp.UIController.prototype._toggleActionButtons = function(show) {
 .square.dragging .connection-radius-indicator
 {
   opacity: 0.1;
+}
+
+/* Story dropdown styles */
+.story-dropdown-container {
+  display: flex;
+  margin-bottom: 5px;
+}
+
+.story-dropdown {
+  background-color: #333;
+  color: white;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 2px;
+  font-size: 12px;
+  cursor: pointer;
+  min-width: 180px;
+  transition: all 0.2s ease;
+}
+
+.story-dropdown:hover {
+  background-color: #444;
+  border-color: #777;
+}
+
+.story-dropdown:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
+}
+
+.story-dropdown option {
+  background-color: #333;
+  color: white;
+  padding: 5px;
+}
+
+/* Animation for story transition */
+@keyframes story-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.attribute-box.story-visible {
+  animation: story-fade-in 0.3s ease-out forwards;
+}
+
+/* Story indicator badge */
+.story-indicator {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  font-size: 10px;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+  padding: 2px 5px;
+  border-radius: 10px;
+  pointer-events: none;
+}
+
+/* Style adjustments for story groups */
+/* Cause & Effects */
+.story-group-cause-effects .attribute-box {
+  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Quest for Treasure */
+.story-group-quest .attribute-box {
+  border-bottom: 2px solid rgba(255, 215, 0, 0.3);
+}
+
+/* Battling Demons */
+.story-group-demons .attribute-box {
+  border-bottom: 2px solid rgba(255, 0, 0, 0.3);
+}
+
+/* Cast of Characters */
+.story-group-characters .attribute-box {
+  border-bottom: 2px solid rgba(0, 255, 255, 0.3);
 }

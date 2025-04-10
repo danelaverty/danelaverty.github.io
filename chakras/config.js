@@ -142,6 +142,7 @@ options: [
     
     // Chakra forms configuration
     chakraForms: [
+    /*
     // Set 1: Basic geometric progression (1-5) - Scale range (0.8-1.2)
     [{ sides: 3, starFactor: 1, borderPercent: 0.15, scale: 0.8 }],
     [{ sides: 4, starFactor: 1, borderPercent: 0.14, scale: 0.9 }],
@@ -381,6 +382,7 @@ options: [
     [{ sides: 28, starFactor: 9, borderPercent: 0.09, scale: 0.4, spinTime: 32 }, { sides: 28, starFactor: 11, borderPercent: 0.06, scale: 1.2, spinTime: 48, reverse: 1 }, { sides: 28, starFactor: 13, borderPercent: 0.03, scale: 2.0, spinTime: 64 }, { sides: 7, starFactor: 3, borderPercent: 0.01, scale: 2.8, spinTime: 40, reverse: 1 }],
     [{ sides: 32, starFactor: 7, borderPercent: 0.08, scale: 0.4, spinTime: 30 }, { sides: 32, starFactor: 15, borderPercent: 0.05, scale: 0.9, spinTime: 45, reverse: 1 }, { sides: 32, starFactor: 11, borderPercent: 0.03, scale: 1.5, spinTime: 60 }, { sides: 16, starFactor: 7, borderPercent: 0.01, scale: 2.2, spinTime: 35, reverse: 1 }],
     [{ sides: 40, starFactor: 17, borderPercent: 0.07, scale: 0.4, spinTime: 45 }, { sides: 40, starFactor: 13, borderPercent: 0.04, scale: 1.1, spinTime: 30, reverse: 1 }, { sides: 40, starFactor: 19, borderPercent: 0.02, scale: 1.9, spinTime: 60 }, { sides: 20, starFactor: 9, borderPercent: 0.01, scale: 2.7, spinTime: 36, reverse: 1 }],
+    */
 
     // Level 0: Simplest form - single point/circle
     [{ sides: 1, starFactor: 1, borderPercent: .1, scale: .2 }],
@@ -651,6 +653,12 @@ options: [
         sword: { emoji: '🗡️', color: '#C0C0C0', displayName: 'Swords', description: 'Slays demons' },
 	chain: { emoji: '⛓️', color: '#2F4F4F', displayName: 'Chains', description: 'Confines demons' },
         ally: { emoji: '🧝🏻‍♂️', color: '#FF8C00', displayName: 'Allies', description: 'Helpful people' },
+	me: { emoji: '🧑🏼', color: '#FFCC88', displayName: 'Me', description: 'Self avatar' },
+	battlefield: { emoji: '⚔️', color: '#5B2503', displayName: 'Battlefield', description: 'Area of Operation' },
+    soldier: { emoji: '💂', color: '#00008B', displayName: 'Soldier', description: 'Available Force' },
+    enemy: { emoji: '💂', color: '#8B0000', displayName: 'Enemy', description: 'Opposing Force' },
+    strategy: { emoji: '📝', color: '#DADAC0', displayName: 'Strategy', description: 'Action Plan' },
+    path: { emoji: '🚪', color: '#4B0082', displayName: 'Path', description: 'Option' },
     },
 
     // Size configurations
