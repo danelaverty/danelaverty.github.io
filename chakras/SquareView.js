@@ -84,7 +84,7 @@
 		  this.nameElement.textContent = this.viewModel.name;
 		  if (this.viewModel.isBold) {
 			  this.nameElement.style.fontWeight = 'bold';
-			  this.element.style.filter = 'brightness(1.4)';
+			  this.element.style.filter = 'brightness(1.8)';
 		  }
 		  this.element.appendChild(this.nameElement);
 

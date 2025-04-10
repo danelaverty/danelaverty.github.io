@@ -9,10 +9,24 @@
     
     // DOM elements
     this.attributeGrid = null;
+    this.storyDropdown = null;
     
     // Event subscriptions
     this.circleSelectedSubscription = null;
     this.circleDeselectedSubscription = null;
+    
+    // Store the current story selection
+    this.currentStory = "Cause & Effects"; // Default story
+    
+    // Define story groups
+    this.storyGroups = {
+      "Cause & Effects": ["cause", "push", "stop"],
+      "Quest for Treasure": ["treasure", "door", "key"],
+      "Battling Demons": ["demon", "sword", "chain"],
+      "Cast of Characters": ["ally"],
+      "Battle for Conquest": ["battlefield", "soldier", "enemy", "strategy"],
+      "Navigating the Maze": ["path"]
+    };
   };
   
   // Inherit from BaseController
@@ -27,6 +41,9 @@
     // Get attribute grid element
     this.attributeGrid = document.getElementById('attribute-grid');
     
+    // Create story dropdown
+    this._createStoryDropdown();
+    
     // Create attribute grid if needed
     this._createAttributeGrid();
     
@@ -35,31 +52,81 @@
   };
   
   /**
+   * Create story dropdown menu
+   * @private
+   */
+  ChakraApp.AttributeController.prototype._createStoryDropdown = function() {
+    // Create dropdown container
+    var dropdownContainer = document.createElement('div');
+    dropdownContainer.className = 'story-dropdown-container';
+    dropdownContainer.style.padding = '1px';
+    dropdownContainer.style.display = 'flex';
+    dropdownContainer.style.alignItems = 'center';
+    
+    // Create select element
+    this.storyDropdown = document.createElement('select');
+    this.storyDropdown.className = 'story-dropdown';
+    
+    // Add options for each story
+    var self = this;
+    Object.keys(this.storyGroups).forEach(function(storyName) {
+      var option = document.createElement('option');
+      option.value = storyName;
+      option.textContent = storyName;
+      if (storyName === self.currentStory) {
+        option.selected = true;
+      }
+      self.storyDropdown.appendChild(option);
+    });
+    
+    // Handle dropdown change
+    this.storyDropdown.addEventListener('change', function() {
+      self.currentStory = this.value;
+      self._updateAttributeGrid();
+    });
+    
+    // Add dropdown to container
+    dropdownContainer.appendChild(this.storyDropdown);
+    
+    // Add container above attribute grid
+    if (this.attributeGrid && this.attributeGrid.parentNode) {
+      this.attributeGrid.parentNode.insertBefore(dropdownContainer, this.attributeGrid);
+    }
+  };
+  
+  /**
    * Create attribute grid
    * @private
    */
   ChakraApp.AttributeController.prototype._createAttributeGrid = function() {
     // Create grid if it doesn't exist or is empty
-    if (this.attributeGrid && this.attributeGrid.children.length === 0) {
-      // Define the order for attributes to control their placement
-      var attributeOrder = [
-        'cause', 'push', 'stop',
-        'treasure', 'door', 'key', 'demon', 'sword', 'chain', 'ally'
-      ];
+    if (this.attributeGrid) {
+      // Clear existing children
+      this.attributeGrid.innerHTML = '';
       
-      // Loop through each attribute in the specified order
-      for (var i = 0; i < attributeOrder.length; i++) {
-        var key = attributeOrder[i];
+      // Define all attributes for later use
+      this.allAttributeBoxes = {};
+      
+      // Get all attributes from all stories
+      var allAttributes = [];
+      var self = this;
+      Object.keys(this.storyGroups).forEach(function(storyName) {
+        allAttributes = allAttributes.concat(self.storyGroups[storyName]);
+      });
+      
+      // Create all attribute boxes but keep them hidden initially
+      allAttributes.forEach(function(key) {
         var attr = ChakraApp.Config.attributeInfo[key];
         
         // Skip if attribute not found in config
-        if (!attr) continue;
+        if (!attr) return;
         
         // Create the attribute box
         var attrBox = document.createElement('div');
         attrBox.id = key + '-box';
         attrBox.className = 'attribute-box create-button';
         attrBox.dataset.attribute = key;
+        attrBox.style.display = 'none'; // Hidden by default
         
         // Set background color from config
         attrBox.style.backgroundColor = attr.color;
@@ -78,7 +145,7 @@
         }
         
         // Add text color adjustment for stop button
-        if (key === 'stop') {
+        if (['stop', 'battlefield', 'soldier', 'enemy', 'path'].indexOf(key) > -1) {
           attrBox.style.color = 'white';
         }
         
@@ -102,9 +169,15 @@
         attrBox.appendChild(emojiDiv);
         attrBox.appendChild(descDiv);
         
+        // Store reference to the box
+        self.allAttributeBoxes[key] = attrBox;
+        
         // Add to grid
-        this.attributeGrid.appendChild(attrBox);
-      }
+        self.attributeGrid.appendChild(attrBox);
+      });
+      
+      // Update the grid to show the current story's attributes
+      this._updateAttributeGrid();
       
       // Add CSS to style the grid layout
       var style = document.createElement('style');
@@ -114,28 +187,20 @@
           display: flex;
           flex-direction: row;
           flex-wrap: nowrap;
-          padding: 10px;
+          padding: 5px;
           gap: 8px;
           width: auto;
           max-width: 800px;
           justify-content: left;
         }
         
-        /* Add spacing between categories */
-        .attribute-box[data-attribute="key"] {
-          margin-right: 15px; /* Add space after Tools (key) */
+        /* Style for story dropdown container */
+        .story-dropdown-container {
+          margin: 5px;
         }
         
-        .attribute-box[data-attribute="chain"] {
-          margin-right: 15px; /* Add space after Chains */
-        }
-        
-        .attribute-box[data-attribute="ally"] {
-          margin-right: 15px; /* Add space after Allies */
-        }
-        
-        .attribute-box[data-attribute="stop"] {
-          margin-right: 15px; /* Add space after Stops */
+        .story-dropdown {
+          cursor: pointer;
         }
         
         /* Style adjustments for specific buttons */
@@ -164,14 +229,45 @@
   };
   
   /**
+   * Update attribute grid to show only attributes for the current story
+   * @private
+   */
+  ChakraApp.AttributeController.prototype._updateAttributeGrid = function() {
+    if (!this.attributeGrid || !this.allAttributeBoxes) return;
+    
+    // Hide all attribute boxes first
+    for (var key in this.allAttributeBoxes) {
+      if (this.allAttributeBoxes.hasOwnProperty(key)) {
+        this.allAttributeBoxes[key].style.display = 'none';
+      }
+    }
+    
+    // Get attributes for the current story
+    var storyAttributes = this.storyGroups[this.currentStory] || [];
+    
+    // Show only the relevant attribute boxes
+    var self = this;
+    storyAttributes.forEach(function(key) {
+      if (self.allAttributeBoxes[key]) {
+        self.allAttributeBoxes[key].style.display = '';
+      }
+    });
+    
+    // Re-setup attribute box handlers since visibility changed
+    if (this.attributeGrid.classList.contains('visible')) {
+      this._setupAttributeBoxHandlers();
+    }
+  };
+  
+  /**
    * Set up attribute box handlers
    * @private
    */
   ChakraApp.AttributeController.prototype._setupAttributeBoxHandlers = function() {
     var self = this;
     
-    // Find all attribute boxes
-    var attributeBoxes = document.querySelectorAll('.attribute-box');
+    // Find all visible attribute boxes
+    var attributeBoxes = this.attributeGrid.querySelectorAll('.attribute-box[style*="display: block"], .attribute-box:not([style*="display: none"])');
     
     attributeBoxes.forEach(function(box) {
       // Remove any existing event listeners first to avoid duplicates
@@ -213,6 +309,11 @@
         // Select the new square
         ChakraApp.appState.selectSquare(square.id);
       });
+      
+      // Update reference in the allAttributeBoxes object
+      if (newBox.dataset.attribute && self.allAttributeBoxes) {
+        self.allAttributeBoxes[newBox.dataset.attribute] = newBox;
+      }
     });
   };
   
@@ -222,7 +323,7 @@
    */
   ChakraApp.AttributeController.prototype._enableAttributeBoxes = function() {
     // Make attribute boxes interactive
-    var attributeBoxes = this.attributeGrid.querySelectorAll('.attribute-box');
+    var attributeBoxes = this.attributeGrid.querySelectorAll('.attribute-box[style*="display: block"], .attribute-box:not([style*="display: none"])');
     attributeBoxes.forEach(function(box) {
       box.classList.add('interactive');
     });
@@ -238,9 +339,16 @@
   ChakraApp.AttributeController.prototype._toggleAttributeGrid = function(show) {
     if (!this.attributeGrid) return;
     
+    // Also toggle the story dropdown
+    var dropdownContainer = document.querySelector('.story-dropdown-container');
+    
     if (show) {
       this.attributeGrid.classList.add('visible');
       this._enableAttributeBoxes(); // Enable the attribute boxes when showing
+      
+      if (dropdownContainer) {
+        dropdownContainer.style.display = 'flex';
+      }
     } else {
       this.attributeGrid.classList.remove('visible');
       
@@ -249,6 +357,10 @@
       attributeBoxes.forEach(function(box) {
         box.classList.remove('interactive');
       });
+      
+      if (dropdownContainer) {
+        dropdownContainer.style.display = 'none';
+      }
     }
   };
   

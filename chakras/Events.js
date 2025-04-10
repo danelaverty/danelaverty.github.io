@@ -125,6 +125,13 @@
     SQUARE_DELETED: 'square:deleted',
     SQUARE_SELECTED: 'square:selected',
     SQUARE_DESELECTED: 'square:deselected',
+
+    // Tab events
+    TAB_CREATED: 'tab:created',
+    TAB_UPDATED: 'tab:updated',
+    TAB_DELETED: 'tab:deleted',
+    TAB_SELECTED: 'tab:selected',
+    TAB_DESELECTED: 'tab:deselected',
     
     // UI events
     PANEL_VISIBILITY_CHANGED: 'ui:panel_visibility_changed',
