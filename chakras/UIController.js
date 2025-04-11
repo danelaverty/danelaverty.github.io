@@ -10,7 +10,7 @@
     // DOM elements
     this.topPanel = null;
     this.chakraTitle = null;
-    this.addCircleBtn = null;
+    this.addCircleBtns = {};
     
     // Event subscriptions
     this.eventSubscriptions = {};
@@ -36,11 +36,16 @@
   ChakraApp.UIController.prototype._initializeDomElements = function() {
     // Get DOM elements
     this.topPanel = document.getElementById('top-panel');
-    this.addCircleBtn = document.getElementById('add-circle-btn');
+    
+    // Get panel-specific add circle buttons
+    var self = this;
+    ChakraApp.appState.panels.forEach(function(panelId) {
+      self.addCircleBtns[panelId] = document.getElementById('add-circle-btn-' + panelId);
+    });
     
     // Create UI elements
     this._createChakraTitle();
-    this._createMeridianLine();
+    this._createMeridianLines();
   };
   
   /**
@@ -78,32 +83,31 @@
   };
   
   /**
-   * Update chakra title
+   * Create meridian lines for each panel
    * @private
-   * @param {string} circleName - Circle name
    */
-  ChakraApp.UIController.prototype._updateChakraTitle = function(circleName) {
-    if (!this.chakraTitle) return;
+  ChakraApp.UIController.prototype._createMeridianLines = function() {
+    var self = this;
     
-    if (!circleName || circleName === ChakraApp.Config.defaultName) {
-      this.chakraTitle.textContent = 'No Chakra Selected';
-      this.chakraTitle.classList.remove('visible');
-    } else {
-      this.chakraTitle.textContent = circleName;
-      this.chakraTitle.classList.add('visible');
-    }
+    // Create meridian lines for the left panel
+    self._createMeridianLineForPanel('left');
   };
   
   /**
-   * Create meridian line
+   * Create meridian line for a specific panel
    * @private
+   * @param {string} panelId - Panel ID
    */
-  ChakraApp.UIController.prototype._createMeridianLine = function() {
+  ChakraApp.UIController.prototype._createMeridianLineForPanel = function(panelId) {
     // Create meridian line if it doesn't exist
-    if (!document.getElementById('meridian-line')) {
-      var zoomContainer = document.getElementById('zoom-container');
+    var meridianLineId = 'meridian-line-' + panelId;
+    if (!document.getElementById(meridianLineId)) {
+      var zoomContainer = document.getElementById('zoom-container-' + panelId);
+      if (!zoomContainer) return;
+      
       var meridianLine = document.createElement('div');
-      meridianLine.id = 'meridian-line';
+      meridianLine.id = meridianLineId;
+      meridianLine.className = 'meridian-line';
       meridianLine.style.position = 'absolute';
       meridianLine.style.top = '0';
       meridianLine.style.left = ChakraApp.Config.meridian.x + 'px';
@@ -124,40 +128,45 @@
   ChakraApp.UIController.prototype._setupButtonHandlers = function() {
     var self = this;
     
-    // Add circle button
-    if (this.addCircleBtn) {
-      this.addCircleBtn.addEventListener('click', function(e) {
-        e.stopPropagation();
-        
-        // Deselect current items
-        if (ChakraApp.appState.selectedCircleId) {
-          ChakraApp.appState.deselectCircle();
-        }
-        
-        // Create a new circle at a random position near the center
-        var leftPanel = document.getElementById('left-panel');
-        var panelRect = leftPanel.getBoundingClientRect();
-        var centerX = panelRect.width / 2;
-        var centerY = panelRect.height / 2;
-        
-        // Random position within ±100px of center
-        var randomX = Math.max(50, Math.min(panelRect.width - 100, centerX + (Math.random() * 200 - 100)));
-        var randomY = Math.max(50, Math.min(panelRect.height - 100, centerY + (Math.random() * 200 - 100)));
-        
-        // Create circle
-        var circleData = {
-          x: randomX,
-          y: randomY,
-          color: ChakraApp.Config.predefinedColors[0],
-          name: ChakraApp.Config.defaultName
-        };
-        
-        var circle = ChakraApp.appState.addCircle(circleData);
-        
-        // Select the new circle
-        ChakraApp.appState.selectCircle(circle.id);
-      });
-    }
+    // Set up "Add Circle" button handlers for each panel
+    ChakraApp.appState.panels.forEach(function(panelId) {
+      var addCircleBtn = self.addCircleBtns[panelId];
+      if (addCircleBtn) {
+        addCircleBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          
+          // Deselect current items
+          if (ChakraApp.appState.selectedCircleId) {
+            ChakraApp.appState.deselectCircle();
+          }
+          
+          // Create a new circle at a random position near the center of this panel
+          var panel = document.querySelector('.circle-panel[data-panel-id="' + panelId + '"]');
+          if (!panel) return;
+          
+          var panelRect = panel.getBoundingClientRect();
+          var centerX = panelRect.width / 2;
+          var centerY = panelRect.height / 2;
+          
+          // Random position within ±100px of center
+          var randomX = Math.max(50, Math.min(panelRect.width - 100, centerX + (Math.random() * 200 - 100)));
+          var randomY = Math.max(50, Math.min(panelRect.height - 100, centerY + (Math.random() * 200 - 100)));
+          
+          // Create circle
+          var circleData = {
+            x: randomX,
+            y: randomY,
+            color: ChakraApp.Config.predefinedColors[0],
+            name: ChakraApp.Config.defaultName
+          };
+          
+          var circle = ChakraApp.appState.addCircle(circleData, panelId);
+          
+          // Select the new circle
+          ChakraApp.appState.selectCircle(circle.id);
+        });
+      }
+    });
   };
   
   /**
@@ -165,34 +174,42 @@
    * @private
    */
   ChakraApp.UIController.prototype._setupPanelClickHandlers = function() {
-  var zoomContainer = document.getElementById('zoom-container');
-  var bottomPanel = document.getElementById('bottom-panel');
-  
-  // Left panel click - deselect circle
-  zoomContainer.addEventListener('click', function(e) {
-    // Only handle clicks directly on the panel (not on children)
-    if (e.target === zoomContainer) {
-      if (ChakraApp.appState.selectedCircleId) {
-        ChakraApp.appState.deselectCircle();
+    var self = this;
+    
+    // Set up click handlers for each circle panel
+    ChakraApp.appState.panels.forEach(function(panelId) {
+      var zoomContainer = document.getElementById('zoom-container-' + panelId);
+      if (zoomContainer) {
+        // Panel click - deselect circle
+        zoomContainer.addEventListener('click', function(e) {
+          // Only handle clicks directly on the panel (not on children)
+          if (e.target === zoomContainer) {
+            if (ChakraApp.appState.selectedCircleId) {
+              ChakraApp.appState.deselectCircle();
+            }
+          }
+        });
       }
+    });
+    
+    // Center panel click - deselect square and clear multi-selection
+    var centerPanel = document.getElementById('center-panel');
+    if (centerPanel) {
+      centerPanel.addEventListener('click', function(e) {
+        // Only handle clicks directly on the panel (not on children)
+        if (e.target === centerPanel) {
+          if (ChakraApp.appState.selectedSquareId) {
+            ChakraApp.appState.deselectSquare();
+          }
+          
+          // Ensure multi-selection is cleared even if no primary square is selected
+          if (ChakraApp.MultiSelectionManager && ChakraApp.MultiSelectionManager.hasSelection()) {
+            ChakraApp.MultiSelectionManager.clearSelection();
+          }
+        }
+      });
     }
-  });
-  
-  // Bottom panel click - deselect square and clear multi-selection
-  bottomPanel.addEventListener('click', function(e) {
-    // Only handle clicks directly on the panel (not on children)
-    if (e.target === bottomPanel) {
-      if (ChakraApp.appState.selectedSquareId) {
-        ChakraApp.appState.deselectSquare();
-      }
-      
-      // Ensure multi-selection is cleared even if no primary square is selected
-      if (ChakraApp.MultiSelectionManager && ChakraApp.MultiSelectionManager.hasSelection()) {
-        ChakraApp.MultiSelectionManager.clearSelection();
-      }
-    }
-  });
-};
+  };
   
   /**
    * Set up circle event listeners
@@ -223,9 +240,9 @@
   ChakraApp.UIController.prototype._handleCircleSelected = function(circle) {
     this._updateChakraTitle(circle.name);
     
-    // Ensure panel controller exists and show the right panel
+    // Show the center panel
     if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.panel) {
-      ChakraApp.app.controllers.panel.showRightPanel();
+      ChakraApp.app.controllers.panel.showPanel('center');
     }
   };
   
@@ -246,10 +263,22 @@
    */
   ChakraApp.UIController.prototype._handleCircleDeselected = function() {
     this._updateChakraTitle(null);
+  };
+  
+  /**
+   * Update chakra title
+   * @private
+   * @param {string} circleName - Circle name
+   */
+  ChakraApp.UIController.prototype._updateChakraTitle = function(circleName) {
+    if (!this.chakraTitle) return;
     
-    // Ensure panel controller exists and hide the right panel
-    if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.panel) {
-      ChakraApp.app.controllers.panel.hideRightPanel();
+    if (!circleName || circleName === ChakraApp.Config.defaultName) {
+      this.chakraTitle.textContent = 'No Chakra Selected';
+      this.chakraTitle.classList.remove('visible');
+    } else {
+      this.chakraTitle.textContent = circleName;
+      this.chakraTitle.classList.add('visible');
     }
   };
   

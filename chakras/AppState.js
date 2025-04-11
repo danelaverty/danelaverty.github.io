@@ -37,51 +37,34 @@
     this.connections = new Map();
     this.tabs = new Map();
 
-    // Selection state
-    this.selectedDocumentId = null;
-    this.selectedCircleId = null;
+    // Panel configuration
+    this.panels = ['left', 'right', 'bottom'];
+
+    // Selection state - now using maps to track per-panel state
+    this.selectedDocumentIds = {
+      left: null,
+      right: null,
+      bottom: null
+    };
+    this.selectedCircleId = null; // Still only one selected circle across all panels
     this.selectedSquareId = null;
     this.selectedTabId = null;
     
-    // UI state
-    this.rightPanelVisible = false;
-    this.documentListVisible = false;
+    // UI state - track panel visibility
+    this.panelVisibility = {
+      left: true,
+      right: true,
+      bottom: true
+    };
+    
+    // Document list visibility per panel
+    this.documentListVisible = {
+      left: false,
+      right: false,
+      bottom: false
+    };
   };
   
-  /**
-   * Set up global event listeners
-   * @private
-   */
-  ChakraApp.AppState.prototype._setupEventListeners = function() {
-    var self = this;
-    
-    // Listen for square updates to update connections
-    ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.SQUARE_UPDATED, function(square) {
-      self._updateConnectionsForSquare(square.id);
-    });
-    
-    // Circle selection shows related squares
-    ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.CIRCLE_SELECTED, function(circle) {
-      self._handleCircleSelection(circle.id);
-    });
-    
-    // Circle deselection hides all squares
-    ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.CIRCLE_DESELECTED, function() {
-      self._handleCircleDeselection();
-    });
-  };
-
-  /**
-   * Notify observers about state changes
-   * @private
-   * @param {string} section - State section that changed
-   * @param {*} data - Changed data
-   */
-  ChakraApp.AppState.prototype._notifyStateChanged = function(section, data) {
-    this.notify({ section: section, data: data });
-  };
-
-
   // Add tab operations
 ChakraApp.AppState.prototype.addTab = function(tabData) {
   var tab;
@@ -240,6 +223,39 @@ ChakraApp.AppState.prototype._filterSquaresByTab = function(tabId) {
   this._updateConnectionsForCircleId(this.selectedCircleId);
 };
   
+  /**
+   * Set up global event listeners
+   * @private
+   */
+  ChakraApp.AppState.prototype._setupEventListeners = function() {
+    var self = this;
+    
+    // Listen for square updates to update connections
+    ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.SQUARE_UPDATED, function(square) {
+      self._updateConnectionsForSquare(square.id);
+    });
+    
+    // Circle selection shows related squares
+    ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.CIRCLE_SELECTED, function(circle) {
+      self._handleCircleSelection(circle.id);
+    });
+    
+    // Circle deselection hides all squares
+    ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.CIRCLE_DESELECTED, function() {
+      self._handleCircleDeselection();
+    });
+  };
+
+  /**
+   * Notify observers about state changes
+   * @private
+   * @param {string} section - State section that changed
+   * @param {*} data - Changed data
+   */
+  ChakraApp.AppState.prototype._notifyStateChanged = function(section, data) {
+    this.notify({ section: section, data: data });
+  };
+  
   //====================================================
   // DOCUMENT OPERATIONS
   //====================================================
@@ -247,14 +263,23 @@ ChakraApp.AppState.prototype._filterSquaresByTab = function(tabId) {
   /**
    * Add a document to the app state
    * @param {Object|ChakraApp.Document} documentData - Document data or instance
+   * @param {string} [panelId] - ID of the panel this document belongs to
    * @returns {ChakraApp.Document} The created document
    */
-  ChakraApp.AppState.prototype.addDocument = function(documentData) {
+  ChakraApp.AppState.prototype.addDocument = function(documentData, panelId) {
     var doc;
     
     if (documentData instanceof ChakraApp.Document) {
       doc = documentData;
     } else {
+      // If documentData is an object, ensure it has a panelId
+      if (documentData && typeof documentData === 'object') {
+        documentData.panelId = documentData.panelId || panelId || 'left';
+      } else {
+        // If documentData is null/undefined, create with specified panelId
+        documentData = { panelId: panelId || 'left' };
+      }
+      
       doc = new ChakraApp.Document(documentData);
     }
     
@@ -309,14 +334,15 @@ ChakraApp.AppState.prototype._filterSquaresByTab = function(tabId) {
     if (!this.documents.has(id)) return false;
     
     var doc = this.documents.get(id);
+    var panelId = doc.panelId;
     
-    // Deselect if this was the selected document
-    if (this.selectedDocumentId === id) {
-      this.deselectDocument();
+    // Deselect if this was the selected document for this panel
+    if (this.selectedDocumentIds[panelId] === id) {
+      this.deselectDocument(panelId);
     }
 
-    // Check if we're removing the last viewed document
-    var lastViewedId = this.getLastViewedDocument();
+    // Check if we're removing the last viewed document for this panel
+    var lastViewedId = this.getLastViewedDocument(panelId);
     var isRemovingLastViewed = lastViewedId === id;
     
     // Remove the document
@@ -341,18 +367,20 @@ ChakraApp.AppState.prototype._filterSquaresByTab = function(tabId) {
     ChakraApp.EventBus.publish(ChakraApp.EventTypes.DOCUMENT_DELETED, doc);
     
     // Update the last viewed document if needed
-    if (isRemovingLastViewed && this.documents.size > 0) {
-      var nextDocument = this.getAllDocuments()[0];
-      if (nextDocument) {
-        this.saveLastViewedDocument(nextDocument.id);
+    if (isRemovingLastViewed) {
+      // Find next document for this panel
+      var panelDocuments = this.getDocumentsForPanel(panelId);
+      if (panelDocuments.length > 0) {
+        var nextDocument = panelDocuments[0];
+        this.saveLastViewedDocument(nextDocument.id, panelId);
         
         // Only auto-select if the removed document was the selected one
-        if (this.selectedDocumentId === null) {
-          this.selectDocument(nextDocument.id);
+        if (this.selectedDocumentIds[panelId] === null) {
+          this.selectDocument(nextDocument.id, panelId);
         }
       } else {
         // If no documents left, clear the last viewed
-        localStorage.removeItem('chakraLastViewedDocumentId');
+        localStorage.removeItem('chakraLastViewedDocumentId_' + panelId);
       }
     }
     
@@ -378,24 +406,49 @@ ChakraApp.AppState.prototype._filterSquaresByTab = function(tabId) {
    * @returns {Array<ChakraApp.Document>} Array of all documents
    */
   ChakraApp.AppState.prototype.getAllDocuments = function() {
-    return Array.from(this.documents.values()).reverse();
+    return Array.from(this.documents.values());
+  };
+
+  /**
+   * Get all documents for a specific panel
+   * @param {string} panelId - Panel ID
+   * @returns {Array<ChakraApp.Document>} Array of documents for the panel
+   */
+  ChakraApp.AppState.prototype.getDocumentsForPanel = function(panelId) {
+    var panelDocs = [];
+    this.documents.forEach(function(doc) {
+      if (doc.panelId === panelId) {
+        panelDocs.push(doc);
+      }
+    });
+    return panelDocs.reverse();
   };
 
   /**
    * Select a document and show its circles
    * @param {string} id - Document ID to select
+   * @param {string} [panelId] - Panel ID, defaults to the document's panel
    * @returns {ChakraApp.Document|null} Selected document or null if not found
    */
-  ChakraApp.AppState.prototype.selectDocument = function(id) {
-    // Deselect current selection if different
-    if (this.selectedDocumentId && this.selectedDocumentId !== id) {
-      this.deselectDocument();
-    }
-    
+  ChakraApp.AppState.prototype.selectDocument = function(id, panelId) {
     var doc = this.documents.get(id);
     if (!doc) return null;
     
-    this.selectedDocumentId = id;
+    // Use provided panelId or get from document
+    panelId = panelId || doc.panelId;
+    
+    // Ensure this document belongs to the specified panel
+    if (doc.panelId !== panelId) {
+      console.warn("Document belongs to a different panel than specified");
+      return null;
+    }
+    
+    // Deselect current selection for this panel if different
+    if (this.selectedDocumentIds[panelId] && this.selectedDocumentIds[panelId] !== id) {
+      this.deselectDocument(panelId);
+    }
+    
+    this.selectedDocumentIds[panelId] = id;
     doc.select();
     
     // Deselect any selected circle
@@ -403,74 +456,82 @@ ChakraApp.AppState.prototype._filterSquaresByTab = function(tabId) {
       this.deselectCircle();
     }
     
-    // Show only circles for this document
-    this._filterCirclesByDocument(id);
+    // Show only circles for this document in this panel
+    this._filterCirclesByDocument(id, panelId);
 
-    if (doc) {
-      this.saveLastViewedDocument(id);
-    }
+    // Save as last viewed document for this panel
+    this.saveLastViewedDocument(id, panelId);
     
     return doc;
   };
 
   /**
-   * Deselect the current document
+   * Deselect the current document for a panel
+   * @param {string} panelId - Panel ID
    * @returns {boolean} Success indicator
    */
-  ChakraApp.AppState.prototype.deselectDocument = function() {
-    if (!this.selectedDocumentId) return false;
+  ChakraApp.AppState.prototype.deselectDocument = function(panelId) {
+    if (!this.selectedDocumentIds[panelId]) return false;
     
-    var doc = this.documents.get(this.selectedDocumentId);
+    var docId = this.selectedDocumentIds[panelId];
+    var doc = this.documents.get(docId);
     if (doc) {
       doc.deselect();
     }
     
-    this.selectedDocumentId = null;
+    this.selectedDocumentIds[panelId] = null;
     
-    // Hide all circles
-    this._hideAllCircles();
+    // Hide circles for this panel
+    this._hideCirclesForPanel(panelId);
     
     return true;
   };
 
   /**
-   * Toggle document list visibility
+   * Toggle document list visibility for a panel
+   * @param {string} panelId - Panel ID
    * @returns {boolean} New visibility state
    */
-  ChakraApp.AppState.prototype.toggleDocumentList = function() {
-    this.documentListVisible = !this.documentListVisible;
-    ChakraApp.EventBus.publish(ChakraApp.EventTypes.DOCUMENT_LIST_TOGGLED, this.documentListVisible);
-    return this.documentListVisible;
+  ChakraApp.AppState.prototype.toggleDocumentList = function(panelId) {
+    this.documentListVisible[panelId] = !this.documentListVisible[panelId];
+    ChakraApp.EventBus.publish(ChakraApp.EventTypes.DOCUMENT_LIST_TOGGLED, {
+      panelId: panelId, 
+      visible: this.documentListVisible[panelId]
+    });
+    return this.documentListVisible[panelId];
   };
 
   /**
-   * Save the last viewed document ID to localStorage
+   * Save the last viewed document ID to localStorage for a panel
    * @param {string} documentId - Document ID
+   * @param {string} panelId - Panel ID
    */
-  ChakraApp.AppState.prototype.saveLastViewedDocument = function(documentId) {
-    if (documentId) {
-      localStorage.setItem('chakraLastViewedDocumentId', documentId);
+  ChakraApp.AppState.prototype.saveLastViewedDocument = function(documentId, panelId) {
+    if (documentId && panelId) {
+      localStorage.setItem('chakraLastViewedDocumentId_' + panelId, documentId);
     }
   };
 
   /**
-   * Get the last viewed document ID from localStorage
+   * Get the last viewed document ID from localStorage for a panel
+   * @param {string} panelId - Panel ID
    * @returns {string|null} Document ID or null if none
    */
-  ChakraApp.AppState.prototype.getLastViewedDocument = function() {
-    return localStorage.getItem('chakraLastViewedDocumentId');
+  ChakraApp.AppState.prototype.getLastViewedDocument = function(panelId) {
+    return localStorage.getItem('chakraLastViewedDocumentId_' + panelId);
   };
 
   /**
-   * Show only circles for a specific document
+   * Show only circles for a specific document in a specific panel
    * @private
    * @param {string} documentId - Document ID to filter by
+   * @param {string} panelId - Panel ID
    */
-  ChakraApp.AppState.prototype._filterCirclesByDocument = function(documentId) {
+  ChakraApp.AppState.prototype._filterCirclesByDocument = function(documentId, panelId) {
     var self = this;
     
-    // Hide all circles first
-    this._hideAllCircles();
+    // Hide all circles for this panel first
+    this._hideCirclesForPanel(panelId);
     
     // Show only circles for the selected document
     this.circles.forEach(function(circle, circleId) {
@@ -482,19 +543,30 @@ ChakraApp.AppState.prototype._filterSquaresByTab = function(tabId) {
   };
 
   /**
-   * Hide all circles
+   * Hide all circles for a specific panel
    * @private
+   * @param {string} panelId - Panel ID
    */
-  ChakraApp.AppState.prototype._hideAllCircles = function() {
+  ChakraApp.AppState.prototype._hideCirclesForPanel = function(panelId) {
     var self = this;
     
-    // Hide all circles
+    // First find all documents for this panel
+    var panelDocIds = [];
+    this.documents.forEach(function(doc) {
+      if (doc.panelId === panelId) {
+        panelDocIds.push(doc.id);
+      }
+    });
+    
+    // Then hide circles for these documents
     this.circles.forEach(function(circle) {
-      // Force update to ensure visibility reset
-      self._notifyStateChanged('circles', circle);
+      if (panelDocIds.includes(circle.documentId)) {
+        // Force update to ensure visibility reset
+        self._notifyStateChanged('circles', circle);
+      }
     });
   };
-  
+
   //====================================================
   // CIRCLE OPERATIONS
   //====================================================
@@ -502,9 +574,10 @@ ChakraApp.AppState.prototype._filterSquaresByTab = function(tabId) {
   /**
    * Add a circle to the app state
    * @param {Object|ChakraApp.Circle} circleData - Circle data or instance
+   * @param {string} [panelId] - Panel ID (used if no document ID is provided)
    * @returns {ChakraApp.Circle|null} The created circle or null if invalid
    */
-  ChakraApp.AppState.prototype.addCircle = function(circleData) {
+  ChakraApp.AppState.prototype.addCircle = function(circleData, panelId) {
     var circle;
 
     if (circleData instanceof ChakraApp.Circle) {
@@ -513,21 +586,32 @@ ChakraApp.AppState.prototype._filterSquaresByTab = function(tabId) {
       circle = new ChakraApp.Circle(circleData);
     }
 
-    // If no document ID is provided, assign to selected document if any
-    if (!circle.documentId && this.selectedDocumentId) {
-      circle.documentId = this.selectedDocumentId;
-    }
-
-    // If still no document ID and there are documents, assign to first document
-    if (!circle.documentId && this.documents.size > 0) {
-      var firstDocument = this.getAllDocuments()[0];
-      if (firstDocument) {
-        circle.documentId = firstDocument.id;
+    // If no document ID is provided, assign to selected document for the specified panel
+    if (!circle.documentId) {
+      var targetPanelId = panelId || 'left';
+      var selectedDocId = this.selectedDocumentIds[targetPanelId];
+      
+      if (selectedDocId) {
+        circle.documentId = selectedDocId;
+      }
+      // If still no document ID, look for any document in the panel
+      else {
+        var panelDocs = this.getDocumentsForPanel(targetPanelId);
+        if (panelDocs.length > 0) {
+          circle.documentId = panelDocs[0].id;
+        } else {
+          // Create a new document for this panel if none exists
+          var newDoc = this.addDocument(null, targetPanelId);
+          circle.documentId = newDoc.id;
+          
+          // Select the new document
+          this.selectDocument(newDoc.id, targetPanelId);
+        }
       }
     }
 
-    // Only add the circle if it has a document ID or if there are no documents yet
-    if (circle.documentId || this.documents.size === 0) {
+    // Only add the circle if it has a document ID
+    if (circle.documentId) {
       this.circles.set(circle.id, circle);
 
       // Subscribe to circle changes
@@ -629,28 +713,72 @@ ChakraApp.AppState.prototype._filterSquaresByTab = function(tabId) {
   };
 
   /**
-   * Select a circle and show the right panel
+   * Get all circles for a specific document
+   * @param {string} documentId - Document ID
+   * @returns {Array<ChakraApp.Circle>} Array of circles for the document
+   */
+  ChakraApp.AppState.prototype.getCirclesForDocument = function(documentId) {
+    var circles = [];
+    this.circles.forEach(function(circle) {
+      if (circle.documentId === documentId) {
+        circles.push(circle);
+      }
+    });
+    return circles;
+  };
+
+  /**
+   * Get all circles for a specific panel
+   * @param {string} panelId - Panel ID
+   * @returns {Array<ChakraApp.Circle>} Array of circles for the panel
+   */
+  ChakraApp.AppState.prototype.getCirclesForPanel = function(panelId) {
+    var self = this;
+    var panelCircles = [];
+    
+    // Get all document IDs for this panel
+    var panelDocIds = [];
+    this.documents.forEach(function(doc) {
+      if (doc.panelId === panelId) {
+        panelDocIds.push(doc.id);
+      }
+    });
+    
+    // Get circles for these documents
+    this.circles.forEach(function(circle) {
+      if (panelDocIds.includes(circle.documentId)) {
+        panelCircles.push(circle);
+      }
+    });
+    
+    return panelCircles;
+  };
+
+  /**
+   * Select a circle and show the center panel
    * @param {string} id - Circle ID to select
    * @returns {ChakraApp.Circle|null} Selected circle or null if not found
    */
-ChakraApp.AppState.prototype.selectCircle = function(id) {
-	// Deselect current selection if different
-	if (this.selectedCircleId && this.selectedCircleId !== id) {
-		this.deselectCircle();
-	}
-
-	var circle = this.circles.get(id);
-	if (!circle) return null;
-
-	this.selectedCircleId = id;
-	circle.select();
-
-	// Show right panel
-	this.rightPanelVisible = true;
-	ChakraApp.EventBus.publish(ChakraApp.EventTypes.PANEL_VISIBILITY_CHANGED, this.rightPanelVisible);
-
-	return circle;
-};
+  ChakraApp.AppState.prototype.selectCircle = function(id) {
+    // Deselect current selection if different
+    if (this.selectedCircleId && this.selectedCircleId !== id) {
+      this.deselectCircle();
+    }
+    
+    var circle = this.circles.get(id);
+    if (!circle) return null;
+    
+    this.selectedCircleId = id;
+    circle.select();
+    
+    // Show center panel
+    ChakraApp.EventBus.publish(ChakraApp.EventTypes.PANEL_VISIBILITY_CHANGED, {
+      panel: 'center',
+      visible: true
+    });
+    
+    return circle;
+  };
 
   /**
    * Deselect the current circle
@@ -665,10 +793,6 @@ ChakraApp.AppState.prototype.selectCircle = function(id) {
     }
     
     this.selectedCircleId = null;
-    
-    // Hide right panel
-    this.rightPanelVisible = false;
-    ChakraApp.EventBus.publish(ChakraApp.EventTypes.PANEL_VISIBILITY_CHANGED, this.rightPanelVisible);
     
     return true;
   };
@@ -770,6 +894,33 @@ ChakraApp.AppState.prototype.selectCircle = function(id) {
   };
 
   /**
+   * Toggle panel visibility
+   * @param {string} panelId - Panel ID
+   * @returns {boolean} New visibility state
+   */
+  ChakraApp.AppState.prototype.togglePanelVisibility = function(panelId) {
+    if (!this.panelVisibility.hasOwnProperty(panelId)) return false;
+    
+    this.panelVisibility[panelId] = !this.panelVisibility[panelId];
+    
+    ChakraApp.EventBus.publish(ChakraApp.EventTypes.PANEL_VISIBILITY_CHANGED, {
+      panel: panelId,
+      visible: this.panelVisibility[panelId]
+    });
+    
+    return this.panelVisibility[panelId];
+  };
+
+  /**
+   * Check if a panel is visible
+   * @param {string} panelId - Panel ID
+   * @returns {boolean} Panel visibility
+   */
+  ChakraApp.AppState.prototype.isPanelVisible = function(panelId) {
+    return !!this.panelVisibility[panelId];
+  };
+
+  /**
    * Ensure a "Me" square exists for a circle
    * @private
    * @param {string} circleId - Circle ID
@@ -843,6 +994,9 @@ ChakraApp.AppState.prototype.selectCircle = function(id) {
       square = squareData;
     } else {
       square = new ChakraApp.Square(squareData);
+    }
+    if (!square.tabId && this.selectedTabId && square.circleId === this.selectedCircleId) {
+	    square.tabId = this.selectedTabId;
     }
     
     this.squares.set(square.id, square);
@@ -990,24 +1144,23 @@ ChakraApp.AppState.prototype.selectCircle = function(id) {
    * Deselect the current square and clear multi-selection
    * @returns {boolean} Success indicator
    */
-ChakraApp.AppState.prototype.deselectSquare = function() {
-  if (!this.selectedSquareId) return false;
-  
-  var square = this.squares.get(this.selectedSquareId);
-  if (square) {
-    square.deselect();
-  }
-  
-  this.selectedSquareId = null;
+  ChakraApp.AppState.prototype.deselectSquare = function() {
+    if (!this.selectedSquareId) return false;
+    
+    var square = this.squares.get(this.selectedSquareId);
+    if (square) {
+      square.deselect();
+    }
+    
+    this.selectedSquareId = null;
 
-  // Clear multi-selection if it exists
-  if (ChakraApp.MultiSelectionManager && ChakraApp.MultiSelectionManager.hasSelection()) {
-    ChakraApp.MultiSelectionManager.clearSelection();
-  }
-  
-  return true;
-};
-  
+    // Clear multi-selection if it exists
+    if (ChakraApp.MultiSelectionManager && ChakraApp.MultiSelectionManager.hasSelection()) {
+      ChakraApp.MultiSelectionManager.clearSelection();
+    }
+    
+    return true;
+  };
   
   //====================================================
   // CONNECTION OPERATIONS
@@ -1229,7 +1382,6 @@ ChakraApp.AppState.prototype.deselectSquare = function() {
     }
   };
   
-  
   //====================================================
   // STORAGE OPERATIONS
   //====================================================
@@ -1239,55 +1391,65 @@ ChakraApp.AppState.prototype.deselectSquare = function() {
    * @returns {boolean} Success indicator
    */
   ChakraApp.AppState.prototype.loadFromStorage = function() {
-  try {
-    // Set a flag to prevent saving during load
-    this._isLoading = true;
-    
-    var savedData = localStorage.getItem('chakraVisualizerData');
-    if (!savedData) {
-      this._isLoading = false;
-      return false;
-    }
+    try {
+      // Set a flag to prevent saving during load
+      this._isLoading = true;
+      
+      var savedData = localStorage.getItem('chakraVisualizerData');
+      if (!savedData) {
+        this._isLoading = false;
+        return false;
+      }
 
-    var data = JSON.parse(savedData);
+      var data = JSON.parse(savedData);
 
-    // Reset current state
-    this.documents.clear();
-    this.circles.clear();
-    this.squares.clear();
-    this.connections.clear();
-    this.tabs.clear();
-    this.selectedDocumentId = null;
-    this.selectedCircleId = null;
-    this.selectedSquareId = null;
-    this.selectedTabId = null;
+      // Reset current state
+      this.documents.clear();
+      this.circles.clear();
+      this.squares.clear();
+      this.connections.clear();
+      this.tabs.clear();
+      
+      // Reset selection state
+      this.selectedDocumentIds = {
+        left: null,
+        right: null,
+        bottom: null
+      };
+      this.selectedCircleId = null;
+      this.selectedSquareId = null;
+      this.selectedTabId = null;
 
-    // Load documents
-    if (data.documents && Array.isArray(data.documents)) {
-      var self = this;
-      data.documents.forEach(function(documentData) {
-        self.addDocument(documentData);
-      });
-    } else {
-      // If no documents in storage, create a default one
-      this.addDocument(); // This will create with default name
-    }
+      // Load documents
+      if (data.documents && Array.isArray(data.documents)) {
+        var self = this;
+        data.documents.forEach(function(documentData) {
+          // Ensure panelId is set (default to 'left' for backwards compatibility)
+          documentData.panelId = documentData.panelId || 'left';
+          self.addDocument(documentData);
+        });
+      } else {
+        // If no documents in storage, create default documents for each panel
+        this.panels.forEach(function(panelId) {
+          this.addDocument(null, panelId);
+        }, this);
+      }
 
-    // Load circles
-    if (data.circles && Array.isArray(data.circles)) {
-      var self = this;
-      data.circles.forEach(function(circleData) {
-        self.addCircle(circleData);
-      });
-    }
+      // Load circles
+      if (data.circles && Array.isArray(data.circles)) {
+        var self = this;
+        data.circles.forEach(function(circleData) {
+          self.addCircle(circleData);
+        });
+      }
 
-    // Load squares
-    if (data.squares && Array.isArray(data.squares)) {
-      var self = this;
-      data.squares.forEach(function(squareData) {
-        self.addSquare(squareData);
-      });
-    }
+      // Load squares
+      if (data.squares && Array.isArray(data.squares)) {
+        var self = this;
+        data.squares.forEach(function(squareData) {
+          self.addSquare(squareData);
+        });
+      }
 
     // Load tabs
     if (data.tabs && Array.isArray(data.tabs)) {
@@ -1297,127 +1459,131 @@ ChakraApp.AppState.prototype.deselectSquare = function() {
       });
     }
 
-    // Get the last viewed document
-    var lastViewedDocumentId = this.getLastViewedDocument();
-    
-    // Select document if available
-    if (lastViewedDocumentId && this.documents.has(lastViewedDocumentId)) {
-      this.selectDocument(lastViewedDocumentId);
-    } else if (data.selectedDocumentId && this.documents.has(data.selectedDocumentId)) {
-      this.selectDocument(data.selectedDocumentId);
-    } else if (this.documents.size > 0) {
-      // Select first document if none selected
-      var firstDocument = this.getAllDocuments()[0];
-      if (firstDocument) {
-        this.selectDocument(firstDocument.id);
-        // Also save this as the last viewed document
-        this.saveLastViewedDocument(firstDocument.id);
+      // For each panel, select the last viewed document or the first document
+      this.panels.forEach(function(panelId) {
+        var lastViewedDocumentId = this.getLastViewedDocument(panelId);
+        
+        if (lastViewedDocumentId && this.documents.has(lastViewedDocumentId)) {
+          var doc = this.documents.get(lastViewedDocumentId);
+          if (doc.panelId === panelId) {
+            this.selectDocument(lastViewedDocumentId, panelId);
+          }
+        } else {
+          // Select first document for this panel if none selected
+          var panelDocuments = this.getDocumentsForPanel(panelId);
+          if (panelDocuments.length > 0) {
+            this.selectDocument(panelDocuments[0].id, panelId);
+            // Also save this as the last viewed document
+            this.saveLastViewedDocument(panelDocuments[0].id, panelId);
+          }
+        }
+      }, this);
+
+      // Notify and publish event
+      this._notifyStateChanged('all', data);
+      ChakraApp.EventBus.publish(ChakraApp.EventTypes.STATE_LOADED, data);
+
+      // Clean up any overlapping groups
+      if (typeof ChakraApp.cleanupOverlappingGroups === 'function') {
+        ChakraApp.cleanupOverlappingGroups();
       }
+      
+      // Clear loading flag and save once after loading
+      this._isLoading = false;
+      this.saveToStorageNow();
+
+      return true;
+    } catch (error) {
+      console.error('Error loading state from localStorage:', error);
+      this._isLoading = false;
+      return false;
     }
-
-    // Notify and publish event
-    this._notifyStateChanged('all', data);
-    ChakraApp.EventBus.publish(ChakraApp.EventTypes.STATE_LOADED, data);
-
-    // Clean up any overlapping groups
-    if (typeof ChakraApp.cleanupOverlappingGroups === 'function') {
-      ChakraApp.cleanupOverlappingGroups();
-    }
-    
-    // Clear loading flag and save once after loading
-    this._isLoading = false;
-    this.saveToStorageNow();
-
-    return true;
-  } catch (error) {
-    console.error('Error loading state from localStorage:', error);
-    this._isLoading = false;
-    return false;
-  }
-};
-
-  /**
- * Save state to localStorage with debouncing
- * @returns {boolean} Success indicator
- */
-  ChakraApp.AppState.prototype.saveToStorage = function() {
-	  try {
-		  // Clear any existing save timeout
-		  if (this._saveTimeout) {
-			  clearTimeout(this._saveTimeout);
-		  }
-
-		  // Set a new timeout to save after a short delay (prevents rapid-fire saves)
-		  var self = this;
-		  this._saveTimeout = setTimeout(function() {
-			  self._actualSaveToStorage();
-		  }, 300); // 300ms debounce
-
-		  return true;
-	  } catch (error) {
-		  console.error('Error scheduling state save to localStorage:', error);
-		  return false;
-	  }
   };
 
-/**
- * Actual save operation (separated from the debounced public method)
- * @private
- */
-ChakraApp.AppState.prototype._actualSaveToStorage = function() {
-	try {
-		var documents = [];
-		this.documents.forEach(function(doc) {
-			documents.push(doc.toJSON());
-		});
+  /**
+   * Save state to localStorage with debouncing
+   * @returns {boolean} Success indicator
+   */
+  ChakraApp.AppState.prototype.saveToStorage = function() {
+    try {
+      // Clear any existing save timeout
+      if (this._saveTimeout) {
+        clearTimeout(this._saveTimeout);
+      }
 
-		var circles = [];
-		this.circles.forEach(function(circle) {
-			circles.push(circle.toJSON());
-		});
+      // Set a new timeout to save after a short delay (prevents rapid-fire saves)
+      var self = this;
+      this._saveTimeout = setTimeout(function() {
+        self._actualSaveToStorage();
+      }, 300); // 300ms debounce
 
-		var squares = [];
-		this.squares.forEach(function(square) {
-			squares.push(square.toJSON());
-		});
+      return true;
+    } catch (error) {
+      console.error('Error scheduling state save to localStorage:', error);
+      return false;
+    }
+  };
 
-		var tabs = [];
-		this.tabs.forEach(function(tab) {
-			tabs.push(tab.toJSON());
-		});
+  /**
+   * Actual save operation (separated from the debounced public method)
+   * @private
+   */
+  ChakraApp.AppState.prototype._actualSaveToStorage = function() {
+    try {
+      var documents = [];
+      this.documents.forEach(function(doc) {
+        documents.push(doc.toJSON());
+      });
 
-		var data = {
-			documents: documents,
-			circles: circles,
-			squares: squares,
-			tabs: tabs,
-			selectedDocumentId: this.selectedDocumentId
-		};
+      var circles = [];
+      this.circles.forEach(function(circle) {
+        circles.push(circle.toJSON());
+      });
 
-		localStorage.setItem('chakraVisualizerData', JSON.stringify(data));
+      var squares = [];
+      this.squares.forEach(function(square) {
+        squares.push(square.toJSON());
+      });
 
-		// Publish event
-		ChakraApp.EventBus.publish(ChakraApp.EventTypes.STATE_SAVED, data);
+      var tabs = [];
+      this.tabs.forEach(function(tab) {
+	      tabs.push(tab.toJSON());
+      });
 
-		console.log('State saved to localStorage');
+      var data = {
+        documents: documents,
+        circles: circles,
+        squares: squares,
+	tabs: tabs,
+        selectedDocumentIds: this.selectedDocumentIds
+      };
 
-		return true;
-	} catch (error) {
-		console.error('Error saving state to localStorage:', error);
-		return false;
-	}
-};
+      localStorage.setItem('chakraVisualizerData', JSON.stringify(data));
 
-ChakraApp.AppState.prototype.saveToStorageNow = function() {
-  // Clear any existing timeout
-  if (this._saveTimeout) {
-    clearTimeout(this._saveTimeout);
-    this._saveTimeout = null;
-  }
-  
-  // Call the actual save method directly
-  return this._actualSaveToStorage();
-};
+      // Publish event
+      ChakraApp.EventBus.publish(ChakraApp.EventTypes.STATE_SAVED, data);
+
+      return true;
+    } catch (error) {
+      console.error('Error saving state to localStorage:', error);
+      return false;
+    }
+  };
+
+  /**
+   * Save to localStorage immediately, bypassing debounce
+   * @returns {boolean} Success indicator
+   */
+  ChakraApp.AppState.prototype.saveToStorageNow = function() {
+    // Clear any existing timeout
+    if (this._saveTimeout) {
+      clearTimeout(this._saveTimeout);
+      this._saveTimeout = null;
+    }
+    
+    // Call the actual save method directly
+    return this._actualSaveToStorage();
+  };
 
   // Create the singleton instance
   ChakraApp.appState = new ChakraApp.AppState();

@@ -905,10 +905,10 @@ body.right-panel-visible {
     left: 10px;
     width: 320px; /* Fixed width */
     height: 750px; /* Fixed height */
-    background-image: url('body-silhouette-white.png');
+    /*background-image: url('body-silhouette-white.png');
     background-repeat: no-repeat;
     background-position: top left;
-    background-size: 100% 100%;
+    background-size: 100% 100%;*/
     opacity: 0.3;
     pointer-events: none;
     z-index: 1;
@@ -2236,4 +2236,360 @@ ChakraApp.UIController.prototype._toggleActionButtons = function(show) {
 /* Cast of Characters */
 .story-group-characters .attribute-box {
   border-bottom: 2px solid rgba(0, 255, 255, 0.3);
+}
+
+
+/* Base layout */
+html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    background-color: black;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    position: relative;
+}
+
+/* Main container */
+#main-container {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* Circle panels shared styles */
+.circle-panel {
+    background-color: black;
+    position: relative;
+    user-select: none;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Panel-specific styles */
+#left-panel {
+    width: 500px;
+    height: 100%;
+    border-right: 2px solid #444;
+}
+
+#right-panel {
+    height: 100%;
+    border-left: 2px solid #444;
+}
+
+#bottom-panel {
+    width: 100%;
+    border-top: 2px solid #444;
+}
+
+/* Center container styles */
+#center-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* Top panel */
+#top-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 10px 20px;
+    height: auto;
+    min-height: 80px;
+    background-color: black;
+    border-bottom: 1px solid #333;
+}
+
+/* Center panel (former right panel) for squares */
+#center-panel {
+    flex: 1;
+    background-color: black;
+    position: relative;
+    user-select: none;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Zoom containers for circle panels */
+.zoom-container {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Background silhouette styling */
+.zoom-container::before {
+    content: "";
+    position: absolute;
+    top: 40px;
+    left: 10px;
+    width: 320px; /* Fixed width */
+    height: 750px; /* Fixed height */
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 1;
+}
+
+#left-panel .zoom-container::before {
+    background-image: url('body-silhouette-white.png');
+    background-repeat: no-repeat;
+    background-position: top left;
+    background-size: 100% 100%;
+}
+
+/* Add buttons */
+.add-btn {
+    position: absolute;
+    top: 20px;
+    width: 40px;
+    height: 40px;
+    background-color: #555;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 24px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    z-index: 100;
+}
+
+.add-btn:hover {
+    background-color: #777;
+}
+
+/* Position Add Circle buttons for each panel */
+#add-circle-btn-left {
+    left: 20px;
+}
+
+#add-circle-btn-right {
+    left: 20px;
+}
+
+#add-circle-btn-bottom {
+    left: 20px;
+}
+
+/* Document buttons */
+.document-toggle-btn {
+    position: absolute;
+    top: 80px;
+    left: 20px;
+    z-index: 100;
+}
+
+/* Document list containers */
+.document-list-container {
+    position: absolute;
+    left: 70px;
+    top: 140px;
+    width: 280px;
+    max-height: 300px;
+    overflow-y: auto;
+    background-color: rgba(40, 40, 40, 0.95);
+    border: 1px solid #555;
+    border-radius: 5px;
+    z-index: 100;
+    padding: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    animation: fadeInList 0.3s ease-out forwards;
+}
+
+/* Current document display */
+.current-document-display {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+    font-weight: bold;
+    padding: 5px 15px;
+    background-color: rgba(0, 0, 0, 0.4);
+    border-radius: 15px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 90%;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    z-index: 50;
+}
+
+#left-panel .current-document-display {
+    bottom: 60px;
+}
+
+/* Panel visibility transitions */
+.circle-panel {
+    transition: transform 0.4s ease, opacity 0.4s ease, width 0.4s ease, height 0.4s ease;
+}
+
+.circle-panel.hidden {
+    transform: translateX(-100%);
+    opacity: 0;
+    width: 0;
+}
+
+#right-panel.hidden {
+    transform: translateX(100%);
+}
+
+#bottom-panel.hidden {
+    transform: translateY(100%);
+    height: 0;
+}
+
+/* Circles and Squares */
+.circle, .square {
+    position: absolute;
+    cursor: move;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+    transition: box-shadow 0.2s ease;
+    transform: translate(-50%, -50%);
+    margin-bottom: 20px;
+}
+
+.square {
+    border-radius: 5px;
+    padding: 2px;
+}
+
+.circle {
+    border-radius: 50%;
+}
+
+.circle.selected, .square.selected {
+    box-shadow: 0 0 12px 4px white;
+    z-index: 15;
+}
+
+/* Item names styling */
+.item-name {
+    position: absolute;
+    top: 120%;
+    left: 50%;
+    transform: translateX(-50%);
+    color: white;
+    font-size: 11px;
+    background: rgba(0, 0, 0, 0.7);
+    border: none;
+    text-align: center;
+    outline: none;
+    padding: 3px 5px;
+    border-radius: 3px;
+    z-index: 25;
+    white-space: nowrap;
+    
+    /* Add these for contenteditable behavior */
+    cursor: text;
+    user-select: text;
+    box-sizing: border-box;
+    max-height: none;
+
+    spellcheck: false;
+    -webkit-spellcheck: false;
+}
+
+.square .item-name {
+    white-space: normal;
+    max-width: 100px;
+    width: max-content;
+}
+
+.circle.selected .item-name,
+.square.selected .item-name {
+    z-index: 30;
+}
+
+.item-name:hover, .item-name:focus {
+    background-color: rgba(0, 0, 0, 0.8);
+    z-index: 100;
+}
+
+/* Retain all the other styles from the original stylesheet */
+/* This is just showing the most critical modifications */
+
+/* Attribute grid */
+#attribute-grid {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    padding: 10px;
+    gap: 8px;
+    width: auto;
+    max-width: none;
+    margin: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Panel toggle controls */
+.panel-toggle-btn {
+    position: fixed;
+    width: 30px;
+    height: 30px;
+    background-color: #444;
+    color: white;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 4px;
+}
+
+/* Panel toggle button hover effect */
+.panel-toggle-btn:hover {
+    background-color: #666;
+}
+
+/* When a panel is hidden, adjust toggle button */
+.panel-toggle-btn.panel-hidden::before {
+    content: "◀";
+}
+
+#toggle-right-panel.panel-hidden::before {
+    content: "▶";
+}
+
+#toggle-bottom-panel.panel-hidden::before {
+    content: "▼";
+    transform: rotate(180deg);
+}
+
+.panel-toggle-btn:not(.panel-hidden)::before {
+    content: "▶";
+}
+
+#toggle-right-panel:not(.panel-hidden)::before {
+    content: "◀";
+}
+
+#toggle-bottom-panel:not(.panel-hidden)::before {
+    content: "▲";
+    transform: rotate(180deg);
 }

@@ -493,7 +493,7 @@ ChakraApp.CircleView.prototype._findCharOption = function(value, charDef) {
 			  window.wasDragged = true;
 
 			  // Get cursor position within the zoom container
-			  var zoomContainer = document.getElementById('zoom-container');
+			  var zoomContainer = self.parentElement;
 			  var containerRect = zoomContainer.getBoundingClientRect();
 
 			  // Calculate raw position - no adjustment needed
@@ -504,17 +504,20 @@ ChakraApp.CircleView.prototype._findCharOption = function(value, charDef) {
 			  self.element.style.left = newX + 'px';
 			  self.element.style.top = newY + 'px';
 
-			  // Check for meridian snap
-			  var meridianX = ChakraApp.Config.meridian.x;
-			  var distanceToMeridian = Math.abs(newX - meridianX);
+			  var panelId = zoomContainer.getAttribute('data-panel-id');
+			  if (panelId == 'left') {
+				  // Check for meridian snap
+				  var meridianX = ChakraApp.Config.meridian.x;
+				  var distanceToMeridian = Math.abs(newX - meridianX);
 
-			  if (distanceToMeridian < ChakraApp.Config.meridian.snapThreshold) {
-				  // Snap to meridian
-				  self.element.style.left = meridianX + 'px';
-				  self.element.classList.add('snapping');
-			  } else {
-				  // Regular position update
-				  self.element.classList.remove('snapping');
+				  if (distanceToMeridian < ChakraApp.Config.meridian.snapThreshold) {
+					  // Snap to meridian
+					  self.element.style.left = meridianX + 'px';
+					  self.element.classList.add('snapping');
+				  } else {
+					  // Regular position update
+					  self.element.classList.remove('snapping');
+				  }
 			  }
 		  }
 	  };

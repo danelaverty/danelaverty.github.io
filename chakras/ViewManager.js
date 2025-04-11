@@ -7,8 +7,8 @@
    */
   ChakraApp.ViewManager = function() {
     // Reference to DOM containers
-    this.zoomContainer = null;
-    this.bottomPanel = null;
+    this.zoomContainers = {};
+    this.centerPanel = null;
     this.lineContainer = null;
     
     // Maps to track view instances
@@ -20,9 +20,8 @@
   };
   
   ChakraApp.ViewManager.prototype.init = function() {
-    // Get DOM containers
-    this.zoomContainer = document.getElementById('zoom-container');
-    this.bottomPanel = document.getElementById('bottom-panel');
+    // Get DOM containers for each panel
+    this._initializeContainers();
     
     // Create line container
     this._createLineContainer();
@@ -31,6 +30,24 @@
     this._setupEventListeners();
   };
   
+  /**
+   * Initialize DOM containers
+   * @private
+   */
+  ChakraApp.ViewManager.prototype._initializeContainers = function() {
+    this.centerPanel = document.getElementById('center-panel');
+    
+    // Initialize zoom containers for each panel
+    var self = this;
+    ChakraApp.appState.panels.forEach(function(panelId) {
+      self.zoomContainers[panelId] = document.getElementById('zoom-container-' + panelId);
+    });
+  };
+  
+  /**
+   * Create line container
+   * @private
+   */
   ChakraApp.ViewManager.prototype._createLineContainer = function() {
     // Create container for connection lines
     this.lineContainer = document.createElement('div');
@@ -43,70 +60,99 @@
     this.lineContainer.style.pointerEvents = 'none';
     this.lineContainer.style.zIndex = '5';
     
-    // Add to bottom panel before any squares (to ensure squares are above lines)
-    this.bottomPanel.insertBefore(this.lineContainer, this.bottomPanel.firstChild);
+    // Add to center panel before any squares (to ensure squares are above lines)
+    this.centerPanel.insertBefore(this.lineContainer, this.centerPanel.firstChild);
   };
   
+  /**
+   * Set up event listeners
+   * @private
+   */
   ChakraApp.ViewManager.prototype._setupEventListeners = function() {
-  var self = this;
-  
-  // Listen for circle events
-  ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.CIRCLE_CREATED, function(circle) {
-    // Only create view if circle belongs to selected document or no document selected
-    var selectedDocumentId = ChakraApp.appState.selectedDocumentId;
-    if (!selectedDocumentId || circle.documentId === selectedDocumentId) {
-      self.createCircleView(circle);
-    }
-  });
-  
-  ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.CIRCLE_DELETED, function(circle) {
-    self.removeCircleView(circle.id);
-  });
-  
-  // Listen for square events
-  ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.SQUARE_CREATED, function(square) {
-    self.createSquareView(square);
-  });
-  
-  ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.SQUARE_DELETED, function(square) {
-    self.removeSquareView(square.id);
-  });
-  
-  // Listen for connection events
-  ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.CONNECTION_UPDATED, function(circleId) {
-    // When connections are updated, refresh all connection views
-    self._updateConnectionViews();
-  });
-  
-  // Listen for state loaded event
-  ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.STATE_LOADED, function() {
-    self.renderAllViews();
-  });
-  
-  // Listen for document selection events
-  ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.DOCUMENT_SELECTED, function(doc) {
-    // Re-render all views when document is selected
-    self.renderAllViews();
-  });
-  
-  // Listen for document deletion events
-  ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.DOCUMENT_DELETED, function(doc) {
-    // Re-render all views when document is deleted
-    self.renderAllViews();
-  });
-};
+    var self = this;
+    
+    // Listen for circle events
+    ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.CIRCLE_CREATED, function(circle) {
+      // Get panel from document
+      var doc = ChakraApp.appState.getDocument(circle.documentId);
+      if (!doc) return;
+      
+      var panelId = doc.panelId;
+      var selectedDocId = ChakraApp.appState.selectedDocumentIds[panelId];
+      
+      // Only create view if circle belongs to selected document in its panel
+      if (selectedDocId && circle.documentId === selectedDocId) {
+        self.createCircleView(circle, panelId);
+      }
+    });
+    
+    ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.CIRCLE_DELETED, function(circle) {
+      self.removeCircleView(circle.id);
+    });
+    
+    // Listen for square events
+    ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.SQUARE_CREATED, function(square) {
+      self.createSquareView(square);
+    });
+    
+    ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.SQUARE_DELETED, function(square) {
+      self.removeSquareView(square.id);
+    });
+    
+    // Listen for connection events
+    ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.CONNECTION_UPDATED, function(circleId) {
+      // When connections are updated, refresh all connection views
+      self._updateConnectionViews();
+    });
+    
+    // Listen for state loaded event
+    ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.STATE_LOADED, function() {
+      self.renderAllViews();
+    });
+    
+    // Listen for document selection events
+    ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.DOCUMENT_SELECTED, function(doc) {
+      // Re-render circles for this panel's document
+      self.renderCirclesForPanel(doc.panelId);
+    });
+    
+    // Listen for document deletion events
+    ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.DOCUMENT_DELETED, function(doc) {
+      // Re-render circles for this panel
+      self.renderCirclesForPanel(doc.panelId);
+    });
+  };
   
   /**
    * Create a circle view
    * @param {Circle} circleModel - Circle model
+   * @param {string} panelId - Panel ID
    * @returns {CircleView} The created view
    */
-  ChakraApp.ViewManager.prototype.createCircleView = function(circleModel) {
+  ChakraApp.ViewManager.prototype.createCircleView = function(circleModel, panelId) {
+    // If panelId not provided, get it from the circle's document
+    if (!panelId) {
+      var doc = ChakraApp.appState.getDocument(circleModel.documentId);
+      if (doc) {
+        panelId = doc.panelId;
+      } else {
+        console.error("Cannot create circle view: missing panel ID and document");
+        return null;
+      }
+    }
+    
+    // Get the appropriate container
+    var container = this.zoomContainers[panelId];
+    if (!container) {
+      console.error("Cannot create circle view: container not found for panel " + panelId);
+      return null;
+    }
+    
     // Create view model
     var viewModel = new ChakraApp.CircleViewModel(circleModel);
     
     // Create view
-    var view = new ChakraApp.CircleView(viewModel, this.zoomContainer);
+    var view = new ChakraApp.CircleView(viewModel, container);
     
     // Store the view
     this.circleViews.set(circleModel.id, view);
@@ -124,7 +170,7 @@
     var viewModel = new ChakraApp.SquareViewModel(squareModel);
     
     // Create view
-    var view = new ChakraApp.SquareView(viewModel, this.bottomPanel);
+    var view = new ChakraApp.SquareView(viewModel, this.centerPanel);
     
     // Store the view
     this.squareViews.set(squareModel.id, view);
@@ -137,41 +183,27 @@
    * @param {Connection} connectionModel - Connection model
    * @returns {ConnectionView} The created view
    */
-	ChakraApp.ViewManager.prototype.createConnectionView = function(connectionModel) {
-		// First check if we have any views in the pool we can reuse
-		var view = null;
+  ChakraApp.ViewManager.prototype.createConnectionView = function(connectionModel) {
+    // First check if we have any views in the pool we can reuse
+    var view = null;
 
-		if (this.connectionViewPool.length > 0) {
-			// Get a view from the pool
-			view = this.connectionViewPool.pop();
+    if (this.connectionViewPool.length > 0) {
+      // Get a view from the pool
+      view = this.connectionViewPool.pop();
 
-			// Update its view model and reinitialize
-			view.updateViewModel(connectionModel);
-		} else {
-			// No views in pool, create new one
-			var viewModel = new ChakraApp.ConnectionViewModel(connectionModel);
-			view = new ChakraApp.ConnectionView(viewModel, this.lineContainer);
-		}
+      // Update its view model and reinitialize
+      view.updateViewModel(connectionModel);
+    } else {
+      // No views in pool, create new one
+      var viewModel = new ChakraApp.ConnectionViewModel(connectionModel);
+      view = new ChakraApp.ConnectionView(viewModel, this.lineContainer);
+    }
 
-		// Store the view
-		this.connectionViews.set(connectionModel.id, view);
+    // Store the view
+    this.connectionViews.set(connectionModel.id, view);
 
-		return view;
-	};
-
-	ChakraApp.ConnectionView.prototype.updateViewModel = function(connectionModel) {
-		// Update the view model
-		this.viewModel.model = connectionModel;
-		this.viewModel._updateFromModel();
-
-		// Update the DOM element
-		this.update();
-
-		// Ensure the element is in the DOM
-		if (this.element && !this.element.parentNode) {
-			this.parentElement.appendChild(this.element);
-		}
-	};
+    return view;
+  };
   
   /**
    * Remove a circle view
@@ -230,120 +262,144 @@
    * Update all connection views
    * @private
    */
-	ChakraApp.ViewManager.prototype._updateConnectionViews = function() {
-		// Clear existing connection views
-		var self = this;
-		this.connectionViews.forEach(function(view) {
-			view.destroy();
-		});
-		this.connectionViews.clear();
+  ChakraApp.ViewManager.prototype._updateConnectionViews = function() {
+    // Clear existing connection views
+    var self = this;
+    this.connectionViews.forEach(function(view) {
+      view.destroy();
+    });
+    this.connectionViews.clear();
 
-		// Only proceed if a circle is selected
-		if (!ChakraApp.appState.selectedCircleId) {
-			return;
-		}
+    // Only proceed if a circle is selected
+    if (!ChakraApp.appState.selectedCircleId) {
+      return;
+    }
 
-		// Create views for all current connections
-		ChakraApp.appState.connections.forEach(function(connectionModel, connectionId) {
-			var sourceSquare = ChakraApp.appState.getSquare(connectionModel.sourceId);
-			var targetSquare = ChakraApp.appState.getSquare(connectionModel.targetId);
+    // Create views for all current connections
+    ChakraApp.appState.connections.forEach(function(connectionModel, connectionId) {
+      var sourceSquare = ChakraApp.appState.getSquare(connectionModel.sourceId);
+      var targetSquare = ChakraApp.appState.getSquare(connectionModel.targetId);
 
-			// Only create connection if both squares exist and are visible
-			if (sourceSquare && targetSquare && sourceSquare.visible && targetSquare.visible) {
-				self.createConnectionView(connectionModel);
-			}
-		});
-	};
+      // Only create connection if both squares exist and are visible
+      if (sourceSquare && targetSquare && sourceSquare.visible && targetSquare.visible) {
+        self.createConnectionView(connectionModel);
+      }
+    });
+  };
   
   /**
    * Render all views from current state
    */
-	ChakraApp.ViewManager.prototype.renderAllViews = function() {
-		// Clear existing views
-		this.clearAllViews();
+  ChakraApp.ViewManager.prototype.renderAllViews = function() {
+    // Clear existing views
+    this.clearAllViews();
 
-		var self = this;
-		var selectedDocumentId = ChakraApp.appState.selectedDocumentId;
-
-		// Create views for circles that belong to the selected document
-		ChakraApp.appState.circles.forEach(function(circleModel) {
-			// Only render circles for the selected document
-			if (!selectedDocumentId || circleModel.documentId === selectedDocumentId) {
-				self.createCircleView(circleModel);
-			}
-		});
-
-		// DON'T create square views here anymore!
-
-		// DON'T create connection views here anymore!
-	};
+    // Render circles for each panel
+    var self = this;
+    ChakraApp.appState.panels.forEach(function(panelId) {
+      self.renderCirclesForPanel(panelId);
+    });
+  };
+  
+  /**
+   * Render circles for a specific panel
+   * @param {string} panelId - Panel ID
+   */
+  ChakraApp.ViewManager.prototype.renderCirclesForPanel = function(panelId) {
+    // First remove existing circle views for this panel
+    this._removeCircleViewsForPanel(panelId);
+    
+    // Get the selected document for this panel
+    var selectedDocId = ChakraApp.appState.selectedDocumentIds[panelId];
+    if (!selectedDocId) return;
+    
+    // Create views for circles in the selected document
+    var self = this;
+    ChakraApp.appState.circles.forEach(function(circleModel) {
+      if (circleModel.documentId === selectedDocId) {
+        self.createCircleView(circleModel, panelId);
+      }
+    });
+  };
+  
+  /**
+   * Remove circle views for a specific panel
+   * @private
+   * @param {string} panelId - Panel ID
+   */
+  ChakraApp.ViewManager.prototype._removeCircleViewsForPanel = function(panelId) {
+    var self = this;
+    var circlesToRemove = [];
+    
+    // Get document IDs for this panel
+    var panelDocIds = [];
+    ChakraApp.appState.documents.forEach(function(doc) {
+      if (doc.panelId === panelId) {
+        panelDocIds.push(doc.id);
+      }
+    });
+    
+    // Find circles to remove
+    this.circleViews.forEach(function(view, circleId) {
+      var circle = ChakraApp.appState.getCircle(circleId);
+      if (circle && panelDocIds.includes(circle.documentId)) {
+        circlesToRemove.push(circleId);
+      }
+    });
+    
+    // Remove the views
+    circlesToRemove.forEach(function(circleId) {
+      self.removeCircleView(circleId);
+    });
+  };
   
   /**
    * Clear all views
    */
-	ChakraApp.ViewManager.prototype.clearAllViews = function() {
-		var self = this;
+  ChakraApp.ViewManager.prototype.clearAllViews = function() {
+    var self = this;
 
-		// Destroy all circle views
-		this.circleViews.forEach(function(view) {
-			view.destroy();
-		});
-		this.circleViews.clear();
+    // Destroy all circle views
+    this.circleViews.forEach(function(view) {
+      view.destroy();
+    });
+    this.circleViews.clear();
 
-		// Destroy all square views
-		this.squareViews.forEach(function(view) {
-			view.destroy();
-		});
-		this.squareViews.clear();
+    // Destroy all square views
+    this.squareViews.forEach(function(view) {
+      view.destroy();
+    });
+    this.squareViews.clear();
 
-		// Destroy all connection views
-		this.connectionViews.forEach(function(view) {
-			view.destroy(false); // full destroy, not add to pool
-		});
-		this.connectionViews.clear();
+    // Destroy all connection views
+    this.connectionViews.forEach(function(view) {
+      view.destroy(false); // full destroy, not add to pool
+    });
+    this.connectionViews.clear();
 
-		// Clear the connection view pool
-		this.connectionViewPool.forEach(function(view) {
-			view.destroy(false);
-		});
-		this.connectionViewPool = [];
-	};
+    // Clear the connection view pool
+    this.connectionViewPool.forEach(function(view) {
+      view.destroy(false);
+    });
+    this.connectionViewPool = [];
+  };
   
-	ChakraApp.ConnectionView.prototype.destroy = function(addToPool) {
-		// If addToPool is true, just remove from DOM but keep the object
-		if (addToPool) {
-			if (this.element && this.element.parentNode) {
-				this.element.parentNode.removeChild(this.element);
-			}
-			return;
-		}
-
-		// Otherwise, perform full cleanup
-		// Call parent destroy method
-		ChakraApp.BaseView.prototype.destroy.call(this);
-
-		// Clean up view model subscription
-		if (this.viewModelSubscription) {
-			this.viewModelSubscription();
-		}
-
-		// Clean up additional subscriptions
-		if (this.multiSelectSubscription) {
-			this.multiSelectSubscription();
-		}
-
-		if (this.multiDeselectSubscription) {
-			this.multiDeselectSubscription();
-		}
-
-		// Get the squares
-		var square1 = ChakraApp.appState.getSquare(this.viewModel.sourceId);
-		var square2 = ChakraApp.appState.getSquare(this.viewModel.targetId);
-
-		// Remove any overlap registration if this connection is being destroyed
-		if (square1 && square2) {
-			ChakraApp.OverlappingSquaresManager.removeOverlap(square1.id, square2.id);
-		}
-	};
+  /**
+   * Clean up resources
+   */
+  ChakraApp.ViewManager.prototype.destroy = function() {
+    // Clear all views
+    this.clearAllViews();
+    
+    // Remove line container
+    if (this.lineContainer && this.lineContainer.parentNode) {
+      this.lineContainer.parentNode.removeChild(this.lineContainer);
+    }
+    
+    // Clear references
+    this.zoomContainers = {};
+    this.centerPanel = null;
+    this.lineContainer = null;
+  };
   
 })(window.ChakraApp = window.ChakraApp || {});

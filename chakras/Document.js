@@ -15,6 +15,7 @@
     
     // Core properties
     this.name = data.name || this._generateDefaultName();
+    this.panelId = data.panelId || 'left'; // New property: 'left', 'right', or 'bottom'
     
     // Additional properties
     this.selected = data.selected || false;
@@ -34,7 +35,7 @@
     return this;
   };
   
-  // Generate a default name based on current date/time
+  // Generate a default name based on current date/time and panel
   ChakraApp.Document.prototype._generateDefaultName = function() {
     var now = new Date();
     var year = now.getFullYear();
@@ -70,6 +71,7 @@
     
     // Add Document-specific properties
     json.name = this.name;
+    json.panelId = this.panelId; // Include panelId in serialization
     
     return json;
   };
