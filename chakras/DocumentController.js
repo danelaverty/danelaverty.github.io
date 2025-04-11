@@ -7,22 +7,16 @@
     // Call parent constructor
     ChakraApp.BaseController.call(this);
     
-    // DOM elements
-    this.toggleDocumentListBtn = null;
-    this.documentListContainer = null;
-    this.currentDocumentDisplay = null;
+    // DOM elements - now per panel
+    this.toggleDocumentListBtns = {};
+    this.documentListContainers = {};
+    this.currentDocumentDisplays = {};
     
     // Event handlers
     this.documentClickHandler = null;
     
     // Event subscriptions
-    this.documentSelectedSubscription = null;
-    this.documentUpdatedSubscription = null;
-    this.documentListToggledSubscription = null;
-    this.stateLoadedSubscription = null;
-    this.circleCreatedSubscription = null;
-    this.circleDeletedSubscription = null;
-    this.circleUpdatedSubscription = null;
+    this.eventSubscriptions = {};
   };
   
   // Inherit from BaseController
@@ -34,129 +28,158 @@
     // Call parent init
     ChakraApp.BaseController.prototype.init.call(this);
     
-    // Create UI elements
+    // Create UI elements for each panel
     this._createDocumentControls();
     
     // Add event listeners
     this._setupDocumentEventListeners();
     this._setupClickOutsideHandler();
     
-    // Initialize document list
-    this._updateDocumentList();
-    this._updateCurrentDocumentDisplay();
+    // Initialize document lists for each panel
+    var self = this;
+    ChakraApp.appState.panels.forEach(function(panelId) {
+      self._updateDocumentList(panelId);
+      self._updateCurrentDocumentDisplay(panelId);
+    });
   };
   
   /**
-   * Create document controls (toggle button, list container, and current display)
+   * Create document controls (toggle button, list container, and current display) for each panel
    * @private
    */
   ChakraApp.DocumentController.prototype._createDocumentControls = function() {
     var self = this;
     
-    // Create Toggle Arrow Button
-    if (!this.toggleDocumentListBtn) {
-      this.toggleDocumentListBtn = document.createElement('button');
-      this.toggleDocumentListBtn.id = 'toggle-document-list-btn';
-      this.toggleDocumentListBtn.className = 'add-btn toggle-btn';
-      this.toggleDocumentListBtn.title = 'Toggle Document List';
-      
-      // Create arrow icon
-      var arrowIcon = document.createElement('span');
-      arrowIcon.innerHTML = '▼';
-      arrowIcon.className = 'arrow-icon';
-      this.toggleDocumentListBtn.appendChild(arrowIcon);
-      
-      // Position it
-      this.toggleDocumentListBtn.style.top = '80px';
-      this.toggleDocumentListBtn.style.left = '20px';
-      
-      // Add toggle functionality
-      this.toggleDocumentListBtn.addEventListener('click', function(e) {
-        e.stopPropagation();
-        
-        // Toggle document list visibility
-        var isVisible = ChakraApp.appState.toggleDocumentList();
-        
-        // Update arrow direction
-        arrowIcon.innerHTML = isVisible ? '▲' : '▼';
-        
-        // Update document list
-        self._updateDocumentList();
-      });
-      
-      // Add to left panel
-      var leftPanel = document.getElementById('left-panel');
-      if (leftPanel) {
-        leftPanel.appendChild(this.toggleDocumentListBtn);
-      }
-    }
-    
-    // Create Document List Container
-    if (!this.documentListContainer) {
-      this.documentListContainer = document.createElement('div');
-      this.documentListContainer.id = 'document-list-container';
-      this.documentListContainer.className = 'document-list-container';
-      
-      // Initially hidden
-      this.documentListContainer.style.display = 'none';
-      
-      // Add to left panel
-      var leftPanel = document.getElementById('left-panel');
-      if (leftPanel) {
-        leftPanel.appendChild(this.documentListContainer);
-      }
-    }
-    
-    // Create Current Document Display
-    if (!this.currentDocumentDisplay) {
-      this.currentDocumentDisplay = document.createElement('div');
-      this.currentDocumentDisplay.id = 'current-document-display';
-      this.currentDocumentDisplay.className = 'current-document-display';
-      
-      // Set initial text
-      this.currentDocumentDisplay.textContent = 'No Document Selected';
-      
-      // Add to left panel
-      var leftPanel = document.getElementById('left-panel');
-      if (leftPanel) {
-        leftPanel.appendChild(this.currentDocumentDisplay);
-      }
-    }
+    // Create controls for each panel
+    ChakraApp.appState.panels.forEach(function(panelId) {
+      self._createDocumentControlsForPanel(panelId);
+    });
   };
   
   /**
-   * Update document list display based on current state
+   * Create document controls for a specific panel
    * @private
+   * @param {string} panelId - Panel ID
    */
-  ChakraApp.DocumentController.prototype._updateDocumentList = function() {
-    if (!this.documentListContainer) return;
+  ChakraApp.DocumentController.prototype._createDocumentControlsForPanel = function(panelId) {
+    var panel = document.querySelector('.circle-panel[data-panel-id="' + panelId + '"]');
+    if (!panel) return;
+    
+    // Create Toggle Arrow Button
+    var toggleBtn = document.createElement('button');
+    toggleBtn.id = 'toggle-document-list-btn-' + panelId;
+    toggleBtn.className = 'add-btn document-toggle-btn';
+    toggleBtn.title = 'Toggle Document List';
+    toggleBtn.dataset.panelId = panelId;
+    
+    // Create arrow icon
+    var arrowIcon = document.createElement('span');
+    arrowIcon.innerHTML = '▼';
+    arrowIcon.className = 'arrow-icon';
+    toggleBtn.appendChild(arrowIcon);
+    
+    // Position based on panel
+    if (panelId === 'bottom') {
+      toggleBtn.style.top = '20px';
+      toggleBtn.style.left = '80px';
+    } else {
+      toggleBtn.style.top = '80px';
+      toggleBtn.style.left = '20px';
+    }
+    
+    // Add toggle functionality
+    var self = this;
+    toggleBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      
+      // Toggle document list visibility for this panel
+      var isVisible = ChakraApp.appState.toggleDocumentList(panelId);
+      
+      // Update arrow direction
+      arrowIcon.innerHTML = isVisible ? '▲' : '▼';
+      
+      // Update document list
+      self._updateDocumentList(panelId);
+    });
+    
+    // Add to panel
+    panel.appendChild(toggleBtn);
+    this.toggleDocumentListBtns[panelId] = toggleBtn;
+    
+    // Create Document List Container
+    var listContainer = document.createElement('div');
+    listContainer.id = 'document-list-container-' + panelId;
+    listContainer.className = 'document-list-container';
+    listContainer.dataset.panelId = panelId;
+    
+    // Initially hidden
+    listContainer.style.display = 'none';
+    
+    // Position based on panel
+    if (panelId === 'bottom') {
+      listContainer.style.left = '70px';
+      listContainer.style.top = '70px';
+    }
+    
+    // Add to panel
+    panel.appendChild(listContainer);
+    this.documentListContainers[panelId] = listContainer;
+    
+    // Create Current Document Display
+    var docDisplay = document.createElement('div');
+    docDisplay.id = 'current-document-display-' + panelId;
+    docDisplay.className = 'current-document-display';
+    docDisplay.dataset.panelId = panelId;
+    
+    // Set initial text
+    docDisplay.textContent = 'No Document Selected';
+    
+    // Position based on panel
+    if (panelId === 'bottom') {
+      docDisplay.style.bottom = '10px';
+      docDisplay.style.left = '10px';
+    }
+    
+    // Add to panel
+    panel.appendChild(docDisplay);
+    this.currentDocumentDisplays[panelId] = docDisplay;
+  };
+  
+  /**
+   * Update document list display for a panel
+   * @private
+   * @param {string} panelId - Panel ID
+   */
+  ChakraApp.DocumentController.prototype._updateDocumentList = function(panelId) {
+    var listContainer = this.documentListContainers[panelId];
+    if (!listContainer) return;
     
     // Check visibility state
-    var isVisible = ChakraApp.appState.documentListVisible;
-    this.documentListContainer.style.display = isVisible ? 'block' : 'none';
+    var isVisible = ChakraApp.appState.documentListVisible[panelId];
+    listContainer.style.display = isVisible ? 'block' : 'none';
     
     // If not visible, no need to update content
     if (!isVisible) return;
     
     // Clear existing list
-    this.documentListContainer.innerHTML = '';
+    listContainer.innerHTML = '';
     
     // Add "New Document" option at the top of the list
-    var newDocItem = this._createNewDocumentListItem();
-    this.documentListContainer.appendChild(newDocItem);
+    var newDocItem = this._createNewDocumentListItem(panelId);
+    listContainer.appendChild(newDocItem);
     
-    // Get all documents
-    var documents = ChakraApp.appState.getAllDocuments();
-    var selectedId = ChakraApp.appState.selectedDocumentId;
+    // Get all documents for this panel
+    var documents = ChakraApp.appState.getDocumentsForPanel(panelId);
+    var selectedId = ChakraApp.appState.selectedDocumentIds[panelId];
     
     // Create list items for each document
     var self = this;
     documents.forEach(function(doc) {
       var listItem = doc.id === selectedId ? 
-        self._createSelectedDocumentListItem(doc) : 
-        self._createDocumentListItem(doc);
+        self._createSelectedDocumentListItem(doc, panelId) : 
+        self._createDocumentListItem(doc, panelId);
       
-      self.documentListContainer.appendChild(listItem);
+      listContainer.appendChild(listItem);
     });
     
     // If no documents, show message
@@ -164,20 +187,22 @@
       var noDocsMessage = document.createElement('div');
       noDocsMessage.className = 'no-documents-message';
       noDocsMessage.textContent = 'No documents available';
-      this.documentListContainer.appendChild(noDocsMessage);
+      listContainer.appendChild(noDocsMessage);
     }
   };
   
   /**
    * Create a list item for creating a new document
    * @private
+   * @param {string} panelId - Panel ID
    * @returns {HTMLElement} New document list item
    */
-  ChakraApp.DocumentController.prototype._createNewDocumentListItem = function() {
+  ChakraApp.DocumentController.prototype._createNewDocumentListItem = function(panelId) {
     var self = this;
     
     var listItem = document.createElement('div');
     listItem.className = 'document-list-item new-document-item';
+    listItem.dataset.panelId = panelId;
     
     // Add icon
     var icon = document.createElement('span');
@@ -195,18 +220,18 @@
     listItem.addEventListener('click', function(e) {
       e.stopPropagation();
       
-      // Create a new document with default name (current date/time)
-      var doc = ChakraApp.appState.addDocument();
+      // Create a new document with default name for this panel
+      var doc = ChakraApp.appState.addDocument(null, panelId);
       
       // Select the new document
-      ChakraApp.appState.selectDocument(doc.id);
+      ChakraApp.appState.selectDocument(doc.id, panelId);
       
       // Update the UI
-      self._updateDocumentList();
-      self._updateCurrentDocumentDisplay();
+      self._updateDocumentList(panelId);
+      self._updateCurrentDocumentDisplay(panelId);
       
       // Provide visual feedback
-      var currentDocDisplay = document.getElementById('current-document-display');
+      var currentDocDisplay = self.currentDocumentDisplays[panelId];
       if (currentDocDisplay) {
         currentDocDisplay.classList.add('flash-success');
         setTimeout(function() {
@@ -222,14 +247,16 @@
    * Create a document list item
    * @private
    * @param {Object} doc - Document model
+   * @param {string} panelId - Panel ID
    * @returns {HTMLElement} Document list item
    */
-  ChakraApp.DocumentController.prototype._createDocumentListItem = function(doc) {
+  ChakraApp.DocumentController.prototype._createDocumentListItem = function(doc, panelId) {
     var self = this;
     
     var listItem = document.createElement('div');
     listItem.className = 'document-list-item';
     listItem.dataset.id = doc.id;
+    listItem.dataset.panelId = panelId;
     
     // Document icon
     var icon = document.createElement('span');
@@ -237,7 +264,7 @@
     icon.innerHTML = '📄';
     listItem.appendChild(icon);
     
-    // Document name container - adding a container for better styling
+    // Document name container
     var nameContainer = document.createElement('div');
     nameContainer.className = 'document-name-container';
     
@@ -262,19 +289,11 @@
       e.stopPropagation();
       
       // Select the document
-      ChakraApp.appState.selectDocument(doc.id);
+      ChakraApp.appState.selectDocument(doc.id, panelId);
       
       // Update the UI
-      self._updateDocumentList();
-      self._updateCurrentDocumentDisplay();
-
-      ChakraApp.appState.documentListVisible = false;
-      self._updateDocumentList();
-
-      var arrowIcon = self.toggleDocumentListBtn.querySelector('.arrow-icon');
-      if (arrowIcon) {
-	      arrowIcon.innerHTML = '▼';
-      }
+      self._updateDocumentList(panelId);
+      self._updateCurrentDocumentDisplay(panelId);
     });
     
     return listItem;
@@ -284,14 +303,16 @@
    * Create a selected document list item (with edit/delete options)
    * @private
    * @param {Object} doc - Document model
+   * @param {string} panelId - Panel ID
    * @returns {HTMLElement} Selected document list item
    */
-  ChakraApp.DocumentController.prototype._createSelectedDocumentListItem = function(doc) {
+  ChakraApp.DocumentController.prototype._createSelectedDocumentListItem = function(doc, panelId) {
     var self = this;
     
     var listItem = document.createElement('div');
     listItem.className = 'document-list-item selected';
     listItem.dataset.id = doc.id;
+    listItem.dataset.panelId = panelId;
     
     // Document icon
     var icon = document.createElement('span');
@@ -299,7 +320,7 @@
     icon.innerHTML = '📄';
     listItem.appendChild(icon);
     
-    // Document name container for better styling
+    // Document name container
     var nameContainer = document.createElement('div');
     nameContainer.className = 'document-name-container';
     
@@ -326,7 +347,7 @@
       var newName = this.textContent.trim();
       if (newName && newName !== doc.name) {
         ChakraApp.appState.updateDocument(doc.id, { name: newName });
-        self._updateCurrentDocumentDisplay();
+        self._updateCurrentDocumentDisplay(panelId);
       } else {
         this.textContent = doc.name;
       }
@@ -356,8 +377,8 @@
         ChakraApp.appState.removeDocument(doc.id);
         
         // Update UI
-        self._updateDocumentList();
-        self._updateCurrentDocumentDisplay();
+        self._updateDocumentList(panelId);
+        self._updateCurrentDocumentDisplay(panelId);
       }
     });
     
@@ -365,22 +386,24 @@
   };
   
   /**
-   * Update current document display
+   * Update current document display for a panel
    * @private
+   * @param {string} panelId - Panel ID
    */
-  ChakraApp.DocumentController.prototype._updateCurrentDocumentDisplay = function() {
-    if (!this.currentDocumentDisplay) return;
+  ChakraApp.DocumentController.prototype._updateCurrentDocumentDisplay = function(panelId) {
+    var docDisplay = this.currentDocumentDisplays[panelId];
+    if (!docDisplay) return;
     
-    var selectedId = ChakraApp.appState.selectedDocumentId;
+    var selectedId = ChakraApp.appState.selectedDocumentIds[panelId];
     var doc = ChakraApp.appState.getDocument(selectedId);
     
     if (doc) {
       var count = this._getCircleCountForDocument(doc.id);
-      this.currentDocumentDisplay.textContent = doc.name + ' (' + count + ')';
-      this.currentDocumentDisplay.title = 'Current Document: ' + doc.name + ' (' + count + ' circles)';
+      docDisplay.textContent = doc.name + ' (' + count + ')';
+      docDisplay.title = 'Current Document: ' + doc.name + ' (' + count + ' circles)';
     } else {
-      this.currentDocumentDisplay.textContent = 'No Document Selected';
-      this.currentDocumentDisplay.title = 'No Document Selected';
+      docDisplay.textContent = 'No Document Selected';
+      docDisplay.title = 'No Document Selected';
     }
   };
   
@@ -392,68 +415,68 @@
     var self = this;
     
     // Listen for document selection events
-    this.documentSelectedSubscription = ChakraApp.EventBus.subscribe(
+    this.eventSubscriptions.documentSelected = ChakraApp.EventBus.subscribe(
       ChakraApp.EventTypes.DOCUMENT_SELECTED,
       function(doc) {
-        self._updateDocumentList();
-        self._updateCurrentDocumentDisplay();
+        self._updateDocumentList(doc.panelId);
+        self._updateCurrentDocumentDisplay(doc.panelId);
       }
     );
     
     // Listen for document update events
-    this.documentUpdatedSubscription = ChakraApp.EventBus.subscribe(
+    this.eventSubscriptions.documentUpdated = ChakraApp.EventBus.subscribe(
       ChakraApp.EventTypes.DOCUMENT_UPDATED,
       function(doc) {
-        self._updateDocumentList();
-        self._updateCurrentDocumentDisplay();
+        self._updateDocumentList(doc.panelId);
+        self._updateCurrentDocumentDisplay(doc.panelId);
       }
     );
     
     // Listen for document list toggled events
-    this.documentListToggledSubscription = ChakraApp.EventBus.subscribe(
+    this.eventSubscriptions.documentListToggled = ChakraApp.EventBus.subscribe(
       ChakraApp.EventTypes.DOCUMENT_LIST_TOGGLED,
-      function(isVisible) {
-        self._updateDocumentList();
+      function(data) {
+        self._updateDocumentList(data.panelId);
       }
     );
     
     // Listen for state loaded events
-    this.stateLoadedSubscription = ChakraApp.EventBus.subscribe(
+    this.eventSubscriptions.stateLoaded = ChakraApp.EventBus.subscribe(
       ChakraApp.EventTypes.STATE_LOADED,
       function() {
-        self._updateDocumentList();
-        self._updateCurrentDocumentDisplay();
+        ChakraApp.appState.panels.forEach(function(panelId) {
+          self._updateDocumentList(panelId);
+          self._updateCurrentDocumentDisplay(panelId);
+        });
       }
     );
     
     // Listen for circle events that affect document display
-    this.circleCreatedSubscription = ChakraApp.EventBus.subscribe(
+    this.eventSubscriptions.circleCreated = ChakraApp.EventBus.subscribe(
       ChakraApp.EventTypes.CIRCLE_CREATED,
       function(circle) {
-        self._updateDocumentList();
-        self._updateCurrentDocumentDisplay();
+        var doc = ChakraApp.appState.getDocument(circle.documentId);
+        if (doc) {
+          self._updateDocumentList(doc.panelId);
+          self._updateCurrentDocumentDisplay(doc.panelId);
+        }
       }
     );
     
-    this.circleDeletedSubscription = ChakraApp.EventBus.subscribe(
+    this.eventSubscriptions.circleDeleted = ChakraApp.EventBus.subscribe(
       ChakraApp.EventTypes.CIRCLE_DELETED,
       function(circle) {
-        self._updateDocumentList();
-        self._updateCurrentDocumentDisplay();
-      }
-    );
-    
-    this.circleUpdatedSubscription = ChakraApp.EventBus.subscribe(
-      ChakraApp.EventTypes.CIRCLE_UPDATED,
-      function(circle) {
-        self._updateDocumentList();
-        self._updateCurrentDocumentDisplay();
+        var doc = ChakraApp.appState.getDocument(circle.documentId);
+        if (doc) {
+          self._updateDocumentList(doc.panelId);
+          self._updateCurrentDocumentDisplay(doc.panelId);
+        }
       }
     );
   };
   
   /**
-   * Set up click outside handler for document list
+   * Set up click outside handler for document lists
    * @private
    */
   ChakraApp.DocumentController.prototype._setupClickOutsideHandler = function() {
@@ -462,29 +485,49 @@
     // Create document click handler if it doesn't exist
     if (!this.documentClickHandler) {
       this.documentClickHandler = function(e) {
-        // Check if document list is visible
-        if (ChakraApp.appState.documentListVisible) {
-          // Check if click was outside the document list and toggle button
-          var isOutsideList = !self.documentListContainer.contains(e.target);
-          var isOutsideToggle = !self.toggleDocumentListBtn.contains(e.target);
-          
-          // If click was outside both elements, hide the document list
-          if (isOutsideList && isOutsideToggle) {
-            // Hide the document list
-            ChakraApp.appState.documentListVisible = false;
+        // Check if any document lists are visible
+        var listsVisible = false;
+        var clickedPanelId = null;
+        
+        // Find which panel's document list was clicked, if any
+        ChakraApp.appState.panels.forEach(function(panelId) {
+          if (ChakraApp.appState.documentListVisible[panelId]) {
+            listsVisible = true;
             
-            // Update UI
-            self._updateDocumentList();
+            var listContainer = self.documentListContainers[panelId];
+            var toggleBtn = self.toggleDocumentListBtns[panelId];
             
-            // Update arrow icon
-            var arrowIcon = self.toggleDocumentListBtn.querySelector('.arrow-icon');
-            if (arrowIcon) {
-              arrowIcon.innerHTML = '▼';
+            // Check if click was inside this panel's list or toggle button
+            if (listContainer && listContainer.contains(e.target) ||
+                toggleBtn && toggleBtn.contains(e.target)) {
+              clickedPanelId = panelId;
             }
-            
-            // Publish event
-            ChakraApp.EventBus.publish(ChakraApp.EventTypes.DOCUMENT_LIST_TOGGLED, false);
           }
+        });
+        
+        // If any lists are visible and click was outside all lists and buttons, hide all lists
+        if (listsVisible && !clickedPanelId) {
+          ChakraApp.appState.panels.forEach(function(panelId) {
+            if (ChakraApp.appState.documentListVisible[panelId]) {
+              // Hide this document list
+              ChakraApp.appState.documentListVisible[panelId] = false;
+              
+              // Update arrow icon
+              var arrowIcon = self.toggleDocumentListBtns[panelId].querySelector('.arrow-icon');
+              if (arrowIcon) {
+                arrowIcon.innerHTML = '▼';
+              }
+              
+              // Update UI
+              self._updateDocumentList(panelId);
+              
+              // Publish event
+              ChakraApp.EventBus.publish(ChakraApp.EventTypes.DOCUMENT_LIST_TOGGLED, {
+                panelId: panelId,
+                visible: false
+              });
+            }
+          });
         }
       };
       
@@ -530,40 +573,39 @@
     }
     
     // Clean up event subscriptions
-    if (this.documentSelectedSubscription) {
-      this.documentSelectedSubscription();
-      this.documentSelectedSubscription = null;
-    }
+    Object.keys(this.eventSubscriptions).forEach(function(key) {
+      var unsubscribe = this.eventSubscriptions[key];
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    }, this);
     
-    if (this.documentUpdatedSubscription) {
-      this.documentUpdatedSubscription();
-      this.documentUpdatedSubscription = null;
-    }
+    // Clear subscriptions object
+    this.eventSubscriptions = {};
     
-    if (this.documentListToggledSubscription) {
-      this.documentListToggledSubscription();
-      this.documentListToggledSubscription = null;
-    }
+    // Remove DOM elements
+    Object.values(this.toggleDocumentListBtns).forEach(function(btn) {
+      if (btn && btn.parentNode) {
+        btn.parentNode.removeChild(btn);
+      }
+    });
     
-    if (this.stateLoadedSubscription) {
-      this.stateLoadedSubscription();
-      this.stateLoadedSubscription = null;
-    }
+    Object.values(this.documentListContainers).forEach(function(container) {
+      if (container && container.parentNode) {
+        container.parentNode.removeChild(container);
+      }
+    });
     
-    if (this.circleCreatedSubscription) {
-      this.circleCreatedSubscription();
-      this.circleCreatedSubscription = null;
-    }
+    Object.values(this.currentDocumentDisplays).forEach(function(display) {
+      if (display && display.parentNode) {
+        display.parentNode.removeChild(display);
+      }
+    });
     
-    if (this.circleDeletedSubscription) {
-      this.circleDeletedSubscription();
-      this.circleDeletedSubscription = null;
-    }
-    
-    if (this.circleUpdatedSubscription) {
-      this.circleUpdatedSubscription();
-      this.circleUpdatedSubscription = null;
-    }
+    // Clear DOM element references
+    this.toggleDocumentListBtns = {};
+    this.documentListContainers = {};
+    this.currentDocumentDisplays = {};
   };
   
 })(window.ChakraApp = window.ChakraApp || {});
