@@ -9,7 +9,7 @@
     <!-- Load in dependency order -->
     
     <!-- Core configuration and utilities -->
-    <script src="Config.js"></script>
+    <script src="config.js"></script>
     <script src="helpers.js"></script>
     <script src="MultiSelectionManager.js"></script>
     <script src="ClipboardManager.js"></script>
@@ -56,27 +56,50 @@
     <script src="App.js"></script>
 </head>
 <body>
-    <div id="left-panel">
-        <button id="add-circle-btn" class="add-btn">+</button>
-        <!-- Zoom buttons removed -->
-        <div id="zoom-container">
-            <!-- This will contain the background image and chakra circles -->
+    <!-- Main container for all panels -->
+    <div id="main-container">
+        <!-- Left Panel -->
+        <div id="left-panel" class="circle-panel" data-panel-id="left">
+            <button id="add-circle-btn-left" class="add-btn circle-btn" data-panel-id="left">+</button>
+            <div id="zoom-container-left" class="zoom-container" data-panel-id="left">
+                <!-- This will contain the background image and chakra circles for left panel -->
+            </div>
         </div>
-    </div>
-    <div id="right-container">
-        <!-- New top panel for controls -->
-        <div id="top-panel">
-            <!-- This will hold the color picker button and other controls -->
+        
+        <!-- Center Container -->
+        <div id="center-container">
+            <!-- Top Panel for controls -->
+            <div id="top-panel">
+                <!-- This will hold the color picker button and other controls -->
+            </div>
+            
+            <!-- Center Panel for squares -->
+            <div id="center-panel" class="square-panel">
+                <!-- Attribute grid section -->
+                <div id="attribute-grid">
+                    <!-- Dynamic content will be inserted here -->
+                </div>
+            </div>
+            
+            <!-- Bottom Circle Panel -->
+            <div id="bottom-panel" class="circle-panel" data-panel-id="bottom">
+                <button id="add-circle-btn-bottom" class="add-btn circle-btn" data-panel-id="bottom">+</button>
+                <div id="zoom-container-bottom" class="zoom-container" data-panel-id="bottom">
+                    <!-- This will contain the background image and chakra circles for bottom panel -->
+                </div>
+            </div>
         </div>
-        <!-- Bottom panel (former right panel) -->
-        <div id="bottom-panel">
-            <!-- Attribute grid section - this will be populated dynamically -->
-            <div id="attribute-grid">
-                <!-- Dynamic content will be inserted here -->
+        
+        <!-- Right Panel -->
+        <div id="right-panel" class="circle-panel" data-panel-id="right">
+            <button id="add-circle-btn-right" class="add-btn circle-btn" data-panel-id="right">+</button>
+            <div id="zoom-container-right" class="zoom-container" data-panel-id="right">
+                <!-- This will contain the background image and chakra circles for right panel -->
             </div>
         </div>
     </div>
     
+    <!-- Dialog overlay -->
     <div id="dialog-overlay">
         <div id="dialog-box">
             <div id="dialog-message">Are you sure you want to delete this item?</div>
