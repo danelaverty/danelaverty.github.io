@@ -1,5 +1,5 @@
 // src/models/Connection.js
-// Connection model for lines between squares
+// Connection model implementation with minimal code
 
 (function(ChakraApp) {
   /**
@@ -12,7 +12,6 @@
     
     // Initialize with data or defaults
     data = data || {};
-    
     this.sourceId = data.sourceId;
     this.targetId = data.targetId;
     this.length = data.length || 0;
@@ -22,12 +21,11 @@
   
   // Inherit from BaseModel
   ChakraApp.Connection.prototype = Object.create(ChakraApp.BaseModel.prototype);
+  ChakraApp.Connection.prototype.constructor = ChakraApp.Connection;
   
   // Connection-specific methods
-  ChakraApp.Connection.prototype.update = function(changes) {
-    // Call parent method
-    ChakraApp.BaseModel.prototype.update.call(this, changes);
-    return this;
+  ChakraApp.Connection.prototype._getEventType = function(action) {
+    return action === 'updated' ? ChakraApp.EventTypes.CONNECTION_UPDATED : null;
   };
   
   ChakraApp.Connection.prototype.toJSON = function() {
@@ -43,8 +41,4 @@
     
     return json;
   };
-  
-  // Set constructor property back to Connection
-  ChakraApp.Connection.prototype.constructor = ChakraApp.Connection;
-  
 })(window.ChakraApp = window.ChakraApp || {});

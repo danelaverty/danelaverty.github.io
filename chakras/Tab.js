@@ -1,4 +1,6 @@
 // src/models/Tab.js
+// Tab model implementation with minimal code
+
 (function(ChakraApp) {
   /**
    * Tab model
@@ -10,8 +12,6 @@
     
     // Initialize with data or defaults
     data = data || {};
-    
-    // Core properties
     this.name = data.name || "Tab " + (data.index || 1);
     this.circleId = data.circleId;
     this.index = data.index || 0;
@@ -20,34 +20,16 @@
   
   // Inherit from BaseModel
   ChakraApp.Tab.prototype = Object.create(ChakraApp.BaseModel.prototype);
+  ChakraApp.Tab.prototype.constructor = ChakraApp.Tab;
   
   // Tab-specific methods
-  ChakraApp.Tab.prototype.update = function(changes) {
-    // Call parent method
-    ChakraApp.BaseModel.prototype.update.call(this, changes);
-    
-    // Publish event for reactive updates
-    ChakraApp.EventBus.publish(ChakraApp.EventTypes.TAB_UPDATED, this);
-    
-    return this;
-  };
-  
-  ChakraApp.Tab.prototype.select = function() {
-    if (!this.selected) {
-      this.selected = true;
-      ChakraApp.EventBus.publish(ChakraApp.EventTypes.TAB_SELECTED, this);
-      this.notify({ type: 'select', model: this });
-    }
-    return this;
-  };
-  
-  ChakraApp.Tab.prototype.deselect = function() {
-    if (this.selected) {
-      this.selected = false;
-      ChakraApp.EventBus.publish(ChakraApp.EventTypes.TAB_DESELECTED, this);
-      this.notify({ type: 'deselect', model: this });
-    }
-    return this;
+  ChakraApp.Tab.prototype._getEventType = function(action) {
+    var types = {
+      'updated': ChakraApp.EventTypes.TAB_UPDATED,
+      'selected': ChakraApp.EventTypes.TAB_SELECTED,
+      'deselected': ChakraApp.EventTypes.TAB_DESELECTED
+    };
+    return types[action];
   };
   
   ChakraApp.Tab.prototype.toJSON = function() {
@@ -61,8 +43,4 @@
     
     return json;
   };
-  
-  // Set constructor property back to Tab
-  ChakraApp.Tab.prototype.constructor = ChakraApp.Tab;
-  
 })(window.ChakraApp = window.ChakraApp || {});

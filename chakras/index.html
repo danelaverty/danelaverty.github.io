@@ -6,11 +6,18 @@
     <title>Chakra Visualizer</title>
     <link rel="stylesheet" href="styles.css">
     
-    <!-- Load in dependency order -->
-    
-    <!-- Core configuration and utilities -->
     <script src="config.js"></script>
     <script src="helpers.js"></script>
+
+    <!-- Load in dependency order -->
+    <!--script src="Observable.js"></script>
+    <script src="Base.js"></script-->
+    <!--script src="StateManager.js"></script-->
+
+    <!-- Legacy Support -->
+    <script src="Events.js"></script>
+    
+    <!-- Core configuration and utilities -->
     <script src="MultiSelectionManager.js"></script>
     <script src="ClipboardManager.js"></script>
     <script src="OverlappingSquaresManager.js"></script>
@@ -25,7 +32,7 @@
     <script src="Square.js"></script>
     <script src="Tab.js"></script>
     <script src="Connection.js"></script>
-    
+
     <!-- State management -->
     <script src="AppState.js"></script>
     
@@ -51,6 +58,7 @@
     <script src="PanelController.js"></script>
     <script src="UIController.js"></script>
     <script src="KeyboardController.js"></script>
+    <script src="ImportExportController.js"></script>
     
     <!-- Main application -->
     <script src="App.js"></script>
@@ -60,6 +68,7 @@
     <div id="main-container">
         <!-- Left Panel -->
         <div id="left-panel" class="circle-panel" data-panel-id="left">
+		<h3>Feelings</h3>
             <button id="add-circle-btn-left" class="add-btn circle-btn" data-panel-id="left">+</button>
             <div id="zoom-container-left" class="zoom-container" data-panel-id="left">
                 <!-- This will contain the background image and chakra circles for left panel -->
@@ -83,6 +92,7 @@
             
             <!-- Bottom Circle Panel -->
             <div id="bottom-panel" class="circle-panel" data-panel-id="bottom">
+		<h3>Themes</h3>
                 <button id="add-circle-btn-bottom" class="add-btn circle-btn" data-panel-id="bottom">+</button>
                 <div id="zoom-container-bottom" class="zoom-container" data-panel-id="bottom">
                     <!-- This will contain the background image and chakra circles for bottom panel -->
@@ -92,10 +102,19 @@
         
         <!-- Right Panel -->
         <div id="right-panel" class="circle-panel" data-panel-id="right">
+		<h3>Things</h3>
             <button id="add-circle-btn-right" class="add-btn circle-btn" data-panel-id="right">+</button>
             <div id="zoom-container-right" class="zoom-container" data-panel-id="right">
                 <!-- This will contain the background image and chakra circles for right panel -->
             </div>
+        </div>
+        <div id="farRight-panel" class="circle-panel" data-panel-id="farRight">
+		<h3>Paths</h3>
+            <button id="add-circle-btn-farRight" class="add-btn circle-btn" data-panel-id="farRight">+</button>
+            <div id="zoom-container-farRight" class="zoom-container" data-panel-id="farRight">
+                <!-- This will contain the background image and chakra circles for farRight panel -->
+            </div>
+	    <div style="position: absolute; left: 10px; bottom: 20px; height: 200px; width: 190px; border: 1px solid #CCA;"><h3 style="color: #CCA;">Plans</h3></div>
         </div>
     </div>
     

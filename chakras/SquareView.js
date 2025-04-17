@@ -1,5 +1,5 @@
 // src/views/SquareView.js
-// View component for Square
+// Consolidated Square View implementation
 
 (function(ChakraApp) {
   /**
@@ -26,76 +26,64 @@
   ChakraApp.SquareView.prototype.constructor = ChakraApp.SquareView;
   
   // Render method
-	  ChakraApp.SquareView.prototype.render = function() {
-		  // Create main square element
-		  this.element = document.createElement('div');
-		  this.element.className = 'square';
+  ChakraApp.SquareView.prototype.render = function() {
+    // Create main square element
+    this.element = this._createElement('div', {
+      className: this.viewModel.isMe ? 'square special-me-square' : 'square',
+      dataset: { 
+        id: this.viewModel.id,
+        circleId: this.viewModel.circleId
+      },
+      style: {
+        width: this.viewModel.size + 'px',
+        height: this.viewModel.size + 'px',
+        left: this.viewModel.x + 'px',
+        top: this.viewModel.y + 'px',
+        backgroundColor: this.viewModel.color,
+        display: this.viewModel.isVisible ? 'flex' : 'none',
+        filter: this.viewModel.isBold ? 'brightness(1.4)' : 'none'
+      }
+    });
 
-		  // Add special class for Me square
-		  if (this.viewModel.isMe) {
-			  this.element.classList.add('special-me-square');
-		  }
+    // Add connection radius indicator
+    var maxLineLength = ChakraApp.Config.connections.maxLineLength;
+    this.radiusIndicator = this._createElement('div', {
+      className: 'connection-radius-indicator',
+      style: {
+        width: (maxLineLength * 2) + 'px',
+        height: (maxLineLength * 2) + 'px'
+      }
+    });
+    this.element.appendChild(this.radiusIndicator);
 
-		  // Set attributes
-		  this.element.dataset.id = this.viewModel.id;
-		  this.element.dataset.circleId = this.viewModel.circleId;
+    // Add attribute emoji if it exists
+    if (this.viewModel.emoji) {
+      var squareContent = this._createElement('div', {
+        className: 'square-content',
+        textContent: this.viewModel.emoji
+      });
+      this.element.appendChild(squareContent);
+    }
 
-		  // Set position and style
-		  this.element.style.width = this.viewModel.size + 'px';
-		  this.element.style.height = this.viewModel.size + 'px';
-		  this.element.style.left = this.viewModel.x + 'px';
-		  this.element.style.top = this.viewModel.y + 'px';
-		  this.element.style.backgroundColor = this.viewModel.color;
+    // Create name element
+    this.nameElement = this._createElement('div', {
+      className: 'item-name',
+      contentEditable: !this.viewModel.isMe,
+      textContent: this.viewModel.name,
+      style: {
+        fontWeight: this.viewModel.isBold ? 'bold' : 'normal'
+      }
+    });
+    this.element.appendChild(this.nameElement);
 
-		  // Set visibility
-		  this.element.style.display = this.viewModel.isVisible ? 'flex' : 'none';
+    // Apply selection state
+    if (this.viewModel.isSelected) {
+      this.element.classList.add('selected');
+    }
 
-		  // Add connection radius indicator
-		  var maxLineLength = ChakraApp.Config.connections.maxLineLength;
-		  this.radiusIndicator = document.createElement('div');
-		  this.radiusIndicator.className = 'connection-radius-indicator';
-
-		  // Set size based on maxLineLength (diameter = 2 * radius)
-		  this.radiusIndicator.style.width = (maxLineLength * 2) + 'px';
-		  this.radiusIndicator.style.height = (maxLineLength * 2) + 'px';
-
-		  // Add to square element
-		  this.element.appendChild(this.radiusIndicator);
-
-		  // Add attribute emoji if it exists
-		  if (this.viewModel.emoji) {
-			  var squareContent = document.createElement('div');
-			  squareContent.className = 'square-content';
-			  squareContent.textContent = this.viewModel.emoji;
-			  this.element.appendChild(squareContent);
-		  }
-
-		  // Create name element
-		  this.nameElement = document.createElement('div');
-		  this.nameElement.className = 'item-name';
-
-		  // Me squares have non-editable names
-		  if (this.viewModel.isMe) {
-			  this.nameElement.contentEditable = false;
-		  } else {
-			  this.nameElement.contentEditable = true;
-		  }
-
-		  this.nameElement.textContent = this.viewModel.name;
-		  if (this.viewModel.isBold) {
-			  this.nameElement.style.fontWeight = 'bold';
-			  this.element.style.filter = 'brightness(1.8)';
-		  }
-		  this.element.appendChild(this.nameElement);
-
-		  // Apply selection state
-		  if (this.viewModel.isSelected) {
-			  this.element.classList.add('selected');
-		  }
-
-		  // Add to parent element
-		  this.parentElement.appendChild(this.element);
-	  };
+    // Add to parent element
+    this.parentElement.appendChild(this.element);
+  };
   
   // Update view based on model changes
   ChakraApp.SquareView.prototype.update = function() {
@@ -113,14 +101,17 @@
     }
     
     if (this.viewModel.emoji) {
-      var squareContent = document.createElement('div');
-      squareContent.className = 'square-content';
-      squareContent.textContent = this.viewModel.emoji;
+      var squareContent = this._createElement('div', {
+        className: 'square-content',
+        textContent: this.viewModel.emoji
+      });
       this.element.appendChild(squareContent);
     }
     
     // Update name
     this.nameElement.textContent = this.viewModel.name;
+    
+    // Update bold state
     if (this.viewModel.isBold) {
       this.nameElement.style.fontWeight = 'bold';
       this.element.style.filter = 'brightness(1.4)';
@@ -128,322 +119,227 @@
       this.nameElement.style.fontWeight = 'normal';
       this.element.style.filter = 'none';
     }
-    
-    // Update visibility
-    this.element.style.display = this.viewModel.isVisible ? 'flex' : 'none';
-    
-    // Update selection state
-    if (this.viewModel.isSelected) {
-      this.element.classList.add('selected');
-    } else {
-      this.element.classList.remove('selected');
-    }
   };
   
-  // Subscribe to view model changes
-  ChakraApp.SquareView.prototype._setupViewModelSubscription = function() {
+  // Set up event listeners
+  ChakraApp.SquareView.prototype._setupEventListeners = function() {
     var self = this;
-    
-    // Subscribe to view model changes
-    this.viewModelSubscription = this.viewModel.subscribe(function(change) {
-      if (change.type === 'update') {
-        self.update();
-      } else if (change.type === 'select') {
-        self.element.classList.add('selected');
-      } else if (change.type === 'deselect') {
-        self.element.classList.remove('selected');
-      } else if (change.type === 'visibility') {
-        self.element.style.display = change.isVisible ? 'flex' : 'none';
+
+    // Click handler for selection
+    this.element.addEventListener('click', function(e) {
+      e.stopPropagation();
+
+      // Only select if we weren't just dragging
+      if (!window.wasDragged) {
+        if (e.shiftKey) {
+          // Multi-select mode - select this square and all connected squares
+          if (ChakraApp.appState.selectedSquareId && 
+              ChakraApp.appState.selectedSquareId !== self.viewModel.id) {
+            // Deselect previous square without clearing multi-selection state
+            var previousSquare = ChakraApp.appState.getSquare(ChakraApp.appState.selectedSquareId);
+            if (previousSquare) {
+              previousSquare.deselect();
+              ChakraApp.appState.selectedSquareId = null;
+            }
+          }
+          
+          // Select this square and its connections
+          ChakraApp.MultiSelectionManager.selectWithConnected(self.viewModel.id);
+          self.viewModel.select();
+        } else {
+          // Normal selection - clear any existing multi-selection
+          if (ChakraApp.MultiSelectionManager.hasSelection()) {
+            ChakraApp.MultiSelectionManager.clearSelection();
+          }
+          self.viewModel.select();
+        }
       }
     });
-  };
 
-  ChakraApp.SquareView.prototype._lightenColor = function(color, percent) {
-    // If color is in named format or rgba, return as is (could be enhanced to handle these)
-    if (!color.startsWith('#') && !color.startsWith('rgb(')) {
-      return color;
-    }
+    // Name input events
+    this.nameElement.addEventListener('blur', function() {
+      self.viewModel.updateName(this.textContent);
+    });
 
-    var rgb;
-
-    // Parse hex color
-    if (color.startsWith('#')) {
-      var hex = color.substring(1);
-      // Convert from shorthand hex if needed
-      if (hex.length === 3) {
-        hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    this.nameElement.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.blur();
       }
-      // Parse to RGB
-      rgb = [
-        parseInt(hex.substring(0, 2), 16),
-        parseInt(hex.substring(2, 4), 16),
-        parseInt(hex.substring(4, 6), 16)
-      ];
-    } 
-    // Parse rgb() format
-    else if (color.startsWith('rgb(')) {
-      var rgbStr = color.match(/\d+/g);
-      rgb = [
-        parseInt(rgbStr[0]),
-        parseInt(rgbStr[1]),
-        parseInt(rgbStr[2])
-      ];
-    }
+    });
 
-    // Lighten each component
-    for (var i = 0; i < 3; i++) {
-      rgb[i] = Math.min(255, Math.floor(rgb[i] + (255 - rgb[i]) * (percent / 100)));
-    }
+    this.nameElement.addEventListener('click', function(e) {
+      e.stopPropagation();
+    });
 
-    // Convert back to rgb format
-    return 'rgb(' + rgb[0] + ', ' + rgb[1] + ', ' + rgb[2] + ')';
+    // Add drag functionality
+    this._addDragFunctionality();
   };
   
-  // Setup event listeners
-ChakraApp.SquareView.prototype._setupEventListeners = function() {
-  var self = this;
-
-  // Click handler for selection
-  this.element.addEventListener('click', function(e) {
-    e.stopPropagation();
-
-    // Only select if we weren't just dragging
-    if (!window.wasDragged) {
-      if (e.shiftKey) {
-        // Multi-select mode - select this square and all connected squares
-        
-        // Check if there's another square already selected
-        if (ChakraApp.appState.selectedSquareId && 
-            ChakraApp.appState.selectedSquareId !== self.viewModel.id) {
-          // Another square is selected, and it's not this one
-          // Deselect it without clearing multi-selection state
-          var previousSquare = ChakraApp.appState.getSquare(ChakraApp.appState.selectedSquareId);
-          if (previousSquare) {
-            previousSquare.deselect();
-            // Don't call deselectSquare() as that would clear multi-selection
-            ChakraApp.appState.selectedSquareId = null;
-          }
-        }
-        
-        // Now select this square as primary and its connections
-        ChakraApp.MultiSelectionManager.selectWithConnected(self.viewModel.id);
-        
-        // Select this square as primary
-        self.viewModel.select();
-      } else {
-        // Normal selection
-        // Clear any existing multi-selection
-        if (ChakraApp.MultiSelectionManager.hasSelection()) {
-          ChakraApp.MultiSelectionManager.clearSelection();
-        }
-        
-        self.viewModel.select();
-      }
-    }
-  });
-
-  // Name input events
-  this.nameElement.addEventListener('blur', function() {
-    self.viewModel.updateName(this.textContent);
-  });
-
-  this.nameElement.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      this.blur();
-    }
-  });
-
-  this.nameElement.addEventListener('click', function(e) {
-    e.stopPropagation();
-  });
-
-  // Add drag functionality
-  this._addDragFunctionality();
-};
-  
-  // Add drag functionality
   // Add drag functionality
   ChakraApp.SquareView.prototype._addDragFunctionality = function() {
-	  var isDragging = false;
-	  var isGroupDragging = false;
-	  var startX, startY;
-	  var currentHoverBox = null;
-	  var self = this;
+    var isDragging = false;
+    var isGroupDragging = false;
+    var startX, startY;
+    var currentHoverBox = null;
+    var self = this;
 
-	  // Mouse down to start drag
-	  this.element.addEventListener('mousedown', function(e) {
-		  // Only start dragging if the element is the target (not children)
-		  if (e.target === self.element) {
-			  e.preventDefault();
-			  isDragging = true;
-			  window.wasDragged = false;
+    // Mouse down to start drag
+    this.element.addEventListener('mousedown', function(e) {
+      // Only start dragging if the element is the target (not children)
+      if (e.target === self.element) {
+        e.preventDefault();
+        isDragging = true;
+        window.wasDragged = false;
 
-			  // Store initial mouse position
-			  startX = e.clientX;
-			  startY = e.clientY;
+        // Store initial mouse position
+        startX = e.clientX;
+        startY = e.clientY;
 
-			  // Check if we should do group dragging
-			  isGroupDragging = ChakraApp.MultiSelectionManager.hasSelection() && 
-		  (self.viewModel.id === ChakraApp.MultiSelectionManager.primarySquareId || 
-		   ChakraApp.MultiSelectionManager.selectedSquareIds.includes(self.viewModel.id));
+        // Check if we should do group dragging
+        isGroupDragging = ChakraApp.MultiSelectionManager.hasSelection() && 
+            (self.viewModel.id === ChakraApp.MultiSelectionManager.primarySquareId || 
+            ChakraApp.MultiSelectionManager.selectedSquareIds.includes(self.viewModel.id));
 
-	  // Add dragging styles
-	  self.element.style.zIndex = 20;
+        // Add dragging styles
+        self.element.style.zIndex = 20;
+        self.element.classList.add('dragging');
 
-	  // Add dragging class to show connection radius
-	  self.element.classList.add('dragging');
+        // Show connection radius on all visible squares in the same circle
+        if (ChakraApp.appState.selectedCircleId) {
+          var allSquareElements = document.querySelectorAll('.square[data-circle-id="' + 
+              ChakraApp.appState.selectedCircleId + '"]');
+              
+          for (var i = 0; i < allSquareElements.length; i++) {
+            if (allSquareElements[i] !== self.element) {
+              allSquareElements[i].classList.add('square-dragging-active');
+            }
+          }
+        }
+      }
+    });
 
-	  // Show connection radius on all visible squares in the same circle
-	  if (ChakraApp.appState.selectedCircleId) {
-		  var allSquareElements = document.querySelectorAll('.square[data-circle-id="' + ChakraApp.appState.selectedCircleId + '"]');
-		  allSquareElements.forEach(function(squareEl) {
-			  if (squareEl !== self.element) { // Don't add to the dragged square
-				  squareEl.classList.add('square-dragging-active');
-			  }
-		  });
-	  }
-		  }
-	  });
+    // Global mouse move for drag
+    var mouseMoveHandler = function(e) {
+      if (isDragging) {
+        e.preventDefault();
+        window.wasDragged = true;
 
-	  // Global mouse move for drag
-	  var mouseMoveHandler = function(e) {
-		  if (isDragging) {
-			  e.preventDefault();
-			  window.wasDragged = true;
+        // Calculate movement delta
+        var dx = e.clientX - startX;
+        var dy = e.clientY - startY;
 
-			  // Calculate movement delta
-			  var dx = e.clientX - startX;
-			  var dy = e.clientY - startY;
+        // Update start position for next move
+        startX = e.clientX;
+        startY = e.clientY;
 
-			  // Update start position for next move
-			  startX = e.clientX;
-			  startY = e.clientY;
+        if (isGroupDragging) {
+          // Move the main square and all connected squares
+          ChakraApp.MultiSelectionManager.moveSelectedSquares(
+              self.viewModel, 
+              dx, 
+              dy, 
+              self.parentElement
+          );
+        } else {
+          // Regular single square dragging
+          // Calculate new position within the parent element's bounds
+          var parentRect = self.parentElement.getBoundingClientRect();
+          var newLeft = Math.max(0, Math.min(parentRect.width - self.element.clientWidth, 
+              self.viewModel.x + dx));
+          var newTop = Math.max(0, Math.min(parentRect.height - self.element.clientHeight, 
+              self.viewModel.y + dy));
 
-			  if (isGroupDragging) {
-				  // Move the main square and all connected squares using the MultiSelectionManager
-				  ChakraApp.MultiSelectionManager.moveSelectedSquares(
-						  self.viewModel, 
-						  dx, 
-						  dy, 
-						  self.parentElement
-						  );
-			  } else {
-				  // Regular single square dragging
-				  // Calculate new position within the parent element's bounds
-				  var parentRect = self.parentElement.getBoundingClientRect();
-				  var newLeft = Math.max(0, Math.min(parentRect.width - self.element.clientWidth, self.viewModel.x + dx));
-				  var newTop = Math.max(0, Math.min(parentRect.height - self.element.clientHeight, self.viewModel.y + dy));
+          // Update view model
+          self.viewModel.updatePosition(newLeft, newTop);
+        }
 
-				  // Update view model
-				  self.viewModel.updatePosition(newLeft, newTop);
-			  }
+        // Check if over an attribute box (only for single square dragging)
+        if (!self.viewModel.isMe && !isGroupDragging) {
+          var squareRect = self.element.getBoundingClientRect();
+          var hoveredBox = null;
 
-			  // Check if over an attribute box (only for single square dragging)
-			  if (!self.viewModel.isMe && !isGroupDragging) {
-				  var squareRect = self.element.getBoundingClientRect();
-				  var hoveredBox = null;
+          // Get all attribute boxes
+          var attributeBoxes = document.querySelectorAll('.attribute-box');
 
-				  // Get all attribute boxes
-				  var attributeBoxes = document.querySelectorAll('.attribute-box');
+          // Check each attribute box for intersection
+          for (var i = 0; i < attributeBoxes.length; i++) {
+            var box = attributeBoxes[i];
+            var boxRect = box.getBoundingClientRect();
 
-				  // Check each attribute box for intersection
-				  attributeBoxes.forEach(function(box) {
-					  var boxRect = box.getBoundingClientRect();
+            // Simple intersection check
+            if (squareRect.left < boxRect.right && 
+                squareRect.right > boxRect.left &&
+                squareRect.top < boxRect.bottom &&
+                squareRect.bottom > boxRect.top) {
+              hoveredBox = box;
+              break;
+            }
+          }
 
-					  // Simple intersection check
-					  if (squareRect.left < boxRect.right && 
-						  squareRect.right > boxRect.left &&
-						  squareRect.top < boxRect.bottom &&
-						  squareRect.bottom > boxRect.top) {
-							  hoveredBox = box;
-						  }
-				  });
+          // Update highlight
+          if (currentHoverBox && currentHoverBox !== hoveredBox) {
+            currentHoverBox.classList.remove('highlight');
+          }
 
-				  // Update highlight
-				  if (currentHoverBox && currentHoverBox !== hoveredBox) {
-					  currentHoverBox.classList.remove('highlight');
-				  }
+          if (hoveredBox) {
+            hoveredBox.classList.add('highlight');
+          }
 
-				  if (hoveredBox) {
-					  hoveredBox.classList.add('highlight');
-				  }
+          currentHoverBox = hoveredBox;
+        }
+      }
+    };
 
-				  currentHoverBox = hoveredBox;
-			  }
-		  }
-	  };
+    // Global mouse up to end drag
+    var mouseUpHandler = function() {
+      if (isDragging) {
+        isDragging = false;
+        self.element.style.zIndex = self.viewModel.isSelected ? 15 : 
+            (self.element.classList.contains('overlapping') ? 12 : 10);
 
-	  // Global mouse up to end drag
-	  var mouseUpHandler = function(e) {
-		  if (isDragging) {
-			  isDragging = false;
-			  self.element.style.zIndex = self.viewModel.isSelected ? 15 : (self.element.classList.contains('overlapping') ? 12 : 10);
+        // Remove dragging class
+        self.element.classList.remove('dragging');
 
-			  // Remove dragging class
-			  self.element.classList.remove('dragging');
+        // Hide connection radius on all squares
+        var activeElements = document.querySelectorAll('.square-dragging-active');
+        for (var i = 0; i < activeElements.length; i++) {
+          activeElements[i].classList.remove('square-dragging-active');
+        }
 
-			  // Hide connection radius on all squares
-			  var allSquareElements = document.querySelectorAll('.square-dragging-active');
-			  allSquareElements.forEach(function(squareEl) {
-				  squareEl.classList.remove('square-dragging-active');
-			  });
+        // Clean up group dragging state
+        if (isGroupDragging) {
+          ChakraApp.MultiSelectionManager.endGroupDragging();
+          isGroupDragging = false;
+        }
 
-			  // Clean up group dragging state
-			  if (isGroupDragging) {
-				  ChakraApp.MultiSelectionManager.endGroupDragging();
-				  isGroupDragging = false;
-			  }
+        // Check if dropped on an attribute box
+        if (currentHoverBox && !self.viewModel.isMe && !isGroupDragging) {
+          var attributeType = currentHoverBox.dataset.attribute;
+          self.viewModel.applyAttribute(attributeType);
+          currentHoverBox.classList.remove('highlight');
+        }
 
-			  // Check if dropped on an attribute box (only for single square drag)
-			  if (currentHoverBox && !self.viewModel.isMe && !isGroupDragging) {
-				  var attributeType = currentHoverBox.dataset.attribute;
+        currentHoverBox = null;
 
-				  // Apply the attribute
-				  self.viewModel.applyAttribute(attributeType);
+        // Save state when drag completes
+        ChakraApp.appState.saveToStorageNow();
 
-				  // Remove highlight
-				  currentHoverBox.classList.remove('highlight');
-			  }
+        // Reset drag state after a short delay
+        setTimeout(function() {
+          window.wasDragged = false;
+        }, 50);
+      }
+    };
 
-			  currentHoverBox = null;
+    // Add global event listeners
+    document.addEventListener('mousemove', mouseMoveHandler);
+    document.addEventListener('mouseup', mouseUpHandler);
 
-			  // Save state when drag completes
-			  ChakraApp.appState.saveToStorageNow();
-
-			  // Reset drag state after a short delay
-			  setTimeout(function() {
-				  window.wasDragged = false;
-			  }, 50);
-		  }
-	  };
-
-	  // Add global event listeners
-	  document.addEventListener('mousemove', mouseMoveHandler);
-	  document.addEventListener('mouseup', mouseUpHandler);
-
-	  // Store handlers for cleanup
-	  this.dragHandlers = {
-		  mouseMoveHandler: mouseMoveHandler,
-		  mouseUpHandler: mouseUpHandler
-	  };
+    // Store handlers for cleanup
+    this._addHandler(function() {
+      document.removeEventListener('mousemove', mouseMoveHandler);
+      document.removeEventListener('mouseup', mouseUpHandler);
+    });
   };
-  
-  // Clean up resources
-  ChakraApp.SquareView.prototype.destroy = function() {
-    // Call parent destroy method
-    ChakraApp.BaseView.prototype.destroy.call(this);
-    
-    // Clean up view model subscription
-    if (this.viewModelSubscription) {
-      this.viewModelSubscription();
-    }
-    
-    // Clean up drag handlers
-    if (this.dragHandlers) {
-      document.removeEventListener('mousemove', this.dragHandlers.mouseMoveHandler);
-      document.removeEventListener('mouseup', this.dragHandlers.mouseUpHandler);
-    }
-  };
-  
 })(window.ChakraApp = window.ChakraApp || {});

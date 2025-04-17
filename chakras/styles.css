@@ -1,80 +1,123 @@
-/* Base layout */
+/* Optimized CSS - Part 1: Core Variables and Base Layout */
+
+/* Base variables for consistent theming */
+:root {
+  /* Color palette */
+  --color-bg-dark: #000;
+  --color-bg-panel: #222;
+  --color-bg-dialog: #222;
+  --color-border: #444;
+  --color-text: white;
+  --color-text-dim: #aaa;
+  --color-btn: #555;
+  --color-btn-hover: #777;
+  --color-btn-danger: #f44336;
+  --color-highlight: rgba(255, 255, 255, 0.7);
+  --color-dim: rgba(0, 0, 0, 0.7);
+  
+  /* Shadows */
+  --shadow-standard: 0 2px 8px rgba(0, 0, 0, 0.5);
+  --shadow-emphasized: 0 4px 15px rgba(0, 0, 0, 0.5);
+  
+  /* Dimensions */
+  --circle-size: 20px;
+  --square-size: 30px;
+  --btn-size: 40px;
+  --radius-standard: 5px;
+  --panel-border: 2px solid var(--color-border);
+  
+  /* Animation speeds */
+  --transition-standard: 0.3s ease;
+  --transition-fast: 0.2s ease;
+}
+
+/* ---------- BASE LAYOUT ---------- */
 html, body {
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-    height: 100vh;
-    width: 100vw;
-    background-color: black;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  background-color: var(--color-bg-dark);
+  font-family: Arial, sans-serif;
 }
 
-body {
-    margin: 0;
-    padding: 0;
-    font-family: Arial, sans-serif;
-    overflow: hidden;
-    height: 100vh;
-    display: flex;
-    position: relative;
+h3 {
+	color: #AAA;
+	position: absolute;
+	top: -12px;
+	padding: 0px 6px;
+	white-space: nowrap;
 }
 
-body.right-panel-hidden {
-    padding-right: 0;
+#main-container {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
-body.right-panel-visible {
-    padding-right: 0;
+/* Panel Base Styles */
+.circle-panel {
+  background-color: var(--color-bg-dark);
+  position: relative;
+  user-select: none;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.4s ease, opacity 0.4s ease, width 0.4s ease, height 0.4s ease;
 }
 
-/* Panels */
 #left-panel {
-    width: 400px;
-    height: 100vh;
-    background-color: black;
-    position: relative;
-    user-select: none;
-    overflow: hidden;
+  width: 400px;
+  height: 100%;
+  border-right: var(--panel-border);
 }
 
-#left-panel::before {
-    content: "";
-    position: absolute;
-    top: 40px;
-    left: 0px;
-    width: 320px; /* Fixed width */
-    height: 750px; /* Fixed height */
-    background-repeat: no-repeat;
-    background-position: top left;
-    background-size: 100% 100%;
-    opacity: 0.3;
-    pointer-events: none;
-    z-index: 1;
+#right-panel {
+  height: 100%;
+  border-left: var(--panel-border);
 }
 
-/* New right-side container with two panels */
-#right-container {
-    flex: 0 0 auto; /* Don't grow or shrink, use exact width */
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    border-left: 2px solid #AAA;
-    transition: transform 0.4s ease, opacity 0.4s ease;
-    transform: translateX(100%);
-    opacity: 0;
-    position: absolute;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    width: calc(100% - 400px); /* 400px is the width of the left panel */
-    overflow: hidden;
+#farRight-panel {
+  height: 100%;
+  border-left: var(--panel-border);
 }
 
-#right-container.visible {
-    transform: translateX(0);
-    opacity: 1;
+#bottom-panel {
+  width: 100%;
+  border-top: var(--panel-border);
 }
 
-/* Top panel for controls */
+/* Hidden Panel States */
+.circle-panel.hidden {
+  transform: translateX(-100%);
+  opacity: 0;
+  width: 0;
+}
+
+#right-panel.hidden {
+  transform: translateX(100%);
+}
+
+#farRight-panel.hidden {
+  transform: translateX(100%);
+}
+
+#bottom-panel.hidden {
+  transform: translateY(100%);
+  height: 0;
+}
+
+/* Center Container */
+#center-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
 #top-panel {
   display: flex;
   flex-direction: column;
@@ -82,1106 +125,315 @@ body.right-panel-visible {
   padding: 10px 20px;
   height: auto;
   min-height: 80px;
+  background-color: var(--color-bg-dark);
+  border-bottom: 1px solid var(--color-border);
 }
 
-/* Bottom panel (former right panel) */
-#bottom-panel {
-    flex: 1; /* Take remaining vertical space */
-    background-color: black;
-    position: relative;
-    user-select: none;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    padding-bottom: 50px;
+#center-panel {
+  flex: 1;
+  background-color: var(--color-bg-dark);
+  position: relative;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-/* Update the active state */
-#bottom-panel.active {
-    /* No background color change, just indicating active state */
+/* Zoom Containers */
+.zoom-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
 }
 
-#left-panel, #bottom-panel {
-    padding-bottom: 50px;
+/* Add silhouette background to left panel */
+#zoom-container-left::before {
+  content: "";
+  position: absolute;
+  top: 40px;
+  left: 10px;
+  width: 320px;
+  height: 750px;
+  opacity: 0.3;
+  pointer-events: none;
+  z-index: 1;
 }
 
-/* Add buttons */
-.add-btn {
-    position: absolute;
-    top: 20px;
-    width: 40px;
-    height: 40px;
-    background-color: #555;
-    color: white;
-    border: none;
-    border-radius: 50%;
-    font-size: 24px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-    z-index: 100;
+#zoom-container-left::before {
+    background-image: url('body-silhouette-white.png');
+    background-repeat: no-repeat;
+    background-position: top left;
+    background-size: 100% 100%;
 }
 
-.add-btn:hover {
-    background-color: #777;
-}
+/* Optimized CSS - Part 2: Common UI Elements and Buttons */
 
-#add-circle-btn {
-    left: 20px;
-}
+/* ---------- COMMON UI ELEMENTS ---------- */
 
-#add-square-btn {
-    right: 20px;
-    display: none; /* Initially hidden until a circle is selected */
-}
-
-/* Circles and Squares */
-.circle, .square {
-    position: absolute;
-    cursor: move;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    z-index: 10;
-    transition: box-shadow 0.2s ease;
-    transform: translate(-50%, -50%);
-    margin-bottom: 20px;
-}
-
-.square {
-    border-radius: 5px;
-    padding: 2px;
-}
-
-.circle {
-    border-radius: 50%;
-}
-
-.circle.selected, .square.selected {
-    box-shadow: 0 0 12px 4px white;
-    z-index: 15;
-}
-
-.item-name {
-    position: absolute;
-    top: 120%;
-    left: 50%;
-    transform: translateX(-50%);
-    color: white;
-    font-size: 11px;
-    background: rgba(0, 0, 0, 0.7);
-    border: none;
-    text-align: center;
-    outline: none;
-    padding: 3px 5px;
-    border-radius: 3px;
-    z-index: 25;
-    white-space: nowrap;
-    
-    /* Add these for contenteditable behavior */
-    cursor: text;
-    user-select: text;
-    box-sizing: border-box;
-    max-height: none;
-
-    spellcheck: false;
-    -webkit-spellcheck: false;
-}
-
-.square .item-name {
-	white-space: normal;
-	max-width: 100px;
-	width: max-content;
-}
-
-.circle.selected .item-name,
-.square.selected .item-name {
-    z-index: 30;
-}
-
-.item-name:hover, .item-name:focus {
-    background-color: rgba(0, 0, 0, 0.8);
-    z-index: 100;
-}
-
-.item-buttons {
-    position: absolute;
-    top: -20px;
-    display: flex;
-    gap: 5px;
-}
-
-.item-button {
-    background-color: #555;
-    color: white;
-    border: none;
-    border-radius: 3px;
-    padding: 3px 6px;
-    font-size: 12px;
-    cursor: pointer;
-}
-
-.item-button:hover {
-    background-color: #777;
-}
-
-/* Animation for when attribute grid becomes visible */
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px) scale(0.95);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
-}
-
-#attribute-grid.visible {
-    animation: fadeIn 0.4s ease-out forwards;
-}
-
-.attribute-box {
-	width: 62px !important;
-	min-width: 62px !important;
-	flex-shrink: 0;
-	flex-grow: 0;
-}
-
-.attribute-box.highlight {
-    box-shadow: 0 0 15px white;
-}
-
-.attribute-box .emoji {
-    font-size: 28px; /* Smaller emoji */
-    margin-bottom: 6px; /* Less space beneath emoji */
-}
-
-#ally-box {
-    background-color: #FF8C00;
-}
-
-#key-box {
-    background-color: #8B4513;
-    color: white;
-    text-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
-}
-
-#door-box {
-    background-color: #AA0000;
-    color: white;
-    text-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
-}
-
-#treasure-box {
-    background-color: #0000FF;
-}
-
-#demon-box {
-    background-color: #663399;
-}
-
-#sword-box {
-    background-color: #C0C0C0;
-}
-
-/* Square attribute styles */
-.square-content {
-    font-size: 24px;
-    position: absolute;
-    pointer-events: none;
-    z-index: 20; /* Ensure emoji is visible on top */
-}
-
-/* Delete dialog */
-#dialog-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: none;
-    z-index: 1000;
-    justify-content: center;
-    align-items: center;
-}
-
-#dialog-box {
-    background-color: #222;
-    padding: 20px;
-    border-radius: 5px;
-    color: white;
-    text-align: center;
-}
-
-#dialog-buttons {
-    margin-top: 15px;
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-}
-
-.dialog-button {
-    padding: 5px 15px;
-    border: none;
-    border-radius: 3px;
-    cursor: pointer;
-}
-
-#dialog-confirm {
-    background-color: #f44336;
-    color: white;
-}
-
-#dialog-cancel {
-    background-color: #555;
-    color: white;
-}
-
-/* Hide debug panel */
-#debug-panel {
-    display: none !important;
-}
-
-/* Circle glow effect */
-.circle-glow {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    z-index: 1;
-    -webkit-animation: glow 3s linear 0s infinite alternate;
-    pointer-events: none;
-}
-
-@-webkit-keyframes glow {
-    0% {
-        -webkit-filter: blur(5px);
-    }
-    100% {
-        -webkit-filter: blur(10px);
-    }
-}
-
-.circle {
-    background-color: transparent !important; /* Remove background from parent */
-}
-
-/* Particle animations */
-.particles {
-    position: absolute;
-}
-.angle {
-    position: absolute;
-    top: 0;
-    left: 0;
-}
-.position {
-    position: absolute;
-    top: 0;
-    left: 0;
-}
-.pulse {
-    position: absolute;
-    top: 0;
-    left: 0;
-}
-.particle {
-    position: absolute;
-    width: 3px;
-    height: 3px;
-    border-radius: 50%;
-    border: 1px solid white;
-}
-.pulse{
-    -webkit-animation: pulse 1.5s linear 0s infinite alternate;
-}
-@-webkit-keyframes angle {
-    0% {
-        -webkit-transform: rotate(0deg);
-    }
-    100% {
-        -webkit-transform: rotate(360deg);
-    }
-}
-@-webkit-keyframes anglerev {
-    0% {
-        -webkit-transform: rotate(360deg);
-    }
-    100% {
-        -webkit-transform: rotate(0deg);
-    }
-}
-@-webkit-keyframes position {
-    0% {
-        -webkit-transform: translate(0,0);
-        opacity: 1;
-    }
-    100% {
-        -webkit-transform: translate(5px,5px);
-        opacity: 0;
-    }
-}
-@-webkit-keyframes pulse {
-    0% {
-        -webkit-transform: scale(1);
-    }
-    100% {
-        -webkit-transform: scale(.5);
-    }
-}
-.particles .angle:nth-child(1){
-    -webkit-animation: angle 10s steps(5) 0s infinite;
-}
-.particles .angle:nth-child(1) .position{
-    -webkit-animation: position 2s linear 0s infinite;
-}
-.particles .angle:nth-child(2){
-    -webkit-animation: angle 4.95s steps(3) -1.65s infinite;
-}
-.particles .angle:nth-child(2) .position{
-    -webkit-animation: position 1.65s linear 0s infinite;
-}
-
-/* Add these styles to your styles.css file */
-
-/* Meridian line styling */
-#meridian-line {
-    box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
-}
-
-/* Optional: Style for circle when snapping to meridian */
-.circle.snapping {
-    box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
-}
-
-/* Optional: Subtle animation for snapping effect */
-@keyframes snap-pulse {
-    0% { box-shadow: 0 0 12px rgba(255, 255, 255, 0.8); }
-    50% { box-shadow: 0 0 18px rgba(255, 255, 255, 0.9); }
-    100% { box-shadow: 0 0 12px rgba(255, 255, 255, 0.8); }
-}
-
-.circle.snapping {
-    animation: snap-pulse 1s infinite;
-}
-
-.outer-polygon-container {
-	position: absolute;
-}
-
-.inner-polygon-container {
-	position: absolute;
-	transform-origin: 50% 50%;
-	width: 0;
-	height: 0;
-}
-
-.shape {
-	width: 40px;
-	height: 40px;
-	background-color: #FFA;
-	transform: translate(-50%, -50%);
-}
-
-
-/* Adding the following to the end of styles.css */
-
-/* Styling for attribute boxes to look more like buttons */
-.attribute-box.create-button {
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-}
-
-@keyframes ripple {
-    0% {
-        opacity: 1;
-        transform: scale(0, 0) translate(-50%, -50%);
-    }
-    100% {
-        opacity: 0;
-        transform: scale(20, 20) translate(-50%, -50%);
-    }
-}
-
-/* Circle dimming styles */
-
-/* Normal state of circles */
-.circle {
-    transition: all 0.3s ease-out;
-}
-
-/* Dimmed state for unselected circles */
-.circle.dimmed {
-    opacity: 0.35;
-}
-
-/* Add a subtle pulsing animation to the selected circle to make it stand out more */
-.circle.selected {
-    animation: selected-pulse 3s ease-in-out infinite;
-}
-
-@keyframes selected-pulse {
-    0% { box-shadow: 0 0 12px 4px rgba(255, 255, 255, 0.8); }
-    50% { box-shadow: 0 0 18px 6px rgba(255, 255, 255, 1); }
-    100% { box-shadow: 0 0 12px 4px rgba(255, 255, 255, 0.8); }
-}
-
-/* Make sure when hovering on dimmed circles, they become slightly more visible */
-.circle.dimmed:hover {
-    opacity: 0.85;
-}
-
-.action-btn {
-  width: 40px;
-  height: 40px;
-  background-color: #333;
-  color: white;
+/* Button Base Style */
+.btn {
+  background-color: var(--color-btn);
+  color: var(--color-text);
   border: none;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.btn:hover {
+  background-color: var(--color-btn-hover);
+}
+
+.btn:active {
+  transform: scale(0.95);
+}
+
+/* Round Button Style */
+.btn-round {
   border-radius: 50%;
-  font-size: 20px;
+  width: var(--btn-size);
+  height: var(--btn-size);
   display: flex;
   justify-content: center;
   align-items: center;
-  cursor: pointer;
+}
+
+/* Add Buttons */
+.add-btn {
+  position: absolute;
+  top: 30px;
+  font-size: 13px;
   z-index: 100;
-  transition: all 0.3s ease;
-  align-self: flex-start;
+}
+
+.add-btn.circle-btn {
+  left: 45px;
+}
+
+/* Document Toggle Button */
+.document-toggle-btn {
+  position: absolute;
+  top: 80px;
+  left: 20px;
+  z-index: 100;
+}
+
+#bottom-panel .document-toggle-btn {
+  top: 20px;
+  left: 80px;
+}
+
+/* Action Button Container */
+.action-btn-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-right: 0px;
+}
+
+.action-btn-title {
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--color-text-dim);
+  text-align: center;
+  margin-bottom: 5px;
+  user-select: none;
+  opacity: 0;
+  transform: translateY(5px);
+  transition: opacity var(--transition-standard), transform var(--transition-standard);
+  display: none;
+}
+
+.action-btn {
+  width: 35px;
+  height: 35px;
+  background-color: var(--color-btn);
+  transition: all var(--transition-fast);
 }
 
 .action-btn:hover {
-  background-color: #555;
-  transform: scale(1.1);
+  background-color: var(--color-btn-hover);
+  transform: scale(1.05);
 }
 
-/* Move buttons to top panel */
-#top-panel .action-btn {
-    position: relative; /* Change from absolute to relative */
-    left: auto; /* Reset absolute positioning */
-    top: auto; /* Reset absolute positioning */
-    margin-right: 15px; /* Add margin between buttons */
+/* Show titles when buttons are visible */
+.action-btn-container:has(.action-btn[style*="display: flex"]) .action-btn-title {
+  opacity: 1;
+  transform: translateY(0);
 }
 
-/* Style for when buttons are active */
-.action-btn.active {
-    background-color: #777;
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-}
-
-/* Color picker container adjustments */
-.color-picker-modal {
-    position: absolute; /* Change to absolute for proper positioning */
-    display: none;
-    background-color: #222;
-    border-radius: 8px;
-    border: 1px solid #444;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
-    z-index: 1000;
-    width: 280px; /* Width to accommodate two columns and crystal names */
-    max-height: 80vh;
-    overflow-y: auto;
-    padding: 10px;
-    transform-origin: top left;
-    animation: colorPickerFadeIn 0.2s ease-out forwards;
-}
-
-@keyframes colorPickerFadeIn {
-    from {
-        opacity: 0;
-        transform: scale(0.95);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
-/* Main grid container for the color picker */
-.color-grid {
-    display: flex;
-    gap: 10px;
-    width: 100%;
-}
-
-/* Each color family is now a column */
-.color-family {
-    padding: 8px;
-    border-radius: 4px;
-    border: 1px solid #333;
-    width: calc(50% - 5px); /* 50% width minus half the gap */
-}
-
-/* Family name header */
-.family-name {
-    font-size: 11px;
-    font-weight: bold;
-    margin-bottom: 10px;
-    text-align: center;
-    color: #333;
-    user-select: none;
-}
-
-/* Container for all swatches in a family */
-.swatches-container {
-    display: flex;
-    flex-direction: column; /* Stack vertically */
-    gap: 8px;
-}
-
-/* Container for each individual color option */
-.color-option {
-    display: flex;
-    align-items: center;
-    padding: 2px;
-    border-radius: 3px;
-    transition: background-color 0.2s;
-    cursor: pointer;
-}
-
-/* Hover effect for the entire color option */
-.color-option:hover {
-    background-color: rgba(255, 255, 255, 0.2);
-}
-
-/* Crystal name styling */
-.crystal-name {
-    font-size: 10px;
-    color: #333;
-    flex-grow: 1;
-    margin-right: 8px;
-    text-align: right;
-    font-weight: 500;
-}
-
-.color-swatch {
-    width: 20px;
-    height: 20px;
-    border-radius: 3px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-
-/* Color swatch styling */
-.color-swatch {
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
-  position: absolute;
-  left: 3px;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-/* Swatch hover effect */
-.color-option:hover .color-swatch {
-    transform: scale(1.2);
-    box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
-}
-
-/* Header for the color picker */
-.color-picker-header {
-    text-align: center;
-    color: #eee;
-    margin-bottom: 10px;
-    font-size: 12px;
-    border-bottom: 1px solid #444;
-    padding-bottom: 5px;
-}
-
-/* Close button */
-.color-picker-close {
-    position: absolute;
-    top: 8px;
-    right: 10px;
-    background: none;
-    border: none;
-    color: #aaa;
-    font-size: 18px;
-    cursor: pointer;
-    z-index: 1001;
-}
-
-.color-picker-close:hover {
-    color: white;
-}
-
-/* Top panel title and controls */
-.panel-title {
-    color: white;
-    font-size: 16px;
-    font-weight: bold;
-    margin-right: 20px;
-}
-
+/* Top Panel Controls */
 .top-panel-controls {
   display: flex;
   gap: 15px;
   align-self: flex-start;
   justify-content: flex-start;
   width: 100%;
+  flex-wrap: wrap;
 }
 
-.action-btn-container {
+/* Current Value Display */
+.current-value {
+  font-size: 11px;
+  color: var(--color-text);
+  background: rgba(60, 60, 60, 0.8);
+  padding: 3px 6px;
+  border-radius: var(--radius-standard);
+  min-width: 50px;
+  white-space: nowrap;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-/* Style for buttons in the top panel */
-#top-panel .action-btn {
-    width: 35px;
-    height: 35px;
-    background-color: #333;
-    transition: all 0.2s ease;
-}
-
-#top-panel .action-btn:hover {
-    background-color: #555;
-    transform: scale(1.05);
-}
-
-.special-me-square {
-    position: absolute !important;
-    z-index: 5;
-    pointer-events: auto;
-    user-select: none;
-    cursor: move !important;
-    transform: translate(-50%, -50%) scale(1.05);
-    /* Remove transition for more immediate response */
-    transition: box-shadow 0.2s ease;
-}
-
-.special-me-square:hover {
-    /* Remove transform effects that could slow it down */
-    box-shadow: 0 0 15px rgba(255, 255, 255, 0.7) !important;
-}
-
-/* Connection lines styling */
-#line-container {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 5;
-}
-
-.connection-line {
-    position: absolute;
-    height: 1px;
-    background-color: rgba(255, 255, 255, 0.8);
-    transform-origin: left center;
-    z-index: 1;
-    pointer-events: none;
-    box-shadow: 0 0 2px rgba(255, 255, 255, 0.2);
-    transition: opacity 0.6s ease;
-}
-
-/* Make lines more visible when a square is selected */
-.square.selected ~ #line-container .connection-line {
-    background-color: rgba(255, 255, 255, 0.5);
-    height: 1.5px;
-    box-shadow: 0 0 3px rgba(255, 255, 255, 0.3);
-}
-
-/* Line highlight for the shortest connection to Me square */
-.connecting-line-highlight {
-    background: linear-gradient(90deg, 
-        rgba(255, 215, 0, 0.3), 
-        rgba(255, 223, 0, 0.9), 
-        rgba(255, 215, 0, 0.3)) !important; /* Golden gradient */
-    height: 3px !important;
-    box-shadow: 
-        0 0 8px rgba(255, 215, 0, 0.8),
-        0 0 12px rgba(255, 215, 0, 0.6),
-        0 0 16px rgba(255, 215, 0, 0.4) !important; /* Multiple glows */
-    z-index: 6 !important;
-    animation: 
-        pulse-connection 2s infinite alternate,
-        sparkle-motion 4s linear infinite;
-    position: absolute;
-    overflow: visible;
-}
-
-/* Pseudo-elements for sparkles */
-.connecting-line-highlight::before,
-.connecting-line-highlight::after {
-    content: '';
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    top: 0;
-    left: 0;
-    background-image: 
-        radial-gradient(circle, rgba(255, 255, 255, 0.9) 1px, transparent 1px),
-        radial-gradient(circle, rgba(255, 255, 255, 0.7) 1px, transparent 1px),
-        radial-gradient(circle, rgba(255, 255, 255, 0.5) 1px, transparent 1px);
-    background-size: 6px 6px, 10px 10px, 4px 4px;
-    animation: sparkle-drift 3s linear infinite;
-    pointer-events: none;
-}
-
-.connecting-line-highlight::after {
-    animation-direction: reverse;
-    animation-duration: 5s;
-    background-position: 3px 3px, 5px 5px, 2px 2px;
-}
-
-@keyframes pulse-connection {
-    0% {
-        background: linear-gradient(90deg, 
-            rgba(255, 215, 0, 0.9), 
-            rgba(255, 223, 0, 1), 
-            rgba(255, 215, 0, 0.9));
-        box-shadow: 
-            0 0 6px rgba(255, 215, 0, 0.7),
-            0 0 10px rgba(255, 215, 0, 0.5),
-            0 0 14px rgba(255, 215, 0, 0.3);
-    }
-    100% {
-        background: linear-gradient(90deg, 
-            rgba(255, 215, 0, 0.9), 
-            rgba(255, 223, 0, 1), 
-            rgba(255, 215, 0, 0.5));
-        box-shadow: 
-            0 0 10px rgba(255, 215, 0, 0.9),
-            0 0 15px rgba(255, 215, 0, 0.7),
-            0 0 20px rgba(255, 215, 0, 0.5);
-    }
-}
-
-@keyframes sparkle-motion {
-    0%, 100% { opacity: 0.95; }
-    25% { opacity: 1; }
-    50% { opacity: 1; }
-    75% { opacity: 0.8; }
-}
-
-@keyframes sparkle-drift {
-    from { background-position: 0 0, 0 0, 0 0; }
-    to { background-position: 10px 10px, -10px 10px, 5px -5px; }
-}
-
-/* Closest square indicator styling */
-.closest-square-indicator {
-    position: absolute;
-    top: calc(120% + 1.5em); /* Position below the circle name */
-    left: 50%;
-    transform: translateX(-50%);
-    color: rgba(255, 215, 0, 0.9);
-    font-size: 9px;
-    border-radius: 10px;
-    white-space: nowrap;
-    z-index: 35; /* Above other name elements */
-    pointer-events: none; /* Don't interfere with clicks */
-}
-
-/* Zoom container styles */
-#zoom-container {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-}
-
-/* Update the silhouette background to be attached to the zoom container instead of the left panel */
-#left-panel::before {
-    content: none; /* Remove the existing background */
-}
-
-#zoom-container::before {
-    content: "";
-    position: absolute;
-    top: 40px;
-    left: 10px;
-    width: 320px; /* Fixed width */
-    height: 750px; /* Fixed height */
-    /*background-image: url('body-silhouette-white.png');
-    background-repeat: no-repeat;
-    background-position: top left;
-    background-size: 100% 100%;*/
-    opacity: 0.3;
-    pointer-events: none;
-    z-index: 1;
-}
-
-.no-transition {
-    transition: none !important;
-}
-
-.circle .item-name {
-	transform-origin: top center;
-}
-
-.circle .particles,
-.circle .circle-glow {
-	transform-origin: center center;
-}
-
-.circle .shape {
-	transform-origin: center center;
-}
-
-
-/* Adjust attribute grid layout */
-#attribute-grid {
-	display: flex;
-	flex-direction: row;
-	flex-wrap: nowrap;
-	padding: 5px;
-	gap: 8px;
-	width: auto;
-	max-width: none;
-	margin: 0;
-	overflow-x: auto;
-	overflow-y: hidden;
-	-webkit-overflow-scrolling: touch;
-}
-
-/* Set fixed width for all attribute boxes */
-.attribute-box {
-    width: 62px !important; /* Fixed width */
-    height: auto !important;
-    padding: 1px !important;
-    flex-grow: 0;
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
-
-/* Add spacing between categories */
-.attribute-box[data-attribute="key"] {
-    margin-right: 15px; /* Add space after Tools (key) */
-}
-
-/* Maintain text layout in boxes */
-.attribute-name {
-    font-size: 11px;
-    font-weight: bold;
-    margin-bottom: 2px;
-    text-align: center;
-}
-
-.attribute-box .emoji {
-    font-size: 22px;
-    margin: 2px 0;
-    text-align: center;
-}
-
-.attribute-desc {
-    font-size: 9px;
-    opacity: 0.85;
-    margin-top: 2px;
-    line-height: 1.1;
-    text-align: center;
-}
-
-/* Top panel title styles */
-.chakra-title {
-  color: white;
-  font-size: 18px;
-  font-weight: bold;
-  padding: 5px 15px;
-  border-radius: 4px;
-  background-color: rgba(0, 0, 0, 0.4);
-  opacity: 0;
-  transform: translateY(-10px);
-  transition: opacity 0.3s ease, transform 0.3s ease;
-  align-self: flex-start;
-}
-
-.chakra-title.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* Keep action buttons aligned to the right */
-#top-panel {
-    display: flex;
-    align-items: center;
-    padding: 0 20px;
-}
-
-#top-panel .action-btn {
-    margin-left: 10px; /* Space between buttons */
-}
-
-/* Element picker modal styling */
-.element-picker-modal {
-  position: absolute;
-  display: none;
-  background-color: #222;
-  border-radius: 8px;
-  border: 1px solid #444;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
-  z-index: 1000;
-  width: 280px;
-  max-height: 80vh;
-  overflow-y: auto;
-  padding: 15px;
-  transform-origin: top left;
-  animation: elementPickerFadeIn 0.2s ease-out forwards;
-}
-
-@keyframes elementPickerFadeIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-/* Element picker header */
-.element-picker-header {
-  text-align: center;
-  color: #eee;
-  margin-bottom: 15px;
-  font-size: 14px;
-  font-weight: bold;
-  border-bottom: 1px solid #444;
-  padding-bottom: 8px;
-}
-
-/* Close button */
-.element-picker-close {
-  position: absolute;
-  top: 8px;
-  right: 10px;
-  background: none;
-  border: none;
-  color: #aaa;
-  font-size: 18px;
-  cursor: pointer;
-  z-index: 1001;
-}
-
-.element-picker-close:hover {
-  color: white;
-}
-
-/* Element grid layout */
-.element-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  padding: 5px;
-}
-
-/* Individual element option */
-.element-option {
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 3px;
-  border-radius: 6px;
-  cursor: pointer;
-  border: 2px solid transparent;
-  transition: all 0.25s ease;
-  position: relative;
+  max-width: 80px;
   overflow: hidden;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  text-overflow: ellipsis;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all var(--transition-fast);
 }
 
-.element-option:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+.current-value.clickable {
+  display: flex;
+  align-items: center;
+  min-width: 80px;
+  justify-content: center;
+  cursor: pointer;
 }
 
-.element-option:active {
-  transform: translateY(1px);
+.current-value.clickable:hover {
+  background-color: rgba(80, 80, 80, 0.8);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
-.element-option.selected {
-  border-color: white;
-  box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+/* Delete Value Button */
+.current-value.delete-value {
+  background-color: rgba(180, 60, 60, 0.8);
 }
 
-.element-option::after {
-  content: '';
-  position: absolute;
+.current-value.delete-value:hover {
+  background-color: rgba(220, 80, 80, 0.8);
+}
+
+/* Color Value Display */
+.color-value {
+  position: relative;
+  padding-left: 18px;
+}
+
+.color-value-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  position: relative;
+  left: 0;
   top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Optimized CSS - Part 3: Circle and Square Elements */
+
+/* ---------- CIRCLE AND SQUARE ELEMENTS ---------- */
+
+/* Common styles for interactive elements */
+.interactive-item {
+  position: absolute;
+  cursor: move;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+  transition: box-shadow var(--transition-standard);
+  transform: translate(-50%, -50%);
+  margin-bottom: 20px;
+}
+
+/* Circle and Square specifics */
+.circle, .square {
+  position: absolute;
+  cursor: move;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+  transition: box-shadow 0.2s ease;
+  transform: translate(-50%, -50%);
+  margin-bottom: 20px;
+}
+
+.circle {
+  border-radius: 50%;
+  background-color: transparent !important;
+}
+
+.square {
+  border-radius: 5px;
+  padding: 2px;
+}
+
+/* Selection state */
+.circle.selected, .square.selected {
+  box-shadow: 0 0 12px 4px white;
+  z-index: 15;
+}
+
+/* Item Name */
+.item-name {
+  position: absolute;
+  top: 120%;
   left: 50%;
-  width: 5px;
-  height: 5px;
-  background: rgba(255, 255, 255, 0.8);
-  opacity: 0;
-  border-radius: 100%;
-  transform: scale(1, 1) translate(-50%, -50%);
-  transform-origin: 50% 50%;
-}
-
-.element-option:active::after {
-  animation: ripple 0.6s ease-out;
-}
-
-@keyframes ripple {
-  0% {
-    opacity: 1;
-    transform: scale(0, 0) translate(-50%, -50%);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(20, 20) translate(-50%, -50%);
-  }
-}
-
-/* Element emoji */
-.element-emoji {
-  font-size: 32px;
-  margin-bottom: 10px;
-  display: block;
-  text-align: center;
-  font-family: "Arial Unicode MS", "Segoe UI Symbol", sans-serif;
-  line-height: 1;
-  text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
-}
-
-/* Element name */
-.element-name {
-  font-size: 12px;
-  font-weight: bold;
+  transform: translateX(-50%);
   color: white;
-  margin-bottom: 4px;
+  font-size: 11px;
+  background: rgba(0, 0, 0, 0.7);
+  border: none;
   text-align: center;
+  outline: none;
+  padding: 3px 5px;
+  border-radius: 3px;
+  z-index: 25;
+  white-space: nowrap;
+  cursor: text;
+  user-select: text;
+  box-sizing: border-box;
+  max-height: none;
+  spellcheck: false;
+  -webkit-spellcheck: false;
 }
 
-/* Element description */
-.element-desc {
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.7);
-  text-align: center;
-  line-height: 1.3;
+.square .item-name {
+  white-space: normal;
+  max-width: 100px;
+  width: max-content;
 }
 
-/* For better contrast on dark backgrounds */
-.element-option[style*="background-color: #191970"] .element-name,
-.element-option[style*="background-color: #8B4513"] .element-name,
-.element-option[style*="background-color: #1E90FF"] .element-name {
+.circle.selected .item-name,
+.square.selected .item-name {
+  z-index: 30;
 }
 
-.element-option.selected .element-emoji {
-  //animation: glow-pulse 1.5s infinite alternate;
+.item-name:hover, .item-name:focus {
+  background-color: rgba(0, 0, 0, 0.8);
+  z-index: 100;
 }
 
-@keyframes glow-pulse {
-  from { text-shadow: 0 0 8px rgba(255, 255, 255, 0.5); }
-  to { text-shadow: 0 0 15px rgba(255, 255, 255, 0.9), 0 0 20px rgba(255, 255, 255, 0.5); }
+/* Circle Glow Effect */
+.circle-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  z-index: 1;
+  -webkit-animation: glow 3s linear 0s infinite alternate;
+  pointer-events: none;
 }
 
+@-webkit-keyframes glow {
+  0% { -webkit-filter: blur(5px); }
+  100% { -webkit-filter: blur(10px); }
+}
+
+/* Circle Element Symbol */
 .circle-element-symbol {
   position: absolute;
   font-size: 18px;
@@ -1195,452 +447,400 @@ body.right-panel-visible {
   font-family: "Arial Unicode MS", "Segoe UI Symbol", sans-serif;
   pointer-events: none;
   text-shadow: 0 0 5px rgba(0, 0, 0, 0.7);
-  //animation: element-float 3s ease-in-out infinite;
 }
 
-@keyframes element-float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-2px); }
-  100% { transform: translateY(0px); }
+/* Square Content (Attribute Emoji) */
+.square-content {
+  font-size: 24px;
+  position: absolute;
+  pointer-events: none;
+  z-index: 20;
 }
 
-.current-value {
-  font-size: 11px;
-  color: #DDD;
-  background: rgba(0, 0, 0, 0.3);
-  padding: 3px 6px;
-  border-radius: 3px;
-  min-width: 50px;
+/* Circle and Square Animation States */
+.circle.dimmed {
+  opacity: 0.35;
+}
+
+.circle.dimmed:hover {
+  opacity: 0.85;
+}
+
+.circle.selected {
+  //animation: selected-pulse 3s ease-in-out infinite;
+}
+
+@keyframes selected-pulse {
+  0% { box-shadow: 0 0 12px 4px rgba(255, 255, 255, 0.8); }
+  50% { box-shadow: 0 0 18px 6px rgba(255, 255, 255, 1); }
+  100% { box-shadow: 0 0 12px 4px rgba(255, 255, 255, 0.8); }
+}
+
+.no-transition {
+  transition: none !important;
+}
+
+/* Closest Square Indicator */
+.closest-square-indicator {
+  position: absolute;
+  top: calc(120% + 1.5em);
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255, 215, 0, 0.9);
+  font-size: 9px;
+  border-radius: 10px;
   white-space: nowrap;
-  display: flex;
-  align-items: center;
-  max-width: 80px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  align-self: flex-start;
-  justify-content: flex-start;
-  text-align: left;
+  z-index: 35;
+  pointer-events: none;
 }
 
-.element-value {
-  font-family: "Arial Unicode MS", "Segoe UI Symbol", sans-serif;
+/* Chakra Form (Polygon Shapes) */
+.outer-polygon-container {
+  position: absolute;
 }
 
-.color-value {
-  position: relative;
-  padding-left: 18px;
+.inner-polygon-container {
+  position: absolute;
+  transform-origin: 50% 50%;
+  width: 0;
+  height: 0;
 }
 
-/* Color value display beneath button */
-.color-value {
-  position: relative;
-  padding-left: 18px;
+.shape {
+  width: 40px;
+  height: 40px;
+  background-color: #FFA;
+  transform: translate(-50%, -50%);
 }
 
-.color-value-swatch {
-    width: 12px;
-    height: 12px;
-    border-radius: 2px;
-    position: relative;
-    left: 0;
-    top: 50%;
-    transform: translate(-50%, -50%);
+/* Transform origins */
+.circle .item-name {
+  transform-origin: top center;
 }
 
-/* Color picker swatches */
-.color-picker-swatch {
-  width: 20px;
-  height: 20px;
-  border-radius: 3px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+.circle .particles,
+.circle .circle-glow {
+  transform-origin: center center;
 }
 
-/* Swatch hover effect */
-.color-option:hover .color-picker-swatch {
-  transform: scale(1.2);
+.circle .shape {
+  transform-origin: center center;
+}
+
+/* Circle Particles Animation */
+.particles {
+  position: absolute;
+}
+.angle {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.position {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.pulse {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.particle {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  border: 1px solid white;
+}
+.pulse {
+  -webkit-animation: pulse 1.5s linear 0s infinite alternate;
+}
+@-webkit-keyframes angle {
+  0% { -webkit-transform: rotate(0deg); }
+  100% { -webkit-transform: rotate(360deg); }
+}
+@-webkit-keyframes anglerev {
+  0% { -webkit-transform: rotate(360deg); }
+  100% { -webkit-transform: rotate(0deg); }
+}
+@-webkit-keyframes position {
+  0% { -webkit-transform: translate(0,0); opacity: 1; }
+  100% { -webkit-transform: translate(5px,5px); opacity: 0; }
+}
+@-webkit-keyframes pulse {
+  0% { -webkit-transform: scale(1); }
+  100% { -webkit-transform: scale(.5); }
+}
+.particles .angle:nth-child(1) {
+  -webkit-animation: angle 10s steps(5) 0s infinite;
+}
+.particles .angle:nth-child(1) .position {
+  -webkit-animation: position 2s linear 0s infinite;
+}
+.particles .angle:nth-child(2) {
+  -webkit-animation: angle 4.95s steps(3) -1.65s infinite;
+}
+.particles .angle:nth-child(2) .position {
+  -webkit-animation: position 1.65s linear 0s infinite;
+}
+
+/* Special Me Square */
+.special-me-square {
+  position: absolute !important;
+  z-index: 5;
+  pointer-events: auto;
+  user-select: none;
+  cursor: move !important;
+  transform: translate(-50%, -50%) scale(1.05);
+  transition: box-shadow 0.2s ease;
+}
+
+.special-me-square:hover {
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Meridian line styling */
+#meridian-line {
   box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
 }
 
-/* Style for the "No Element" option */
-.element-option.no-element {
-  background-color: #333;
-  border: 1px solid #555;
-  grid-column: span 2; /* Make it span across both columns */
-  margin-bottom: 8px;
+.circle.snapping {
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+  animation: snap-pulse 1s infinite;
 }
 
-.element-option.no-element .element-emoji {
-  font-size: 28px;
-  opacity: 0.8;
+@keyframes snap-pulse {
+  0% { box-shadow: 0 0 12px rgba(255, 255, 255, 0.8); }
+  50% { box-shadow: 0 0 18px rgba(255, 255, 255, 0.9); }
+  100% { box-shadow: 0 0 12px rgba(255, 255, 255, 0.8); }
 }
 
-.element-option.no-element .element-name {
-  color: #ddd;
-}
+/* Optimized CSS - Part 4: Connections, Overlapping Squares, and Utility Components */
 
-.element-option.no-element .element-desc {
-  color: #999;
-}
+/* ---------- CONNECTIONS ---------- */
 
-/* Special hover effect for No Element */
-.element-option.no-element:hover {
-  background-color: #444;
-  border-color: #666;
-}
-
-/* Generic Characteristic Display Styles */
-.circle-identity-display {
+/* Connection lines container */
+#line-container {
   position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.connection-line {
+  position: absolute;
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.8);
+  transform-origin: left center;
+  z-index: 1;
+  pointer-events: none;
+  box-shadow: 0 0 2px rgba(255, 255, 255, 0.2);
+  transition: opacity 0.6s ease;
+}
+
+/* Connection line with selected square */
+.square.selected ~ #line-container .connection-line {
+  background-color: rgba(255, 255, 255, 0.5);
+  height: 1.5px;
+  box-shadow: 0 0 3px rgba(255, 255, 255, 0.3);
+}
+
+/* Line highlight for shortest connection to Me square */
+.connecting-line-highlight {
+  background: linear-gradient(90deg, 
+      rgba(255, 215, 0, 0.3), 
+      rgba(255, 223, 0, 0.9), 
+      rgba(255, 215, 0, 0.3)) !important;
+  height: 3px !important;
+  box-shadow: 
+      0 0 8px rgba(255, 215, 0, 0.8),
+      0 0 12px rgba(255, 215, 0, 0.6),
+      0 0 16px rgba(255, 215, 0, 0.4) !important;
+  z-index: 6 !important;
+  animation: 
+      pulse-connection 2s infinite alternate,
+      sparkle-motion 4s linear infinite;
+  position: absolute;
+  overflow: visible;
+}
+
+/* Pseudo-elements for sparkles */
+.connecting-line-highlight::before,
+.connecting-line-highlight::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  background-image: 
+      radial-gradient(circle, rgba(255, 255, 255, 0.9) 1px, transparent 1px),
+      radial-gradient(circle, rgba(255, 255, 255, 0.7) 1px, transparent 1px),
+      radial-gradient(circle, rgba(255, 255, 255, 0.5) 1px, transparent 1px);
+  background-size: 6px 6px, 10px 10px, 4px 4px;
+  animation: sparkle-drift 3s linear infinite;
+  pointer-events: none;
+}
+
+.connecting-line-highlight::after {
+  animation-direction: reverse;
+  animation-duration: 5s;
+  background-position: 3px 3px, 5px 5px, 2px 2px;
+}
+
+@keyframes pulse-connection {
+  0% {
+      background: linear-gradient(90deg, 
+          rgba(255, 215, 0, 0.9), 
+          rgba(255, 223, 0, 1), 
+          rgba(255, 215, 0, 0.9));
+      box-shadow: 
+          0 0 6px rgba(255, 215, 0, 0.7),
+          0 0 10px rgba(255, 215, 0, 0.5),
+          0 0 14px rgba(255, 215, 0, 0.3);
+  }
+  100% {
+      background: linear-gradient(90deg, 
+          rgba(255, 215, 0, 0.9), 
+          rgba(255, 223, 0, 1), 
+          rgba(255, 215, 0, 0.5));
+      box-shadow: 
+          0 0 10px rgba(255, 215, 0, 0.9),
+          0 0 15px rgba(255, 215, 0, 0.7),
+          0 0 20px rgba(255, 215, 0, 0.5);
+  }
+}
+
+@keyframes sparkle-motion {
+  0%, 100% { opacity: 0.95; }
+  25% { opacity: 1; }
+  50% { opacity: 1; }
+  75% { opacity: 0.8; }
+}
+
+@keyframes sparkle-drift {
+  from { background-position: 0 0, 0 0, 0 0; }
+  to { background-position: 10px 10px, -10px 10px, 5px -5px; }
+}
+
+/* Connection radius indicator */
+.connection-radius-indicator {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  background-color: rgba(255, 255, 255, 1);
+  z-index: 4;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 14px;
-  font-weight: bold;
-  color: white;
-  text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
-  pointer-events: none;
-  z-index: 15;
-  width: 20px;
-  height: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background-color: rgba(0, 0, 0, 0.5);
 }
 
-/* Generic Characteristic Picker Modal Styling */
-.characteristic-picker-modal {
-  position: absolute;
-  display: none;
-  background-color: #222;
-  border-radius: 8px;
-  border: 1px solid #444;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
-  z-index: 1000;
-  width: 280px;
-  max-height: 80vh;
-  overflow-y: auto;
-  padding: 15px;
-  transform-origin: top left;
-  animation: characteristicPickerFadeIn 0.2s ease-out forwards;
+.square.dragging .connection-radius-indicator {
+  opacity: 0.1;
 }
 
-@keyframes characteristicPickerFadeIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+/* ---------- OVERLAPPING SQUARES ---------- */
+
+/* Overlapping squares effect */
+.square.overlapping {
+  width: 45px !important;
+  height: 45px !important;
+  border-radius: 50% !important;
+  transition: width 0.3s ease, height 0.3s ease, border-radius 0.3s ease;
+  z-index: 12;
 }
 
-/* Picker Header */
-.characteristic-picker-header {
-  text-align: center;
-  color: #eee;
-  margin-bottom: 15px;
-  font-size: 14px;
-  font-weight: bold;
-  border-bottom: 1px solid #444;
-  padding-bottom: 8px;
-}
-
-/* Close Button */
-.characteristic-picker-close {
-  position: absolute;
-  top: 8px;
-  right: 10px;
-  background: none;
-  border: none;
-  color: #aaa;
-  font-size: 18px;
-  cursor: pointer;
-  z-index: 1001;
-}
-
-.characteristic-picker-close:hover {
-  color: white;
-}
-
-/* Characteristic Grid Layout */
-.characteristic-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 5px;
-}
-
-.characteristic-options-container {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.category-heading {
-  font-size: 12px;
-  font-weight: bold;
-  color: #aaa;
-  margin-bottom: 5px;
-  padding-bottom: 5px;
-  border-bottom: 1px solid #444;
-}
-
-/* Individual Characteristic Option */
-.characteristic-option {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  border: 2px solid transparent;
-  transition: all 0.25s ease;
-  position: relative;
-  overflow: hidden;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
-}
-
-.characteristic-option:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-}
-
-.characteristic-option:active {
-  transform: translateY(1px);
-}
-
-.characteristic-option.selected {
-  border-color: white;
-  box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
-}
-
-.characteristic-option::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 5px;
-  height: 5px;
-  background: rgba(255, 255, 255, 0.8);
+.square.overlapping .item-name {
   opacity: 0;
-  border-radius: 100%;
-  transform: scale(1, 1) translate(-50%, -50%);
-  transform-origin: 50% 50%;
+  transition: opacity 0.3s ease;
 }
 
-.characteristic-option:active::after {
-  animation: ripple 0.6s ease-out;
+.square.overlapping.selected {
+  z-index: 16;
 }
 
-/* Identity Number */
-.identity-number {
-  font-size: 24px;
-  font-weight: bold;
-  margin-bottom: 5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background-color: rgba(0, 0, 0, 0.3);
-  color: white;
-}
-
-/* Characteristic Emoji */
-.characteristic-emoji {
-  font-size: 24px;
-  margin-bottom: 8px;
-  display: block;
-  text-align: center;
-  line-height: 1;
-  text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
-}
-
-/* Characteristic Name */
-.characteristic-name {
-  font-size: 14px;
-  font-weight: bold;
-  color: white;
-  margin-bottom: 4px;
-  text-align: center;
-}
-
-/* Characteristic Description */
-.characteristic-desc {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.7);
-  text-align: center;
-  line-height: 1.3;
-}
-
-/* Style for the "No Value" Option */
-.characteristic-option.no-value {
-  background-color: #333;
-  border: 1px solid #555;
-  margin-bottom: 8px;
-}
-
-.characteristic-option.no-value .characteristic-emoji {
-  font-size: 28px;
-  opacity: 0.8;
-}
-
-.characteristic-option.no-value .characteristic-name {
-  color: #ddd;
-}
-
-.characteristic-option.no-value .characteristic-desc {
-  color: #999;
-}
-
-/* Special hover effect for No Value */
-.characteristic-option.no-value:hover {
-  background-color: #444;
-  border-color: #666;
-}
-
-.action-btn-title {
-  font-size: 12px;
-  font-weight: bold;
-  color: #ddd;
-  text-align: center;
-  margin-bottom: 5px;
-  user-select: none;
-  opacity: 0;
-  transform: translateY(5px);
-  transition: opacity 0.3s ease, transform 0.3s ease;
-  display: none;
-}
-
-/* Action button container */
-.action-btn-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-right: 15px;
-}
-
-/* Show title when buttons are visible */
-.action-btn-container:has(.action-btn[style*="display: flex"]) .action-btn-title {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* Adjust the top panel to accommodate titles */
-#top-panel {
-  min-height: 55px;
-  padding-top: 15px;
-}
-
-/* Style for the top panel controls container */
-.top-panel-controls {
-  display: flex;
-  gap: 15px;
-  align-self: flex-start;
-  justify-content: flex-start;
-  width: 100%;
-}
-
-/* Update _toggleActionButtons to show/hide titles along with buttons */
-ChakraApp.UIController.prototype._toggleActionButtons = function(show) {
-    // Show/hide all characteristic buttons
-    var characteristics = ChakraApp.Config.characteristics;
-    var self = this;
-
-    Object.keys(characteristics).forEach(function(key) {
-        var btn = self.characteristicButtons[key];
-        var display = self.characteristicValueDisplays[key];
-        
-        if (btn) {
-            btn.style.display = show ? 'flex' : 'none';
-        }
-        
-        if (display) {
-            display.style.display = show ? '' : 'none';
-        }
-    });
-
-    if (this.deleteCircleBtn) {
-        this.deleteCircleBtn.style.display = show ? 'flex' : 'none';
-    }
-};
-
-#top-panel {
-      min-height: 60px;
-      padding: 8px 15px;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-    }
-    
-    .top-panel-controls {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-    
-    .action-btn-container {
-      margin-right: 5px;
-    }
-    
-    .action-btn-title {
-      font-size: 11px;
-      margin-bottom: 3px;
-    }
-    
-    .current-value.clickable {
-      display: flex;
-      align-items: center;
-      min-width: 80px;
-      justify-content: center;
-    }
-    
-    .chakra-title {
-      font-size: 16px;
-    }
-
-    /* Style for squares being group-dragged */
-.square.group-dragging {
-  box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.7);
-  z-index: 18 !important; /* Higher than normal squares but lower than the primary dragged square */
-  transition: none !important; /* Disable transitions for smoother dragging */
-}
-
-/* Visual indicator that shows connected squares */
-.square.group-dragging::after {
+/* Glowing effect for overlapping squares */
+.square.overlapping::before {
   content: '';
   position: absolute;
   top: -5px;
   left: -5px;
   right: -5px;
   bottom: -5px;
-  border: 2px dashed rgba(255, 255, 255, 0.6);
-  border-radius: 7px;
-  animation: pulse-border 1s infinite alternate;
+  border-radius: 50%;
+  z-index: -1;
   pointer-events: none;
 }
 
-@keyframes pulse-border {
-  from { border-color: rgba(255, 255, 255, 0.4); }
-  to { border-color: rgba(255, 255, 255, 0.8); }
+@keyframes pulse-overlap {
+  0% { opacity: 0.3; }
+  100% { opacity: 0.6; }
 }
 
-/* Enhance the connection lines during group dragging */
-.square.group-dragging ~ #line-container .connection-line {
-  background-color: rgba(255, 255, 255, 0.7) !important;
-  height: 2px !important;
-  box-shadow: 0 0 5px rgba(255, 255, 255, 0.5) !important;
+/* Special connection line for overlapping squares */
+.connection-line.overlap-connection {
+  display: none !important;
 }
+
+/* Connection indicator between overlapping squares */
+.overlap-indicator {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background-color: rgba(255, 255, 255, 0.7);
+  border-radius: 50%;
+  z-index: 13;
+  pointer-events: none;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+  animation: pulse-indicator 1.5s infinite alternate;
+}
+
+@keyframes pulse-indicator {
+  0% { transform: scale(0.8); opacity: 0.6; }
+  100% { transform: scale(1.2); opacity: 0.9; }
+}
+
+/* Combined names list for overlapping squares */
+.combined-names-list {
+  position: absolute;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  border-radius: 5px;
+  font-size: 10px;
+  z-index: 20;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  min-width: 100px;
+  max-width: 200px;
+  pointer-events: none;
+  transform: translateX(-50%);
+  transition: opacity 0.3s ease;
+}
+
+.combined-names-list ul {
+  margin: 0;
+  padding: 0 0 0 18px;
+  list-style-type: disc;
+  text-align: left;
+}
+
+.combined-names-list li {
+  margin: 3px 0;
+  line-height: 1.2;
+  white-space: normal;
+}
+
+/* ---------- MULTI-SELECTION ---------- */
 
 /* Style for squares that are multi-selected */
 .square.multi-selected {
   box-shadow: 0 0 15px 3px rgba(64, 196, 255, 0.8) !important;
-  z-index: 15 !important; /* Higher than normal squares */
+  z-index: 15 !important;
 }
 
 /* Visual indicator for multi-selected squares */
@@ -1702,7 +902,221 @@ ChakraApp.UIController.prototype._toggleActionButtons = function(show) {
   box-shadow: 0 0 18px 5px rgba(255, 215, 0, 0.8) !important;
 }
 
-/* Notification for clipboard operations */
+/* Style for squares being group-dragged */
+.square.group-dragging {
+  box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.7);
+  z-index: 18 !important;
+  transition: none !important;
+}
+
+/* Visual indicator for group-dragged squares */
+.square.group-dragging::after {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  right: -5px;
+  bottom: -5px;
+  border: 2px dashed rgba(255, 255, 255, 0.6);
+  border-radius: 7px;
+  animation: pulse-border 1s infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes pulse-border {
+  from { border-color: rgba(255, 255, 255, 0.4); }
+  to { border-color: rgba(255, 255, 255, 0.8); }
+}
+
+/* Enhance connection lines during group dragging */
+.square.group-dragging ~ #line-container .connection-line {
+  background-color: rgba(255, 255, 255, 0.7) !important;
+  height: 2px !important;
+  box-shadow: 0 0 5px rgba(255, 255, 255, 0.5) !important;
+}
+
+/* ---------- UTILITY COMPONENTS ---------- */
+
+/* Document list container */
+.document-list-container {
+  position: absolute;
+  left: 70px;
+  top: 140px;
+  width: 280px;
+  max-height: 300px;
+  overflow-y: auto;
+  background-color: rgba(40, 40, 40, 0.95);
+  border: 1px solid #555;
+  border-radius: 5px;
+  z-index: 100;
+  padding: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+  animation: fadeInList 0.3s ease-out forwards;
+}
+
+@keyframes fadeInList {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Document list items */
+.document-list-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  margin-bottom: 5px;
+  background-color: rgba(60, 60, 60, 0.7);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.document-list-item:hover {
+  background-color: rgba(80, 80, 80, 0.9);
+}
+
+.document-list-item.selected {
+  background-color: rgba(100, 100, 100, 0.9);
+  border-left: 3px solid #0088ff;
+}
+
+.document-icon {
+  margin-right: 10px;
+  font-size: 18px;
+}
+
+.document-name-container {
+  display: flex;
+  align-items: baseline;
+  flex: 1;
+  overflow: hidden;
+}
+
+.document-name {
+  flex: 1;
+  color: white;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.document-name.editable {
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.3);
+  outline: none;
+  padding-bottom: 2px;
+}
+
+.document-name.editable:focus {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.7);
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.document-name.editable:focus + .document-circle-count {
+  display: none;
+}
+
+.document-circle-count {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.9em;
+  margin-left: 3px;
+}
+
+.document-delete-btn {
+  background: none;
+  border: none;
+  color: #ff6b6b;
+  cursor: pointer;
+  font-size: 16px;
+  opacity: 0.7;
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.document-delete-btn:hover {
+  opacity: 1;
+  color: #ff4f4f;
+}
+
+/* New Document list item */
+.document-list-item.new-document-item {
+  background-color: rgba(0, 120, 215, 0.6);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  margin-bottom: 10px;
+  transition: all 0.2s ease;
+}
+
+.document-list-item.new-document-item:hover {
+  background-color: rgba(0, 120, 215, 0.8);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Current document display */
+.current-document-display {
+  position: absolute;
+  top: 54px;
+  left: -6px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+  font-weight: bold;
+  padding: 5px 15px;
+  background-color: rgba(0, 0, 0, 0.4);
+  border-radius: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 90%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  z-index: 50;
+}
+
+/* Dialog and notifications */
+#dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: none;
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
+}
+
+#dialog-box {
+  background-color: var(--color-bg-dialog);
+  padding: 20px;
+  border-radius: 5px;
+  color: white;
+  text-align: center;
+}
+
+#dialog-buttons {
+  margin-top: 15px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.dialog-button {
+  padding: 5px 15px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+#dialog-confirm {
+  background-color: var(--color-btn-danger);
+  color: white;
+}
+
+#dialog-cancel {
+  background-color: var(--color-btn);
+  color: white;
+}
+
+/* Keyboard notification */
 .keyboard-notification {
   position: fixed;
   top: 20px;
@@ -1725,25 +1139,7 @@ ChakraApp.UIController.prototype._toggleActionButtons = function(show) {
   opacity: 1;
 }
 
-/* Animation for newly pasted squares */
-@keyframes paste-highlight {
-  0% { 
-    transform: translate(-50%, -50%) scale(0.8);
-    opacity: 0.5;
-    box-shadow: 0 0 20px rgba(0, 255, 0, 0.8);
-  }
-  100% { 
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 1;
-    box-shadow: 0 0 0 rgba(0, 255, 0, 0);
-  }
-}
-
-.square.pasted {
-  animation: paste-highlight 0.4s ease-out forwards;
-}
-
-/* Style for the clipboard status indicator */
+/* Clipboard status */
 .clipboard-status {
   position: fixed;
   bottom: 10px;
@@ -1781,383 +1177,90 @@ ChakraApp.UIController.prototype._toggleActionButtons = function(show) {
   content: "✂️";
 }
 
-/* Style for document button */
-.add-btn.document-btn {
-  background-color: #555;
+/* Tabs */
+.tabs-container {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  transition: background-color 0.2s ease, transform 0.2s ease;
+  width: 100%;
+  overflow-x: auto;
+  border-bottom: 1px solid #444;
+  margin-top: 15px;
 }
 
-.add-btn.document-btn:hover {
-  background-color: #777;
-  transform: scale(1.05);
-}
-
-.add-btn.document-btn:active {
-  transform: scale(0.95);
-}
-
-/* Style for the document icon inside the button */
-.doc-icon {
-  font-size: 18px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-/* Animation for the new button */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-#add-document-btn {
-  animation: fadeIn 0.5s ease-out forwards;
-}
-
-
-/* Add to your styles.css file */
-
-/* Document button styles */
-.add-btn.document-btn,
-.add-btn.toggle-btn {
-  background-color: #555;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  transition: background-color 0.2s ease, transform 0.2s ease;
-}
-
-.add-btn.document-btn:hover,
-.add-btn.toggle-btn:hover {
-  background-color: #777;
-  transform: scale(1.05);
-}
-
-.add-btn.document-btn:active,
-.add-btn.toggle-btn:active {
-  transform: scale(0.95);
-}
-
-/* Document list container */
-.document-list-container {
-  position: absolute;
-  left: 70px;
-  top: 140px;
-  width: 280px;
-  max-height: 300px;
-  overflow-y: auto;
-  background-color: rgba(40, 40, 40, 0.95);
-  border: 1px solid #555;
-  border-radius: 5px;
-  z-index: 100;
-  padding: 10px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-  animation: fadeInList 0.3s ease-out forwards;
-}
-
-@keyframes fadeInList {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Document list items */
-.document-list-item {
-  display: flex;
-  align-items: center;
-  padding: 8px 10px;
-  margin-bottom: 5px;
-  background-color: rgba(60, 60, 60, 0.7);
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.document-list-item:hover {
-  background-color: rgba(80, 80, 80, 0.9);
-}
-
-.document-list-item.selected {
-  background-color: rgba(100, 100, 100, 0.9);
-  border-left: 3px solid #0088ff;
-}
-
-.document-icon {
-  margin-right: 10px;
-  font-size: 18px;
-}
-
-.document-name {
-  flex: 1;
-  color: white;
-  font-size: 14px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.document-name.editable {
-  border-bottom: 1px dashed rgba(255, 255, 255, 0.3);
-  outline: none;
-  padding-bottom: 2px;
-}
-
-.document-name.editable:focus {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.7);
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.document-delete-btn {
-  background: none;
-  border: none;
-  color: #ff6b6b;
-  cursor: pointer;
-  font-size: 16px;
-  opacity: 0.7;
-  transition: opacity 0.2s ease, color 0.2s ease;
-}
-
-.document-delete-btn:hover {
-  opacity: 1;
-  color: #ff4f4f;
-}
-
-/* No documents message */
-.no-documents-message {
+.tab {
+  margin-right: 2px;
+  background-color: #333;
   color: #aaa;
-  font-style: italic;
-  text-align: center;
-  padding: 15px 0;
-}
-
-/* Current document display */
-.current-document-display {
-    position: absolute;
-    bottom: 62px;
-    left: 0;
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 14px;
-    font-weight: bold;
-    text-align: center;
-    padding: 5px 15px;
-    background-color: rgba(0, 0, 0, 0.4);
-    border-radius: 15px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 300px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    z-index: 50;
-}
-
-/* Toggle button arrow */
-.arrow-icon {
-  font-size: 14px;
-  transition: transform 0.3s ease;
-}
-
-/* Animation for document operations */
-@keyframes flashSuccess {
-  0%, 100% { background-color: rgba(0, 0, 0, 0.4); }
-  50% { background-color: rgba(0, 128, 0, 0.4); }
-}
-
-.flash-success {
-  animation: flashSuccess 1s ease;
-}
-
-/* Style for the New Document list item */
-.document-list-item.new-document-item {
-  background-color: rgba(0, 120, 215, 0.6);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-  margin-bottom: 10px;
+  border-radius: 5px 5px 0 0;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  position: relative;
   transition: all 0.2s ease;
+  padding: 0px 4px;
 }
 
-.document-list-item.new-document-item:hover {
-  background-color: rgba(0, 120, 215, 0.8);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+.tab:hover {
+  background-color: #444;
 }
 
-.document-list-item.new-document-item .document-icon {
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 16px;
-}
-
-.document-list-item.new-document-item .document-name {
-  font-weight: bold;
-}
-
-/* Animation for document creation */
-@keyframes flash-success {
-  0%, 100% { background-color: rgba(0, 0, 0, 0.4); }
-  50% { background-color: rgba(0, 128, 0, 0.4); }
-}
-
-.flash-success {
-  animation: flash-success 1s ease;
-}
-
-/* Style for document circle count */
-    .document-circle-count {
-      color: rgba(255, 255, 255, 0.6);
-      font-size: 0.9em;
-      margin-left: 3px;
-    }
-    
-    /* Style for document name container */
-    .document-name-container {
-      display: flex;
-      align-items: baseline;
-      flex: 1;
-      overflow: hidden;
-    }
-    
-    /* Update document list item style */
-    .document-list-item {
-      padding: 8px 10px;
-    }
-    
-    /* Ensure document name doesn't overflow */
-    .document-name {
-      flex: 1;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    
-    /* Style for editable document name while editing */
-    .document-name.editable:focus + .document-circle-count {
-      display: none; /* Hide count while editing name */
-    }
-
-    /* Overlapping circles effect for close squares */
-.square.overlapping {
-  width: 45px !important;
-  height: 45px !important;
-  border-radius: 50% !important;
-  transition: width 0.3s ease, height 0.3s ease, border-radius 0.3s ease;
-  z-index: 12; /* Higher than normal squares but lower than selected */
-}
-
-.square.overlapping .item-name {
-  opacity: 0; /* Hide individual names when overlapping */
-  transition: opacity 0.3s ease;
-}
-
-.square.overlapping.selected {
-  z-index: 16; /* Higher than normal overlapping squares */
-}
-
-/* Glowing effect for overlapping squares */
-.square.overlapping::before {
-  content: '';
-  position: absolute;
-  top: -5px;
-  left: -5px;
-  right: -5px;
-  bottom: -5px;
-  border-radius: 50%;
-  z-index: -1;
-  pointer-events: none;
-}
-
-@keyframes pulse-overlap {
-  0% { opacity: 0.3; }
-  100% { opacity: 0.6; }
-}
-
-/* Special connection line for overlapping squares */
-.connection-line.overlap-connection {
-  display: none !important; /* Hide the normal line for overlapping squares */
-}
-
-/* Connection indicator between overlapping squares */
-.overlap-indicator {
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  background-color: rgba(255, 255, 255, 0.7);
-  border-radius: 50%;
-  z-index: 13;
-  pointer-events: none;
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
-  animation: pulse-indicator 1.5s infinite alternate;
-}
-
-@keyframes pulse-indicator {
-  0% { transform: scale(0.8); opacity: 0.6; }
-  100% { transform: scale(1.2); opacity: 0.9; }
-}
-
-/* Combined names list for overlapping squares */
-.combined-names-list {
-  position: absolute;
-  background-color: rgba(0, 0, 0, 0.7);
+.tab.active {
+  background-color: #555;
   color: white;
-  border-radius: 5px;
-  font-size: 10px;
-  z-index: 20;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-  min-width: 100px;
-  max-width: 200px;
-  pointer-events: none; /* Allow clicking through */
-  transform: translateX(-50%); /* Center horizontally */
-  transition: opacity 0.3s ease;
 }
 
-.combined-names-list ul {
-  margin: 0;
-  padding: 0 0 0 18px;
-  list-style-type: disc;
-  text-align: left;
+.tab-name {
+  display: inline-block;
+  min-width: 40px;
+  max-width: 150px;
+  text-overflow: ellipsis;
+  font-size: 11px;
 }
 
-.combined-names-list li {
-  margin: 3px 0;
-  line-height: 1.2;
-  white-space: normal;
+.tab.add-tab {
+  width: 30px;
+  text-align: center;
+  flex-shrink: 0;
+  background-color: #2a2a2a;
 }
 
-/* Connection radius indicator */
-.connection-radius-indicator {
-  position: absolute;
+.tab.add-tab:hover {
+  background-color: #444;
+}
+
+.tab-close {
+  margin-left: 8px;
+  font-size: 14px;
+  display: inline-block;
+  width: 16px;
+  text-align: center;
+  line-height: 14px;
   border-radius: 50%;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  background-color: rgba(255, 255, 255, 1);
-  z-index: 4;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  font-size: 11px;
 }
 
-/* Only show indicators during drag operations */
-.square.dragging .connection-radius-indicator
-{
-  opacity: 0.1;
+.tab-close:hover {
+  background-color: rgba(255, 255, 255, 0.2);
 }
 
-/* Story dropdown styles */
+.tab.active .tab-close:hover {
+  background-color: rgba(255, 0, 0, 0.3);
+}
+
+.tab-input {
+  background: transparent;
+  border: none;
+  color: white;
+  outline: none;
+  font-family: inherit;
+  font-size: inherit;
+  width: 100%;
+  min-width: 50px;
+}
+
+/* Story dropdown */
 .story-dropdown-container {
+  margin: 5px;
   display: flex;
-  margin-bottom: 5px;
 }
 
 .story-dropdown {
@@ -2182,17 +1285,235 @@ ChakraApp.UIController.prototype._toggleActionButtons = function(show) {
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
 }
 
-.story-dropdown option {
-  background-color: #333;
-  color: white;
+/* Attribute grid */
+#attribute-grid {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   padding: 5px;
+  gap: 8px;
+  width: auto;
+  max-width: none;
+  margin: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
-/* Animation for story transition */
-@keyframes story-fade-in {
+.attribute-box {
+  width: 62px !important;
+  height: auto !important;
+  padding: 1px !important;
+  flex-grow: 0;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 62px !important;
+}
+
+.attribute-name {
+  font-size: 11px;
+  font-weight: bold;
+  margin-bottom: 2px;
+  text-align: center;
+}
+
+.attribute-box .emoji {
+  font-size: 22px;
+  margin: 2px 0;
+  text-align: center;
+}
+
+.attribute-desc {
+  font-size: 9px;
+  opacity: 0.85;
+  margin-top: 2px;
+  line-height: 1.1;
+  text-align: center;
+}
+
+/* Hide debug panel */
+#debug-panel {
+  display: none !important;
+}
+
+/* Animation for newly pasted squares */
+@keyframes paste-highlight {
+  0% { 
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 0.5;
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.8);
+  }
+  100% { 
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+    box-shadow: 0 0 0 rgba(0, 255, 0, 0);
+  }
+}
+
+.square.pasted {
+  animation: paste-highlight 0.4s ease-out forwards;
+}
+
+.circle-right {
+  /* Custom styling for right panel circles */
+}
+
+.triangle-shape {
+  transform-origin: center center;
+  transition: transform 0.3s ease;
+}
+
+.circle.selected .triangle-shape {
+  animation: triangle-pulse 2s infinite alternate;
+}
+
+@keyframes triangle-pulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.08); }
+}
+
+.circle-right.selected {
+  box-shadow: 0 0 12px 4px rgba(255, 255, 255, 0.8);
+}
+
+/* Circle shape styles for different panels */
+
+/* Base circle style for all panels */
+.circle {
+  position: absolute;
+  cursor: move;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+  transition: box-shadow 0.2s ease;
+  transform: translate(-50%, -50%);
+  margin-bottom: 20px;
+}
+
+/* Right panel - Triangle styles */
+.circle-right {
+  border-radius: 0; /* Override default circle style */
+}
+
+.triangle-shape {
+  transform-origin: center center;
+  transition: transform 0.3s ease;
+}
+
+.circle-right.selected .triangle-shape {
+  //animation: triangle-pulse 2s infinite alternate;
+}
+
+@keyframes triangle-pulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.08); }
+}
+
+.circle-right.selected {
+  box-shadow: 0 0 12px 4px rgba(255, 255, 255, 0.8);
+}
+
+/* Far Right panel - Star styles */
+.circle-farRight {
+  border-radius: 0; /* Override default circle style */
+}
+
+.star-shape {
+  transform-origin: center center;
+  transition: transform 0.3s ease;
+}
+
+.circle-farRight.selected .star-shape {
+  //animation: star-pulse 2s infinite alternate;
+}
+
+@keyframes star-pulse {
+  0% { transform: scale(1) rotate(0deg); }
+  100% { transform: scale(1.08) rotate(15deg); }
+}
+
+.circle-farRight.selected {
+  box-shadow: 0 0 12px 4px rgba(255, 255, 255, 0.8);
+}
+
+/* Ensure element symbols are properly positioned in shapes */
+.circle-right .circle-element-symbol,
+.circle-farRight .circle-element-symbol {
+  position: absolute;
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.9);
+  z-index: 10;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: "Arial Unicode MS", "Segoe UI Symbol", sans-serif;
+  pointer-events: none;
+  text-shadow: 0 0 5px rgba(0, 0, 0, 0.7);
+}
+
+/* Dimmed state */
+.circle-right.dimmed,
+.circle-farRight.dimmed {
+  opacity: 0.35;
+}
+
+.circle-right.dimmed:hover,
+.circle-farRight.dimmed:hover {
+  opacity: 0.85;
+}
+
+/* Ensure name element is properly positioned for all circle types */
+.circle .item-name {
+  position: absolute;
+  top: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  font-size: 11px;
+  background: rgba(0, 0, 0, 0.7);
+  border: none;
+  text-align: center;
+  outline: none;
+  padding: 3px 5px;
+  border-radius: 3px;
+  z-index: 25;
+  white-space: nowrap;
+  cursor: text;
+  user-select: text;
+  box-sizing: border-box;
+  max-height: none;
+  spellcheck: false;
+  -webkit-spellcheck: false;
+}
+
+/* Attribute grid visibility styles */
+
+/* Default state - hidden */
+#attribute-grid {
+  display: none;
+}
+
+.story-dropdown-container {
+  display: none;
+}
+
+/* Visible state - when a circle is selected */
+#attribute-grid.visible {
+  display: flex;
+  animation: fade-in 0.3s ease;
+}
+
+/* Animation for smooth appearance */
+@keyframes fade-in {
   from {
     opacity: 0;
-    transform: translateY(5px);
+    transform: translateY(-10px);
   }
   to {
     opacity: 1;
@@ -2200,396 +1521,134 @@ ChakraApp.UIController.prototype._toggleActionButtons = function(show) {
   }
 }
 
-.attribute-box.story-visible {
-  animation: story-fade-in 0.3s ease-out forwards;
+/* Hide action-button-container by default */
+.action-btn-container {
+  display: none;
 }
 
-/* Story indicator badge */
-.story-indicator {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  font-size: 10px;
-  background-color: rgba(0, 0, 0, 0.5);
-  color: white;
-  padding: 2px 5px;
-  border-radius: 10px;
-  pointer-events: none;
+/* Only show action-button-container when a circle is selected */
+body.circle-selected .action-btn-container {
+  display: flex;
 }
 
-/* Style adjustments for story groups */
-/* Cause & Effects */
-.story-group-cause-effects .attribute-box {
-  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+.chakra-title {
+	color: #AAA;
 }
 
-/* Quest for Treasure */
-.story-group-quest .attribute-box {
-  border-bottom: 2px solid rgba(255, 215, 0, 0.3);
+/* Panel Toggle Button Styles */
+
+.panel-toggle-btn {
+  position: fixed;
+  width: 10px;
+  height: 30px;
+  background-color: #444;
+  color: #999;
+  border: none;
+  font-size: 9px;
+  cursor: pointer;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 4px;
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
 }
 
-/* Battling Demons */
-.story-group-demons .attribute-box {
-  border-bottom: 2px solid rgba(255, 0, 0, 0.3);
+.panel-toggle-btn:hover {
+  background-color: var(--color-btn-hover);
+  transform: scale(1.05);
 }
 
-/* Cast of Characters */
-.story-group-characters .attribute-box {
-  border-bottom: 2px solid rgba(0, 255, 255, 0.3);
+/* Position the toggle buttons along the edges of panels */
+#toggle-left-panel {
+  left: 400px; /* Width of left panel */
+  top: 50%;
+  transform: translateY(-50%);
 }
 
-
-/* Base layout */
-html, body {
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-    height: 100vh;
-    width: 100vw;
-    background-color: black;
+#toggle-right-panel {
+  right: 512px; /* Width of right panel */
+  top: 40%;
+  transform: translateY(-50%) rotate(180deg);
 }
 
-body {
-    margin: 0;
-    padding: 0;
-    font-family: Arial, sans-serif;
-    overflow: hidden;
-    height: 100vh;
-    width: 100vw;
-    position: relative;
+#toggle-farRight-panel.panel-hidden ~ #toggle-right-panel:not(.panel-hidden) {
+  right: 302px; /* Width of right panel */
 }
 
-/* Main container */
-#main-container {
-    display: flex;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
+#toggle-farRight-panel {
+  right: 210px; /* Width of farRight panel */
+  top: 50%;
+  transform: translateY(-50%) rotate(180deg);
 }
 
-/* Circle panels shared styles */
+#toggle-bottom-panel {
+  bottom: 142px; /* Height of bottom panel */
+  left: 50%;
+  transform: translateX(-50%) rotate(-90deg);
+}
+
+/* When panels are hidden, adjust button positions */
+#toggle-left-panel.panel-hidden {
+  left: 0;
+}
+
+#toggle-right-panel.panel-hidden {
+  right: 0;
+}
+
+#toggle-farRight-panel:not(.panel-hidden) ~ #toggle-right-panel.panel-hidden {
+  right: 210px; /* Width of far right panel */
+}
+
+#toggle-farRight-panel.panel-hidden {
+  right: 0;
+}
+
+#toggle-bottom-panel.panel-hidden {
+  bottom: 0;
+}
+
+/* Button arrow states for each panel */
+.panel-toggle-button::before {
+  content: "◀";
+}
+
+/* Reversed arrows when panels are hidden */
+.panel-toggle-button.panel-hidden::before {
+  content: "▶";
+}
+
+/* Smooth panel transitions */
 .circle-panel {
-    background-color: black;
-    position: relative;
-    user-select: none;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+  transition: transform 0.4s ease, opacity 0.4s ease, width 0.4s ease, height 0.4s ease;
 }
 
-/* Panel-specific styles */
-#left-panel {
-    width: 500px;
-    height: 100%;
-    border-right: 2px solid #444;
-}
-
-#right-panel {
-    height: 100%;
-    border-left: 2px solid #444;
-}
-
-#bottom-panel {
-    width: 100%;
-    border-top: 2px solid #444;
-}
-
-/* Center container styles */
-#center-container {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    overflow: hidden;
-}
-
-/* Top panel */
-#top-panel {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 10px 20px;
-    height: auto;
-    min-height: 80px;
-    background-color: black;
-    border-bottom: 1px solid #333;
-}
-
-/* Center panel (former right panel) for squares */
-#center-panel {
-    flex: 1;
-    background-color: black;
-    position: relative;
-    user-select: none;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-
-/* Zoom containers for circle panels */
-.zoom-container {
-    flex: 1;
-    position: relative;
-    overflow: hidden;
-}
-
-/* Background silhouette styling */
-.zoom-container::before {
-    content: "";
-    position: absolute;
-    top: 40px;
-    left: 10px;
-    width: 320px; /* Fixed width */
-    height: 750px; /* Fixed height */
-    opacity: 0.3;
-    pointer-events: none;
-    z-index: 1;
-}
-
-#left-panel .zoom-container::before {
-    background-image: url('body-silhouette-white.png');
-    background-repeat: no-repeat;
-    background-position: top left;
-    background-size: 100% 100%;
-}
-
-/* Add buttons */
-.add-btn {
-    position: absolute;
-    top: 20px;
-    width: 40px;
-    height: 40px;
-    background-color: #555;
-    color: white;
-    border: none;
-    border-radius: 50%;
-    font-size: 24px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-    z-index: 100;
-}
-
-.add-btn:hover {
-    background-color: #777;
-}
-
-/* Position Add Circle buttons for each panel */
-#add-circle-btn-left {
-    left: 20px;
-}
-
-#add-circle-btn-right {
-    left: 20px;
-}
-
-#add-circle-btn-bottom {
-    left: 20px;
-}
-
-/* Document buttons */
-.document-toggle-btn {
-    position: absolute;
-    top: 80px;
-    left: 20px;
-    z-index: 100;
-}
-
-/* Document list containers */
-.document-list-container {
-    position: absolute;
-    left: 70px;
-    top: 140px;
-    width: 280px;
-    max-height: 300px;
-    overflow-y: auto;
-    background-color: rgba(40, 40, 40, 0.95);
-    border: 1px solid #555;
-    border-radius: 5px;
-    z-index: 100;
-    padding: 10px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-    animation: fadeInList 0.3s ease-out forwards;
-}
-
-/* Current document display */
-.current-document-display {
-    position: absolute;
-    bottom: 10px;
-    left: 10px;
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 14px;
-    font-weight: bold;
-    padding: 5px 15px;
-    background-color: rgba(0, 0, 0, 0.4);
-    border-radius: 15px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 90%;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    z-index: 50;
-}
-
-#left-panel .current-document-display {
-    bottom: 60px;
-}
-
-/* Panel visibility transitions */
-.circle-panel {
-    transition: transform 0.4s ease, opacity 0.4s ease, width 0.4s ease, height 0.4s ease;
-}
-
+/* Hidden panel states */
 .circle-panel.hidden {
-    transform: translateX(-100%);
-    opacity: 0;
-    width: 0;
+  transform: translateX(-100%);
+  opacity: 0;
+  width: 0;
 }
 
 #right-panel.hidden {
-    transform: translateX(100%);
+  transform: translateX(100%);
+}
+
+#farRight-panel.hidden {
+  transform: translateX(100%);
 }
 
 #bottom-panel.hidden {
-    transform: translateY(100%);
-    height: 0;
+  transform: translateY(100%);
+  height: 0;
 }
 
-/* Circles and Squares */
-.circle, .square {
-    position: absolute;
-    cursor: move;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    z-index: 10;
-    transition: box-shadow 0.2s ease;
-    transform: translate(-50%, -50%);
-    margin-bottom: 20px;
-}
-
-.square {
-    border-radius: 5px;
-    padding: 2px;
-}
-
-.circle {
-    border-radius: 50%;
-}
-
-.circle.selected, .square.selected {
-    box-shadow: 0 0 12px 4px white;
-    z-index: 15;
-}
-
-/* Item names styling */
-.item-name {
-    position: absolute;
-    top: 120%;
-    left: 50%;
-    transform: translateX(-50%);
-    color: white;
-    font-size: 11px;
-    background: rgba(0, 0, 0, 0.7);
-    border: none;
-    text-align: center;
-    outline: none;
-    padding: 3px 5px;
-    border-radius: 3px;
-    z-index: 25;
-    white-space: nowrap;
-    
-    /* Add these for contenteditable behavior */
-    cursor: text;
-    user-select: text;
-    box-sizing: border-box;
-    max-height: none;
-
-    spellcheck: false;
-    -webkit-spellcheck: false;
-}
-
-.square .item-name {
-    white-space: normal;
-    max-width: 100px;
-    width: max-content;
-}
-
-.circle.selected .item-name,
-.square.selected .item-name {
-    z-index: 30;
-}
-
-.item-name:hover, .item-name:focus {
-    background-color: rgba(0, 0, 0, 0.8);
-    z-index: 100;
-}
-
-/* Retain all the other styles from the original stylesheet */
-/* This is just showing the most critical modifications */
-
-/* Attribute grid */
-#attribute-grid {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    padding: 10px;
-    gap: 8px;
-    width: auto;
-    max-width: none;
-    margin: 0;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-}
-
-/* Panel toggle controls */
-.panel-toggle-btn {
-    position: fixed;
-    width: 30px;
-    height: 30px;
-    background-color: #444;
-    color: white;
-    border: none;
-    font-size: 14px;
-    cursor: pointer;
-    z-index: 1000;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    border-radius: 4px;
-}
-
-/* Panel toggle button hover effect */
-.panel-toggle-btn:hover {
-    background-color: #666;
-}
-
-/* When a panel is hidden, adjust toggle button */
 .panel-toggle-btn.panel-hidden::before {
-    content: "◀";
-}
-
-#toggle-right-panel.panel-hidden::before {
-    content: "▶";
-}
-
-#toggle-bottom-panel.panel-hidden::before {
-    content: "▼";
-    transform: rotate(180deg);
+  content: "◀";
 }
 
 .panel-toggle-btn:not(.panel-hidden)::before {
-    content: "▶";
+  content: "▶";
 }
 
-#toggle-right-panel:not(.panel-hidden)::before {
-    content: "◀";
-}
-
-#toggle-bottom-panel:not(.panel-hidden)::before {
-    content: "▲";
-    transform: rotate(180deg);
-}
