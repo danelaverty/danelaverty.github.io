@@ -1,5 +1,5 @@
 // src/models/Square.js
-// Square model implementation
+// Square model implementation with minimal code
 
 (function(ChakraApp) {
   /**
@@ -12,8 +12,6 @@
     
     // Initialize with data or defaults
     data = data || {};
-    
-    // Core properties
     this.x = data.x || 0;
     this.y = data.y || 0;
     this.color = data.color || '#FFFFFF';
@@ -23,49 +21,29 @@
     this.isMe = data.isMe || false;
     this.isBold = data.isBold || false;
     this.tabId = data.tabId || null;
-    
-    // Additional properties
-    this.size = data.size || 30; // Fixed size
+    this.size = data.size || 30;
     this.selected = data.selected || false;
     this.visible = data.visible !== undefined ? data.visible : true;
   };
   
   // Inherit from BaseModel
   ChakraApp.Square.prototype = Object.create(ChakraApp.BaseModel.prototype);
+  ChakraApp.Square.prototype.constructor = ChakraApp.Square;
   
   // Square-specific methods
-  ChakraApp.Square.prototype.update = function(changes) {
-    // Call parent method
-    ChakraApp.BaseModel.prototype.update.call(this, changes);
-    
-    // Publish event for reactive updates
-    ChakraApp.EventBus.publish(ChakraApp.EventTypes.SQUARE_UPDATED, this);
-    
-    return this;
-  };
-  
-  ChakraApp.Square.prototype.select = function() {
-    if (!this.selected) {
-      this.selected = true;
-      ChakraApp.EventBus.publish(ChakraApp.EventTypes.SQUARE_SELECTED, this);
-      this.notify({ type: 'select', model: this });
-    }
-    return this;
-  };
-  
-  ChakraApp.Square.prototype.deselect = function() {
-    if (this.selected) {
-      this.selected = false;
-      ChakraApp.EventBus.publish(ChakraApp.EventTypes.SQUARE_DESELECTED, this);
-      this.notify({ type: 'deselect', model: this });
-    }
-    return this;
+  ChakraApp.Square.prototype._getEventType = function(action) {
+    var types = {
+      'updated': ChakraApp.EventTypes.SQUARE_UPDATED,
+      'selected': ChakraApp.EventTypes.SQUARE_SELECTED,
+      'deselected': ChakraApp.EventTypes.SQUARE_DESELECTED
+    };
+    return types[action];
   };
   
   ChakraApp.Square.prototype.show = function() {
     if (!this.visible) {
       this.visible = true;
-      this.notify({ type: 'visibility', model: this, isVisible: true });
+      this._notify({type: 'visibility', model: this, isVisible: true});
     }
     return this;
   };
@@ -73,7 +51,7 @@
   ChakraApp.Square.prototype.hide = function() {
     if (this.visible) {
       this.visible = false;
-      this.notify({ type: 'visibility', model: this, isVisible: false });
+      this._notify({type: 'visibility', model: this, isVisible: false});
     }
     return this;
   };
@@ -93,11 +71,8 @@
     json.size = this.size;
     json.isBold = this.isBold;
     json.tabId = this.tabId;
+    json.visible = this.visible;
     
     return json;
   };
-  
-  // Set constructor property back to Square
-  ChakraApp.Square.prototype.constructor = ChakraApp.Square;
-  
 })(window.ChakraApp = window.ChakraApp || {});

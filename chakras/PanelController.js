@@ -11,6 +11,7 @@
     this.mainContainer = null;
     this.leftPanel = null;
     this.rightPanel = null;
+    this.farRightPanel = null;
     this.bottomPanel = null;
     this.centerContainer = null;
     this.topPanel = null;
@@ -54,6 +55,7 @@
     this.mainContainer = document.getElementById('main-container');
     this.leftPanel = document.getElementById('left-panel');
     this.rightPanel = document.getElementById('right-panel');
+    this.farRightPanel = document.getElementById('farRight-panel');
     this.bottomPanel = document.getElementById('bottom-panel');
     this.centerContainer = document.getElementById('center-container');
     this.topPanel = document.getElementById('top-panel');
@@ -68,7 +70,7 @@
     var self = this;
     
     // Create toggle buttons for each panel
-    var panels = ['left', 'right', 'bottom'];
+    var panels = ['left', 'farRight', 'right', 'bottom'];
     
     panels.forEach(function(panelId) {
       var btn = document.createElement('button');
@@ -85,7 +87,7 @@
       self.toggleButtons[panelId] = btn;
       
       // Add to document body
-      //document.body.appendChild(btn);
+      document.body.appendChild(btn);
     });
   };
   
@@ -165,14 +167,19 @@
     // Adjust container layout based on which panels are visible
     var leftVisible = ChakraApp.appState.panelVisibility.left;
     var rightVisible = ChakraApp.appState.panelVisibility.right;
+    var farRightVisible = ChakraApp.appState.panelVisibility.farRight;
     var bottomVisible = ChakraApp.appState.panelVisibility.bottom;
     
     if (this.leftPanel) {
-      this.leftPanel.style.width = leftVisible ? '370px' : '0';
+      this.leftPanel.style.width = leftVisible ? '400px' : '0';
     }
     
     if (this.rightPanel) {
-      this.rightPanel.style.width = rightVisible ? '370px' : '0';
+      this.rightPanel.style.width = rightVisible ? '300px' : '0';
+    }
+    
+    if (this.farRightPanel) {
+      this.farRightPanel.style.width = farRightVisible ? '210px' : '0';
     }
     
     if (this.bottomPanel) {
@@ -181,11 +188,11 @@
     
     if (this.centerContainer) {
       // Adjust center container to fill space
-      var centerWidth = '50%';
-      if (!leftVisible && !rightVisible) centerWidth = '100%';
-      else if (!leftVisible || !rightVisible) centerWidth = '75%';
+      var centerWidth = '100%';
+      if (leftVisible) centerWidth = (rightVisible || farRightVisible) ? '50%' : '75%';
       
       this.centerContainer.style.width = centerWidth;
+      this.centerContainer.style.flex = leftVisible ? '1' : '2';
     }
   };
   
@@ -199,6 +206,7 @@
     switch (panelId) {
       case 'left': return this.leftPanel;
       case 'right': return this.rightPanel;
+      case 'farRight': return this.farRightPanel;
       case 'bottom': return this.bottomPanel;
       case 'center': return this.centerPanel;
       default: return null;

@@ -38,40 +38,45 @@
    * @private
    */
   ChakraApp.App.prototype._initializeApp = function() {
-    // Initialize overlapping groups array
-    ChakraApp.overlappingGroups = [];
-    
-    // Create view manager
-    this.viewManager = new ChakraApp.ViewManager();
-    
-    // Create controllers using factory
-    this.controllers = ChakraApp.ControllerFactory.createControllers();
-    
-    // Create and initialize keyboard controller separately
-    this.keyboardController = new ChakraApp.KeyboardController();
-    this.keyboardController.init();
-    
-    // Initialize view manager
-    this.viewManager.init();
-    
-    ChakraApp.OverlappingSquaresManager.init();
-    
-    // Load data from storage
-    var dataLoaded = ChakraApp.appState.loadFromStorage();
-    
-    // If no data was loaded, create a sample circle
-    if (!dataLoaded) {
-      this._createSampleData();
-    }
-    
-    // Render all views based on state
-    this.viewManager.renderAllViews();
-    
-    // Set initialized flag
-    this.initialized = true;
-    
-    console.log('Application initialized');
-  };
+  // Initialize overlapping groups array
+  ChakraApp.overlappingGroups = [];
+  
+  // Load panel state from localStorage
+  if (ChakraApp.appState._loadPanelState) {
+    ChakraApp.appState._loadPanelState();
+  }
+  
+  // Create view manager
+  this.viewManager = new ChakraApp.ViewManager();
+  
+  // Create controllers using factory
+  this.controllers = ChakraApp.ControllerFactory.createControllers();
+  
+  // Create and initialize keyboard controller separately
+  this.keyboardController = new ChakraApp.KeyboardController();
+  this.keyboardController.init();
+  
+  // Initialize view manager
+  this.viewManager.init();
+  
+  ChakraApp.OverlappingSquaresManager.init();
+  
+  // Load data from storage
+  var dataLoaded = ChakraApp.appState.loadFromStorage();
+  
+  // If no data was loaded, create a sample circle
+  if (!dataLoaded) {
+    this._createSampleData();
+  }
+  
+  // Render all views based on state
+  this.viewManager.renderAllViews();
+  
+  // Set initialized flag
+  this.initialized = true;
+  
+  console.log('Application initialized');
+};
   
   /**
    * Create sample data for first-time users

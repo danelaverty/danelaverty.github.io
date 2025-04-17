@@ -1,5 +1,5 @@
 // src/models/Document.js
-// Document model implementation
+// Document model implementation with minimal code
 
 (function(ChakraApp) {
   /**
@@ -12,30 +12,26 @@
     
     // Initialize with data or defaults
     data = data || {};
-    
-    // Core properties
     this.name = data.name || this._generateDefaultName();
-    this.panelId = data.panelId || 'left'; // New property: 'left', 'right', or 'bottom'
-    
-    // Additional properties
+    this.panelId = data.panelId || 'left';
     this.selected = data.selected || false;
   };
   
   // Inherit from BaseModel
   ChakraApp.Document.prototype = Object.create(ChakraApp.BaseModel.prototype);
+  ChakraApp.Document.prototype.constructor = ChakraApp.Document;
   
   // Document-specific methods
-  ChakraApp.Document.prototype.update = function(changes) {
-    // Call parent method
-    ChakraApp.BaseModel.prototype.update.call(this, changes);
-    
-    // Publish event for reactive updates
-    ChakraApp.EventBus.publish(ChakraApp.EventTypes.DOCUMENT_UPDATED, this);
-    
-    return this;
+  ChakraApp.Document.prototype._getEventType = function(action) {
+    var types = {
+      'updated': ChakraApp.EventTypes.DOCUMENT_UPDATED,
+      'selected': ChakraApp.EventTypes.DOCUMENT_SELECTED,
+      'deselected': ChakraApp.EventTypes.DOCUMENT_DESELECTED
+    };
+    return types[action];
   };
   
-  // Generate a default name based on current date/time and panel
+  // Generate a default name based on current date/time
   ChakraApp.Document.prototype._generateDefaultName = function() {
     var now = new Date();
     var year = now.getFullYear();
@@ -47,36 +43,14 @@
     return year + '-' + month + '-' + day + ' ' + hours + ':' + minutes;
   };
   
-  ChakraApp.Document.prototype.select = function() {
-    if (!this.selected) {
-      this.selected = true;
-      ChakraApp.EventBus.publish(ChakraApp.EventTypes.DOCUMENT_SELECTED, this);
-      this.notify({ type: 'select', model: this });
-    }
-    return this;
-  };
-  
-  ChakraApp.Document.prototype.deselect = function() {
-    if (this.selected) {
-      this.selected = false;
-      ChakraApp.EventBus.publish(ChakraApp.EventTypes.DOCUMENT_DESELECTED, this);
-      this.notify({ type: 'deselect', model: this });
-    }
-    return this;
-  };
-  
   ChakraApp.Document.prototype.toJSON = function() {
     // Get base properties
     var json = ChakraApp.BaseModel.prototype.toJSON.call(this);
     
     // Add Document-specific properties
     json.name = this.name;
-    json.panelId = this.panelId; // Include panelId in serialization
+    json.panelId = this.panelId;
     
     return json;
   };
-  
-  // Set constructor property back to Document
-  ChakraApp.Document.prototype.constructor = ChakraApp.Document;
-  
 })(window.ChakraApp = window.ChakraApp || {});

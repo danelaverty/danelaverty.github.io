@@ -10,6 +10,7 @@
     // DOM elements
     this.attributeGrid = null;
     this.storyDropdown = null;
+    this.storyDropdownContainer = null;
     
     // Event subscriptions
     this.circleSelectedSubscription = null;
@@ -25,7 +26,9 @@
       "Battling Demons": ["demon", "sword", "chain"],
       "Cast of Characters": ["ally"],
       "Battle for Conquest": ["battlefield", "soldier", "enemy", "strategy"],
-      "Navigating the Maze": ["path"]
+      "Navigating the Maze": ["path", "destination"],
+      "Building the Machine": ["tools", "parts", "machine"],
+      "Writing the Book": ["chapter", "book"],
     };
   };
   
@@ -49,6 +52,9 @@
     
     // Subscribe to circle events
     this._setupEventSubscriptions();
+    
+    // Initially hide everything since no circle is selected
+    this._toggleAttributeGrid(false);
   };
   
   /**
@@ -60,8 +66,10 @@
     var dropdownContainer = document.createElement('div');
     dropdownContainer.className = 'story-dropdown-container';
     dropdownContainer.style.padding = '1px';
-    dropdownContainer.style.display = 'flex';
+    dropdownContainer.style.display = 'none'; // Initially hidden
     dropdownContainer.style.alignItems = 'center';
+    
+    this.storyDropdownContainer = dropdownContainer;
     
     // Create select element
     this.storyDropdown = document.createElement('select');
@@ -101,6 +109,9 @@
   ChakraApp.AttributeController.prototype._createAttributeGrid = function() {
     // Create grid if it doesn't exist or is empty
     if (this.attributeGrid) {
+      // Set initial display to none
+      this.attributeGrid.style.display = 'none';
+      
       // Clear existing children
       this.attributeGrid.innerHTML = '';
       
@@ -145,7 +156,7 @@
         }
         
         // Add text color adjustment for stop button
-        if (['stop', 'battlefield', 'soldier', 'enemy', 'path'].indexOf(key) > -1) {
+        if (['door', 'stop', 'battlefield', 'soldier', 'enemy', 'path', 'destination', 'machine'].indexOf(key) > -1) {
           attrBox.style.color = 'white';
         }
         
@@ -300,7 +311,7 @@
           x: randomX,
           y: randomY,
           color: attributeData.color,
-          name: attributeType, // Set initial name to attribute type
+          name: '???',
           attribute: attributeType
         };
         
@@ -337,30 +348,27 @@
    * @param {boolean} show - Whether to show the grid
    */
   ChakraApp.AttributeController.prototype._toggleAttributeGrid = function(show) {
-    if (!this.attributeGrid) return;
-    
-    // Also toggle the story dropdown
-    var dropdownContainer = document.querySelector('.story-dropdown-container');
+    if (!this.attributeGrid || !this.storyDropdownContainer) return;
     
     if (show) {
+      // Show the attribute grid and story dropdown
+      this.attributeGrid.style.display = 'flex';
       this.attributeGrid.classList.add('visible');
-      this._enableAttributeBoxes(); // Enable the attribute boxes when showing
+      this.storyDropdownContainer.style.display = 'flex';
       
-      if (dropdownContainer) {
-        dropdownContainer.style.display = 'flex';
-      }
+      // Enable the attribute boxes
+      this._enableAttributeBoxes();
     } else {
+      // Hide the attribute grid and story dropdown
+      this.attributeGrid.style.display = 'none';
       this.attributeGrid.classList.remove('visible');
+      this.storyDropdownContainer.style.display = 'none';
       
       // Disable attribute boxes
       var attributeBoxes = this.attributeGrid.querySelectorAll('.attribute-box');
       attributeBoxes.forEach(function(box) {
         box.classList.remove('interactive');
       });
-      
-      if (dropdownContainer) {
-        dropdownContainer.style.display = 'none';
-      }
     }
   };
   

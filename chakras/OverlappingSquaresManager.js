@@ -28,7 +28,7 @@
         this.container.style.zIndex = '100';
         
         // Add to bottom panel
-        var bottomPanel = document.getElementById('bottom-panel');
+        var bottomPanel = document.getElementById('center-panel');
         if (bottomPanel) {
           bottomPanel.appendChild(this.container);
           console.log("Overlapping squares manager initialized");

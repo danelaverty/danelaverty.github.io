@@ -79,13 +79,8 @@
     toggleBtn.appendChild(arrowIcon);
     
     // Position based on panel
-    if (panelId === 'bottom') {
-      toggleBtn.style.top = '20px';
-      toggleBtn.style.left = '80px';
-    } else {
-      toggleBtn.style.top = '80px';
-      toggleBtn.style.left = '20px';
-    }
+      toggleBtn.style.top = '30px';
+      toggleBtn.style.left = '10px';
     
     // Add toggle functionality
     var self = this;
@@ -133,12 +128,6 @@
     
     // Set initial text
     docDisplay.textContent = 'No Document Selected';
-    
-    // Position based on panel
-    if (panelId === 'bottom') {
-      docDisplay.style.bottom = '10px';
-      docDisplay.style.left = '10px';
-    }
     
     // Add to panel
     panel.appendChild(docDisplay);

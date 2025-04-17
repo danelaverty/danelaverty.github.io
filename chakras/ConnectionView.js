@@ -1,5 +1,5 @@
 // src/views/ConnectionView.js
-// View component for Connection
+// Consolidated Connection View implementation
 
 (function(ChakraApp) {
   /**
@@ -24,38 +24,35 @@
   
   // Render method
   ChakraApp.ConnectionView.prototype.render = function() {
-	  // Create line element
-	  this.element = document.createElement('div');
-	  this.element.id = this.viewModel.id;
-	  this.element.className = 'connection-line';
+    // Create line element
+    this.element = this._createElement('div', {
+      id: this.viewModel.id,
+      className: 'connection-line',
+      style: {
+        position: 'absolute',
+        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+        height: '1px',
+        transformOrigin: 'left center',
+        zIndex: '1',
+        display: this.viewModel.isVisible ? 'block' : 'none'
+      }
+    });
 
-	  // Apply styling
-	  this.element.style.position = 'absolute';
-	  this.element.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
-	  this.element.style.height = '1px';
-	  this.element.style.transformOrigin = 'left center';
-	  this.element.style.zIndex = '1';
+    // Apply highlight if needed
+    if (this.viewModel.isHighlighted) {
+      this.element.classList.add('connecting-line-highlight');
+    }
 
-	  // Set visibility
-	  if (!this.viewModel.isVisible) {
-		  this.element.style.display = 'none';
-	  }
+    // Apply multi-select highlight if needed
+    if (this._checkIfMultiSelected()) {
+      this.element.classList.add('connecting-line-multi-selected');
+    }
 
-	  // Apply highlight if needed
-	  if (this.viewModel.isHighlighted) {
-		  this.element.classList.add('connecting-line-highlight');
-	  }
+    // Calculate and update line position
+    this._updateLinePosition();
 
-	  // Apply multi-select highlight if needed
-	  if (this._checkIfMultiSelected()) {
-		  this.element.classList.add('connecting-line-multi-selected');
-	  }
-
-	  // Calculate and update line position
-	  this._updateLinePosition();
-
-	  // Add to parent element
-	  this.parentElement.appendChild(this.element);
+    // Add to parent element
+    this.parentElement.appendChild(this.element);
   };
   
   // Update line position
@@ -78,10 +75,6 @@
       return;
     }
 
-    // Use square size to calculate centers
-    var squareSize = parseInt(square1Element.style.width) || 30; // Default to 30px
-    var halfSize = squareSize / 2;
-
     // Calculate center points of squares
     var x1 = square1.x;
     var y1 = square1.y;
@@ -94,21 +87,20 @@
     var length = Math.sqrt(dx * dx + dy * dy);
     var angle = Math.atan2(dy, dx) * 180 / Math.PI;
 
-    // Get max line length from config
+    // Get config values
     var maxLineLength = ChakraApp.Config.connections ? 
       ChakraApp.Config.connections.maxLineLength : 120;
     
-    // Define the overlap threshold (squares closer than this will overlap)
     var overlapThreshold = ChakraApp.Config.connections ? 
       ChakraApp.Config.connections.overlapThreshold : 40;
 
-    // Set line position, accounting for squares being centered using transform
+    // Set line position
     this.element.style.width = length + 'px';
     this.element.style.left = x1 + 'px';
     this.element.style.top = y1 + 'px';
     this.element.style.transform = 'rotate(' + angle + 'deg)';
     
-    // Show/hide line based on length
+    // Show/hide line based on visibility
     this.element.style.display = this.viewModel.isVisible ? 'block' : 'none';
 
     // Check if squares are close enough to overlap
@@ -116,7 +108,7 @@
       // Add the overlap-connection class to the line
       this.element.classList.add('overlap-connection');
       
-      // Register the overlap with our manager
+      // Register the overlap with the manager
       if (square1 && square2) {
         ChakraApp.OverlappingSquaresManager.registerOverlap(square1, square2);
       }
@@ -134,91 +126,70 @@
 
   // Update view based on model changes
   ChakraApp.ConnectionView.prototype.update = function() {
-	  // Update visibility
-	  if (!this.viewModel.isVisible) {
-		  this.element.style.display = 'none';
-		  return;
-	  }
+    // If not visible, hide and exit
+    if (!this.viewModel.isVisible) {
+      this.element.style.display = 'none';
+      return;
+    }
 
-	  // Check if both squares are multi-selected
-	  var isMultiSelected = this._checkIfMultiSelected();
+    // Check if both squares are multi-selected
+    var isMultiSelected = this._checkIfMultiSelected();
 
-	  // Update highlight state
-	  if (this.viewModel.isHighlighted) {
-		  this.element.classList.add('connecting-line-highlight');
-	  } else {
-		  this.element.classList.remove('connecting-line-highlight');
-	  }
+    // Update highlight state
+    if (this.viewModel.isHighlighted) {
+      this.element.classList.add('connecting-line-highlight');
+    } else {
+      this.element.classList.remove('connecting-line-highlight');
+    }
 
-	  // Add multi-selected highlighting
-	  if (isMultiSelected) {
-		  this.element.classList.add('connecting-line-multi-selected');
-	  } else {
-		  this.element.classList.remove('connecting-line-multi-selected');
-	  }
+    // Update multi-selected state
+    if (isMultiSelected) {
+      this.element.classList.add('connecting-line-multi-selected');
+    } else {
+      this.element.classList.remove('connecting-line-multi-selected');
+    }
 
-	  // Update position
-	  this._updateLinePosition();
+    // Update position
+    this._updateLinePosition();
   };
 
-  // Add a helper method to check if both endpoints are multi-selected
+  // Check if both connection endpoints are multi-selected
   ChakraApp.ConnectionView.prototype._checkIfMultiSelected = function() {
-	  // If multi-selected squares array doesn't exist, return false
-	  if (!ChakraApp.multiSelectedSquares) return false;
+    // If multi-selected squares array doesn't exist, return false
+    if (!ChakraApp.multiSelectedSquares) return false;
 
-	  // Get the source and target IDs
-	  var sourceId = this.viewModel.sourceId;
-	  var targetId = this.viewModel.targetId;
+    // Get the source and target IDs
+    var sourceId = this.viewModel.sourceId;
+    var targetId = this.viewModel.targetId;
+    var primarySelectedId = ChakraApp.appState.selectedSquareId;
+    
+    // Check if both squares are in the multi-selected array or are the primary selected square
+    var isSourceSelected = ChakraApp.multiSelectedSquares.includes(sourceId) || sourceId === primarySelectedId;
+    var isTargetSelected = ChakraApp.multiSelectedSquares.includes(targetId) || targetId === primarySelectedId;
 
-	  // Check if both squares are in the multi-selected array or are the primary selected square
-	  var primarySelectedId = ChakraApp.appState.selectedSquareId;
-	  var isSourceSelected = ChakraApp.multiSelectedSquares.includes(sourceId) || sourceId === primarySelectedId;
-	  var isTargetSelected = ChakraApp.multiSelectedSquares.includes(targetId) || targetId === primarySelectedId;
-
-	  return isSourceSelected && isTargetSelected;
+    return isSourceSelected && isTargetSelected;
   };
   
-  // Subscribe to view model changes
+  // Set up event subscriptions
   ChakraApp.ConnectionView.prototype._setupViewModelSubscription = function() {
-	  var self = this;
+    // Call parent method first
+    ChakraApp.BaseView.prototype._setupViewModelSubscription.call(this);
+    
+    var self = this;
 
-	  // Subscribe to view model changes
-	  this.viewModelSubscription = this.viewModel.subscribe(function(change) {
-		  if (change.type === 'update') {
-			  self.update();
-		  }
-	  });
+    // Subscribe to multi-selection events
+    this._addHandler(ChakraApp.EventBus.subscribe('SQUARES_MULTI_SELECTED', function() {
+      self.update();
+    }));
 
-	  // Subscribe to multi-selection events
-	  this.multiSelectSubscription = ChakraApp.EventBus.subscribe('SQUARES_MULTI_SELECTED', function() {
-		  self.update();
-	  });
-
-	  // Subscribe to multi-deselection events
-	  this.multiDeselectSubscription = ChakraApp.EventBus.subscribe('SQUARES_MULTI_DESELECTED', function() {
-		  self.update();
-	  });
+    // Subscribe to multi-deselection events
+    this._addHandler(ChakraApp.EventBus.subscribe('SQUARES_MULTI_DESELECTED', function() {
+      self.update();
+    }));
   };
   
-  // Clean up resources
+  // Extend destroy method to handle overlaps
   ChakraApp.ConnectionView.prototype.destroy = function() {
-    // Call parent destroy method
-    ChakraApp.BaseView.prototype.destroy.call(this);
-    
-    // Clean up view model subscription
-    if (this.viewModelSubscription) {
-      this.viewModelSubscription();
-    }
-    
-    // Clean up additional subscriptions
-    if (this.multiSelectSubscription) {
-      this.multiSelectSubscription();
-    }
-
-    if (this.multiDeselectSubscription) {
-      this.multiDeselectSubscription();
-    }
-    
     // Get the squares
     var square1 = ChakraApp.appState.getSquare(this.viewModel.sourceId);
     var square2 = ChakraApp.appState.getSquare(this.viewModel.targetId);
@@ -227,6 +198,8 @@
     if (square1 && square2) {
       ChakraApp.OverlappingSquaresManager.removeOverlap(square1.id, square2.id);
     }
+    
+    // Call parent destroy method
+    ChakraApp.BaseView.prototype.destroy.call(this);
   };
-  
 })(window.ChakraApp = window.ChakraApp || {});
