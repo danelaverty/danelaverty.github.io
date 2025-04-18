@@ -13,6 +13,9 @@
     
     // Store panel ID for shape-specific rendering
     this.panelId = parentElement ? parentElement.getAttribute('data-panel-id') : null;
+    if (this.parentElement && !this.parentElement.style.position) {
+	    this.parentElement.style.position = 'relative';
+    }
     
     // Create the circle element
     this.render();
@@ -47,16 +50,36 @@
       this.element.classList.add('circle-' + this.panelId);
     }
 
-    // Create shape based on panel ID
-    if (this.panelId === 'right') {
-      // Render as triangle
-      this._renderTriangle();
-    } else if (this.panelId === 'farRight') {
-      // Render as star
-      this._renderStar();
+    // Get concept type for this panel
+    var conceptType = this._getConceptTypeForPanel();
+
+    // Render appropriate shape based on concept type or panel ID
+    if (conceptType) {
+      switch (conceptType.shape) {
+        case 'triangle':
+          this._renderTriangle();
+          break;
+        case 'star':
+          this._renderStar();
+          break;
+        case 'hexagon':
+          this._renderHexagon();
+          break;
+        case 'oval':
+          this._renderOval();
+          break;
+        case 'diamond':
+          this._renderDiamond();
+          break;
+        default:
+          this._renderStandardCircle();
+          break;
+      }
     } else {
-      // Default circle rendering with glow and particles
-      this._renderStandardCircle();
+      // Fallback to panel ID-based rendering (for backward compatibility)
+      {
+        this._renderStandardCircle();
+      }
     }
     
     // Create name input (for all shapes)
@@ -84,6 +107,33 @@
     this.parentElement.appendChild(this.element);
   };
 
+  ChakraApp.CircleView.prototype._getConceptTypeForPanel = function() {
+    // Ensure concept types are defined
+    if (!ChakraApp.Config.conceptTypes) return null;
+    
+    // Try to get concept type from panel's data attribute
+    if (this.panelId && this.parentElement) {
+      var panel = this.parentElement.closest('.circle-panel');
+      if (panel && panel.dataset.conceptType) {
+        var conceptTypeId = panel.dataset.conceptType;
+        
+        // Find matching concept type
+        return ChakraApp.Config.conceptTypes.find(function(type) {
+          return type.id === conceptTypeId;
+        });
+      }
+    }
+    
+    // Fallback: try to match by panel ID
+    if (this.panelId) {
+      return ChakraApp.Config.conceptTypes.find(function(type) {
+        return type.panelId === this.panelId;
+      }, this);
+    }
+    
+    return null;
+  };
+
   // Render triangle shape for right panel
   ChakraApp.CircleView.prototype._renderTriangle = function() {
     // Create triangle shape
@@ -91,11 +141,19 @@
       className: 'triangle-shape',
       style: {
         position: 'absolute',
-        width: '100%',
-        height: '100%',
+        width: '25px',
+        height: '25px',
         backgroundColor: this.viewModel.color,
         clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)', // Equilateral triangle
-        transition: 'transform 0.3s ease'
+        transition: 'transform 0.3s ease',
+	    transform: 'translate(-50%, -50%)',
+      }
+    });
+
+    this.shapeWrap = this._createElement('div', {
+      className: 'shape-wrap',
+      style: {
+        position: 'absolute',
       }
     });
     
@@ -108,27 +166,136 @@
       this.element.appendChild(this.elementSymbol);
     }
     
-    this.element.appendChild(this.triangleShape);
+    this.shapeWrap.appendChild(this.triangleShape);
+    this.element.appendChild(this.shapeWrap);
   };
 
-  // Render star shape for farRight panel
+  // Render hexagon shape for concepts panel
+  ChakraApp.CircleView.prototype._renderHexagon = function() {
+    // Create hexagon shape
+    this.hexagonShape = this._createElement('div', {
+      className: 'hexagon-shape',
+      style: {
+        position: 'absolute',
+        width: '25px',
+        height: '25px',
+        backgroundColor: this.viewModel.color,
+        clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
+        transition: 'transform 0.3s ease',
+        transform: 'translate(-50%, -50%)',
+      }
+    });
+    
+    this.shapeWrap = this._createElement('div', {
+      className: 'shape-wrap',
+      style: {
+        position: 'absolute',
+      }
+    });
+    
+    // Create element symbol if circle has an element
+    if (this.viewModel.element && ChakraApp.Config.elements && ChakraApp.Config.elements[this.viewModel.element]) {
+      this.elementSymbol = this._createElement('div', {
+        className: 'circle-element-symbol',
+        textContent: ChakraApp.Config.elements[this.viewModel.element].emoji
+      });
+      this.element.appendChild(this.elementSymbol);
+    }
+    
+    this.shapeWrap.appendChild(this.hexagonShape);
+    this.element.appendChild(this.shapeWrap);
+  };
+
+  // Render oval shape for people panel
+  ChakraApp.CircleView.prototype._renderOval = function() {
+    // Create oval shape
+    this.ovalShape = this._createElement('div', {
+      className: 'oval-shape',
+      style: {
+        position: 'absolute',
+        width: '30px',
+        height: '20px',
+        backgroundColor: this.viewModel.color,
+        borderRadius: '50%',
+        transition: 'transform 0.3s ease',
+        transform: 'translate(-50%, -50%)',
+      }
+    });
+    
+    this.shapeWrap = this._createElement('div', {
+      className: 'shape-wrap',
+      style: {
+        position: 'absolute',
+      }
+    });
+    
+    // Create element symbol if circle has an element
+    if (this.viewModel.element && ChakraApp.Config.elements && ChakraApp.Config.elements[this.viewModel.element]) {
+      this.elementSymbol = this._createElement('div', {
+        className: 'circle-element-symbol',
+        textContent: ChakraApp.Config.elements[this.viewModel.element].emoji
+      });
+      this.element.appendChild(this.elementSymbol);
+    }
+    
+    this.shapeWrap.appendChild(this.ovalShape);
+    this.element.appendChild(this.shapeWrap);
+  };
+
+  // Render diamond shape for events panel
+  ChakraApp.CircleView.prototype._renderDiamond = function() {
+    // Create diamond shape
+    this.diamondShape = this._createElement('div', {
+      className: 'diamond-shape',
+      style: {
+        position: 'absolute',
+        width: '25px',
+        height: '25px',
+        backgroundColor: this.viewModel.color,
+        clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)',
+        transition: 'transform 0.3s ease',
+        transform: 'translate(-50%, -50%)',
+      }
+    });
+    
+    this.shapeWrap = this._createElement('div', {
+      className: 'shape-wrap',
+      style: {
+        position: 'absolute',
+      }
+    });
+    
+    // Create element symbol if circle has an element
+    if (this.viewModel.element && ChakraApp.Config.elements && ChakraApp.Config.elements[this.viewModel.element]) {
+      this.elementSymbol = this._createElement('div', {
+        className: 'circle-element-symbol',
+        textContent: ChakraApp.Config.elements[this.viewModel.element].emoji
+      });
+      this.element.appendChild(this.elementSymbol);
+    }
+    
+    this.shapeWrap.appendChild(this.diamondShape);
+    this.element.appendChild(this.shapeWrap);
+  };
+
   ChakraApp.CircleView.prototype._renderStar = function() {
     // Create star shape
     this.starShape = this._createElement('div', {
       className: 'star-shape',
       style: {
         position: 'absolute',
-        width: '150%',
-        height: '150%',
+        width: '25px',
+        height: '25px',
         backgroundColor: this.viewModel.color,
         // 5-pointed star
         clipPath: 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)',
-        transition: 'transform 0.3s ease'
+        transition: 'transform 0.3s ease',
+	    transform: 'translate(-50%, -50%)',
       }
     });
     
-    this.starShapeWrap = this._createElement('div', {
-      className: 'star-shape-wrap',
+    this.shapeWrap = this._createElement('div', {
+      className: 'shape-wrap',
       style: {
         position: 'absolute',
       }
@@ -143,9 +310,8 @@
       this.element.appendChild(this.elementSymbol);
     }
     
-    //this.starShapeWrap.appendChild(this.starShape);
-    //this.element.appendChild(this.starShapeWrap);
-    this.element.appendChild(this.starShape);
+    this.shapeWrap.appendChild(this.starShape);
+    this.element.appendChild(this.shapeWrap);
   };
   
   // Standard circle rendering with glow and particles
@@ -273,11 +439,7 @@
     this.element.style.top = this.viewModel.y + 'px';
 
     // Update color based on panel type
-    if (this.panelId === 'right' && this.triangleShape) {
-      this.triangleShape.style.backgroundColor = this.viewModel.color;
-    } else if (this.panelId === 'farRight' && this.starShape) {
-      this.starShape.style.backgroundColor = this.viewModel.color;
-    } else if (this.glowElement) {
+    if (this.glowElement) {
       // Standard circle
       this.glowElement.style.backgroundColor = this.viewModel.color;
       
@@ -316,14 +478,14 @@
     this.element.classList.toggle('dimmed', this.viewModel.isDimmed);
 
     // Update chakra form if needed (only for standard circles)
-    if (this.viewModel.squareCountChanged && this.panelId !== 'right' && this.panelId !== 'farRight') {
+    if (this.viewModel.squareCountChanged && this.panelId == 'left') {
       this._updateChakraForm();
     }
   };
   
   ChakraApp.CircleView.prototype._updateChakraForm = function() {
     // Only for standard circles
-    if (this.panelId === 'right' || this.panelId === 'farRight') return;
+    if (this.panelId != 'left') return;
     
     // Remove existing container
     var existingContainer = this.element.querySelector('.outer-polygon-container');
@@ -377,97 +539,101 @@
   
   // Add drag functionality
   ChakraApp.CircleView.prototype._addDragFunctionality = function() {
-    var isDragging = false;
-    var self = this;
+  var isDragging = false;
+  var self = this;
 
-    // Mouse down to start drag
-    this.element.addEventListener('mousedown', function(e) {
-      // Only start dragging if clicking on the circle itself (not its children)
-      if (e.target === self.element || 
-          e.target === self.triangleShape || 
-          e.target === self.starShape || 
-          e.target === self.glowElement) {
-        e.preventDefault();
-        isDragging = true;
-        window.wasDragged = false;
+  // Mouse down to start drag
+  this.element.addEventListener('mousedown', function(e) {
+    // Only start dragging if clicking on the circle itself (not its children)
+    if (e.target === self.element || 
+        e.target === self.triangleShape || 
+        e.target === self.starShape || 
+        e.target === self.hexagonShape ||  // Add new shape types
+        e.target === self.ovalShape || 
+        e.target === self.diamondShape ||
+        e.target === self.glowElement) {
+      e.preventDefault();
+      isDragging = true;
+      window.wasDragged = false;
 
-        // Disable transitions while dragging
-        self.element.classList.add('no-transition');
+      // Disable transitions while dragging
+      self.element.classList.add('no-transition');
 
-        // Add dragging styles
-        self.element.style.zIndex = 20;
-      }
-    });
+      // Add dragging styles
+      self.element.style.zIndex = 20;
+    }
+  });
 
-    // Global mouse move for drag
-    var mouseMoveHandler = function(e) {
-      if (isDragging) {
-        e.preventDefault();
-        window.wasDragged = true;
+  // Global mouse move for drag
+  var mouseMoveHandler = function(e) {
+    if (isDragging) {
+      e.preventDefault();
+      window.wasDragged = true;
 
-        // Get cursor position within the zoom container
-        var zoomContainer = self.parentElement;
-        var containerRect = zoomContainer.getBoundingClientRect();
+      // Get cursor position within the zoom container
+      var zoomContainer = self.parentElement;
+      var containerRect = zoomContainer.getBoundingClientRect();
 
-        // Calculate raw position
-        var newX = (e.clientX - containerRect.left);
-        var newY = (e.clientY - containerRect.top);
+      // Calculate raw position with bounds checking
+      var newX = Math.max(0, Math.min(containerRect.width, e.clientX - containerRect.left));
+      var newY = Math.max(0, Math.min(containerRect.height, e.clientY - containerRect.top));
 
-        // Set position directly on DOM element
-        self.element.style.left = newX + 'px';
-        self.element.style.top = newY + 'px';
+      // Set position directly on DOM element
+      self.element.style.left = newX + 'px';
+      self.element.style.top = newY + 'px';
 
-        var panelId = zoomContainer.getAttribute('data-panel-id');
-        if (panelId === 'left') {
-          // Check for meridian snap
-          var meridianX = ChakraApp.Config.meridian.x;
-          var distanceToMeridian = Math.abs(newX - meridianX);
+      // Handle meridian snap if in left panel
+      var panelId = zoomContainer.getAttribute('data-panel-id');
+      if (panelId === 'left') {
+        // Check for meridian snap
+        var meridianX = ChakraApp.Config.meridian.x;
+        var distanceToMeridian = Math.abs(newX - meridianX);
 
-          if (distanceToMeridian < ChakraApp.Config.meridian.snapThreshold) {
-            // Snap to meridian
-            self.element.style.left = meridianX + 'px';
-            self.element.classList.add('snapping');
-          } else {
-            self.element.classList.remove('snapping');
-          }
+        if (distanceToMeridian < ChakraApp.Config.meridian.snapThreshold) {
+          // Snap to meridian
+          self.element.style.left = meridianX + 'px';
+          self.element.classList.add('snapping');
+        } else {
+          self.element.classList.remove('snapping');
         }
       }
-    };
-
-    // Global mouse up to end drag
-    var mouseUpHandler = function() {
-      if (isDragging) {
-        isDragging = false;
-
-        // Update the model with the final position
-        var finalX = parseFloat(self.element.style.left);
-        var finalY = parseFloat(self.element.style.top);
-        self.viewModel.updatePosition(finalX, finalY);
-
-        // Restore normal z-index
-        self.element.style.zIndex = self.viewModel.isSelected ? 15 : 10;
-
-        // Re-enable transitions
-        self.element.classList.remove('no-transition');
-
-        // Save state when drag completes
-        ChakraApp.appState.saveToStorageNow();
-
-        // Reset drag state after a short delay
-        setTimeout(function() {
-          window.wasDragged = false;
-        }, 50);
-      }
-    };
-
-    // Add global event listeners
-    document.addEventListener('mousemove', mouseMoveHandler);
-    document.addEventListener('mouseup', mouseUpHandler);
-
-    // Store handlers for cleanup
-    this._addHandler(function() {
-      document.removeEventListener('mousemove', mouseMoveHandler);
-      document.removeEventListener('mouseup', mouseUpHandler);
-    });
+    }
   };
+
+  // Global mouse up to end drag
+  var mouseUpHandler = function() {
+    if (isDragging) {
+      isDragging = false;
+
+      // Update the model with the final position
+      var finalX = parseFloat(self.element.style.left);
+      var finalY = parseFloat(self.element.style.top);
+      self.viewModel.updatePosition(finalX, finalY);
+
+      // Restore normal z-index
+      self.element.style.zIndex = self.viewModel.isSelected ? 15 : 10;
+
+      // Re-enable transitions
+      self.element.classList.remove('no-transition');
+
+      // Save state when drag completes
+      ChakraApp.appState.saveToStorageNow();
+
+      // Reset drag state after a short delay
+      setTimeout(function() {
+        window.wasDragged = false;
+      }, 50);
+    }
+  };
+
+  // Add global event listeners
+  document.addEventListener('mousemove', mouseMoveHandler);
+  document.addEventListener('mouseup', mouseUpHandler);
+
+  // Store handlers for cleanup
+  this._addHandler(function() {
+    document.removeEventListener('mousemove', mouseMoveHandler);
+    document.removeEventListener('mouseup', mouseUpHandler);
+  });
+};
 })(window.ChakraApp = window.ChakraApp || {});

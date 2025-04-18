@@ -46,6 +46,11 @@
     ChakraApp.appState._loadPanelState();
   }
   
+  // Initialize concept panels
+  if (ChakraApp.ConceptPanelManager) {
+    ChakraApp.ConceptPanelManager.initialize();
+  }
+  
   // Create view manager
   this.viewManager = new ChakraApp.ViewManager();
   
@@ -59,6 +64,12 @@
   // Initialize view manager
   this.viewManager.init();
   
+  // Create toggle buttons AFTER controllers are initialized
+  if (ChakraApp.ConceptPanelManager) {
+    ChakraApp.ConceptPanelManager.createToggleButtons();
+  }
+  
+  // Initialize overlapping squares manager
   ChakraApp.OverlappingSquaresManager.init();
   
   // Load data from storage

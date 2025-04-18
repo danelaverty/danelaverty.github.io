@@ -137,19 +137,50 @@
       '#00FFFF', // Cyan
       '#FFFFFF'  // White
     ],
-    
-    // Elements - kept as is due to text content and readability
-    elements: {
-      fire: { emoji: '🔥', color: '#FF5500', displayName: 'Fire', description: 'Transformation, energy' },
-      earth: { emoji: '🌱', color: '#8B4513', displayName: 'Earth', description: 'Stability, grounding' },
-      air: { emoji: '💨', color: '#E0FFFF', displayName: 'Air', description: 'Movement, freedom' },
-      water: { emoji: '💧', color: '#1E90FF', displayName: 'Water', description: 'Flow, emotion' },
-      space: { emoji: '✨', color: '#191970', displayName: 'Space', description: 'Expansion, potential' },
-      sound: { emoji: '🔊', color: '#9370DB', displayName: 'Sound', description: 'Vibration, expression' },
-      light: { emoji: '☀️', color: '#FFD700', displayName: 'Light', description: 'Clarity, illumination' },
-      thought: { emoji: '💭', color: '#E6E6FA', displayName: 'Thought', description: 'Consciousness, awareness' }
-    },
 
+    conceptTypes: [
+  {
+    id: 'things',
+    name: 'Things',
+    description: 'Physical objects and tangible items',
+    shape: 'triangle', // What shape to render in the panel
+    color: '#38761d', // Default color for this concept type
+    position: 1 // Order from left to right
+  },
+  {
+    id: 'paths',
+    name: 'Paths',
+    description: 'Routes and ways forward',
+    shape: 'star',
+    color: '#6aa84f',
+    position: 2
+  },
+  {
+    id: 'patterns',
+    name: 'Patterns',
+    description: 'Abstract ideas and mental models',
+    shape: 'hexagon', // New shape we'll need to support
+    color: '#3d85c6',
+    position: 3
+  },
+  /*{
+    id: 'people',
+    name: 'People',
+    description: 'Individuals and groups',
+    shape: 'oval',
+    color: '#9fc5e8',
+    position: 4
+  },
+  {
+    id: 'events',
+    name: 'Events',
+    description: 'Actions and occurrences',
+    shape: 'diamond',
+    color: '#f1c232',
+    position: 5
+  }*/
+],
+    
     // Attribute info - kept as is due to text content
     attributeInfo: {
       cause: { emoji: '⚡', color: '#9999CC', displayName: 'Cause', description: 'Caused by' },
@@ -217,42 +248,11 @@
         }
       },
       
-      // Element characteristic
-      element: {
-        key: 'element',
-        displayName: 'Element',
-        buttonEmoji: '🔄',
-        buttonTitle: 'Change Element',
-        modalTitle: 'Select Element',
-        categories: [{
-          name: "Elements",
-          options: Object.keys(CompressedConfig.elements).map(function(key) {
-            var element = CompressedConfig.elements[key];
-            return {
-              value: key,
-              display: element.displayName,
-              secondary: element.description,
-              visualStyle: {
-                emoji: element.emoji,
-                color: element.color
-              }
-            };
-          })
-        }],
-        visualStyle: {
-          type: 'symbol',
-          cssProperty: 'content'
-        },
-        valueDisplayStyle: {
-          type: 'emoji',
-          template: '{EMOJI} {DISPLAY}'
-        }
-      }
     },
     
     // Directly copy these properties
     predefinedColors: CompressedConfig.predefinedColors,
-    elements: CompressedConfig.elements,
+    conceptTypes: CompressedConfig.conceptTypes,
     attributeInfo: CompressedConfig.attributeInfo,
     sizes: CompressedConfig.sizes,
     meridian: CompressedConfig.meridian,

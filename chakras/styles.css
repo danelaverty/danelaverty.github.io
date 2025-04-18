@@ -126,7 +126,7 @@ h3 {
   height: auto;
   min-height: 80px;
   background-color: var(--color-bg-dark);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: none;
 }
 
 #center-panel {
@@ -1365,10 +1365,6 @@ h3 {
   transition: transform 0.3s ease;
 }
 
-.circle.selected .triangle-shape {
-  animation: triangle-pulse 2s infinite alternate;
-}
-
 @keyframes triangle-pulse {
   0% { transform: scale(1); }
   100% { transform: scale(1.08); }
@@ -1436,8 +1432,12 @@ h3 {
   100% { transform: scale(1.08) rotate(15deg); }
 }
 
-.circle-farRight.selected {
-  box-shadow: 0 0 12px 4px rgba(255, 255, 255, 0.8);
+.circle.circle-right.selected, .circle.circle-farRight.selected {
+  box-shadow: none;
+}
+
+.circle-right.selected .shape-wrap, .circle-farRight.selected .shape-wrap {
+	filter: drop-shadow(0 0 3px #FFF) drop-shadow(0 0 5px #FFF);
 }
 
 /* Ensure element symbols are properly positioned in shapes */
@@ -1554,6 +1554,10 @@ body.circle-selected .action-btn-container {
   transition: background-color var(--transition-fast), transform var(--transition-fast);
 }
 
+.panel-toggle-btn.panel-hidden {
+	background-color: #222;
+}
+
 .panel-toggle-btn:hover {
   background-color: var(--color-btn-hover);
   transform: scale(1.05);
@@ -1563,7 +1567,7 @@ body.circle-selected .action-btn-container {
 #toggle-left-panel {
   left: 400px; /* Width of left panel */
   top: 50%;
-  transform: translateY(-50%);
+  transform: translateY(-50%) rotate(180deg);
 }
 
 #toggle-right-panel {
@@ -1585,7 +1589,7 @@ body.circle-selected .action-btn-container {
 #toggle-bottom-panel {
   bottom: 142px; /* Height of bottom panel */
   left: 50%;
-  transform: translateX(-50%) rotate(-90deg);
+  transform: translateX(-50%) rotate(90deg);
 }
 
 /* When panels are hidden, adjust button positions */
@@ -1645,10 +1649,78 @@ body.circle-selected .action-btn-container {
 }
 
 .panel-toggle-btn.panel-hidden::before {
-  content: "◀";
-}
-
-.panel-toggle-btn:not(.panel-hidden)::before {
   content: "▶";
 }
 
+.panel-toggle-btn:not(.panel-hidden)::before {
+  content: "◀";
+}
+
+.panel-toggle-btn-label {
+	position: absolute;
+	transform: rotate(90deg) translateY(-50%);
+	color: #AAA;
+	display: block;
+	margin-right: 33px;
+	font-size: 10px;
+}
+
+
+Add these styles to styles.css:
+
+/* Concept Panel Styles */
+.concept-panel {
+  transition: transform 0.4s ease, opacity 0.4s ease, width 0.4s ease, height 0.4s ease;
+}
+
+.concept-panel.hidden {
+  transform: translateX(100%);
+}
+
+/* Shape styles for different concept types */
+.hexagon-shape {
+  transform-origin: center center;
+  transition: transform 0.3s ease;
+}
+
+.circle-panel[data-concept-type="concepts"] .circle.selected .hexagon-shape {
+  //animation: hexagon-pulse 2s infinite alternate;
+}
+
+@keyframes hexagon-pulse {
+  0% { transform: scale(1) rotate(0deg); }
+  100% { transform: scale(1.08) rotate(30deg); }
+}
+
+.oval-shape {
+  transform-origin: center center;
+  transition: transform 0.3s ease;
+}
+
+.circle-panel[data-concept-type="people"] .circle.selected .oval-shape {
+  //animation: oval-pulse 2s infinite alternate;
+}
+
+@keyframes oval-pulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.1) scaleX(1.1); }
+}
+
+.diamond-shape {
+  transform-origin: center center;
+  transition: transform 0.3s ease;
+}
+
+.circle-panel[data-concept-type="events"] .circle.selected .diamond-shape {
+  //animation: diamond-pulse 2s infinite alternate;
+}
+
+@keyframes diamond-pulse {
+  0% { transform: scale(1) rotate(0deg); }
+  100% { transform: scale(1.1) rotate(45deg); }
+}
+
+/* Ensure all shape containers are properly styled when selected */
+.circle-panel[data-concept-type] .circle.selected .shape-wrap {
+  filter: drop-shadow(0 0 3px #FFF) drop-shadow(0 0 5px #FFF);
+}

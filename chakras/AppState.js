@@ -27,17 +27,17 @@
     this.tabs = new Map();
 
     // Panel configuration
-    this.panels = ['left', 'right', 'farRight', 'bottom'];
+    this.panels = ['left', 'bottom'];
 
     // Selection state 
-    this.selectedDocumentIds = { left: null, right: null, farRight: null, bottom: null };
+    this.selectedDocumentIds = { left: null, bottom: null };
     this.selectedCircleId = null;
     this.selectedSquareId = null;
     this.selectedTabId = null;
     
     // UI state
-    this.panelVisibility = { left: true, right: true, farRight: true, bottom: true };
-    this.documentListVisible = { left: false, right: false, farRight: false, bottom: false };
+    this.panelVisibility = { left: true, bottom: true };
+    this.documentListVisible = { left: false, bottom: false };
   };
   
   // Setup event listeners
@@ -1050,7 +1050,7 @@ ChakraApp.AppState.prototype._loadPanelState = function() {
       this.tabs.clear();
       
       // Reset selection state
-      this.selectedDocumentIds = { left: null, right: null, farRight: null, bottom: null };
+      this.selectedDocumentIds = { left: null, bottom: null };
       this.selectedCircleId = null;
       this.selectedSquareId = null;
       this.selectedTabId = null;

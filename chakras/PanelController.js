@@ -10,8 +10,6 @@
     // DOM elements
     this.mainContainer = null;
     this.leftPanel = null;
-    this.rightPanel = null;
-    this.farRightPanel = null;
     this.bottomPanel = null;
     this.centerContainer = null;
     this.topPanel = null;
@@ -50,17 +48,31 @@
    * Initialize DOM elements
    * @private
    */
-  ChakraApp.PanelController.prototype._initializeDomElements = function() {
-    // Get panels
-    this.mainContainer = document.getElementById('main-container');
-    this.leftPanel = document.getElementById('left-panel');
-    this.rightPanel = document.getElementById('right-panel');
-    this.farRightPanel = document.getElementById('farRight-panel');
-    this.bottomPanel = document.getElementById('bottom-panel');
-    this.centerContainer = document.getElementById('center-container');
-    this.topPanel = document.getElementById('top-panel');
-    this.centerPanel = document.getElementById('center-panel');
-  };
+  /**
+ * Initialize DOM elements
+ * @private
+ */
+ChakraApp.PanelController.prototype._initializeDomElements = function() {
+  // Get panels
+  this.mainContainer = document.getElementById('main-container');
+  this.leftPanel = document.getElementById('left-panel');
+  this.bottomPanel = document.getElementById('bottom-panel');
+  this.centerContainer = document.getElementById('center-container');
+  this.topPanel = document.getElementById('top-panel');
+  this.centerPanel = document.getElementById('center-panel');
+  
+  // Also initialize any dynamic panels from ConceptPanelManager
+  if (ChakraApp.ConceptPanelManager && ChakraApp.ConceptPanelManager.panels) {
+    Object.values(ChakraApp.ConceptPanelManager.panels).forEach(function(panel) {
+      if (!panel.existing) {
+        // Make sure this panel ID is in panelVisibility
+        if (!ChakraApp.appState.panelVisibility.hasOwnProperty(panel.id)) {
+          ChakraApp.appState.panelVisibility[panel.id] = true;
+        }
+      }
+    });
+  }
+};
   
   /**
    * Create panel toggle buttons
@@ -70,7 +82,7 @@
     var self = this;
     
     // Create toggle buttons for each panel
-    var panels = ['left', 'farRight', 'right', 'bottom'];
+    var panels = ['left', 'bottom'];
     
     panels.forEach(function(panelId) {
       var btn = document.createElement('button');
@@ -138,26 +150,33 @@
    * @param {boolean} visible - Whether the panel should be visible
    */
   ChakraApp.PanelController.prototype._applyPanelVisibility = function(panelId, visible) {
-    var panel = this._getPanelElement(panelId);
-    var toggleBtn = this.toggleButtons[panelId];
-    
-    if (!panel) return;
-    
-    if (visible) {
-      panel.classList.remove('hidden');
-      if (toggleBtn) {
-        toggleBtn.classList.remove('panel-hidden');
-      }
-    } else {
-      panel.classList.add('hidden');
-      if (toggleBtn) {
-        toggleBtn.classList.add('panel-hidden');
-      }
+  var panel = this._getPanelElement(panelId);
+  var toggleBtn = this.toggleButtons[panelId];
+  
+  if (!panel) return;
+  
+  if (visible) {
+    panel.classList.remove('hidden');
+    if (toggleBtn) {
+      toggleBtn.classList.remove('panel-hidden');
     }
-    
-    // Adjust layout as needed
-    this._adjustLayoutForVisibility();
-  };
+  } else {
+    panel.classList.add('hidden');
+    if (toggleBtn) {
+      toggleBtn.classList.add('panel-hidden');
+    }
+  }
+
+  // Adjust layout as needed
+  this._adjustLayoutForVisibility();
+  
+  // Update ConceptPanelManager if available
+  if (ChakraApp.ConceptPanelManager) {
+    ChakraApp.ConceptPanelManager._updatePanelStyles();
+  return;
+    ChakraApp.ConceptPanelManager._updateToggleButtonPositions(this);
+  }
+};
   
   /**
    * Adjust layout based on visible panels
@@ -166,20 +185,10 @@
   ChakraApp.PanelController.prototype._adjustLayoutForVisibility = function() {
     // Adjust container layout based on which panels are visible
     var leftVisible = ChakraApp.appState.panelVisibility.left;
-    var rightVisible = ChakraApp.appState.panelVisibility.right;
-    var farRightVisible = ChakraApp.appState.panelVisibility.farRight;
     var bottomVisible = ChakraApp.appState.panelVisibility.bottom;
     
     if (this.leftPanel) {
       this.leftPanel.style.width = leftVisible ? '400px' : '0';
-    }
-    
-    if (this.rightPanel) {
-      this.rightPanel.style.width = rightVisible ? '300px' : '0';
-    }
-    
-    if (this.farRightPanel) {
-      this.farRightPanel.style.width = farRightVisible ? '210px' : '0';
     }
     
     if (this.bottomPanel) {
@@ -189,7 +198,7 @@
     if (this.centerContainer) {
       // Adjust center container to fill space
       var centerWidth = '100%';
-      if (leftVisible) centerWidth = (rightVisible || farRightVisible) ? '50%' : '75%';
+      if (leftVisible) centerWidth = '75%';
       
       this.centerContainer.style.width = centerWidth;
       this.centerContainer.style.flex = leftVisible ? '1' : '2';
@@ -202,16 +211,22 @@
    * @param {string} panelId - Panel ID
    * @returns {Element|null} Panel element or null if not found
    */
-  ChakraApp.PanelController.prototype._getPanelElement = function(panelId) {
-    switch (panelId) {
-      case 'left': return this.leftPanel;
-      case 'right': return this.rightPanel;
-      case 'farRight': return this.farRightPanel;
-      case 'bottom': return this.bottomPanel;
-      case 'center': return this.centerPanel;
-      default: return null;
-    }
-  };
+/**
+ * Get panel element by ID
+ * @private
+ * @param {string} panelId - Panel ID
+ * @returns {Element|null} Panel element or null if not found
+ */
+ChakraApp.PanelController.prototype._getPanelElement = function(panelId) {
+  switch (panelId) {
+    case 'left': return this.leftPanel;
+    case 'bottom': return this.bottomPanel;
+    case 'center': return this.centerPanel;
+    default: 
+      // For dynamic panels, search by data-panel-id attribute
+      return document.querySelector('.circle-panel[data-panel-id="' + panelId + '"]');
+  }
+};
   
   /**
    * Toggle panel visibility
@@ -219,8 +234,30 @@
    * @returns {boolean} New visibility state
    */
   ChakraApp.PanelController.prototype.togglePanel = function(panelId) {
-    return ChakraApp.appState.togglePanelVisibility(panelId);
-  };
+  // First check if the panel is a concept panel that wasn't initialized with appState
+  if (!ChakraApp.appState.panelVisibility.hasOwnProperty(panelId)) {
+    // Initialize it in the panelVisibility object if it's missing
+    ChakraApp.appState.panelVisibility[panelId] = true;
+  }
+
+  // Now toggle the visibility
+  ChakraApp.appState.panelVisibility[panelId] = !ChakraApp.appState.panelVisibility[panelId];
+  
+  // Apply the visibility change
+  this._applyPanelVisibility(panelId, ChakraApp.appState.panelVisibility[panelId]);
+  return;
+  
+  // Publish the event
+  ChakraApp.EventBus.publish(ChakraApp.EventTypes.PANEL_VISIBILITY_CHANGED, {
+    panel: panelId,
+    visible: ChakraApp.appState.panelVisibility[panelId]
+  });
+  
+  // Save panel state to local storage
+  ChakraApp.appState._savePanelState();
+  
+  return ChakraApp.appState.panelVisibility[panelId];
+};
   
   /**
    * Show a panel
