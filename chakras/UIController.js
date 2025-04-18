@@ -70,10 +70,13 @@
   ChakraApp.UIController.prototype._createChakraTitle = function() {
     // Create title container if it doesn't exist
     if (!document.getElementById('chakra-title')) {
-      this.chakraTitle = document.createElement('div');
+      this.chakraTitle = document.createElement('h3');
       this.chakraTitle.id = 'chakra-title';
       this.chakraTitle.className = 'chakra-title';
-      this.chakraTitle.textContent = 'No Chakra Selected';
+      this.chakraTitle.textContent = 'Storyboard';
+      this.chakraTitle.style.position = 'relative';
+      this.chakraTitle.style.paddingBottom = '0';
+      this.chakraTitle.style.marginBottom = '0';
       
       // Add to top panel
       this.topPanel.insertBefore(this.chakraTitle, this.topPanel.firstChild);
@@ -274,7 +277,7 @@
     if (!this.chakraTitle) return;
     
     if (!circleName || circleName === ChakraApp.Config.defaultName) {
-      this.chakraTitle.textContent = 'No Chakra Selected';
+      this.chakraTitle.textContent = 'Storyboard';
       this.chakraTitle.classList.remove('visible');
     } else {
       this.chakraTitle.textContent = circleName;

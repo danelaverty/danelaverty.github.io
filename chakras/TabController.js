@@ -56,7 +56,7 @@
       var style = document.createElement('style');
       style.textContent = `
         .tabs-container {
-          display: flex;
+          display: none;
           width: 100%;
           overflow-x: auto;
           border-bottom: 1px solid #444;
