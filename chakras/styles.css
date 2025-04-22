@@ -1724,3 +1724,57 @@ Add these styles to styles.css:
 .circle-panel[data-concept-type] .circle.selected .shape-wrap {
   filter: drop-shadow(0 0 3px #FFF) drop-shadow(0 0 5px #FFF);
 }
+
+/* Completion level styles for triangles */
+.triangle-shape.level0 {
+  border: 2px dotted;
+  background-color: transparent !important;
+}
+
+.triangle-shape.level1 {
+  /* Filled bottom part (trapezoid shape) */
+  clip-path: polygon(20% 70%, 0% 100%, 100% 100%, 80% 70%);
+}
+
+.triangle-outline {
+  border: 2px dotted;
+  background-color: transparent !important;
+}
+
+/* When selected, add a glow effect to the borders for better visibility */
+.circle-right.selected .triangle-shape.level0,
+.circle-right.selected .triangle-outline {
+  border-color: #fff;
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.7));
+}
+
+/* Ensure trapezoid stands out when selected */
+.circle-right.selected .triangle-shape.level1 {
+  filter: brightness(1.2) drop-shadow(0 0 2px rgba(255, 255, 255, 0.5));
+}
+
+.concept-panel {
+  z-index: 20;
+  overflow: hidden !important;
+}
+
+.circle-panel {
+  position: relative;
+  z-index: 10;
+}
+
+.circle {
+  z-index: 5;
+}
+
+.circle.selected {
+  z-index: 8;
+}
+
+.square {
+  z-index: 5;
+}
+
+.square.selected {
+  z-index: 8;
+}

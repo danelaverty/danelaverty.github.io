@@ -462,6 +462,20 @@
         }
       }
     );
+
+    this.eventSubscriptions.panelsCreated = ChakraApp.EventBus.subscribe(
+		    ChakraApp.EventTypes.PANELS_CREATED,
+		    function(data) {
+			    if (!data || !data.panels || !Array.isArray(data.panels)) return;
+    
+    // Create document controls for newly created panels
+    data.panels.forEach(function(panelId) {
+      self._createDocumentControlsForPanel(panelId);
+      self._updateDocumentList(panelId);
+      self._updateCurrentDocumentDisplay(panelId);
+    });
+  }
+);
   };
   
   /**

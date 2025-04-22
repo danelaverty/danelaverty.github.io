@@ -136,39 +136,134 @@
 
   // Render triangle shape for right panel
   ChakraApp.CircleView.prototype._renderTriangle = function() {
-    // Create triangle shape
+  // Get completion level from characteristics
+  var completionLevel = "level2"; // Default to complete level
+  if (this.viewModel.characteristics && this.viewModel.characteristics.completion) {
+    completionLevel = this.viewModel.characteristics.completion;
+  }
+  
+  // Create triangle shape container
+  this.shapeWrap = this._createElement('div', {
+    className: 'shape-wrap triangle-wrap completion-' + completionLevel,
+    style: {
+      position: 'absolute',
+      width: '25px',
+      height: '25px',
+      // Make sure the wrapper has a pointer cursor
+      cursor: 'pointer',
+      // Add dummy background to capture clicks (transparent)
+      backgroundColor: 'rgba(0,0,0,0.001)',
+      // Make sure the wrapper has a high z-index
+      zIndex: '10'
+    },
+    events: {
+      // Add click handler directly to the wrapper
+      click: (e) => {
+        e.stopPropagation();
+        if (!window.wasDragged) {
+          this.viewModel.select();
+        }
+      }
+    }
+  });
+  
+  // Create triangle shape based on completion level
+  if (completionLevel === "level0") {
+    // Level 0: Dotted outline only
     this.triangleShape = this._createElement('div', {
-      className: 'triangle-shape',
+      className: 'triangle-shape level0',
+      style: {
+        position: 'absolute',
+        width: '25px',
+        height: '25px',
+        backgroundColor: 'transparent',
+        border: '2px dashed rgba(255, 255, 255, .4)',
+        transition: 'transform 0.3s ease',
+	    transform: 'translate(-1px, -2px)',
+        // Lower z-index than the wrapper
+        zIndex: '5',
+        pointerEvents: 'none' // Let events pass through to wrapper
+      }
+    });
+  } 
+  else if (completionLevel === "level1") {
+    // Level 1: Dotted outline with bottom filled (trapezoid fill)
+    // Create the dashed outline
+    this.triangleOutline = this._createElement('div', {
+      className: 'triangle-outline',
+      style: {
+        position: 'absolute',
+        width: '25px',
+        height: '25px',
+        backgroundColor: 'transparent',
+        border: '2px dashed rgba(255, 255, 255, .4)',
+	    transform: 'translate(-1px, -2px)',
+        zIndex: '6',
+        pointerEvents: 'none' // Let events pass through to wrapper
+      }
+    });
+    
+    // Create the filled bottom (trapezoid)
+    this.triangleShape = this._createElement('div', {
+      className: 'triangle-shape level1',
       style: {
         position: 'absolute',
         width: '25px',
         height: '25px',
         backgroundColor: this.viewModel.color,
-        clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)', // Equilateral triangle
+        clipPath: 'polygon(20% 70%, 0% 100%, 100% 100%, 80% 70%)', // Trapezoid shape
         transition: 'transform 0.3s ease',
-	    transform: 'translate(-50%, -50%)',
+	transform: 'scale(0.90)',
+        zIndex: '5',
+        pointerEvents: 'none' // Let events pass through to wrapper
       }
     });
-
-    this.shapeWrap = this._createElement('div', {
-      className: 'shape-wrap',
+    
+    // Add both to the container
+    this.shapeWrap.appendChild(this.triangleShape);
+    this.shapeWrap.appendChild(this.triangleOutline);
+  } 
+  else {
+    // Level 2: Fully filled triangle (default)
+    this.triangleShape = this._createElement('div', {
+      className: 'triangle-shape level2',
       style: {
         position: 'absolute',
+        width: '25px',
+        height: '25px',
+        backgroundColor: this.viewModel.color,
+        clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)',
+        transition: 'transform 0.3s ease',
+	transform: 'scale(0.90)',
+        zIndex: '5',
+        pointerEvents: 'none' // Let events pass through to wrapper
       }
     });
     
-    // Create element symbol if circle has an element
-    if (this.viewModel.element && ChakraApp.Config.elements[this.viewModel.element]) {
-      this.elementSymbol = this._createElement('div', {
-        className: 'circle-element-symbol',
-        textContent: ChakraApp.Config.elements[this.viewModel.element].emoji
-      });
-      this.element.appendChild(this.elementSymbol);
-    }
-    
+    // Add to the container
     this.shapeWrap.appendChild(this.triangleShape);
-    this.element.appendChild(this.shapeWrap);
-  };
+  }
+  
+  // Create element symbol if circle has an element
+  if (this.viewModel.element && ChakraApp.Config.elements && ChakraApp.Config.elements[this.viewModel.element]) {
+    this.elementSymbol = this._createElement('div', {
+      className: 'circle-element-symbol',
+      textContent: ChakraApp.Config.elements[this.viewModel.element].emoji,
+      style: {
+        zIndex: '7',
+        pointerEvents: 'none' // Let events pass through to wrapper
+      }
+    });
+    this.element.appendChild(this.elementSymbol);
+  }
+  
+  if (completionLevel !== "level1") {
+    // For level0 and level2, add the triangle shape (for level1 we already added both parts)
+    this.shapeWrap.appendChild(this.triangleShape);
+  }
+  
+  this.element.appendChild(this.shapeWrap);
+};
 
   // Render hexagon shape for concepts panel
   ChakraApp.CircleView.prototype._renderHexagon = function() {
@@ -433,55 +528,159 @@
   };
   
   // Update view based on model changes
-  ChakraApp.CircleView.prototype.update = function() {
-    // Update position
-    this.element.style.left = this.viewModel.x + 'px';
-    this.element.style.top = this.viewModel.y + 'px';
+ChakraApp.CircleView.prototype.update = function() {
+  // Update position
+  this.element.style.left = this.viewModel.x + 'px';
+  this.element.style.top = this.viewModel.y + 'px';
 
-    // Update color based on panel type
-    if (this.glowElement) {
-      // Standard circle
-      this.glowElement.style.backgroundColor = this.viewModel.color;
-      
-      // Update particles
-      var particles = this.element.querySelectorAll('.particle');
-      for (var i = 0; i < particles.length; i++) {
-        particles[i].style.backgroundColor = this.viewModel.color;
-      }
+  // Get concept type for this panel
+  var conceptType = this._getConceptTypeForPanel();
+
+  // Check if it's a triangle (Things panel) to update completion level
+  if (conceptType && conceptType.shape === 'triangle') {
+    // Get current completion level
+    var completionLevel = "level2"; // Default
+    if (this.viewModel.characteristics && this.viewModel.characteristics.completion) {
+      completionLevel = this.viewModel.characteristics.completion;
     }
-
-    // Update name
-    this.nameElement.textContent = this.viewModel.name;
-
-    // Update element symbol
-    if (this.elementSymbol) {
-      if (this.viewModel.element && ChakraApp.Config.elements[this.viewModel.element]) {
-        this.elementSymbol.textContent = ChakraApp.Config.elements[this.viewModel.element].emoji;
-        this.elementSymbol.style.display = '';
-      } else {
-        this.elementSymbol.style.display = 'none';
-      }
-    }
-
-    // Update closest square indicator
-    if (this.viewModel.closestSquareName) {
-      this.closestIndicator.textContent = this.viewModel.closestSquareName;
-      this.closestIndicator.style.display = '';
-    } else {
-      this.closestIndicator.style.display = 'none';
-    }
-
-    // Update selection state
-    this.element.classList.toggle('selected', this.viewModel.isSelected);
     
-    // Update dimming state
-    this.element.classList.toggle('dimmed', this.viewModel.isDimmed);
-
-    // Update chakra form if needed (only for standard circles)
-    if (this.viewModel.squareCountChanged && this.panelId == 'left') {
-      this._updateChakraForm();
+    // Update the wrapper class to reflect current completion level
+    if (this.shapeWrap) {
+      // Update the class for styling
+      this.shapeWrap.className = 'shape-wrap triangle-wrap completion-' + completionLevel;
+      
+      // Remove existing triangle shape(s)
+      while (this.shapeWrap.firstChild) {
+        this.shapeWrap.removeChild(this.shapeWrap.firstChild);
+      }
     }
-  };
+    
+    // Recreate triangle shape based on completion level
+    if (completionLevel === "level0") {
+      // Level 0: Dotted outline only
+      this.triangleShape = this._createElement('div', {
+        className: 'triangle-shape level0',
+        style: {
+          position: 'absolute',
+          width: '25px',
+          height: '25px',
+          backgroundColor: 'transparent',
+        border: '2px dashed rgba(255, 255, 255, .4)',
+          //clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)',
+          transition: 'transform 0.3s ease',
+	    transform: 'translate(-1px, -2px)',
+          //transform: 'translate(-50%, -50%)',
+          zIndex: '5',
+          pointerEvents: 'none'
+        }
+      });
+      
+      this.shapeWrap.appendChild(this.triangleShape);
+    } 
+    else if (completionLevel === "level1") {
+      // Level 1: Dotted outline with bottom filled (trapezoid fill)
+      // Create the dashed outline
+      this.triangleOutline = this._createElement('div', {
+        className: 'triangle-outline',
+        style: {
+          position: 'absolute',
+          width: '25px',
+          height: '25px',
+          backgroundColor: 'transparent',
+        border: '2px dashed rgba(255, 255, 255, .4)',
+	    transform: 'translate(-1px, -2px)',
+          //clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)',
+          //transform: 'translate(-50%, -50%)',
+          zIndex: '6',
+          pointerEvents: 'none'
+        }
+      });
+      
+      // Create the filled bottom (trapezoid)
+      this.triangleShape = this._createElement('div', {
+        className: 'triangle-shape level1',
+        style: {
+          position: 'absolute',
+          width: '25px',
+          height: '25px',
+          backgroundColor: this.viewModel.color,
+          clipPath: 'polygon(20% 70%, 0% 100%, 100% 100%, 80% 70%)', // Trapezoid shape
+          transition: 'transform 0.3s ease',
+          //transform: 'translate(-50%, -50%)',
+          zIndex: '5',
+          pointerEvents: 'none'
+        }
+      });
+      
+      // Add both to the container
+      this.shapeWrap.appendChild(this.triangleShape);
+      this.shapeWrap.appendChild(this.triangleOutline);
+    } 
+    else {
+      // Level 2: Fully filled triangle (default)
+      this.triangleShape = this._createElement('div', {
+        className: 'triangle-shape level2',
+        style: {
+          position: 'absolute',
+          width: '25px',
+          height: '25px',
+          backgroundColor: this.viewModel.color,
+          clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)',
+          transition: 'transform 0.3s ease',
+          //transform: 'translate(-50%, -50%)',
+          zIndex: '5',
+          pointerEvents: 'none'
+        }
+      });
+      
+      this.shapeWrap.appendChild(this.triangleShape);
+    }
+  }
+
+  // Update color based on panel type
+  if (this.glowElement) {
+    // Standard circle
+    this.glowElement.style.backgroundColor = this.viewModel.color;
+    
+    // Update particles
+    var particles = this.element.querySelectorAll('.particle');
+    for (var i = 0; i < particles.length; i++) {
+      particles[i].style.backgroundColor = this.viewModel.color;
+    }
+  }
+
+  // Update name
+  this.nameElement.textContent = this.viewModel.name;
+
+  // Update element symbol
+  if (this.elementSymbol) {
+    if (this.viewModel.element && ChakraApp.Config.elements[this.viewModel.element]) {
+      this.elementSymbol.textContent = ChakraApp.Config.elements[this.viewModel.element].emoji;
+      this.elementSymbol.style.display = '';
+    } else {
+      this.elementSymbol.style.display = 'none';
+    }
+  }
+
+  // Update closest square indicator
+  if (this.viewModel.closestSquareName) {
+    this.closestIndicator.textContent = this.viewModel.closestSquareName;
+    this.closestIndicator.style.display = '';
+  } else {
+    this.closestIndicator.style.display = 'none';
+  }
+
+  // Update selection state
+  this.element.classList.toggle('selected', this.viewModel.isSelected);
+  
+  // Update dimming state
+  this.element.classList.toggle('dimmed', this.viewModel.isDimmed);
+
+  // Update chakra form if needed (only for standard circles)
+  if (this.viewModel.squareCountChanged && this.panelId == 'left') {
+    this._updateChakraForm();
+  }
+};
   
   ChakraApp.CircleView.prototype._updateChakraForm = function() {
     // Only for standard circles
@@ -498,44 +697,48 @@
   };
   
   // Set up event listeners
-  ChakraApp.CircleView.prototype._setupEventListeners = function() {
-    var self = this;
-    
-    // Click handler for selection
-    this.element.addEventListener('click', function(e) {
+ChakraApp.CircleView.prototype._setupEventListeners = function() {
+  var self = this;
+  
+  // Click handler for selection - only for the element itself, not for children
+  // We've now moved this to the shape wrapper for triangles
+  this.element.addEventListener('click', function(e) {
+    // Only handle clicks directly on the circle element
+    if (e.target === self.element) {
       e.stopPropagation();
       
       // Only select if we weren't just dragging
       if (!window.wasDragged) {
         self.viewModel.select();
       }
-    });
-    
-    // Name input events
-    this.nameElement.addEventListener('blur', function() {
-      var oldName = self.viewModel.name;
-      var newName = this.textContent;
+    }
+  });
 
-      // Only update if the name actually changed
-      if (oldName !== newName) {
-        self.viewModel.updateName(newName);
-      }
-    });
-    
-    this.nameElement.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        this.blur();
-      }
-    });
-    
-    this.nameElement.addEventListener('click', function(e) {
-      e.stopPropagation();
-    });
-    
-    // Add drag functionality
-    this._addDragFunctionality();
-  };
+  // Name input events
+  this.nameElement.addEventListener('blur', function() {
+    var oldName = self.viewModel.name;
+    var newName = this.textContent;
+
+    // Only update if the name actually changed
+    if (oldName !== newName) {
+      self.viewModel.updateName(newName);
+    }
+  });
+  
+  this.nameElement.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      this.blur();
+    }
+  });
+  
+  this.nameElement.addEventListener('click', function(e) {
+    e.stopPropagation();
+  });
+  
+  // Add drag functionality
+  this._addDragFunctionality();
+};
   
   // Add drag functionality
   ChakraApp.CircleView.prototype._addDragFunctionality = function() {

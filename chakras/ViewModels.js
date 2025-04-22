@@ -48,6 +48,7 @@
     this.isSelected = circleModel.selected;
     this.isDimmed = false;
     this.size = circleModel.size || 20;
+    this.characteristics = circleModel.characteristics || {};
     
     // Calculate chakra form based on square count
     this.chakraForm = ChakraApp.Utils.getChakraFormForCircle(
@@ -114,57 +115,64 @@
   
   // Update view model properties from model
   ChakraApp.CircleViewModel.prototype._updateFromModel = function() {
-	  // Store previous name to detect changes from/to default
-	  var previousName = this.name;
+  // Store previous name to detect changes from/to default
+  var previousName = this.name;
 
-	  // Update properties from model
-	  this.name = this.model.name;
-	  this.x = this.model.x;
-	  this.y = this.model.y;
-	  this.color = this.model.color;
-	  this.element = this.model.element;
-	  this.crystal = this.model.crystal;
-	  this.closestSquareName = this.model.closestSquareName;
+  // Update properties from model
+  this.name = this.model.name;
+  this.x = this.model.x;
+  this.y = this.model.y;
+  this.color = this.model.color;
+  this.element = this.model.element;
+  this.crystal = this.model.crystal;
+  this.closestSquareName = this.model.closestSquareName;
+  this.characteristics = this.model.characteristics || {}; // Add this line
 
-	  // Check if square count has changed
-	  var currentSquareCount = this.model.squareCount || 0;
-	  this.squareCountChanged = currentSquareCount !== this._previousSquareCount;
+  // Check if square count has changed
+  var currentSquareCount = this.model.squareCount || 0;
+  this.squareCountChanged = currentSquareCount !== this._previousSquareCount;
 
-	  // Check if name changed between default and non-default
-	  var wasDefaultName = previousName === ChakraApp.Config.defaultName;
-	  var isDefaultName = this.name === ChakraApp.Config.defaultName;
-	  var nameStatusChanged = wasDefaultName !== isDefaultName;
+  // Check if name changed between default and non-default
+  var wasDefaultName = previousName === ChakraApp.Config.defaultName;
+  var isDefaultName = this.name === ChakraApp.Config.defaultName;
+  var nameStatusChanged = wasDefaultName !== isDefaultName;
 
-	  // Update chakra form if square count changed OR name changed between default/non-default
-	  if (this.squareCountChanged || nameStatusChanged) {
-		  this.chakraForm = ChakraApp.Utils.getChakraFormForCircle(
-				  this.model.id,
-				  this.model.name,
-				  currentSquareCount
-				  );
-		  this._previousSquareCount = currentSquareCount;
-	  }
+  // Update chakra form if square count changed OR name changed between default/non-default
+  if (this.squareCountChanged || nameStatusChanged) {
+    this.chakraForm = ChakraApp.Utils.getChakraFormForCircle(
+      this.model.id,
+      this.model.name,
+      currentSquareCount
+    );
+    this._previousSquareCount = currentSquareCount;
+  }
 
-	  // Notify observers
-	  this.notify({ type: 'update' });
-  };
+  // Notify observers
+  this.notify({ type: 'update' });
+};
 
-  ChakraApp.CircleViewModel.prototype.updateCharacteristic = function(key, value) {
-    var update = {};
-    
-    // Handle legacy properties (color, element) and new characteristics
-    if (key === 'color') {
-        update.color = value;
-    } else if (key === 'element') {
-        update.element = value;
+ChakraApp.CircleViewModel.prototype.updateCharacteristic = function(key, value) {
+  var update = {};
+  
+  // Handle legacy properties (color, element) and new characteristics
+  if (key === 'color') {
+    update.color = value;
+  } else if (key === 'element') {
+    update.element = value;
+  } else {
+    // For new characteristics (including completion), update the characteristics object
+    var characteristics = Object.assign({}, this.characteristics || {});
+    if (value === null || value === '') {
+      // Remove the characteristic if null/empty value
+      delete characteristics[key];
     } else {
-        // For new characteristics, we'll update the characteristics object
-        var characteristics = this.characteristics || {};
-        characteristics[key] = value;
-        update.characteristics = characteristics;
+      // Otherwise set the new value
+      characteristics[key] = value;
     }
-    
-    ChakraApp.appState.updateCircle(this.id, update);
+    update.characteristics = characteristics;
+  }
+  
+  ChakraApp.appState.updateCircle(this.id, update);
 };
   
   // UI actions

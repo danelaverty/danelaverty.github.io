@@ -85,8 +85,6 @@
       [[9, 2, 12, 0, 0.8], [9, 2, 8, 0, 1.2, 1, 64]],
       [[17, 2, 8], [17, 2, 4, 0, 1.2, 1, 32]],
       [[21, 8, 8], [17, 4, 4, 0, 1.2, 1, 32]],
-      [[21, 8, 8], [17, 4, 4, 0, 1.2, 1, 32], [25, 4, 2, 0, 1.5, 0, 64]],
-      [[30, 1, 18], [61, 23, 1, 0, 3.4, 1, 32]],
       [[6, 1, 12], [6, 1, 8, 30, 1.1]],
       [[7, 2, 10], [7, 3, 8, 0, 1.2]],
       [[8, 1, 12], [8, 3, 8, 0, 1.15, 1, 40]],
@@ -142,7 +140,7 @@
   {
     id: 'things',
     name: 'Things',
-    description: 'Physical objects and tangible items',
+    description: 'Conditions & Systems',
     shape: 'triangle', // What shape to render in the panel
     color: '#38761d', // Default color for this concept type
     position: 1 // Order from left to right
@@ -150,7 +148,7 @@
   {
     id: 'paths',
     name: 'Paths',
-    description: 'Routes and ways forward',
+    description: 'Problems & Capacities',
     shape: 'star',
     color: '#6aa84f',
     position: 2
@@ -158,8 +156,8 @@
   {
     id: 'patterns',
     name: 'Patterns',
-    description: 'Abstract ideas and mental models',
-    shape: 'hexagon', // New shape we'll need to support
+    description: 'Habits & Behaviors',
+    shape: 'hexagon',
     color: '#3d85c6',
     position: 3
   },
@@ -205,6 +203,9 @@
       machine: { emoji: '🏗️', color: '#666633', displayName: 'The Machine', description: 'Deliverable' },
       chapter: { emoji: '📃', color: '#EEEEEE', displayName: 'Chapter', description: 'Narrative step' },
       book: { emoji: '📕', color: '#DDDDAA', displayName: 'Book', description: 'Narrative arc' },
+      positive: { emoji: '👍', color: '#AADDAA', displayName: 'Positive', description: 'Hopeful interpretation' },
+      negative: { emoji: '👎', color: '#DDAAAA', displayName: 'Negative', description: 'Concerned interpretation' },
+      problem: { emoji: '🔥', color: '#996622', displayName: 'Problem', description: 'Needs attention' },
     },
     
     // Layout configuration
@@ -248,6 +249,51 @@
         }
       },
       
+	    completion: {
+  key: 'completion',
+  displayName: 'Completion',
+  buttonEmoji: '🏗️',
+  buttonTitle: 'Set Completion Level',
+  modalTitle: 'Select Completion Level',
+  categories: [
+    {
+      name: "Completion Levels",
+      options: [
+        {
+          value: "level0",
+          display: "Level 0 - Idea",
+          secondary: "Only an idea, doesn't exist yet",
+          visualStyle: {
+            emoji: "💭",
+            number: "0"
+          }
+        },
+        {
+          value: "level1",
+          display: "Level 1 - In Progress",
+          secondary: "Currently being built",
+          visualStyle: {
+            emoji: "🚧",
+            number: "1"
+          }
+        },
+        {
+          value: "level2",
+          display: "Level 2 - Complete",
+          secondary: "Fully built and complete",
+          visualStyle: {
+            emoji: "✅",
+            number: "2"
+          }
+        }
+      ]
+    }
+  ],
+  valueDisplayStyle: {
+    type: 'emoji',
+    template: '<span>{EMOJI}</span> <span>{DISPLAY}</span>'
+  }
+},
     },
     
     // Directly copy these properties
@@ -259,7 +305,8 @@
     connections: CompressedConfig.connections,
     
     // Expand chakra forms from compressed format
-    chakraForms: expandChakraForm(CompressedConfig.chakraFormsCompressed)
+    chakraForms: expandChakraForm(CompressedConfig.chakraFormsCompressed),
+
   };
   
 })(window.ChakraApp = window.ChakraApp || {});

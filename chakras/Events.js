@@ -149,6 +149,8 @@
 
     // Multi-selection events (if not already added from previous feature)
     SQUARES_MULTI_SELECTED: 'squares:multi_selected',
-    SQUARES_MULTI_DESELECTED: 'squares:multi_deselected'
+    SQUARES_MULTI_DESELECTED: 'squares:multi_deselected',
+
+    PANELS_CREATED: 'panels_created',
   };
 })(window.ChakraApp = window.ChakraApp || {});
