@@ -65,9 +65,12 @@
   this.viewManager.init();
   
   // Create toggle buttons AFTER controllers are initialized
-  if (ChakraApp.ConceptPanelManager) {
-    ChakraApp.ConceptPanelManager.createToggleButtons();
+  if (ChakraApp.PanelManager) {
+    ChakraApp.PanelManager.createToggleButtonsForPanels();
   }
+  /*if (ChakraApp.ConceptPanelManager) {
+    ChakraApp.ConceptPanelManager.createToggleButtons();
+  }*/
   
   // Initialize overlapping squares manager
   ChakraApp.OverlappingSquaresManager.init();

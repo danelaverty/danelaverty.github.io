@@ -1,123 +1,142 @@
-// src/state/AppState.js
-// Central state management for the application
-
 (function(ChakraApp) {
-  /**
-   * Application State Manager - handles all application state
-   */
   ChakraApp.AppState = function() {
-    // Inherit from Observable
     ChakraApp.Observable.call(this);
     this._initializeState();
     this._setupEventListeners();
     this._loadPanelState();
   };
   
-  // Inherit from Observable
   ChakraApp.AppState.prototype = Object.create(ChakraApp.Observable.prototype);
   ChakraApp.AppState.prototype.constructor = ChakraApp.AppState;
   
-  // Initialize state
   ChakraApp.AppState.prototype._initializeState = function() {
-    // Core state collections
+    this._initializeCollections();
+    this._initializePanels();
+    this._initializeSelectionState();
+    this._initializeUIState();
+  };
+  
+  ChakraApp.AppState.prototype._initializeCollections = function() {
     this.documents = new Map();
     this.circles = new Map();
     this.squares = new Map();
     this.connections = new Map();
     this.tabs = new Map();
-
-    // Panel configuration
+  };
+  
+  ChakraApp.AppState.prototype._initializePanels = function() {
     this.panels = ['left', 'bottom'];
-
-    // Selection state 
+  };
+  
+  ChakraApp.AppState.prototype._initializeSelectionState = function() {
     this.selectedDocumentIds = { left: null, bottom: null };
     this.selectedCircleId = null;
     this.selectedSquareId = null;
     this.selectedTabId = null;
-    
-    // UI state
+  };
+  
+  ChakraApp.AppState.prototype._initializeUIState = function() {
     this.panelVisibility = { left: true, bottom: true };
     this.documentListVisible = { left: false, bottom: false };
   };
   
-  // Setup event listeners
   ChakraApp.AppState.prototype._setupEventListeners = function() {
+    this._setupSquareUpdateListener();
+    this._setupCircleSelectionListener();
+    this._setupCircleDeselectionListener();
+  };
+  
+  ChakraApp.AppState.prototype._setupSquareUpdateListener = function() {
     var self = this;
-    
     ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.SQUARE_UPDATED, function(square) {
       self._updateConnectionsForSquare(square.id);
     });
-    
+  };
+  
+  ChakraApp.AppState.prototype._setupCircleSelectionListener = function() {
+    var self = this;
     ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.CIRCLE_SELECTED, function(circle) {
       self._handleCircleSelection(circle.id);
     });
-    
+  };
+  
+  ChakraApp.AppState.prototype._setupCircleDeselectionListener = function() {
+    var self = this;
     ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.CIRCLE_DESELECTED, function() {
       self._handleCircleDeselection();
     });
   };
 
-  /**
-   * Notify observers about state changes
-   */
   ChakraApp.AppState.prototype._notifyStateChanged = function(section, data) {
     this.notify({ section: section, data: data });
   };
   
-  // Generic CRUD operations for all entity types
   ChakraApp.AppState.prototype._createEntity = function(entityType, entityClass, data, eventPrefix, panelId) {
-    var entity;
+    var entity = this._prepareEntity(entityType, entityClass, data, panelId);
+    this._addEntityToCollection(entityType, entity);
+    this._subscribeToEntityChanges(entityType, entity);
+    this._notifyAndPublishEntityCreation(entityType, entity, eventPrefix);
+    this._saveStateIfNotLoading();
     
+    return entity;
+  };
+  
+  ChakraApp.AppState.prototype._prepareEntity = function(entityType, entityClass, data, panelId) {
     if (data instanceof entityClass) {
-      entity = data;
-    } else {
-      // Handle special case for documents with panelId
-      if (entityType === 'documents' && panelId) {
-        data = data || {};
-        data.panelId = data.panelId || panelId;
-      }
-      
-      entity = new entityClass(data);
+      return data;
     }
     
-    // Add to collection
-    this[entityType].set(entity.id, entity);
+    return this._createNewEntity(entityType, entityClass, data, panelId);
+  };
+  
+  ChakraApp.AppState.prototype._createNewEntity = function(entityType, entityClass, data, panelId) {
+    var preparedData = data || {};
     
-    // Subscribe to entity changes
+    if (entityType === 'documents' && panelId) {
+      preparedData.panelId = preparedData.panelId || panelId;
+    }
+    
+    return new entityClass(preparedData);
+  };
+  
+  ChakraApp.AppState.prototype._addEntityToCollection = function(entityType, entity) {
+    this[entityType].set(entity.id, entity);
+  };
+  
+  ChakraApp.AppState.prototype._subscribeToEntityChanges = function(entityType, entity) {
     var self = this;
     entity.subscribe(function(change) {
       if (change.type === 'update') {
         self._notifyStateChanged(entityType, entity);
       }
     });
-    
-    // Notify and publish event
+  };
+  
+  ChakraApp.AppState.prototype._notifyAndPublishEntityCreation = function(entityType, entity, eventPrefix) {
     this._notifyStateChanged(entityType, entity);
     ChakraApp.EventBus.publish(ChakraApp.EventTypes[eventPrefix + '_CREATED'], entity);
+  };
+  
+  ChakraApp.AppState.prototype._updateEntity = function(entityType, id, changes) {
+    var entity = this._getEntityFromCollection(entityType, id);
+    if (!entity) return null;
     
-    // Save state
-    if (!this._isLoading) {
-      this.saveToStorage();
-    }
+    entity.update(changes);
+    this._saveStateIfNotLoading();
     
     return entity;
   };
   
-  ChakraApp.AppState.prototype._updateEntity = function(entityType, id, changes) {
-    var entity = this[entityType].get(id);
-    if (!entity) return null;
-    
-    entity.update(changes);
-    
-    // Save state
+  ChakraApp.AppState.prototype._getEntityFromCollection = function(entityType, id) {
+    return this[entityType].get(id) || null;
+  };
+  
+  ChakraApp.AppState.prototype._saveStateIfNotLoading = function() {
     if (!this._isLoading) {
       this.saveToStorage();
     }
-    
-    return entity;
   };
 
-  // DOCUMENT OPERATIONS
   ChakraApp.AppState.prototype.addDocument = function(documentData, panelId) {
     return this._createEntity('documents', ChakraApp.Document, documentData, 'DOCUMENT', panelId);
   };
@@ -127,63 +146,94 @@
   };
   
   ChakraApp.AppState.prototype.removeDocument = function(id) {
-    if (!this.documents.has(id)) return false;
+    if (!this._documentExists(id)) return false;
     
-    var doc = this.documents.get(id);
-    var panelId = doc.panelId;
-    
-    // Deselect if selected
-    if (this.selectedDocumentIds[panelId] === id) {
-      this.deselectDocument(panelId);
-    }
-
-    // Check if removing last viewed document
-    var lastViewedId = this.getLastViewedDocument(panelId);
-    var isRemovingLastViewed = lastViewedId === id;
-    
-    // Remove document
-    this.documents.delete(id);
-    
-    // Remove associated circles
-    var circlesToRemove = [];
-    this.circles.forEach(function(circle, circleId) {
-      if (circle.documentId === id) {
-        circlesToRemove.push(circleId);
-      }
-    });
-    
-    var self = this;
-    circlesToRemove.forEach(function(circleId) {
-      self.removeCircle(circleId);
-    });
-    
-    // Notify and publish event
-    this._notifyStateChanged('documents', null);
-    ChakraApp.EventBus.publish(ChakraApp.EventTypes.DOCUMENT_DELETED, doc);
-    
-    // Update last viewed document if needed
-    if (isRemovingLastViewed) {
-      var panelDocuments = this.getDocumentsForPanel(panelId);
-      if (panelDocuments.length > 0) {
-        var nextDocument = panelDocuments[0];
-        this.saveLastViewedDocument(nextDocument.id, panelId);
-        
-        if (this.selectedDocumentIds[panelId] === null) {
-          this.selectDocument(nextDocument.id, panelId);
-        }
-      } else {
-        localStorage.removeItem('chakraLastViewedDocumentId_' + panelId);
-      }
-    }
-    
-    // Save state
-    if (!this._isLoading) {
-      this.saveToStorage();
-    }
+    var doc = this._getDocumentAndPanelId(id);
+    this._deselectDocumentIfSelected(doc.panelId, id);
+    this._handleLastViewedDocument(doc.panelId, id);
+    this._removeDocumentFromCollection(id);
+    this._removeAssociatedCircles(id);
+    this._notifyDocumentDeleted(doc);
+    this._saveStateIfNotLoading();
     
     return true;
   };
   
+  ChakraApp.AppState.prototype._documentExists = function(id) {
+    return this.documents.has(id);
+  };
+  
+  ChakraApp.AppState.prototype._getDocumentAndPanelId = function(id) {
+    return this.documents.get(id);
+  };
+  
+  ChakraApp.AppState.prototype._deselectDocumentIfSelected = function(panelId, id) {
+    if (this.selectedDocumentIds[panelId] === id) {
+      this.deselectDocument(panelId);
+    }
+  };
+  
+  ChakraApp.AppState.prototype._handleLastViewedDocument = function(panelId, id) {
+    var lastViewedId = this.getLastViewedDocument(panelId);
+    var isRemovingLastViewed = lastViewedId === id;
+    
+    if (isRemovingLastViewed) {
+      this._updateLastViewedAfterRemoval(panelId);
+    }
+  };
+  
+  ChakraApp.AppState.prototype._updateLastViewedAfterRemoval = function(panelId) {
+    var panelDocuments = this.getDocumentsForPanel(panelId);
+    
+    if (panelDocuments.length > 0) {
+      this._selectNextDocumentAfterRemoval(panelId, panelDocuments[0]);
+    } else {
+      localStorage.removeItem('chakraLastViewedDocumentId_' + panelId);
+    }
+  };
+  
+  ChakraApp.AppState.prototype._selectNextDocumentAfterRemoval = function(panelId, nextDocument) {
+    this.saveLastViewedDocument(nextDocument.id, panelId);
+    
+    if (this.selectedDocumentIds[panelId] === null) {
+      this.selectDocument(nextDocument.id, panelId);
+    }
+  };
+  
+  ChakraApp.AppState.prototype._removeDocumentFromCollection = function(id) {
+    this.documents.delete(id);
+  };
+  
+  ChakraApp.AppState.prototype._removeAssociatedCircles = function(documentId) {
+    var circlesToRemove = this._findCirclesByDocumentId(documentId);
+    this._removeCircles(circlesToRemove);
+  };
+  
+  ChakraApp.AppState.prototype._findCirclesByDocumentId = function(documentId) {
+    var circlesToRemove = [];
+    
+    this.circles.forEach(function(circle, circleId) {
+      if (circle.documentId === documentId) {
+        circlesToRemove.push(circleId);
+      }
+    });
+    
+    return circlesToRemove;
+  };
+  
+  ChakraApp.AppState.prototype._removeCircles = function(circleIds) {
+    var self = this;
+    
+    circleIds.forEach(function(circleId) {
+      self.removeCircle(circleId);
+    });
+  };
+  
+  ChakraApp.AppState.prototype._notifyDocumentDeleted = function(doc) {
+    this._notifyStateChanged('documents', null);
+    ChakraApp.EventBus.publish(ChakraApp.EventTypes.DOCUMENT_DELETED, doc);
+  };
+
   ChakraApp.AppState.prototype.getDocument = function(id) {
     return this.documents.get(id) || null;
   };
@@ -193,72 +243,106 @@
   };
   
   ChakraApp.AppState.prototype.getDocumentsForPanel = function(panelId) {
+    var panelDocs = this._filterDocumentsByPanel(panelId);
+    return panelDocs.reverse();
+  };
+  
+  ChakraApp.AppState.prototype._filterDocumentsByPanel = function(panelId) {
     var panelDocs = [];
+    
     this.documents.forEach(function(doc) {
       if (doc.panelId === panelId) {
         panelDocs.push(doc);
       }
     });
-    return panelDocs.reverse();
+    
+    return panelDocs;
   };
   
   ChakraApp.AppState.prototype.selectDocument = function(id, panelId) {
+    var doc = this._getDocumentAndVerifyPanel(id, panelId);
+    if (!doc) return null;
+    
+    this._deselectCurrentDocument(doc.panelId, id);
+    this._setSelectedDocument(doc.panelId, id);
+    this._selectDocumentActions(doc, doc.panelId);
+    
+    return doc;
+  };
+  
+  ChakraApp.AppState.prototype._getDocumentAndVerifyPanel = function(id, specifiedPanelId) {
     var doc = this.documents.get(id);
     if (!doc) return null;
     
-    panelId = panelId || doc.panelId;
+    var panelId = specifiedPanelId || doc.panelId;
     
     if (doc.panelId !== panelId) {
       console.warn("Document belongs to a different panel than specified");
       return null;
     }
     
-    // Deselect current selection if different
-    if (this.selectedDocumentIds[panelId] && this.selectedDocumentIds[panelId] !== id) {
+    return doc;
+  };
+  
+  ChakraApp.AppState.prototype._deselectCurrentDocument = function(panelId, newId) {
+    if (this.selectedDocumentIds[panelId] && this.selectedDocumentIds[panelId] !== newId) {
       this.deselectDocument(panelId);
     }
-    
+  };
+  
+  ChakraApp.AppState.prototype._setSelectedDocument = function(panelId, id) {
     this.selectedDocumentIds[panelId] = id;
+  };
+  
+  ChakraApp.AppState.prototype._selectDocumentActions = function(doc, panelId) {
     doc.select();
-    
-    // Deselect any selected circle
+    this._deselectCircleIfSelected();
+    this._filterCirclesByDocument(doc.id, panelId);
+    this.saveLastViewedDocument(doc.id, panelId);
+  };
+  
+  ChakraApp.AppState.prototype._deselectCircleIfSelected = function() {
     if (this.selectedCircleId) {
       this.deselectCircle();
     }
-    
-    // Show only circles for this document in this panel
-    this._filterCirclesByDocument(id, panelId);
-
-    // Save as last viewed document
-    this.saveLastViewedDocument(id, panelId);
-    
-    return doc;
   };
   
   ChakraApp.AppState.prototype.deselectDocument = function(panelId) {
     if (!this.selectedDocumentIds[panelId]) return false;
     
-    var docId = this.selectedDocumentIds[panelId];
-    var doc = this.documents.get(docId);
-    if (doc) {
-      doc.deselect();
-    }
-    
-    this.selectedDocumentIds[panelId] = null;
-    
-    // Hide circles for this panel
+    this._deselectCurrentDocumentById(panelId);
     this._hideCirclesForPanel(panelId);
     
     return true;
   };
   
+  ChakraApp.AppState.prototype._deselectCurrentDocumentById = function(panelId) {
+    var docId = this.selectedDocumentIds[panelId];
+    var doc = this.documents.get(docId);
+    
+    if (doc) {
+      doc.deselect();
+    }
+    
+    this.selectedDocumentIds[panelId] = null;
+  };
+  
   ChakraApp.AppState.prototype.toggleDocumentList = function(panelId) {
+    this._toggleDocumentListVisibility(panelId);
+    this._notifyDocumentListToggled(panelId);
+    
+    return this.documentListVisible[panelId];
+  };
+  
+  ChakraApp.AppState.prototype._toggleDocumentListVisibility = function(panelId) {
     this.documentListVisible[panelId] = !this.documentListVisible[panelId];
+  };
+  
+  ChakraApp.AppState.prototype._notifyDocumentListToggled = function(panelId) {
     ChakraApp.EventBus.publish(ChakraApp.EventTypes.DOCUMENT_LIST_TOGGLED, {
       panelId: panelId, 
       visible: this.documentListVisible[panelId]
     });
-    return this.documentListVisible[panelId];
   };
   
   ChakraApp.AppState.prototype.saveLastViewedDocument = function(documentId, panelId) {
@@ -272,98 +356,122 @@
   };
   
   ChakraApp.AppState.prototype._filterCirclesByDocument = function(documentId, panelId) {
+    this._hideCirclesForPanel(panelId);
+    this._showCirclesForDocument(documentId);
+  };
+  
+  ChakraApp.AppState.prototype._showCirclesForDocument = function(documentId) {
     var self = this;
     
-    // Hide all circles for this panel first
-    this._hideCirclesForPanel(panelId);
-    
-    // Show only circles for the selected document
     this.circles.forEach(function(circle, circleId) {
       if (circle.documentId === documentId) {
-        // Force update to ensure visibility
         self._notifyStateChanged('circles', circle);
       }
     });
   };
   
   ChakraApp.AppState.prototype._hideCirclesForPanel = function(panelId) {
-    var self = this;
-    
-    // Find all documents for this panel
+    var panelDocIds = this._getDocumentIdsForPanel(panelId);
+    this._hideCirclesForDocuments(panelDocIds);
+  };
+  
+  ChakraApp.AppState.prototype._getDocumentIdsForPanel = function(panelId) {
     var panelDocIds = [];
+    
     this.documents.forEach(function(doc) {
       if (doc.panelId === panelId) {
         panelDocIds.push(doc.id);
       }
     });
     
-    // Hide circles for these documents
+    return panelDocIds;
+  };
+  
+  ChakraApp.AppState.prototype._hideCirclesForDocuments = function(documentIds) {
+    var self = this;
+    
     this.circles.forEach(function(circle) {
-      if (panelDocIds.includes(circle.documentId)) {
-        // Force update to ensure visibility reset
+      if (documentIds.includes(circle.documentId)) {
         self._notifyStateChanged('circles', circle);
       }
     });
   };
 
-  // CIRCLE OPERATIONS
   ChakraApp.AppState.prototype.addCircle = function(circleData, panelId) {
-    var circle;
-
-    if (circleData instanceof ChakraApp.Circle) {
-      circle = circleData;
-    } else {
-      circle = new ChakraApp.Circle(circleData);
-    }
-
-    // If no document ID, assign to selected document for the panel
+    var circle = this._prepareCircle(circleData);
+    var targetPanelId = panelId || 'left';
+    
     if (!circle.documentId) {
-      var targetPanelId = panelId || 'left';
-      var selectedDocId = this.selectedDocumentIds[targetPanelId];
-      
-      if (selectedDocId) {
-        circle.documentId = selectedDocId;
-      } else {
-        // Look for any document in the panel
-        var panelDocs = this.getDocumentsForPanel(targetPanelId);
-        if (panelDocs.length > 0) {
-          circle.documentId = panelDocs[0].id;
-        } else {
-          // Create a new document if none exists
-          var newDoc = this.addDocument(null, targetPanelId);
-          circle.documentId = newDoc.id;
-          
-          // Select the new document
-          this.selectDocument(newDoc.id, targetPanelId);
-        }
-      }
+      this._assignDocumentToCircle(circle, targetPanelId);
     }
-
-    // Only add if it has a document ID
-    if (circle.documentId) {
-      this.circles.set(circle.id, circle);
-
-      // Subscribe to circle changes
-      var self = this;
-      circle.subscribe(function(change) {
-        if (change.type === 'update') {
-          self._notifyStateChanged('circles', circle);
-        }
-      });
-
-      // Notify and publish event
-      this._notifyStateChanged('circles', circle);
-      ChakraApp.EventBus.publish(ChakraApp.EventTypes.CIRCLE_CREATED, circle);
-
-      // Save state
-      if (!this._isLoading) {
-        this.saveToStorage();
-      }
-
-      return circle;
+    
+    if (!circle.documentId) {
+      return null;
     }
-
-    return null;
+    
+    return this._finalizeCircleCreation(circle);
+  };
+  
+  ChakraApp.AppState.prototype._prepareCircle = function(circleData) {
+    if (circleData instanceof ChakraApp.Circle) {
+      return circleData;
+    }
+    
+    return new ChakraApp.Circle(circleData);
+  };
+  
+  ChakraApp.AppState.prototype._assignDocumentToCircle = function(circle, panelId) {
+    var selectedDocId = this._getSelectedDocumentForPanel(panelId);
+    
+    if (selectedDocId) {
+      circle.documentId = selectedDocId;
+    } else {
+      this._assignDocumentFromPanel(circle, panelId);
+    }
+  };
+  
+  ChakraApp.AppState.prototype._getSelectedDocumentForPanel = function(panelId) {
+    return this.selectedDocumentIds[panelId];
+  };
+  
+  ChakraApp.AppState.prototype._assignDocumentFromPanel = function(circle, panelId) {
+    var panelDocs = this.getDocumentsForPanel(panelId);
+    
+    if (panelDocs.length > 0) {
+      circle.documentId = panelDocs[0].id;
+    } else {
+      this._createAndAssignNewDocument(circle, panelId);
+    }
+  };
+  
+  ChakraApp.AppState.prototype._createAndAssignNewDocument = function(circle, panelId) {
+    var newDoc = this.addDocument(null, panelId);
+    circle.documentId = newDoc.id;
+    this.selectDocument(newDoc.id, panelId);
+  };
+  
+  ChakraApp.AppState.prototype._finalizeCircleCreation = function(circle) {
+    this.circles.set(circle.id, circle);
+    this._subscribeToCircleChanges(circle);
+    this._notifyCircleCreated(circle);
+    this._saveStateIfNotLoading();
+    
+    return circle;
+  };
+  
+  ChakraApp.AppState.prototype._subscribeToCircleChanges = function(circle) {
+    var self = this;
+    
+    circle.subscribe(function(change) {
+      if (change.type === 'update') {
+        self._notifyStateChanged('circles', circle);
+      }
+    });
+  };
+  
+  ChakraApp.AppState.prototype._notifyCircleCreated = function(circle) {
+    this._notifyStateChanged('circles', circle);
+    ChakraApp.EventBus.publish(ChakraApp.EventTypes.CIRCLE_CREATED, circle);
   };
   
   ChakraApp.AppState.prototype.updateCircle = function(id, changes) {
@@ -374,35 +482,40 @@
     if (!this.circles.has(id)) return false;
     
     var circle = this.circles.get(id);
-    
-    // Deselect if selected
-    if (this.selectedCircleId === id) {
-      this.deselectCircle();
-    }
-    
-    // Remove circle
-    this.circles.delete(id);
-    
-    // Remove associated squares
-    var self = this;
-    this.squares.forEach(function(square, squareId) {
-      if (square.circleId === id) {
-        self.removeSquare(squareId);
-      }
-    });
-    
-    // Notify and publish event
-    this._notifyStateChanged('circles', null);
-    ChakraApp.EventBus.publish(ChakraApp.EventTypes.CIRCLE_DELETED, circle);
-    
-    // Save state
-    if (!this._isLoading) {
-      this.saveToStorage();
-    }
+    this._deselectCircleIfCurrent(id);
+    this._removeCircleFromCollection(id);
+    this._removeAssociatedSquares(id);
+    this._notifyCircleDeleted(circle);
+    this._saveStateIfNotLoading();
     
     return true;
   };
   
+  ChakraApp.AppState.prototype._deselectCircleIfCurrent = function(id) {
+    if (this.selectedCircleId === id) {
+      this.deselectCircle();
+    }
+  };
+  
+  ChakraApp.AppState.prototype._removeCircleFromCollection = function(id) {
+    this.circles.delete(id);
+  };
+  
+  ChakraApp.AppState.prototype._removeAssociatedSquares = function(circleId) {
+    var self = this;
+    
+    this.squares.forEach(function(square, squareId) {
+      if (square.circleId === circleId) {
+        self.removeSquare(squareId);
+      }
+    });
+  };
+  
+  ChakraApp.AppState.prototype._notifyCircleDeleted = function(circle) {
+    this._notifyStateChanged('circles', null);
+    ChakraApp.EventBus.publish(ChakraApp.EventTypes.CIRCLE_DELETED, circle);
+  };
+
   ChakraApp.AppState.prototype.getCircle = function(id) {
     return this.circles.get(id) || null;
   };
@@ -412,55 +525,66 @@
   };
   
   ChakraApp.AppState.prototype.getCirclesForDocument = function(documentId) {
+    return this._filterCirclesByDocumentId(documentId);
+  };
+  
+  ChakraApp.AppState.prototype._filterCirclesByDocumentId = function(documentId) {
     var circles = [];
+    
     this.circles.forEach(function(circle) {
       if (circle.documentId === documentId) {
         circles.push(circle);
       }
     });
+    
     return circles;
   };
   
   ChakraApp.AppState.prototype.getCirclesForPanel = function(panelId) {
-    var panelCircles = [];
+    var panelDocIds = this._getDocumentIdsForPanel(panelId);
+    return this._filterCirclesByDocumentIds(panelDocIds);
+  };
+  
+  ChakraApp.AppState.prototype._filterCirclesByDocumentIds = function(documentIds) {
+    var circles = [];
     
-    // Get all document IDs for this panel
-    var panelDocIds = [];
-    this.documents.forEach(function(doc) {
-      if (doc.panelId === panelId) {
-        panelDocIds.push(doc.id);
-      }
-    });
-    
-    // Get circles for these documents
     this.circles.forEach(function(circle) {
-      if (panelDocIds.includes(circle.documentId)) {
-        panelCircles.push(circle);
+      if (documentIds.includes(circle.documentId)) {
+        circles.push(circle);
       }
     });
     
-    return panelCircles;
+    return circles;
   };
   
   ChakraApp.AppState.prototype.selectCircle = function(id) {
-    // Deselect current selection if different
-    if (this.selectedCircleId && this.selectedCircleId !== id) {
-      this.deselectCircle();
-    }
+    this._deselectCurrentCircleIfDifferent(id);
     
     var circle = this.circles.get(id);
     if (!circle) return null;
     
+    return this._setSelectedCircle(id, circle);
+  };
+  
+  ChakraApp.AppState.prototype._deselectCurrentCircleIfDifferent = function(id) {
+    if (this.selectedCircleId && this.selectedCircleId !== id) {
+      this.deselectCircle();
+    }
+  };
+  
+  ChakraApp.AppState.prototype._setSelectedCircle = function(id, circle) {
     this.selectedCircleId = id;
     circle.select();
+    this._showCenterPanel();
     
-    // Show center panel
+    return circle;
+  };
+  
+  ChakraApp.AppState.prototype._showCenterPanel = function() {
     ChakraApp.EventBus.publish(ChakraApp.EventTypes.PANEL_VISIBILITY_CHANGED, {
       panel: 'center',
       visible: true
     });
-    
-    return circle;
   };
   
   ChakraApp.AppState.prototype.deselectCircle = function() {
@@ -476,132 +600,182 @@
     return true;
   };
   
-  // Handle circle selection
   ChakraApp.AppState.prototype._handleCircleSelection = function(circleId) {
-    var self = this;
-
-    // Clean up any overlapping groups
+    this._cleanupOverlappingGroups();
+    this._hideAllSquares();
+    this._showSquaresForCircle(circleId);
+    this._ensureMeSquareExists(circleId);
+    this._resetAndUpdateConnections(circleId);
+  };
+  
+  ChakraApp.AppState.prototype._cleanupOverlappingGroups = function() {
     if (typeof ChakraApp.cleanupOverlappingGroups === 'function') {
       ChakraApp.cleanupOverlappingGroups();
     }
-
-    // Hide all squares first
+  };
+  
+  ChakraApp.AppState.prototype._hideAllSquares = function() {
     this.squares.forEach(function(square) {
       square.hide();
     });
-
-    // Show squares for the selected circle
+  };
+  
+  ChakraApp.AppState.prototype._showSquaresForCircle = function(circleId) {
     var squaresForCircle = this.getSquaresForCircle(circleId);
-    if (ChakraApp.app && ChakraApp.app.viewManager) {
-      squaresForCircle.forEach(function(square) {
-        if (!ChakraApp.app.viewManager.squareViews.has(square.id)) {
-          ChakraApp.app.viewManager.createSquareView(square);
-        }
-        square.show();
-      });
+    this._showSquaresInViewManager(squaresForCircle);
+  };
+  
+  ChakraApp.AppState.prototype._showSquaresInViewManager = function(squares) {
+    var hasViewManager = ChakraApp.app && ChakraApp.app.viewManager;
+    
+    if (hasViewManager) {
+      this._createOrShowSquaresInViewManager(squares);
     } else {
-      squaresForCircle.forEach(function(square) {
-        square.show();
-      });
+      this._simplyShowSquares(squares);
     }
-
-    // Create or show the "Me" square if needed
-    this._ensureMeSquareExists(circleId);
-
-    // Clear connections and update for this circle
+  };
+  
+  ChakraApp.AppState.prototype._createOrShowSquaresInViewManager = function(squares) {
+    var viewManager = ChakraApp.app.viewManager;
+    
+    squares.forEach(function(square) {
+      if (!viewManager.squareViews.has(square.id)) {
+        viewManager.createSquareView(square);
+      }
+      square.show();
+    });
+  };
+  
+  ChakraApp.AppState.prototype._simplyShowSquares = function(squares) {
+    squares.forEach(function(square) {
+      square.show();
+    });
+  };
+  
+  ChakraApp.AppState.prototype._resetAndUpdateConnections = function(circleId) {
     this.connections.clear();
     ChakraApp.EventBus.publish(ChakraApp.EventTypes.CONNECTION_UPDATED, null);
     this._updateConnectionsForCircleId(circleId);
   };
   
-  // Handle circle deselection
   ChakraApp.AppState.prototype._handleCircleDeselection = function() {
+    this._hideAllSquares();
+    this._cleanupSquareViews();
+    this._deselectSquareAndClearConnections();
+  };
+  
+  ChakraApp.AppState.prototype._cleanupSquareViews = function() {
+    if (!ChakraApp.app || !ChakraApp.app.viewManager) return;
+    
+    var squareIds = this._getRemovableSquareIds();
+    this._removeSquareViews(squareIds);
+  };
+  
+  ChakraApp.AppState.prototype._getRemovableSquareIds = function() {
     var self = this;
-
-    // Hide all squares
-    this.squares.forEach(function(square) {
-      square.hide();
+    var viewManager = ChakraApp.app.viewManager;
+    var squaresToRemove = [];
+    
+    viewManager.squareViews.forEach(function(view, squareId) {
+      var square = self.getSquare(squareId);
+      if (square && !square.isMe) {
+        squaresToRemove.push(squareId);
+      }
     });
-
-    // Clean up square views
-    if (ChakraApp.app && ChakraApp.app.viewManager) {
-      var viewManager = ChakraApp.app.viewManager;
-      var squaresToRemove = [];
-      
-      viewManager.squareViews.forEach(function(view, squareId) {
-        var square = self.getSquare(squareId);
-        if (square && !square.isMe) {
-          squaresToRemove.push(squareId);
-        }
-      });
-
-      squaresToRemove.forEach(function(squareId) {
-        var view = viewManager.squareViews.get(squareId);
-        if (view) {
-          view.destroy();
-          viewManager.squareViews.delete(squareId);
-        }
-      });
-    }
-
-    // Deselect any selected square
+    
+    return squaresToRemove;
+  };
+  
+  ChakraApp.AppState.prototype._removeSquareViews = function(squareIds) {
+    var viewManager = ChakraApp.app.viewManager;
+    
+    squareIds.forEach(function(squareId) {
+      var view = viewManager.squareViews.get(squareId);
+      if (view) {
+        view.destroy();
+        viewManager.squareViews.delete(squareId);
+      }
+    });
+  };
+  
+  ChakraApp.AppState.prototype._deselectSquareAndClearConnections = function() {
     this.deselectSquare();
-
-    // Clear connections
     this.connections.clear();
     ChakraApp.OverlappingSquaresManager.cleanup();
     ChakraApp.EventBus.publish(ChakraApp.EventTypes.CONNECTION_UPDATED, null);
   };
   
-  // Panel visibility operations
-ChakraApp.AppState.prototype.togglePanelVisibility = function(panelId) {
-  if (!this.panelVisibility.hasOwnProperty(panelId)) return false;
+  ChakraApp.AppState.prototype.togglePanelVisibility = function(panelId) {
+    if (!this._isPanelValid(panelId)) return false;
+    
+    this._togglePanelState(panelId);
+    this._notifyPanelVisibilityChanged(panelId);
+    this._savePanelState();
+    
+    return this.panelVisibility[panelId];
+  };
   
-  this.panelVisibility[panelId] = !this.panelVisibility[panelId];
+  ChakraApp.AppState.prototype._isPanelValid = function(panelId) {
+    return this.panelVisibility.hasOwnProperty(panelId);
+  };
   
-  ChakraApp.EventBus.publish(ChakraApp.EventTypes.PANEL_VISIBILITY_CHANGED, {
-    panel: panelId,
-    visible: this.panelVisibility[panelId]
-  });
+  ChakraApp.AppState.prototype._togglePanelState = function(panelId) {
+    this.panelVisibility[panelId] = !this.panelVisibility[panelId];
+  };
   
-  // Save panel state to local storage
-  this._savePanelState();
-  
-  return this.panelVisibility[panelId];
-};
+  ChakraApp.AppState.prototype._notifyPanelVisibilityChanged = function(panelId) {
+    ChakraApp.EventBus.publish(ChakraApp.EventTypes.PANEL_VISIBILITY_CHANGED, {
+      panel: panelId,
+      visible: this.panelVisibility[panelId]
+    });
+  };
   
   ChakraApp.AppState.prototype.isPanelVisible = function(panelId) {
-  return !!this.panelVisibility[panelId];
-};
+    return !!this.panelVisibility[panelId];
+  };
 
-ChakraApp.AppState.prototype._savePanelState = function() {
-  try {
-    localStorage.setItem('chakraPanelVisibility', JSON.stringify(this.panelVisibility));
-  } catch (e) {
-    console.error('Error saving panel state:', e);
-  }
-};
+  ChakraApp.AppState.prototype._savePanelState = function() {
+    try {
+      localStorage.setItem('chakraPanelVisibility', JSON.stringify(this.panelVisibility));
+    } catch (e) {
+      console.error('Error saving panel state:', e);
+    }
+  };
 
-ChakraApp.AppState.prototype._loadPanelState = function() {
-  try {
+  ChakraApp.AppState.prototype._loadPanelState = function() {
+    try {
+      this._loadSavedPanelState();
+    } catch (e) {
+      console.error('Error loading panel state:', e);
+    }
+  };
+  
+  ChakraApp.AppState.prototype._loadSavedPanelState = function() {
     var savedState = localStorage.getItem('chakraPanelVisibility');
-    if (savedState) {
-      var panelState = JSON.parse(savedState);
-      
-      // Update panelVisibility with saved values
-      for (var panelId in panelState) {
-        if (this.panelVisibility.hasOwnProperty(panelId)) {
-          this.panelVisibility[panelId] = panelState[panelId];
-        }
+    if (!savedState) return;
+    
+    this._updatePanelVisibilityFromSaved(JSON.parse(savedState));
+  };
+  
+  ChakraApp.AppState.prototype._updatePanelVisibilityFromSaved = function(panelState) {
+    for (var panelId in panelState) {
+      if (this.panelVisibility.hasOwnProperty(panelId)) {
+        this.panelVisibility[panelId] = panelState[panelId];
       }
     }
-  } catch (e) {
-    console.error('Error loading panel state:', e);
-  }
-};
+  };
   
-  // Create Me square if it doesn't exist
   ChakraApp.AppState.prototype._ensureMeSquareExists = function(circleId) {
+    var meSquare = this._findMeSquareForCircle(circleId);
+    
+    if (meSquare) {
+      meSquare.show();
+    } else {
+      this._createMeSquare(circleId);
+    }
+  };
+  
+  ChakraApp.AppState.prototype._findMeSquareForCircle = function(circleId) {
     var meSquare = null;
     
     this.squares.forEach(function(square) {
@@ -610,56 +784,72 @@ ChakraApp.AppState.prototype._loadPanelState = function() {
       }
     });
     
-    if (meSquare) {
-      meSquare.show();
-    } else {
-      this.addSquare({
-        circleId: circleId,
-        x: 200,
-        y: 200,
-        color: '#FFCC88',
-        name: 'Me',
-        isMe: true
-      });
-    }
+    return meSquare;
   };
   
-  // Update chakra form for a circle
+  ChakraApp.AppState.prototype._createMeSquare = function(circleId) {
+    this.addSquare({
+      circleId: circleId,
+      x: 200,
+      y: 200,
+      color: '#FFCC88',
+      name: 'Me',
+      isMe: true
+    });
+  };
+
   ChakraApp.AppState.prototype._updateChakraFormForCircle = function(circleId) {
     var circle = this.circles.get(circleId);
     if (!circle) return;
     
+    var squareCount = this._countNonMeSquaresForCircle(circleId);
+    circle.update({ squareCount: squareCount });
+    this._saveStateIfNotLoading();
+  };
+  
+  ChakraApp.AppState.prototype._countNonMeSquaresForCircle = function(circleId) {
     var squareCount = 0;
+    
     this.squares.forEach(function(square) {
       if (square.circleId === circleId && !square.isMe) {
         squareCount++;
       }
     });
     
-    circle.update({ squareCount: squareCount });
-    
-    if (!this._isLoading) {
-      this.saveToStorage();
-    }
+    return squareCount;
   };
 
-  // SQUARE OPERATIONS
   ChakraApp.AppState.prototype.addSquare = function(squareData) {
-    var square;
+    var square = this._prepareSquare(squareData);
+    this._assignTabToSquareIfNeeded(square);
+    this._addSquareToCollection(square);
+    this._subscribeToSquareChanges(square);
+    this._notifySquareCreated(square);
+    this._updateCircleAndConnections(square);
+    this._saveStateIfNotLoading();
     
+    return square;
+  };
+  
+  ChakraApp.AppState.prototype._prepareSquare = function(squareData) {
     if (squareData instanceof ChakraApp.Square) {
-      square = squareData;
-    } else {
-      square = new ChakraApp.Square(squareData);
+      return squareData;
     }
     
+    return new ChakraApp.Square(squareData);
+  };
+  
+  ChakraApp.AppState.prototype._assignTabToSquareIfNeeded = function(square) {
     if (!square.tabId && this.selectedTabId && square.circleId === this.selectedCircleId) {
       square.tabId = this.selectedTabId;
     }
-    
+  };
+  
+  ChakraApp.AppState.prototype._addSquareToCollection = function(square) {
     this.squares.set(square.id, square);
-    
-    // Subscribe to square changes
+  };
+  
+  ChakraApp.AppState.prototype._subscribeToSquareChanges = function(square) {
     var self = this;
     square.subscribe(function(change) {
       if (change.type === 'update') {
@@ -667,21 +857,19 @@ ChakraApp.AppState.prototype._loadPanelState = function() {
         self._updateConnectionsForSquare(square.id);
       }
     });
-    
+  };
+  
+  ChakraApp.AppState.prototype._notifySquareCreated = function(square) {
     this._notifyStateChanged('squares', square);
     ChakraApp.EventBus.publish(ChakraApp.EventTypes.SQUARE_CREATED, square);
-    
+  };
+  
+  ChakraApp.AppState.prototype._updateCircleAndConnections = function(square) {
     if (square.circleId) {
       this._updateChakraFormForCircle(square.circleId);
     }
     
     this._updateConnectionsForCircleId(square.circleId);
-    
-    if (!this._isLoading) {
-      this.saveToStorage();
-    }
-    
-    return square;
   };
   
   ChakraApp.AppState.prototype.updateSquare = function(id, changes) {
@@ -692,26 +880,35 @@ ChakraApp.AppState.prototype._loadPanelState = function() {
     if (!this.squares.has(id)) return false;
     
     var square = this.squares.get(id);
+    this._deselectSquareIfCurrent(id);
+    this._removeSquareFromCollection(id);
+    this._removeConnectionsForSquare(id);
+    this._notifySquareDeleted(square);
+    this._updateChakraFormForCircleIfNeeded(square);
+    this._saveStateIfNotLoading();
     
+    return true;
+  };
+  
+  ChakraApp.AppState.prototype._deselectSquareIfCurrent = function(id) {
     if (this.selectedSquareId === id) {
       this.deselectSquare();
     }
-    
+  };
+  
+  ChakraApp.AppState.prototype._removeSquareFromCollection = function(id) {
     this.squares.delete(id);
-    this._removeConnectionsForSquare(id);
-    
+  };
+  
+  ChakraApp.AppState.prototype._notifySquareDeleted = function(square) {
     this._notifyStateChanged('squares', null);
     ChakraApp.EventBus.publish(ChakraApp.EventTypes.SQUARE_DELETED, square);
-    
+  };
+  
+  ChakraApp.AppState.prototype._updateChakraFormForCircleIfNeeded = function(square) {
     if (square.circleId) {
       this._updateChakraFormForCircle(square.circleId);
     }
-    
-    if (!this._isLoading) {
-      this.saveToStorage();
-    }
-    
-    return true;
   };
   
   ChakraApp.AppState.prototype.getSquare = function(id) {
@@ -733,13 +930,21 @@ ChakraApp.AppState.prototype._loadPanelState = function() {
   };
   
   ChakraApp.AppState.prototype.selectSquare = function(id) {
-    if (this.selectedSquareId && this.selectedSquareId !== id) {
-      this.deselectSquare();
-    }
+    this._deselectCurrentSquareIfDifferent(id);
     
     var square = this.squares.get(id);
     if (!square) return null;
     
+    return this._setSelectedSquare(id, square);
+  };
+  
+  ChakraApp.AppState.prototype._deselectCurrentSquareIfDifferent = function(id) {
+    if (this.selectedSquareId && this.selectedSquareId !== id) {
+      this.deselectSquare();
+    }
+  };
+  
+  ChakraApp.AppState.prototype._setSelectedSquare = function(id, square) {
     this.selectedSquareId = id;
     square.select();
     
@@ -749,95 +954,120 @@ ChakraApp.AppState.prototype._loadPanelState = function() {
   ChakraApp.AppState.prototype.deselectSquare = function() {
     if (!this.selectedSquareId) return false;
     
+    this._deselectCurrentSquare();
+    this._clearSelectionIfNeeded();
+    
+    return true;
+  };
+  
+  ChakraApp.AppState.prototype._deselectCurrentSquare = function() {
     var square = this.squares.get(this.selectedSquareId);
     if (square) {
       square.deselect();
     }
     
     this.selectedSquareId = null;
-
+  };
+  
+  ChakraApp.AppState.prototype._clearSelectionIfNeeded = function() {
     if (ChakraApp.MultiSelectionManager && ChakraApp.MultiSelectionManager.hasSelection()) {
       ChakraApp.MultiSelectionManager.clearSelection();
     }
-    
-    return true;
   };
   
-  // CONNECTION OPERATIONS
   ChakraApp.AppState.prototype._createConnection = function(square1, square2) {
     var connectionId = ChakraApp.Utils.getLineId(square1.id, square2.id);
+    var distance = this._calculateSquareDistance(square1, square2);
+    var isVisible = this._isConnectionVisible(distance);
     
-    // Calculate distance
-    var distance = ChakraApp.Utils.calculateDistance(
-      square1.x, square1.y, square2.x, square2.y
-    );
-    
-    // Determine visibility based on max length
-    var maxLineLength = ChakraApp.Config.connections ? 
-      ChakraApp.Config.connections.maxLineLength : 120;
-    var isVisible = distance <= maxLineLength;
-    
-    // Create or update connection
     if (!this.connections.has(connectionId)) {
-      var connection = new ChakraApp.Connection({
-        id: connectionId,
-        sourceId: square1.id,
-        targetId: square2.id,
-        length: distance,
-        isVisible: isVisible,
-        isHighlighted: false
-      });
-      this.connections.set(connectionId, connection);
+      this._createNewConnection(connectionId, square1, square2, distance, isVisible);
     } else {
-      this.connections.get(connectionId).update({
-        length: distance,
-        isVisible: isVisible
-      });
+      this._updateExistingConnection(connectionId, distance, isVisible);
     }
     
     return this.connections.get(connectionId);
   };
   
-  // Update closest connection to Me square
+  ChakraApp.AppState.prototype._calculateSquareDistance = function(square1, square2) {
+    return ChakraApp.Utils.calculateDistance(
+      square1.x, square1.y, square2.x, square2.y
+    );
+  };
+  
+  ChakraApp.AppState.prototype._isConnectionVisible = function(distance) {
+    var maxLineLength = ChakraApp.Config.connections ? 
+      ChakraApp.Config.connections.maxLineLength : 120;
+    
+    return distance <= maxLineLength;
+  };
+  
+  ChakraApp.AppState.prototype._createNewConnection = function(id, square1, square2, distance, isVisible) {
+    var connection = new ChakraApp.Connection({
+      id: id,
+      sourceId: square1.id,
+      targetId: square2.id,
+      length: distance,
+      isVisible: isVisible,
+      isHighlighted: false
+    });
+    
+    this.connections.set(id, connection);
+  };
+  
+  ChakraApp.AppState.prototype._updateExistingConnection = function(id, distance, isVisible) {
+    this.connections.get(id).update({
+      length: distance,
+      isVisible: isVisible
+    });
+  };
+  
   ChakraApp.AppState.prototype._updateClosestMeConnection = function(circleId) {
-    var meSquare = null;
-    this.squares.forEach(function(square) {
-      if (square.circleId === circleId && square.isMe && square.visible) {
-        meSquare = square;
-      }
-    });
+    var meSquare = this._findMeSquareForCircle(circleId);
+    if (!meSquare || !meSquare.visible) return;
     
-    if (!meSquare) return;
-    
-    // Find visible connections to Me
-    var meConnections = [];
-    this.connections.forEach(function(conn) {
-      if ((conn.sourceId === meSquare.id || conn.targetId === meSquare.id) && conn.isVisible) {
-        meConnections.push(conn);
-      }
-    });
+    var meConnections = this._getVisibleMeConnections(meSquare);
     
     if (meConnections.length === 0) {
       this._updateClosestSquareName(circleId, null);
       return;
     }
     
-    // Find shortest connection
-    var shortestConnection = meConnections.reduce(function(shortest, conn) {
-      return conn.length < shortest.length ? conn : shortest;
-    }, meConnections[0]);
+    var shortestConnection = this._findShortestConnection(meConnections);
+    this._resetHighlightsAndUpdateShortest(shortestConnection);
+    this._updateClosestSquareNameFromConnection(circleId, meSquare, shortestConnection);
+    this._saveStateIfNotLoading();
+  };
+  
+  ChakraApp.AppState.prototype._getVisibleMeConnections = function(meSquare) {
+    var meConnections = [];
     
-    // Reset highlights
+    this.connections.forEach(function(conn) {
+      if ((conn.sourceId === meSquare.id || conn.targetId === meSquare.id) && conn.isVisible) {
+        meConnections.push(conn);
+      }
+    });
+    
+    return meConnections;
+  };
+  
+  ChakraApp.AppState.prototype._findShortestConnection = function(connections) {
+    return connections.reduce(function(shortest, conn) {
+      return conn.length < shortest.length ? conn : shortest;
+    }, connections[0]);
+  };
+  
+  ChakraApp.AppState.prototype._resetHighlightsAndUpdateShortest = function(shortestConnection) {
     this.connections.forEach(function(conn) {
       if (conn.isHighlighted) {
         conn.update({ isHighlighted: false });
       }
     });
     
-    // Highlight shortest connection
     shortestConnection.update({ isHighlighted: true });
-    
-    // Get name of connected square
+  };
+  
+  ChakraApp.AppState.prototype._updateClosestSquareNameFromConnection = function(circleId, meSquare, shortestConnection) {
     var otherSquareId = shortestConnection.sourceId === meSquare.id 
       ? shortestConnection.targetId 
       : shortestConnection.sourceId;
@@ -845,10 +1075,6 @@ ChakraApp.AppState.prototype._loadPanelState = function() {
     var closestSquare = this.squares.get(otherSquareId);
     if (closestSquare) {
       this._updateClosestSquareName(circleId, closestSquare.name);
-    }
-    
-    if (!this._isLoading) {
-      this.saveToStorage();
     }
   };
   
@@ -860,6 +1086,13 @@ ChakraApp.AppState.prototype._loadPanelState = function() {
   };
   
   ChakraApp.AppState.prototype._removeConnectionsForSquare = function(squareId) {
+    var connectionsToRemove = this._findConnectionsForSquare(squareId);
+    this._removeConnections(connectionsToRemove);
+    this._notifyConnectionsUpdated();
+    this._saveStateIfNotLoading();
+  };
+  
+  ChakraApp.AppState.prototype._findConnectionsForSquare = function(squareId) {
     var connectionsToRemove = [];
     
     this.connections.forEach(function(conn, connId) {
@@ -868,16 +1101,19 @@ ChakraApp.AppState.prototype._loadPanelState = function() {
       }
     });
     
+    return connectionsToRemove;
+  };
+  
+  ChakraApp.AppState.prototype._removeConnections = function(connectionIds) {
     var self = this;
-    connectionsToRemove.forEach(function(connId) {
+    
+    connectionIds.forEach(function(connId) {
       self.connections.delete(connId);
     });
-    
+  };
+  
+  ChakraApp.AppState.prototype._notifyConnectionsUpdated = function() {
     ChakraApp.EventBus.publish(ChakraApp.EventTypes.CONNECTION_UPDATED, null);
-    
-    if (!this._isLoading) {
-      this.saveToStorage();
-    }
   };
   
   ChakraApp.AppState.prototype._updateConnectionsForSquare = function(squareId) {
@@ -888,30 +1124,31 @@ ChakraApp.AppState.prototype._loadPanelState = function() {
   };
   
   ChakraApp.AppState.prototype._updateConnectionsForCircleId = function(circleId) {
-    // Get all visible squares for this circle
-    var visibleSquares = this.getSquaresForCircle(circleId).filter(function(square) {
+    var visibleSquares = this._getVisibleSquaresForCircle(circleId);
+    this._createConnectionsBetweenSquares(visibleSquares);
+    this._updateClosestMeConnection(circleId);
+    this._notifyConnectionsUpdatedForCircle(circleId);
+    this._saveStateIfNotLoading();
+  };
+  
+  ChakraApp.AppState.prototype._getVisibleSquaresForCircle = function(circleId) {
+    return this.getSquaresForCircle(circleId).filter(function(square) {
       return square.visible;
     });
-    
-    // Create connections between each pair
-    for (var i = 0; i < visibleSquares.length; i++) {
-      for (var j = i + 1; j < visibleSquares.length; j++) {
-        this._createConnection(visibleSquares[i], visibleSquares[j]);
+  };
+  
+  ChakraApp.AppState.prototype._createConnectionsBetweenSquares = function(squares) {
+    for (var i = 0; i < squares.length; i++) {
+      for (var j = i + 1; j < squares.length; j++) {
+        this._createConnection(squares[i], squares[j]);
       }
-    }
-    
-    // Update closest Me connection
-    this._updateClosestMeConnection(circleId);
-    
-    // Notify about connection updates
-    ChakraApp.EventBus.publish(ChakraApp.EventTypes.CONNECTION_UPDATED, circleId);
-    
-    if (!this._isLoading) {
-      this.saveToStorage();
     }
   };
   
-  // TAB OPERATIONS
+  ChakraApp.AppState.prototype._notifyConnectionsUpdatedForCircle = function(circleId) {
+    ChakraApp.EventBus.publish(ChakraApp.EventTypes.CONNECTION_UPDATED, circleId);
+  };
+  
   ChakraApp.AppState.prototype.addTab = function(tabData) {
     return this._createEntity('tabs', ChakraApp.Tab, tabData, 'TAB');
   };
@@ -924,38 +1161,53 @@ ChakraApp.AppState.prototype._loadPanelState = function() {
     if (!this.tabs.has(id)) return false;
     
     var tab = this.tabs.get(id);
+    this._deselectTabIfCurrent(id);
+    this._removeTabFromCollection(id);
+    this._removeSquaresForTab(id);
+    this._notifyTabDeleted(tab);
+    this._saveStateIfNotLoading();
     
-    // Deselect if selected
+    return true;
+  };
+  
+  ChakraApp.AppState.prototype._deselectTabIfCurrent = function(id) {
     if (this.selectedTabId === id) {
       this.deselectTab();
     }
-    
-    // Remove the tab
+  };
+  
+  ChakraApp.AppState.prototype._removeTabFromCollection = function(id) {
     this.tabs.delete(id);
-    
-    // Find and remove squares for this tab
+  };
+  
+  ChakraApp.AppState.prototype._removeSquaresForTab = function(tabId) {
+    var squaresToRemove = this._findSquaresByTabId(tabId);
+    this._removeSquares(squaresToRemove);
+  };
+  
+  ChakraApp.AppState.prototype._findSquaresByTabId = function(tabId) {
     var squaresToRemove = [];
+    
     this.squares.forEach(function(square, squareId) {
-      if (square.tabId === id) {
+      if (square.tabId === tabId) {
         squaresToRemove.push(squareId);
       }
     });
     
+    return squaresToRemove;
+  };
+  
+  ChakraApp.AppState.prototype._removeSquares = function(squareIds) {
     var self = this;
-    squaresToRemove.forEach(function(squareId) {
+    
+    squareIds.forEach(function(squareId) {
       self.removeSquare(squareId);
     });
-    
-    // Notify and publish event
+  };
+  
+  ChakraApp.AppState.prototype._notifyTabDeleted = function(tab) {
     this._notifyStateChanged('tabs', null);
     ChakraApp.EventBus.publish(ChakraApp.EventTypes.TAB_DELETED, tab);
-    
-    // Save state
-    if (!this._isLoading) {
-      this.saveToStorage();
-    }
-    
-    return true;
   };
   
   ChakraApp.AppState.prototype.getTab = function(id) {
@@ -963,33 +1215,46 @@ ChakraApp.AppState.prototype._loadPanelState = function() {
   };
   
   ChakraApp.AppState.prototype.getTabsForCircle = function(circleId) {
+    var tabs = this._findTabsByCircleId(circleId);
+    return this._sortTabsByIndex(tabs);
+  };
+  
+  ChakraApp.AppState.prototype._findTabsByCircleId = function(circleId) {
     var result = [];
+    
     this.tabs.forEach(function(tab) {
       if (tab.circleId === circleId) {
         result.push(tab);
       }
     });
     
-    // Sort by index
-    result.sort(function(a, b) {
-      return a.index - b.index;
-    });
-    
     return result;
   };
   
+  ChakraApp.AppState.prototype._sortTabsByIndex = function(tabs) {
+    return tabs.sort(function(a, b) {
+      return a.index - b.index;
+    });
+  };
+  
   ChakraApp.AppState.prototype.selectTab = function(id) {
-    if (this.selectedTabId && this.selectedTabId !== id) {
-      this.deselectTab();
-    }
+    this._deselectCurrentTabIfDifferent(id);
     
     var tab = this.tabs.get(id);
     if (!tab) return null;
     
+    return this._setSelectedTabAndFilterSquares(id, tab);
+  };
+  
+  ChakraApp.AppState.prototype._deselectCurrentTabIfDifferent = function(id) {
+    if (this.selectedTabId && this.selectedTabId !== id) {
+      this.deselectTab();
+    }
+  };
+  
+  ChakraApp.AppState.prototype._setSelectedTabAndFilterSquares = function(id, tab) {
     this.selectedTabId = id;
     tab.select();
-    
-    // Show only squares for this tab
     this._filterSquaresByTab(id);
     
     return tab;
@@ -1009,27 +1274,31 @@ ChakraApp.AppState.prototype._loadPanelState = function() {
   };
   
   ChakraApp.AppState.prototype._filterSquaresByTab = function(tabId) {
+    this._hideAllSquaresForSelectedCircle();
+    this._showSquaresForTab(tabId);
+    this._updateConnectionsForCircleId(this.selectedCircleId);
+  };
+  
+  ChakraApp.AppState.prototype._hideAllSquaresForSelectedCircle = function() {
     var self = this;
     
-    // Hide all squares for the selected circle
     this.squares.forEach(function(square) {
       if (square.circleId === self.selectedCircleId) {
         square.hide();
       }
     });
+  };
+  
+  ChakraApp.AppState.prototype._showSquaresForTab = function(tabId) {
+    var self = this;
     
-    // Show squares for the selected tab
     this.squares.forEach(function(square) {
       if (square.tabId === tabId && square.circleId === self.selectedCircleId) {
         square.show();
       }
     });
-    
-    // Update connections
-    this._updateConnectionsForCircleId(this.selectedCircleId);
   };
 
-  // STORAGE OPERATIONS
   ChakraApp.AppState.prototype.loadFromStorage = function() {
     try {
       this._isLoading = true;
@@ -1040,81 +1309,13 @@ ChakraApp.AppState.prototype._loadPanelState = function() {
         return false;
       }
 
-      var data = JSON.parse(savedData);
-
-      // Reset current state
-      this.documents.clear();
-      this.circles.clear();
-      this.squares.clear();
-      this.connections.clear();
-      this.tabs.clear();
+      var data = this._parseStorageData(savedData);
+      this._resetState();
+      this._loadEntities(data);
+      this._selectLastViewedDocuments();
+      this._notifyStateLoaded(data);
+      this._finalizeLoading();
       
-      // Reset selection state
-      this.selectedDocumentIds = { left: null, bottom: null };
-      this.selectedCircleId = null;
-      this.selectedSquareId = null;
-      this.selectedTabId = null;
-
-      // Load entities
-      var self = this;
-      
-      if (data.documents && Array.isArray(data.documents)) {
-        data.documents.forEach(function(documentData) {
-          documentData.panelId = documentData.panelId || 'left';
-          self.addDocument(documentData);
-        });
-      } else {
-        this.panels.forEach(function(panelId) {
-          self.addDocument(null, panelId);
-        });
-      }
-
-      if (data.circles && Array.isArray(data.circles)) {
-        data.circles.forEach(function(circleData) {
-          self.addCircle(circleData);
-        });
-      }
-
-      if (data.squares && Array.isArray(data.squares)) {
-        data.squares.forEach(function(squareData) {
-          self.addSquare(squareData);
-        });
-      }
-
-      if (data.tabs && Array.isArray(data.tabs)) {
-        data.tabs.forEach(function(tabData) {
-          self.addTab(tabData);
-        });
-      }
-
-      // Select last viewed documents
-      this.panels.forEach(function(panelId) {
-        var lastViewedDocumentId = self.getLastViewedDocument(panelId);
-        
-        if (lastViewedDocumentId && self.documents.has(lastViewedDocumentId)) {
-          var doc = self.documents.get(lastViewedDocumentId);
-          if (doc.panelId === panelId) {
-            self.selectDocument(lastViewedDocumentId, panelId);
-          }
-        } else {
-          var panelDocuments = self.getDocumentsForPanel(panelId);
-          if (panelDocuments.length > 0) {
-            self.selectDocument(panelDocuments[0].id, panelId);
-            self.saveLastViewedDocument(panelDocuments[0].id, panelId);
-          }
-        }
-      });
-
-      this._notifyStateChanged('all', data);
-      ChakraApp.EventBus.publish(ChakraApp.EventTypes.STATE_LOADED, data);
-
-      if (typeof ChakraApp.cleanupOverlappingGroups === 'function') {
-        ChakraApp.cleanupOverlappingGroups();
-      }
-      
-      this._isLoading = false;
-      this.saveToStorageNow();
-
       return true;
     } catch (error) {
       console.error('Error loading state from localStorage:', error);
@@ -1123,18 +1324,136 @@ ChakraApp.AppState.prototype._loadPanelState = function() {
     }
   };
   
-  // Save state with debouncing
+  ChakraApp.AppState.prototype._parseStorageData = function(savedData) {
+    return JSON.parse(savedData);
+  };
+  
+  ChakraApp.AppState.prototype._resetState = function() {
+    this.documents.clear();
+    this.circles.clear();
+    this.squares.clear();
+    this.connections.clear();
+    this.tabs.clear();
+    
+    this.selectedDocumentIds = { left: null, bottom: null };
+    this.selectedCircleId = null;
+    this.selectedSquareId = null;
+    this.selectedTabId = null;
+  };
+  
+  ChakraApp.AppState.prototype._loadEntities = function(data) {
+    this._loadDocuments(data.documents);
+    this._loadCircles(data.circles);
+    this._loadSquares(data.squares);
+    this._loadTabs(data.tabs);
+  };
+  
+  ChakraApp.AppState.prototype._loadDocuments = function(documents) {
+    var self = this;
+    
+    if (documents && Array.isArray(documents)) {
+      documents.forEach(function(documentData) {
+        documentData.panelId = documentData.panelId || 'left';
+        self.addDocument(documentData);
+      });
+    } else {
+      this._createDefaultDocuments();
+    }
+  };
+  
+  ChakraApp.AppState.prototype._createDefaultDocuments = function() {
+    var self = this;
+    
+    this.panels.forEach(function(panelId) {
+      self.addDocument(null, panelId);
+    });
+  };
+  
+  ChakraApp.AppState.prototype._loadCircles = function(circles) {
+    var self = this;
+    
+    if (circles && Array.isArray(circles)) {
+      circles.forEach(function(circleData) {
+        self.addCircle(circleData);
+      });
+    }
+  };
+  
+  ChakraApp.AppState.prototype._loadSquares = function(squares) {
+    var self = this;
+    
+    if (squares && Array.isArray(squares)) {
+      squares.forEach(function(squareData) {
+        self.addSquare(squareData);
+      });
+    }
+  };
+  
+  ChakraApp.AppState.prototype._loadTabs = function(tabs) {
+    var self = this;
+    
+    if (tabs && Array.isArray(tabs)) {
+      tabs.forEach(function(tabData) {
+        self.addTab(tabData);
+      });
+    }
+  };
+  
+  ChakraApp.AppState.prototype._selectLastViewedDocuments = function() {
+    var self = this;
+    
+    this.panels.forEach(function(panelId) {
+      self._selectLastViewedDocumentForPanel(panelId);
+    });
+  };
+  
+  ChakraApp.AppState.prototype._selectLastViewedDocumentForPanel = function(panelId) {
+    var lastViewedDocumentId = this.getLastViewedDocument(panelId);
+    
+    if (this._isValidLastViewedDocument(lastViewedDocumentId, panelId)) {
+      this._selectExistingDocument(lastViewedDocumentId, panelId);
+    } else {
+      this._selectFirstDocumentInPanel(panelId);
+    }
+  };
+  
+  ChakraApp.AppState.prototype._isValidLastViewedDocument = function(documentId, panelId) {
+    if (!documentId || !this.documents.has(documentId)) return false;
+    
+    var doc = this.documents.get(documentId);
+    return doc.panelId === panelId;
+  };
+  
+  ChakraApp.AppState.prototype._selectExistingDocument = function(documentId, panelId) {
+    this.selectDocument(documentId, panelId);
+  };
+  
+  ChakraApp.AppState.prototype._selectFirstDocumentInPanel = function(panelId) {
+    var panelDocuments = this.getDocumentsForPanel(panelId);
+    
+    if (panelDocuments.length > 0) {
+      this.selectDocument(panelDocuments[0].id, panelId);
+      this.saveLastViewedDocument(panelDocuments[0].id, panelId);
+    }
+  };
+  
+  ChakraApp.AppState.prototype._notifyStateLoaded = function(data) {
+    this._notifyStateChanged('all', data);
+    ChakraApp.EventBus.publish(ChakraApp.EventTypes.STATE_LOADED, data);
+  };
+  
+  ChakraApp.AppState.prototype._finalizeLoading = function() {
+    if (typeof ChakraApp.cleanupOverlappingGroups === 'function') {
+      ChakraApp.cleanupOverlappingGroups();
+    }
+    
+    this._isLoading = false;
+    this.saveToStorageNow();
+  };
+  
   ChakraApp.AppState.prototype.saveToStorage = function() {
     try {
-      if (this._saveTimeout) {
-        clearTimeout(this._saveTimeout);
-      }
-
-      var self = this;
-      this._saveTimeout = setTimeout(function() {
-        self._actualSaveToStorage();
-      }, 300);
-
+      this._debounceStorage();
       return true;
     } catch (error) {
       console.error('Error scheduling state save:', error);
@@ -1142,40 +1461,23 @@ ChakraApp.AppState.prototype._loadPanelState = function() {
     }
   };
   
-  // Actual save operation
+  ChakraApp.AppState.prototype._debounceStorage = function() {
+    if (this._saveTimeout) {
+      clearTimeout(this._saveTimeout);
+    }
+
+    var self = this;
+    this._saveTimeout = setTimeout(function() {
+      self._actualSaveToStorage();
+    }, 300);
+  };
+  
   ChakraApp.AppState.prototype._actualSaveToStorage = function() {
     try {
-      var documents = [];
-      this.documents.forEach(function(doc) {
-        documents.push(doc.toJSON());
-      });
-
-      var circles = [];
-      this.circles.forEach(function(circle) {
-        circles.push(circle.toJSON());
-      });
-
-      var squares = [];
-      this.squares.forEach(function(square) {
-        squares.push(square.toJSON());
-      });
-
-      var tabs = [];
-      this.tabs.forEach(function(tab) {
-        tabs.push(tab.toJSON());
-      });
-
-      var data = {
-        documents: documents,
-        circles: circles,
-        squares: squares,
-        tabs: tabs,
-        selectedDocumentIds: this.selectedDocumentIds
-      };
-
-      localStorage.setItem('chakraVisualizerData', JSON.stringify(data));
-      ChakraApp.EventBus.publish(ChakraApp.EventTypes.STATE_SAVED, data);
-
+      var data = this._collectStateData();
+      this._saveStateToLocalStorage(data);
+      this._notifyStateSaved(data);
+      
       return true;
     } catch (error) {
       console.error('Error saving state:', error);
@@ -1183,7 +1485,64 @@ ChakraApp.AppState.prototype._loadPanelState = function() {
     }
   };
   
-  // Save immediately without debounce
+  ChakraApp.AppState.prototype._collectStateData = function() {
+    return {
+      documents: this._serializeDocuments(),
+      circles: this._serializeCircles(),
+      squares: this._serializeSquares(),
+      tabs: this._serializeTabs(),
+      selectedDocumentIds: this.selectedDocumentIds
+    };
+  };
+  
+  ChakraApp.AppState.prototype._serializeDocuments = function() {
+    var documents = [];
+    
+    this.documents.forEach(function(doc) {
+      documents.push(doc.toJSON());
+    });
+    
+    return documents;
+  };
+  
+  ChakraApp.AppState.prototype._serializeCircles = function() {
+    var circles = [];
+    
+    this.circles.forEach(function(circle) {
+      circles.push(circle.toJSON());
+    });
+    
+    return circles;
+  };
+  
+  ChakraApp.AppState.prototype._serializeSquares = function() {
+    var squares = [];
+    
+    this.squares.forEach(function(square) {
+      squares.push(square.toJSON());
+    });
+    
+    return squares;
+  };
+  
+  ChakraApp.AppState.prototype._serializeTabs = function() {
+    var tabs = [];
+    
+    this.tabs.forEach(function(tab) {
+      tabs.push(tab.toJSON());
+    });
+    
+    return tabs;
+  };
+  
+  ChakraApp.AppState.prototype._saveStateToLocalStorage = function(data) {
+    localStorage.setItem('chakraVisualizerData', JSON.stringify(data));
+  };
+  
+  ChakraApp.AppState.prototype._notifyStateSaved = function(data) {
+    ChakraApp.EventBus.publish(ChakraApp.EventTypes.STATE_SAVED, data);
+  };
+  
   ChakraApp.AppState.prototype.saveToStorageNow = function() {
     if (this._saveTimeout) {
       clearTimeout(this._saveTimeout);
@@ -1193,7 +1552,6 @@ ChakraApp.AppState.prototype._loadPanelState = function() {
     return this._actualSaveToStorage();
   };
 
-  // Create the singleton instance
   ChakraApp.appState = new ChakraApp.AppState();
   
 })(window.ChakraApp = window.ChakraApp || {});

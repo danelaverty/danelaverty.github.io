@@ -183,6 +183,8 @@
     var startX, startY;
     var currentHoverBox = null;
     var self = this;
+    // Store original position at the start of drag
+    var originalX, originalY;
 
     // Mouse down to start drag
     this.element.addEventListener('mousedown', function(e) {
@@ -195,6 +197,10 @@
         // Store initial mouse position
         startX = e.clientX;
         startY = e.clientY;
+        
+        // Store original square position
+        originalX = self.viewModel.x;
+        originalY = self.viewModel.y;
 
         // Check if we should do group dragging
         isGroupDragging = ChakraApp.MultiSelectionManager.hasSelection() && 
@@ -315,8 +321,14 @@
 
         // Check if dropped on an attribute box
         if (currentHoverBox && !self.viewModel.isMe && !isGroupDragging) {
+          // Apply the attribute
           var attributeType = currentHoverBox.dataset.attribute;
           self.viewModel.applyAttribute(attributeType);
+          
+          // Return square to its original position
+          self.viewModel.updatePosition(originalX, originalY);
+          
+          // Remove highlight
           currentHoverBox.classList.remove('highlight');
         }
 
