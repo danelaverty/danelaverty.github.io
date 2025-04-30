@@ -35,6 +35,7 @@
 
     <!-- State management -->
     <script src="AppState.js"></script>
+    <script src="AppStateEntities.js"></script>
     
     <!-- View models -->
     <script src="ViewModels.js"></script>
@@ -69,8 +70,12 @@
         <!-- Left Panel -->
         <div id="left-panel" class="circle-panel" data-panel-id="left">
 		<h3>Feelings</h3>
+		<h3 style="right: 10px; left: unset;">Things</h3>
             <button id="add-circle-btn-left" class="add-btn circle-btn" data-panel-id="left">+</button>
             <div id="zoom-container-left" class="zoom-container" data-panel-id="left">
+		    <object data="silhouette-filled-black.svg" class="silhouette-svg" id="silhouette-filled-black" type="image/svg+xml"></object>
+		    <object data="silhouette.svg" class="silhouette-svg" id="silhouette-outline" type="image/svg+xml"></object>
+		    <object data="silhouette-filled.svg" class="silhouette-svg" id="silhouette-filled" type="image/svg+xml"></object>
                 <!-- This will contain the background image and chakra circles for left panel -->
             </div>
         </div>

@@ -140,6 +140,9 @@
         return null;
       }
     }
+    if (panelId === 'things') {
+	    panelId = 'left';
+    }
     
     // Get the appropriate container
     var container = this.zoomContainers[panelId];
@@ -306,10 +309,39 @@
    * @param {string} panelId - Panel ID
    */
   ChakraApp.ViewManager.prototype.renderCirclesForPanel = function(panelId) {
-    // First remove existing circle views for this panel
-    this._removeCircleViewsForPanel(panelId);
+  // First remove existing circle views for this panel
+  this._removeCircleViewsForPanel(panelId);
+  
+  // If this is the left panel, also get circles from things panel
+  if (panelId === 'left') {
+    // Get the selected document for the left panel
+    var leftDocId = ChakraApp.appState.selectedDocumentIds[panelId];
     
-    // Get the selected document for this panel
+    // Get the selected document for the things panel
+    var thingsDocId = ChakraApp.appState.selectedDocumentIds['things'];
+    
+    // Create views for circles in both selected documents
+    var self = this;
+    
+    // First add circles for the left document
+    if (leftDocId) {
+      ChakraApp.appState.circles.forEach(function(circleModel) {
+        if (circleModel.documentId === leftDocId) {
+          self.createCircleView(circleModel, panelId);
+        }
+      });
+    }
+    
+    // Then add circles for the things document 
+    if (thingsDocId) {
+      ChakraApp.appState.circles.forEach(function(circleModel) {
+        if (circleModel.documentId === thingsDocId) {
+          self.createCircleView(circleModel, panelId);
+        }
+      });
+    }
+  } else {
+    // Original behavior for other panels
     var selectedDocId = ChakraApp.appState.selectedDocumentIds[panelId];
     if (!selectedDocId) return;
     
@@ -320,38 +352,50 @@
         self.createCircleView(circleModel, panelId);
       }
     });
-  };
+  }
+};
   
   /**
    * Remove circle views for a specific panel
    * @private
    * @param {string} panelId - Panel ID
    */
-  ChakraApp.ViewManager.prototype._removeCircleViewsForPanel = function(panelId) {
-    var self = this;
-    var circlesToRemove = [];
-    
-    // Get document IDs for this panel
-    var panelDocIds = [];
+ChakraApp.ViewManager.prototype._removeCircleViewsForPanel = function(panelId) {
+  var self = this;
+  var circlesToRemove = [];
+  
+  // Get document IDs for this panel
+  var panelDocIds = [];
+  
+  if (panelId === 'left') {
+    // For left panel, include documents from both left and things panels
+    ChakraApp.appState.documents.forEach(function(doc) {
+      if (doc.panelId === 'left' || doc.panelId === 'things') {
+        panelDocIds.push(doc.id);
+      }
+    });
+  } else {
+    // For other panels, just get docs for that panel
     ChakraApp.appState.documents.forEach(function(doc) {
       if (doc.panelId === panelId) {
         panelDocIds.push(doc.id);
       }
     });
-    
-    // Find circles to remove
-    this.circleViews.forEach(function(view, circleId) {
-      var circle = ChakraApp.appState.getCircle(circleId);
-      if (circle && panelDocIds.includes(circle.documentId)) {
-        circlesToRemove.push(circleId);
-      }
-    });
-    
-    // Remove the views
-    circlesToRemove.forEach(function(circleId) {
-      self.removeCircleView(circleId);
-    });
-  };
+  }
+  
+  // Find circles to remove
+  this.circleViews.forEach(function(view, circleId) {
+    var circle = ChakraApp.appState.getCircle(circleId);
+    if (circle && panelDocIds.includes(circle.documentId)) {
+      circlesToRemove.push(circleId);
+    }
+  });
+  
+  // Remove the views
+  circlesToRemove.forEach(function(circleId) {
+    self.removeCircleView(circleId);
+  });
+};
   
   /**
    * Clear all views

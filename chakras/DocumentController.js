@@ -62,77 +62,123 @@
    * @param {string} panelId - Panel ID
    */
   ChakraApp.DocumentController.prototype._createDocumentControlsForPanel = function(panelId) {
-    var panel = document.querySelector('.circle-panel[data-panel-id="' + panelId + '"]');
-    if (!panel) return;
+  var panel = document.querySelector('.circle-panel[data-panel-id="' + panelId + '"]');
+  if (!panel) return;
+  
+  // If panelId is 'things' and we need to render it in left panel
+  var renderInLeftPanel = (panelId === 'things');
+  var targetPanel = renderInLeftPanel ? 
+    document.querySelector('.circle-panel[data-panel-id="left"]') : panel;
+  
+  if (!targetPanel) {
+    console.error('Target panel not found for rendering document controls');
+    return;
+  }
+  
+  // Create Toggle Arrow Button
+  var toggleBtn = document.createElement('button');
+  toggleBtn.id = 'toggle-document-list-btn-' + panelId;
+  toggleBtn.className = 'add-btn document-toggle-btn';
+  toggleBtn.title = 'Toggle Document List for ' + panelId;
+  toggleBtn.dataset.panelId = panelId;
+  
+  // Create arrow icon
+  var arrowIcon = document.createElement('span');
+  arrowIcon.innerHTML = '▼';
+  arrowIcon.className = 'arrow-icon';
+  toggleBtn.appendChild(arrowIcon);
+  
+  // Position based on panel
+  if (renderInLeftPanel) {
+    // Position 'things' toggle button next to 'left' toggle button
+    toggleBtn.style.top = '30px';
+    toggleBtn.style.right = '40px';
+    toggleBtn.style.left = 'unset';
+    toggleBtn.style.backgroundColor = ChakraApp.Config.conceptTypes.find(t => t.panelId === 'things')?.color || '#88B66d';
+  } else {
+    toggleBtn.style.top = '30px';
+    toggleBtn.style.left = '10px';
+    toggleBtn.style.right = 'unset';
+  }
+  
+  // Add toggle functionality
+  var self = this;
+  toggleBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
     
-    // Create Toggle Arrow Button
-    var toggleBtn = document.createElement('button');
-    toggleBtn.id = 'toggle-document-list-btn-' + panelId;
-    toggleBtn.className = 'add-btn document-toggle-btn';
-    toggleBtn.title = 'Toggle Document List';
-    toggleBtn.dataset.panelId = panelId;
+    // Toggle document list visibility for this panel
+    var isVisible = ChakraApp.appState.toggleDocumentList(panelId);
     
-    // Create arrow icon
-    var arrowIcon = document.createElement('span');
-    arrowIcon.innerHTML = '▼';
-    arrowIcon.className = 'arrow-icon';
-    toggleBtn.appendChild(arrowIcon);
+    // Update arrow direction
+    arrowIcon.innerHTML = isVisible ? '▲' : '▼';
     
-    // Position based on panel
-      toggleBtn.style.top = '30px';
-      toggleBtn.style.left = '10px';
+    // Update document list
+    self._updateDocumentList(panelId);
+  });
+  
+  // Add to appropriate panel
+  targetPanel.appendChild(toggleBtn);
+  this.toggleDocumentListBtns[panelId] = toggleBtn;
+  
+  // Create Document List Container
+  var listContainer = document.createElement('div');
+  listContainer.id = 'document-list-container-' + panelId;
+  listContainer.className = 'document-list-container';
+  listContainer.dataset.panelId = panelId;
+  
+  // Initially hidden
+  listContainer.style.display = 'none';
+  
+  // Position based on panel
+  if (renderInLeftPanel) {
+    listContainer.style.left = '125px';
+    listContainer.style.top = '70px';
+  } else if (panelId === 'bottom') {
+    listContainer.style.left = '70px';
+    listContainer.style.top = '70px';
+  }
+  
+  // Add to appropriate panel
+  targetPanel.appendChild(listContainer);
+  this.documentListContainers[panelId] = listContainer;
+  
+  // Create Current Document Display
+  var docDisplay = document.createElement('div');
+  docDisplay.id = 'current-document-display-' + panelId;
+  docDisplay.className = 'current-document-display';
+  docDisplay.dataset.panelId = panelId;
+  
+  // Set initial text
+  docDisplay.textContent = 'No Document Selected';
+  
+  // Position based on panel if in the left panel
+  if (renderInLeftPanel) {
+    docDisplay.style.top = '55px';
+    docDisplay.style.right = '0px';
+    docDisplay.style.left = 'unset';
+  }
+  
+  // Add to appropriate panel
+  targetPanel.appendChild(docDisplay);
+  this.currentDocumentDisplays[panelId] = docDisplay;
+  
+  // Create Add Circle Button for things panel if rendering in left panel
+  if (renderInLeftPanel) {
+    var addBtn = document.createElement('button');
+    addBtn.id = 'add-circle-btn-' + panelId;
+    addBtn.className = 'add-btn circle-btn';
+    addBtn.dataset.panelId = panelId;
+    addBtn.textContent = '+';
+    addBtn.title = 'Add Circle to ' + panelId;
     
-    // Add toggle functionality
-    var self = this;
-    toggleBtn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      
-      // Toggle document list visibility for this panel
-      var isVisible = ChakraApp.appState.toggleDocumentList(panelId);
-      
-      // Update arrow direction
-      arrowIcon.innerHTML = isVisible ? '▲' : '▼';
-      
-      // Update document list
-      self._updateDocumentList(panelId);
-    });
+    // Position for things button
+    addBtn.style.right = '10px';
+    addBtn.style.left = 'unset';
+    addBtn.style.backgroundColor = ChakraApp.Config.conceptTypes.find(t => t.panelId === 'things')?.color || '#88B66d';
     
-    // Add to panel
-    panel.appendChild(toggleBtn);
-    this.toggleDocumentListBtns[panelId] = toggleBtn;
-    
-    // Create Document List Container
-    var listContainer = document.createElement('div');
-    listContainer.id = 'document-list-container-' + panelId;
-    listContainer.className = 'document-list-container';
-    listContainer.dataset.panelId = panelId;
-    
-    // Initially hidden
-    listContainer.style.display = 'none';
-    
-    // Position based on panel
-    if (panelId === 'bottom') {
-      listContainer.style.left = '70px';
-      listContainer.style.top = '70px';
-    }
-    
-    // Add to panel
-    panel.appendChild(listContainer);
-    this.documentListContainers[panelId] = listContainer;
-    
-    // Create Current Document Display
-    var docDisplay = document.createElement('div');
-    docDisplay.id = 'current-document-display-' + panelId;
-    docDisplay.className = 'current-document-display';
-    docDisplay.dataset.panelId = panelId;
-    
-    // Set initial text
-    docDisplay.textContent = 'No Document Selected';
-    
-    // Add to panel
-    panel.appendChild(docDisplay);
-    this.currentDocumentDisplays[panelId] = docDisplay;
-  };
+    targetPanel.appendChild(addBtn);
+  }
+};
   
   /**
    * Update document list display for a panel

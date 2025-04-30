@@ -71,7 +71,7 @@
       contentEditable: !this.viewModel.isMe,
       textContent: this.viewModel.name,
       style: {
-        fontWeight: this.viewModel.isBold ? 'bold' : 'normal'
+        fontWeight: this.viewModel.isBold ? 'bold' : 'normal',
       }
     });
     this.element.appendChild(this.nameElement);

@@ -142,7 +142,7 @@
     name: 'Things',
     description: 'Conditions & Systems',
     shape: 'triangle', // What shape to render in the panel
-    color: '#38761d', // Default color for this concept type
+    color: '#58963d', // Default color for this concept type
     position: 1 // Order from left to right
   },
   {
@@ -153,7 +153,7 @@
     color: '#6aa84f',
     position: 2
   },
-  {
+  /*{
     id: 'patterns',
     name: 'Patterns',
     description: 'Habits & Behaviors',
@@ -181,31 +181,41 @@
     
     // Attribute info - kept as is due to text content
     attributeInfo: {
-      cause: { emoji: '⚡', color: '#9999CC', displayName: 'Cause', description: 'Caused by' },
-      push: { emoji: '🏃', color: '#FFFFB0', displayName: 'Pushes', description: 'Compels' },
-      stop: { emoji: '🛑', color: '#BD2C2C', displayName: 'Stops', description: 'Inhibits' },
-      treasure: { emoji: '💎', color: '#66D6FF', displayName: 'Gems', description: 'Proxy success criteria' },
-      door: { emoji: '⛰️', color: '#8B4513', displayName: 'Mountains', description: 'Activity areas' },
-      key: { emoji: '⛏️', color: '#555555', displayName: 'Tools', description: 'Skills & resources' },
-      demon: { emoji: '😈', color: '#663399', displayName: 'Demons', description: 'Challenges' },
-      sword: { emoji: '🗡️', color: '#C0C0C0', displayName: 'Swords', description: 'Slays demons' },
-      chain: { emoji: '⛓️', color: '#2F4F4F', displayName: 'Chains', description: 'Confines demons' },
-      ally: { emoji: '🧝🏻‍♂️', color: '#FF8C00', displayName: 'Allies', description: 'Helpful people' },
-      me: { emoji: '🧑🏼', color: '#FFCC88', displayName: 'Me', description: 'Self avatar' },
-      battlefield: { emoji: '⚔️', color: '#5B2503', displayName: 'Battlefield', description: 'Area of Operation' },
-      soldier: { emoji: '💂', color: '#00008B', displayName: 'Soldier', description: 'Available Force' },
-      enemy: { emoji: '💂', color: '#8B0000', displayName: 'Enemy', description: 'Opposing Force' },
-      strategy: { emoji: '📝', color: '#DADAC0', displayName: 'Strategy', description: 'Action Plan' },
-      path: { emoji: '🚪', color: '#4B0082', displayName: 'Path', description: 'Option' },
-      destination: { emoji: '🏞️', color: '#115522', displayName: 'Destination', description: 'Outcome' },
-      tools: { emoji: '🛠️', color: '#555555', displayName: 'Tools', description: 'Skills & resources' },
-      parts: { emoji: '⚙️', color: '#AAAAAA', displayName: 'Parts', description: 'Modules' },
-      machine: { emoji: '🏗️', color: '#666633', displayName: 'The Machine', description: 'Deliverable' },
-      chapter: { emoji: '📃', color: '#EEEEEE', displayName: 'Chapter', description: 'Narrative step' },
-      book: { emoji: '📕', color: '#DDDDAA', displayName: 'Book', description: 'Narrative arc' },
-      positive: { emoji: '👍', color: '#AADDAA', displayName: 'Positive', description: 'Hopeful interpretation' },
-      negative: { emoji: '👎', color: '#DDAAAA', displayName: 'Negative', description: 'Concerned interpretation' },
-      problem: { emoji: '🔥', color: '#996622', displayName: 'Problem', description: 'Needs attention' },
+      cause: { emoji: '⚡', color: '#9999CC', displayName: 'Cause' },
+      push: { emoji: '🏃', color: '#FFFFB0', displayName: 'Pushes' },
+      stop: { emoji: '🛑', color: '#BD2C2C', displayName: 'Stops' },
+      treasure: { emoji: '💎', color: '#66D6FF', displayName: 'Gems' },
+      door: { emoji: '⛰️', color: '#8B4513', displayName: 'Mountains' },
+      key: { emoji: '⛏️', color: '#555555', displayName: 'Tools' },
+      demon: { emoji: '😈', color: '#663399', displayName: 'Demons' },
+      sword: { emoji: '🗡️', color: '#C0C0C0', displayName: 'Swords' },
+      chain: { emoji: '⛓️', color: '#2F4F4F', displayName: 'Chains' },
+      ally: { emoji: '🧝🏻‍♂️', color: '#FF8C00', displayName: 'Allies' },
+      me: { emoji: '🧑🏼', color: '#FFCC88', displayName: 'Me' },
+      battlefield: { emoji: '⚔️', color: '#5B2503', displayName: 'Battlefield' },
+      soldier: { emoji: '💂', color: '#00008B', displayName: 'Soldier' },
+      enemy: { emoji: '💂', color: '#8B0000', displayName: 'Enemy' },
+      strategy: { emoji: '📝', color: '#DADAC0', displayName: 'Strategy' },
+      path: { emoji: '🚪', color: '#4B0082', displayName: 'Path' },
+      destination: { emoji: '🏞️', color: '#115522', displayName: 'Destination' },
+      tools: { emoji: '🛠️', color: '#555555', displayName: 'Tools' },
+      parts: { emoji: '⚙️', color: '#AAAAAA', displayName: 'Parts' },
+      machine: { emoji: '🏗️', color: '#666633', displayName: 'The Machine' },
+      action: { emoji: '👍', color: '#779977', displayName: 'Action' },
+      chapter: { emoji: '📃', color: '#EEEEEE', displayName: 'Chapter' },
+      book: { emoji: '📕', color: '#DDDDAA', displayName: 'Book' },
+      positive: { emoji: '👍', color: '#AADDAA', displayName: 'Positive' },
+      negative: { emoji: '👎', color: '#DDAAAA', displayName: 'Negative' },
+      problem: { emoji: '🔥', color: '#996622', displayName: 'Problem' },
+      evidence: { emoji: '📃', color: '#EEEEEE', displayName: 'Evidence' },
+      physicalThing: { emoji: '⚡', color: '#C99', displayName: 'Physical' },
+      identityThing: { emoji: '⚡', color: '#CC9', displayName: 'Identity / Role' },
+      relationalThing: { emoji: '⚡', color: '#9C9', displayName: 'Relational' },
+      behavioralThing: { emoji: '⚡', color: '#9CC', displayName: 'Behavioral' },
+      conceptualThing: { emoji: '⚡', color: '#C9C', displayName: 'Conceptual' },
+      narrativeThing: { emoji: '⚡', color: '#D72', displayName: 'Narrative' },
+      abilityThing: { emoji: '⚡', color: '#7D2', displayName: 'Ability' },
+      model: { emoji: '📕', color: '#2D7', displayName: 'Model' },
     },
     
     // Layout configuration
@@ -216,7 +226,7 @@
     },
     
     // Meridian and connections settings
-    meridian: { x: 170, snapThreshold: 20, lineColor: 'rgba(255, 255, 255, 0.2)' },
+    meridian: { x: 200, snapThreshold: 20, lineColor: 'rgba(255, 255, 255, 0.2)' },
     connections: {
       maxLineLength: 120,
       overlapThreshold: 40,
@@ -261,7 +271,7 @@
       options: [
         {
           value: "level0",
-          display: "Level 0 - Idea",
+          display: "Idea",
           secondary: "Only an idea, doesn't exist yet",
           visualStyle: {
             emoji: "💭",
@@ -270,7 +280,7 @@
         },
         {
           value: "level1",
-          display: "Level 1 - In Progress",
+          display: "In Progress",
           secondary: "Currently being built",
           visualStyle: {
             emoji: "🚧",
@@ -279,7 +289,7 @@
         },
         {
           value: "level2",
-          display: "Level 2 - Complete",
+          display: "Complete",
           secondary: "Fully built and complete",
           visualStyle: {
             emoji: "✅",

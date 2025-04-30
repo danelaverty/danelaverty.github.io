@@ -31,7 +31,6 @@
         var bottomPanel = document.getElementById('center-panel');
         if (bottomPanel) {
           bottomPanel.appendChild(this.container);
-          console.log("Overlapping squares manager initialized");
         } else {
           console.error("Bottom panel not found, cannot initialize overlapping squares manager");
         }

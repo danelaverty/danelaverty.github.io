@@ -41,12 +41,18 @@
   };
   
   ChakraApp.Square.prototype.show = function() {
-    if (!this.visible) {
-      this.visible = true;
-      this._notify({type: 'visibility', model: this, isVisible: true});
+  if (!this.visible) {
+    this.visible = true;
+    this._notify({type: 'visibility', model: this, isVisible: true});
+    
+    // Try to update the actual DOM element if it exists
+    var squareElement = document.querySelector('.square[data-id="' + this.id + '"]');
+    if (squareElement) {
+      squareElement.style.display = 'flex';
     }
-    return this;
-  };
+  }
+  return this;
+};
   
   ChakraApp.Square.prototype.hide = function() {
     if (this.visible) {
