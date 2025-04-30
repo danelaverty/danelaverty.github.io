@@ -146,24 +146,27 @@ h3 {
   overflow: hidden;
 }
 
-/* Add silhouette background to left panel */
-#zoom-container-left::before {
-  content: "";
+.silhouette-svg {
   position: absolute;
-  top: 40px;
-  left: 10px;
-  width: 320px;
-  height: 750px;
-  opacity: 0.3;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+    width: 290px;
+    height: 675px;
   pointer-events: none;
   z-index: 1;
 }
 
-#zoom-container-left::before {
-    background-image: url('body-silhouette-white.png');
-    background-repeat: no-repeat;
-    background-position: top left;
-    background-size: 100% 100%;
+#silhouette-outline {
+    opacity: .3;
+}
+
+#silhouette-filled {
+    opacity: .2;
+}
+
+#silhouette-filled-black {
+    opacity: 1;
 }
 
 /* Optimized CSS - Part 2: Common UI Elements and Buttons */
@@ -1777,4 +1780,21 @@ Add these styles to styles.css:
 
 .square.selected {
   z-index: 8;
+}
+
+#toggle-document-list-btn-things, #add-circle-btn-things {
+  background-color: #88B66d; 
+}
+
+#current-document-display-things {
+  top: 88px; 
+  left: 125px; 
+}
+
+.document-list-container[data-panel-id="things"] {
+  background-color: rgba(56, 118, 29, 0.1); 
+}
+
+.circle-left .triangle-shape {
+  filter: drop-shadow(0 0 2px rgba(56, 118, 29, 0.6));
 }

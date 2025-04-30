@@ -22,15 +22,21 @@
     // Define story groups
     this.storyGroups = {
       "Cause & Effects": ["cause", "push", "stop"],
+      "Interpretations": ["positive", "negative", "evidence"],
       "Quest for Treasure": ["treasure", "door", "key"],
       "Battling Demons": ["demon", "sword", "chain"],
       "Cast of Characters": ["ally"],
       "Battle for Conquest": ["battlefield", "soldier", "enemy", "strategy"],
       "Navigating the Maze": ["path", "destination"],
-      "Building the Machine": ["tools", "parts", "machine"],
+      "Building the Machine": ["tools", "parts", "machine", 'action'],
       "Writing the Book": ["chapter", "book"],
+      "Kind of Thing": ['physicalThing', 'identityThing', 'relationalThing', 'behavioralThing', 'conceptualThing', 'narrativeThing', 'abilityThing', 'model'],
+      "Building the Thing": ["tools", "parts", "machine", 'action'],
+      "Finding the Thing": ["treasure", "door", "key"],
     };
   };
+
+  this.thingStoryGroups = ['Kind of Thing', 'Building the Thing', 'Finding the Thing'];
   
   // Inherit from BaseController
   ChakraApp.AttributeController.prototype = Object.create(ChakraApp.BaseController.prototype);

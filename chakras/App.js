@@ -1,177 +1,208 @@
-// src/App.js
-// Main application class (modified to use controller factory)
-
 (function(ChakraApp) {
-  /**
-   * Main application class
-   */
   ChakraApp.App = function() {
-    // Controllers
     this.controllers = null;
     this.keyboardController = null;
     this.viewManager = null;
-    
-    // Flag to track initialization status
     this.initialized = false;
   };
   
-  /**
-   * Initialize the application
-   */
   ChakraApp.App.prototype.init = function() {
     if (this.initialized) return;
     
+    this.waitForDOMReady();
+  };
+  
+  ChakraApp.App.prototype.waitForDOMReady = function() {
     var self = this;
     
-    // Wait for DOM to be ready
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', function() {
-        self._initializeApp();
+        self.initializeAppComponents();
       });
     } else {
-      this._initializeApp();
+      this.initializeAppComponents();
     }
   };
   
-  /**
-   * Initialize all application components
-   * @private
-   */
-  ChakraApp.App.prototype._initializeApp = function() {
-  // Initialize overlapping groups array
-  ChakraApp.overlappingGroups = [];
+  ChakraApp.App.prototype.initializeAppComponents = function() {
+    this.initializeOverlappingGroups();
+    this.loadPanelState();
+    this.initializeConceptPanels();
+    this.createViewManager();
+    this.createControllers();
+    this.initializeViewManager();
+    this.createPanelToggleButtons();
+    this.initializeOverlappingSquares();
+    this.loadOrCreateData();
+    this.renderViews();
+    this.markAsInitialized();
+  };
   
-  // Load panel state from localStorage
-  if (ChakraApp.appState._loadPanelState) {
-    ChakraApp.appState._loadPanelState();
-  }
+  ChakraApp.App.prototype.initializeOverlappingGroups = function() {
+    ChakraApp.overlappingGroups = [];
+  };
   
-  // Initialize concept panels
-  if (ChakraApp.ConceptPanelManager) {
-    ChakraApp.ConceptPanelManager.initialize();
-  }
+  ChakraApp.App.prototype.loadPanelState = function() {
+    if (ChakraApp.appState._loadPanelState) {
+      ChakraApp.appState._loadPanelState();
+    }
+  };
   
-  // Create view manager
-  this.viewManager = new ChakraApp.ViewManager();
+  ChakraApp.App.prototype.initializeConceptPanels = function() {
+    if (ChakraApp.ConceptPanelManager) {
+      ChakraApp.ConceptPanelManager.initialize();
+    }
+  };
   
-  // Create controllers using factory
-  this.controllers = ChakraApp.ControllerFactory.createControllers();
+  ChakraApp.App.prototype.createViewManager = function() {
+    this.viewManager = new ChakraApp.ViewManager();
+  };
   
-  // Create and initialize keyboard controller separately
-  this.keyboardController = new ChakraApp.KeyboardController();
-  this.keyboardController.init();
+  ChakraApp.App.prototype.createControllers = function() {
+    this.controllers = ChakraApp.ControllerFactory.createControllers();
+    this.createKeyboardController();
+  };
   
-  // Initialize view manager
-  this.viewManager.init();
+  ChakraApp.App.prototype.createKeyboardController = function() {
+    this.keyboardController = new ChakraApp.KeyboardController();
+    this.keyboardController.init();
+  };
   
-  // Create toggle buttons AFTER controllers are initialized
-  if (ChakraApp.PanelManager) {
-    ChakraApp.PanelManager.createToggleButtonsForPanels();
-  }
-  /*if (ChakraApp.ConceptPanelManager) {
-    ChakraApp.ConceptPanelManager.createToggleButtons();
-  }*/
+  ChakraApp.App.prototype.initializeViewManager = function() {
+    this.viewManager.init();
+  };
   
-  // Initialize overlapping squares manager
-  ChakraApp.OverlappingSquaresManager.init();
+  ChakraApp.App.prototype.createPanelToggleButtons = function() {
+    this.createMainPanelToggleButtons();
+    // Commented out in original: this.createConceptPanelToggleButtons();
+  };
   
-  // Load data from storage
-  var dataLoaded = ChakraApp.appState.loadFromStorage();
+  ChakraApp.App.prototype.createMainPanelToggleButtons = function() {
+    if (ChakraApp.PanelManager) {
+      ChakraApp.PanelManager.createToggleButtonsForPanels();
+    }
+  };
   
-  // If no data was loaded, create a sample circle
-  if (!dataLoaded) {
-    this._createSampleData();
-  }
+  ChakraApp.App.prototype.createConceptPanelToggleButtons = function() {
+    if (ChakraApp.ConceptPanelManager) {
+      ChakraApp.ConceptPanelManager.createToggleButtons();
+    }
+  };
   
-  // Render all views based on state
-  this.viewManager.renderAllViews();
+  ChakraApp.App.prototype.initializeOverlappingSquares = function() {
+    ChakraApp.OverlappingSquaresManager.init();
+  };
   
-  // Set initialized flag
-  this.initialized = true;
+  ChakraApp.App.prototype.loadOrCreateData = function() {
+    var dataLoaded = ChakraApp.appState.loadFromStorage();
+    
+    if (!dataLoaded) {
+      this.createSampleData();
+    }
+  };
   
-  console.log('Application initialized');
-};
+  ChakraApp.App.prototype.createSampleData = function() {
+    var welcomeCircle = this.createWelcomeCircle();
+    this.createSampleGem(welcomeCircle.id);
+    this.createSampleMountain(welcomeCircle.id);
+    this.createMeSquare(welcomeCircle.id);
+    this.saveSampleData();
+  };
   
-  /**
-   * Create sample data for first-time users
-   * @private
-   */
-  ChakraApp.App.prototype._createSampleData = function() {
-    // Create a welcome circle
-    var welcomeCircle = ChakraApp.appState.addCircle({
+  ChakraApp.App.prototype.createWelcomeCircle = function() {
+    return ChakraApp.appState.addCircle({
       x: 200,
       y: 200,
-      color: '#4B0082', // Indigo
+      color: '#4B0082',
       name: 'Welcome',
-      element: 'air'
     });
-    
-    // Create some sample squares for the welcome circle
+  };
+  
+  ChakraApp.App.prototype.createSampleGem = function(circleId) {
     ChakraApp.appState.addSquare({
-      circleId: welcomeCircle.id,
+      circleId: circleId,
       x: 150,
       y: 150,
       color: ChakraApp.Config.attributeInfo.treasure.color,
       name: 'Sample Gem',
       attribute: 'treasure'
     });
-    
+  };
+  
+  ChakraApp.App.prototype.createSampleMountain = function(circleId) {
     ChakraApp.appState.addSquare({
-      circleId: welcomeCircle.id,
+      circleId: circleId,
       x: 250,
       y: 150,
       color: ChakraApp.Config.attributeInfo.door.color,
       name: 'Sample Mountain',
       attribute: 'door'
     });
-    
-    // Create a Me square
+  };
+  
+  ChakraApp.App.prototype.createMeSquare = function(circleId) {
     ChakraApp.appState.addSquare({
-      circleId: welcomeCircle.id,
+      circleId: circleId,
       x: 200,
       y: 250,
       color: '#FFCC88',
       name: 'Me',
       isMe: true
     });
-    
-    // Save the initial state
+  };
+  
+  ChakraApp.App.prototype.saveSampleData = function() {
     ChakraApp.appState.saveToStorage();
   };
   
-  /**
-   * Clean up application resources
-   */
+  ChakraApp.App.prototype.renderViews = function() {
+    this.viewManager.renderAllViews();
+  };
+  
+  ChakraApp.App.prototype.markAsInitialized = function() {
+    this.initialized = true;
+    console.log('Application initialized');
+  };
+  
   ChakraApp.App.prototype.destroy = function() {
-    // Clean up controllers using factory
+    this.destroyControllers();
+    this.destroyKeyboardController();
+    this.destroyViewManager();
+    this.cleanupEventBus();
+    this.resetInitializationFlag();
+  };
+  
+  ChakraApp.App.prototype.destroyControllers = function() {
     if (this.controllers) {
       ChakraApp.ControllerFactory.destroyControllers(this.controllers);
       this.controllers = null;
     }
-    
-    // Clean up keyboard controller
+  };
+  
+  ChakraApp.App.prototype.destroyKeyboardController = function() {
     if (this.keyboardController) {
       this.keyboardController.destroy();
       this.keyboardController = null;
     }
-    
-    // Clean up view manager
+  };
+  
+  ChakraApp.App.prototype.destroyViewManager = function() {
     if (this.viewManager) {
       this.viewManager.destroy();
       this.viewManager = null;
     }
-    
-    // Clear event listeners
+  };
+  
+  ChakraApp.App.prototype.cleanupEventBus = function() {
     ChakraApp.EventBus.clear();
-    
-    // Reset initialization flag
+  };
+  
+  ChakraApp.App.prototype.resetInitializationFlag = function() {
     this.initialized = false;
   };
   
-  // Create app instance
   ChakraApp.app = new ChakraApp.App();
   
-  // Auto-initialize when window loads
   window.addEventListener('load', function() {
     ChakraApp.app.init();
   });

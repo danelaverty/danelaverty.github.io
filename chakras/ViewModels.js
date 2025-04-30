@@ -22,6 +22,7 @@
   
 })(window.ChakraApp = window.ChakraApp || {});
 
+
 // src/viewmodels/CircleViewModel.js
 // View model for Circle
 
@@ -42,13 +43,13 @@
     this.x = circleModel.x;
     this.y = circleModel.y;
     this.color = circleModel.color;
-    this.element = circleModel.element;
     this.crystal = circleModel.crystal;
     this.closestSquareName = circleModel.closestSquareName;
     this.isSelected = circleModel.selected;
     this.isDimmed = false;
     this.size = circleModel.size || 20;
     this.characteristics = circleModel.characteristics || {};
+    this.documentId = circleModel.documentId;
     
     // Calculate chakra form based on square count
     this.chakraForm = ChakraApp.Utils.getChakraFormForCircle(
@@ -123,10 +124,10 @@
   this.x = this.model.x;
   this.y = this.model.y;
   this.color = this.model.color;
-  this.element = this.model.element;
   this.crystal = this.model.crystal;
   this.closestSquareName = this.model.closestSquareName;
   this.characteristics = this.model.characteristics || {}; // Add this line
+  this.documentId = this.model.documentId; // Fixed: changed from circleModel to this.model
 
   // Check if square count has changed
   var currentSquareCount = this.model.squareCount || 0;
@@ -154,11 +155,9 @@
 ChakraApp.CircleViewModel.prototype.updateCharacteristic = function(key, value) {
   var update = {};
   
-  // Handle legacy properties (color, element) and new characteristics
+  // Handle legacy properties (color) and new characteristics
   if (key === 'color') {
     update.color = value;
-  } else if (key === 'element') {
-    update.element = value;
   } else {
     // For new characteristics (including completion), update the characteristics object
     var characteristics = Object.assign({}, this.characteristics || {});
@@ -202,11 +201,6 @@ ChakraApp.CircleViewModel.prototype.updateCharacteristic = function(key, value) 
   // Update color
   ChakraApp.CircleViewModel.prototype.updateColor = function(color, crystal) {
     ChakraApp.appState.updateCircle(this.id, { color: color, crystal: crystal });
-  };
-  
-  // Update element
-  ChakraApp.CircleViewModel.prototype.updateElement = function(element) {
-    ChakraApp.appState.updateCircle(this.id, { element: element });
   };
   
   // Delete this circle

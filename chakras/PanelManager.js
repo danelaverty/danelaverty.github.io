@@ -31,7 +31,7 @@
   
   ChakraApp.PanelController.prototype.initializePanelSizes = function() {
     this.panelSizes = {
-      width: 210,
+      width: 310,
       gap: 2
     };
   };
@@ -282,7 +282,7 @@
   ChakraApp.PanelController.prototype.createToggleButtonsForPanels = function() {
     var standardPanels = ['left', 'bottom'];
     standardPanels.forEach(this.createToggleButtonForPanel.bind(this));
-    this.createToggleButtonsForDynamicPanels();
+    //this.createToggleButtonsForDynamicPanels();
   };
   
   ChakraApp.PanelController.prototype.createToggleButtonForPanel = function(panelId) {
@@ -617,7 +617,7 @@ ChakraApp.PanelController.prototype.addHidingStyles = function() {
   
   ChakraApp.PanelController.prototype.updatePanelStyles = function() {
     var sortedTypes = this.getSortedConceptTypes();
-    this.positionPanelsFromRight(sortedTypes);
+    //this.positionPanelsFromRight(sortedTypes);
     this.setMainPanelsZIndex();
   };
   

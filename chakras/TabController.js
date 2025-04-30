@@ -148,20 +148,20 @@
     var self = this;
     
     // Subscribe to circle selection events
-    this.circleSelectedSubscription = ChakraApp.EventBus.subscribe(
+    /*this.circleSelectedSubscription = ChakraApp.EventBus.subscribe(
       ChakraApp.EventTypes.CIRCLE_SELECTED,
       function(circle) {
         self._handleCircleSelected(circle);
       }
-    );
+    );*/
     
     // Subscribe to circle deselection events
-    this.circleDeselectedSubscription = ChakraApp.EventBus.subscribe(
+    /*this.circleDeselectedSubscription = ChakraApp.EventBus.subscribe(
       ChakraApp.EventTypes.CIRCLE_DESELECTED,
       function() {
         self._handleCircleDeselected();
       }
-    );
+    );*/
     
     // Subscribe to tab events
     this.tabCreatedSubscription = ChakraApp.EventBus.subscribe(
@@ -506,8 +506,6 @@
 	  squaresToMigrate.forEach(function(square) {
 		  ChakraApp.appState.updateSquare(square.id, { tabId: firstTab.id });
 	  });
-
-	  console.log(`Migrated ${squaresToMigrate.length} squares to tab "${firstTab.name}" for circle ${circleId}`);
   };
   
   /**
