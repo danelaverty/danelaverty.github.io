@@ -29,7 +29,7 @@
   ChakraApp.SquareView.prototype.render = function() {
     // Create main square element
     this.element = this._createElement('div', {
-      className: this.viewModel.isMe ? 'square special-me-square' : 'square',
+      className: 'square',
       dataset: { 
         id: this.viewModel.id,
         circleId: this.viewModel.circleId
@@ -68,7 +68,7 @@
     // Create name element
     this.nameElement = this._createElement('div', {
       className: 'item-name',
-      contentEditable: !this.viewModel.isMe,
+      contentEditable: true,
       textContent: this.viewModel.name,
       style: {
         fontWeight: this.viewModel.isBold ? 'bold' : 'normal',

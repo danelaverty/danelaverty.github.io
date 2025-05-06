@@ -153,6 +153,15 @@
     color: '#6aa84f',
     position: 2
   },
+  {
+    id: 'themes',
+    name: 'Themes',
+    description: 'Themes & Values',
+    shape: 'gem', // New shape type
+    color: '#4a6fc9',
+    position: 3,
+    panelId: 'bottom'
+  },
   /*{
     id: 'patterns',
     name: 'Patterns',
@@ -208,14 +217,12 @@
       negative: { emoji: '👎', color: '#DDAAAA', displayName: 'Negative' },
       problem: { emoji: '🔥', color: '#996622', displayName: 'Problem' },
       evidence: { emoji: '📃', color: '#EEEEEE', displayName: 'Evidence' },
-      physicalThing: { emoji: '⚡', color: '#C99', displayName: 'Physical' },
-      identityThing: { emoji: '⚡', color: '#CC9', displayName: 'Identity / Role' },
-      relationalThing: { emoji: '⚡', color: '#9C9', displayName: 'Relational' },
-      behavioralThing: { emoji: '⚡', color: '#9CC', displayName: 'Behavioral' },
-      conceptualThing: { emoji: '⚡', color: '#C9C', displayName: 'Conceptual' },
-      narrativeThing: { emoji: '⚡', color: '#D72', displayName: 'Narrative' },
-      abilityThing: { emoji: '⚡', color: '#7D2', displayName: 'Ability' },
-      model: { emoji: '📕', color: '#2D7', displayName: 'Model' },
+      physicalThing: { emoji: '🧊', color: '#C99', displayName: 'Thing' },
+      behavioralThing: { emoji: '🏃', color: '#9CC', displayName: 'Action' },
+      conceptualThing: { emoji: '💭', color: '#C9C', displayName: 'Concept' },
+      model: { emoji: '🖼️', color: '#2D7', displayName: 'Example' },
+      roleModel: { emoji: '🕺', color: '#D72', displayName: 'Role Model' },
+      trait: { emoji: '⚡', color: '#D27', displayName: 'Trait' },
     },
     
     // Layout configuration

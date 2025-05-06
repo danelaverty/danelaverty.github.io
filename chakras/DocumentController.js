@@ -65,8 +65,8 @@
   var panel = document.querySelector('.circle-panel[data-panel-id="' + panelId + '"]');
   if (!panel) return;
   
-  // If panelId is 'things' and we need to render it in left panel
-  var renderInLeftPanel = (panelId === 'things');
+  // If panelId is 'things' or 'bottom' and we need to render it in left panel
+  var renderInLeftPanel = (panelId === 'things' || panelId === 'bottom');
   var targetPanel = renderInLeftPanel ? 
     document.querySelector('.circle-panel[data-panel-id="left"]') : panel;
   
@@ -90,11 +90,20 @@
   
   // Position based on panel
   if (renderInLeftPanel) {
-    // Position 'things' toggle button next to 'left' toggle button
-    toggleBtn.style.top = '30px';
-    toggleBtn.style.right = '40px';
-    toggleBtn.style.left = 'unset';
-    toggleBtn.style.backgroundColor = ChakraApp.Config.conceptTypes.find(t => t.panelId === 'things')?.color || '#88B66d';
+    // Position toggle buttons next to each other
+    if (panelId === 'things') {
+      toggleBtn.style.top = '30px';
+      toggleBtn.style.right = '40px';
+      toggleBtn.style.left = 'unset';
+      toggleBtn.style.backgroundColor = ChakraApp.Config.conceptTypes.find(t => t.panelId === 'things')?.color || '#88B66d';
+    } else if (panelId === 'bottom') {
+      toggleBtn.style.top = 'unset';
+      toggleBtn.style.bottom = '40px';
+      toggleBtn.style.right = '40px';
+      toggleBtn.style.left = 'unset';
+      // Find color for bottom panel, could use a specific color for gems
+      toggleBtn.style.backgroundColor = '#4B0082'; // Default purple color for gems
+    }
   } else {
     toggleBtn.style.top = '30px';
     toggleBtn.style.left = '10px';
@@ -131,11 +140,18 @@
   
   // Position based on panel
   if (renderInLeftPanel) {
-    listContainer.style.left = '125px';
-    listContainer.style.top = '70px';
+    if (panelId === 'things') {
+      listContainer.style.left = '125px';
+      listContainer.style.top = '70px';
+    } else if (panelId === 'bottom') {
+      listContainer.style.left = '200px';
+      listContainer.style.top = 'unset';
+      listContainer.style.bottom = '70px';
+    }
   } else if (panelId === 'bottom') {
     listContainer.style.left = '70px';
-    listContainer.style.top = '70px';
+    listContainer.style.bottom = '70px';
+    listContainer.style.top = 'unset';
   }
   
   // Add to appropriate panel
@@ -153,16 +169,23 @@
   
   // Position based on panel if in the left panel
   if (renderInLeftPanel) {
-    docDisplay.style.top = '55px';
-    docDisplay.style.right = '0px';
-    docDisplay.style.left = 'unset';
+    if (panelId === 'things') {
+      docDisplay.style.top = '55px';
+      docDisplay.style.right = '0px';
+      docDisplay.style.left = 'unset';
+    } else if (panelId === 'bottom') {
+      docDisplay.style.top = 'unset';
+      docDisplay.style.bottom = '10px';
+      docDisplay.style.right = '0px';
+      docDisplay.style.left = 'unset';
+    }
   }
   
   // Add to appropriate panel
   targetPanel.appendChild(docDisplay);
   this.currentDocumentDisplays[panelId] = docDisplay;
   
-  // Create Add Circle Button for things panel if rendering in left panel
+  // Create Add Circle Button for things and bottom panels if rendering in left panel
   if (renderInLeftPanel) {
     var addBtn = document.createElement('button');
     addBtn.id = 'add-circle-btn-' + panelId;
@@ -171,10 +194,18 @@
     addBtn.textContent = '+';
     addBtn.title = 'Add Circle to ' + panelId;
     
-    // Position for things button
-    addBtn.style.right = '10px';
-    addBtn.style.left = 'unset';
-    addBtn.style.backgroundColor = ChakraApp.Config.conceptTypes.find(t => t.panelId === 'things')?.color || '#88B66d';
+    // Position for things/bottom button
+    if (panelId === 'things') {
+      addBtn.style.right = '10px';
+      addBtn.style.left = 'unset';
+      addBtn.style.backgroundColor = ChakraApp.Config.conceptTypes.find(t => t.panelId === 'things')?.color || '#88B66d';
+    } else if (panelId === 'bottom') {
+      addBtn.style.right = '10px';
+      addBtn.style.left = 'unset';
+      addBtn.style.top = 'unset';
+      addBtn.style.bottom = '40px';
+      addBtn.style.backgroundColor = '#4B0082'; // Default purple color for gems
+    }
     
     targetPanel.appendChild(addBtn);
   }

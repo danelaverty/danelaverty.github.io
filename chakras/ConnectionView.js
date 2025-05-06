@@ -38,11 +38,6 @@
       }
     });
 
-    // Apply highlight if needed
-    if (this.viewModel.isHighlighted) {
-      this.element.classList.add('connecting-line-highlight');
-    }
-
     // Apply multi-select highlight if needed
     if (this._checkIfMultiSelected()) {
       this.element.classList.add('connecting-line-multi-selected');
@@ -134,13 +129,6 @@
 
     // Check if both squares are multi-selected
     var isMultiSelected = this._checkIfMultiSelected();
-
-    // Update highlight state
-    if (this.viewModel.isHighlighted) {
-      this.element.classList.add('connecting-line-highlight');
-    } else {
-      this.element.classList.remove('connecting-line-highlight');
-    }
 
     // Update multi-selected state
     if (isMultiSelected) {
