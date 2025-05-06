@@ -105,7 +105,6 @@
     var welcomeCircle = this.createWelcomeCircle();
     this.createSampleGem(welcomeCircle.id);
     this.createSampleMountain(welcomeCircle.id);
-    this.createMeSquare(welcomeCircle.id);
     this.saveSampleData();
   };
   
@@ -137,17 +136,6 @@
       color: ChakraApp.Config.attributeInfo.door.color,
       name: 'Sample Mountain',
       attribute: 'door'
-    });
-  };
-  
-  ChakraApp.App.prototype.createMeSquare = function(circleId) {
-    ChakraApp.appState.addSquare({
-      circleId: circleId,
-      x: 200,
-      y: 250,
-      color: '#FFCC88',
-      name: 'Me',
-      isMe: true
     });
   };
   

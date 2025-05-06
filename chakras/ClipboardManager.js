@@ -216,7 +216,6 @@
         color: square.color,
         name: square.name,
         attribute: square.attribute,
-        isMe: square.isMe,
         isBold: square.isBold
       };
     }

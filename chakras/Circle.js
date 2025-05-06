@@ -17,7 +17,6 @@
     this.color = data.color || '#FF0000';
     this.name = data.name || '???';
     this.crystal = data.crystal || null;
-    this.closestSquareName = data.closestSquareName || null;
     this.squareCount = data.squareCount || 0;
     this.documentId = data.documentId || null;
     this.size = data.size || 20;
@@ -49,7 +48,6 @@
     json.color = this.color;
     json.name = this.name;
     json.crystal = this.crystal;
-    json.closestSquareName = this.closestSquareName;
     json.size = this.size;
     json.squareCount = this.squareCount;
     json.characteristics = this.characteristics;

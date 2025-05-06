@@ -130,38 +130,40 @@
    * @returns {CircleView} The created view
    */
   ChakraApp.ViewManager.prototype.createCircleView = function(circleModel, panelId) {
-    // If panelId not provided, get it from the circle's document
-    if (!panelId) {
-      var doc = ChakraApp.appState.getDocument(circleModel.documentId);
-      if (doc) {
-        panelId = doc.panelId;
-      } else {
-        console.error("Cannot create circle view: missing panel ID and document");
-        return null;
-      }
-    }
-    if (panelId === 'things') {
-	    panelId = 'left';
-    }
-    
-    // Get the appropriate container
-    var container = this.zoomContainers[panelId];
-    if (!container) {
-      console.error("Cannot create circle view: container not found for panel " + panelId);
+  // If panelId not provided, get it from the circle's document
+  if (!panelId) {
+    var doc = ChakraApp.appState.getDocument(circleModel.documentId);
+    if (doc) {
+      panelId = doc.panelId;
+    } else {
+      console.error("Cannot create circle view: missing panel ID and document");
       return null;
     }
-    
-    // Create view model
-    var viewModel = new ChakraApp.CircleViewModel(circleModel);
-    
-    // Create view
-    var view = new ChakraApp.CircleView(viewModel, container);
-    
-    // Store the view
-    this.circleViews.set(circleModel.id, view);
-    
-    return view;
-  };
+  }
+  
+  // Map things and bottom panel circles to left panel for rendering
+  if (panelId === 'things' || panelId === 'bottom') {
+    panelId = 'left';
+  }
+  
+  // Get the appropriate container
+  var container = this.zoomContainers[panelId];
+  if (!container) {
+    console.error("Cannot create circle view: container not found for panel " + panelId);
+    return null;
+  }
+  
+  // Create view model
+  var viewModel = new ChakraApp.CircleViewModel(circleModel);
+  
+  // Create view
+  var view = new ChakraApp.CircleView(viewModel, container);
+  
+  // Store the view
+  this.circleViews.set(circleModel.id, view);
+  
+  return view;
+};
   
   /**
    * Create a square view
@@ -312,7 +314,7 @@
   // First remove existing circle views for this panel
   this._removeCircleViewsForPanel(panelId);
   
-  // If this is the left panel, also get circles from things panel
+  // If this is the left panel, also get circles from things panel and bottom panel
   if (panelId === 'left') {
     // Get the selected document for the left panel
     var leftDocId = ChakraApp.appState.selectedDocumentIds[panelId];
@@ -320,7 +322,10 @@
     // Get the selected document for the things panel
     var thingsDocId = ChakraApp.appState.selectedDocumentIds['things'];
     
-    // Create views for circles in both selected documents
+    // Get the selected document for the bottom panel
+    var bottomDocId = ChakraApp.appState.selectedDocumentIds['bottom'];
+    
+    // Create views for circles in all three selected documents
     var self = this;
     
     // First add circles for the left document
@@ -336,6 +341,15 @@
     if (thingsDocId) {
       ChakraApp.appState.circles.forEach(function(circleModel) {
         if (circleModel.documentId === thingsDocId) {
+          self.createCircleView(circleModel, panelId);
+        }
+      });
+    }
+    
+    // Then add circles for the bottom document
+    if (bottomDocId) {
+      ChakraApp.appState.circles.forEach(function(circleModel) {
+        if (circleModel.documentId === bottomDocId) {
           self.createCircleView(circleModel, panelId);
         }
       });
@@ -368,9 +382,9 @@ ChakraApp.ViewManager.prototype._removeCircleViewsForPanel = function(panelId) {
   var panelDocIds = [];
   
   if (panelId === 'left') {
-    // For left panel, include documents from both left and things panels
+    // For left panel, include documents from left, things, and bottom panels
     ChakraApp.appState.documents.forEach(function(doc) {
-      if (doc.panelId === 'left' || doc.panelId === 'things') {
+      if (doc.panelId === 'left' || doc.panelId === 'things' || doc.panelId === 'bottom') {
         panelDocIds.push(doc.id);
       }
     });

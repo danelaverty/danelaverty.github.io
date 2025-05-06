@@ -244,13 +244,19 @@
     if (thingsDocId) {
       this._showCirclesForDocument(thingsDocId);
     }
-  } else if (panelId === 'things') {
-    // If a things document is selected, we need to update the left panel
     
-    // Don't hide all circles in the left panel, just the ones from 'things' documents
-    this._hideCirclesForPanelType('things');
+    // Also show circles for the selected 'bottom' document if it exists
+    var bottomDocId = this.selectedDocumentIds['bottom'];
+    if (bottomDocId) {
+      this._showCirclesForDocument(bottomDocId);
+    }
+  } else if (panelId === 'things' || panelId === 'bottom') {
+    // If a things or bottom document is selected, we need to update the left panel
     
-    // Show circles for this things document in the left panel
+    // Don't hide all circles in the left panel, just the ones from this panel type
+    this._hideCirclesForPanelType(panelId);
+    
+    // Show circles for this document in the left panel
     this._showCirclesForDocument(documentId);
   } else {
     // Original behavior for other panels
@@ -430,9 +436,6 @@ ChakraApp.AppState.prototype._hideCirclesForPanelType = function(panelType) {
     // Show these squares
     this._showSquaresForCircle(circleId);
     
-    // Ensure there's a "Me" square
-    this._ensureMeSquareExists(circleId);
-    
     // Clear and update connections
     this.connections.clear();
     ChakraApp.EventBus.publish(ChakraApp.EventTypes.CONNECTION_UPDATED, null);
@@ -578,31 +581,6 @@ ChakraApp.AppState.prototype._hideCirclesForPanelType = function(panelType) {
   };
   
   // Panel methods have been moved to AppState.js
-  
-  ChakraApp.AppState.prototype._ensureMeSquareExists = function(circleId) {
-    var meSquare = null;
-    
-    this.squares.forEach(function(square) {
-      if (square.circleId === circleId && square.isMe) {
-        meSquare = square;
-      }
-    });
-    
-    if (meSquare) {
-      meSquare.show();
-    } else {
-      this.addSquare({
-        circleId: circleId,
-        x: 200,
-        y: 200,
-        color: '#FFCC88',
-        name: 'Me',
-        isMe: true,
-	      tabId: this.selectedTabId
-      });
-    }
-  };
-  
   ChakraApp.AppState.prototype._updateChakraFormForCircle = function(circleId) {
     var appState = ChakraApp.appState;
     var circle = appState.circles.get(circleId);
@@ -639,7 +617,6 @@ ChakraApp.AppState.prototype._hideCirclesForPanelType = function(panelType) {
         targetId: square2.id,
         length: distance,
         isVisible: isVisible,
-        isHighlighted: false
       }));
     } else {
       this.connections.get(connectionId).update({
@@ -649,59 +626,6 @@ ChakraApp.AppState.prototype._hideCirclesForPanelType = function(panelType) {
     }
     
     return this.connections.get(connectionId);
-  };
-  
-  ChakraApp.AppState.prototype._updateClosestMeConnection = function(circleId) {
-    var meSquare = null;
-    
-    this.squares.forEach(function(square) {
-      if (square.circleId === circleId && square.isMe) {
-        meSquare = square;
-      }
-    });
-    
-    if (!meSquare || !meSquare.visible) return;
-    
-    var meConnections = [];
-    
-    this.connections.forEach(function(conn) {
-      if ((conn.sourceId === meSquare.id || conn.targetId === meSquare.id) && conn.isVisible) {
-        meConnections.push(conn);
-      }
-    });
-    
-    if (meConnections.length === 0) {
-      this._updateClosestSquareName(circleId, null);
-      return;
-    }
-    
-    var shortestConnection = meConnections.reduce(function(shortest, conn) {
-      return conn.length < shortest.length ? conn : shortest;
-    }, meConnections[0]);
-    
-    this.connections.forEach(function(conn) {
-      if (conn.isHighlighted) {
-        conn.update({ isHighlighted: false });
-      }
-    });
-    
-    shortestConnection.update({ isHighlighted: true });
-    
-    var otherSquareId = shortestConnection.sourceId === meSquare.id 
-      ? shortestConnection.targetId 
-      : shortestConnection.sourceId;
-    
-    var closestSquare = this.squares.get(otherSquareId);
-    if (closestSquare) {
-      this._updateClosestSquareName(circleId, closestSquare.name);
-    }
-  };
-  
-  ChakraApp.AppState.prototype._updateClosestSquareName = function(circleId, squareName) {
-    var circle = this.circles.get(circleId);
-    if (circle) {
-      circle.update({ closestSquareName: squareName });
-    }
   };
   
   ChakraApp.AppState.prototype._removeConnectionsForSquare = function(squareId) {
@@ -752,7 +676,6 @@ ChakraApp.AppState.prototype._hideCirclesForPanelType = function(panelType) {
       }
     }
     
-    this._updateClosestMeConnection(circleId);
     ChakraApp.EventBus.publish(ChakraApp.EventTypes.CONNECTION_UPDATED, circleId);
     this._saveStateIfNotLoading();
   };

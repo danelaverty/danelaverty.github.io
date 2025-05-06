@@ -15,7 +15,6 @@
     this.sourceId = data.sourceId;
     this.targetId = data.targetId;
     this.length = data.length || 0;
-    this.isHighlighted = data.isHighlighted || false;
     this.isVisible = data.isVisible || false;
   };
   
@@ -36,7 +35,6 @@
     json.sourceId = this.sourceId;
     json.targetId = this.targetId;
     json.length = this.length;
-    json.isHighlighted = this.isHighlighted;
     json.isVisible = this.isVisible;
     
     return json;

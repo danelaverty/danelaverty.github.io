@@ -18,7 +18,6 @@
     this.name = data.name || '???';
     this.attribute = data.attribute || null;
     this.circleId = data.circleId || null;
-    this.isMe = data.isMe || false;
     this.isBold = data.isBold || false;
     this.tabId = data.tabId || null;
     this.size = data.size || 30;
@@ -73,7 +72,6 @@
     json.name = this.name;
     json.attribute = this.attribute;
     json.circleId = this.circleId;
-    json.isMe = this.isMe;
     json.size = this.size;
     json.isBold = this.isBold;
     json.tabId = this.tabId;

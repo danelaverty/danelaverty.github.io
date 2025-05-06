@@ -44,7 +44,6 @@
     this.y = circleModel.y;
     this.color = circleModel.color;
     this.crystal = circleModel.crystal;
-    this.closestSquareName = circleModel.closestSquareName;
     this.isSelected = circleModel.selected;
     this.isDimmed = false;
     this.size = circleModel.size || 20;
@@ -125,7 +124,6 @@
   this.y = this.model.y;
   this.color = this.model.color;
   this.crystal = this.model.crystal;
-  this.closestSquareName = this.model.closestSquareName;
   this.characteristics = this.model.characteristics || {}; // Add this line
   this.documentId = this.model.documentId; // Fixed: changed from circleModel to this.model
 
@@ -250,7 +248,6 @@ ChakraApp.CircleViewModel.prototype.updateCharacteristic = function(key, value) 
     this.color = squareModel.color;
     this.attribute = squareModel.attribute;
     this.circleId = squareModel.circleId;
-    this.isMe = squareModel.isMe;
     this.isSelected = squareModel.selected;
     this.isVisible = squareModel.visible;
     this.size = squareModel.size || 30;
@@ -269,10 +266,6 @@ ChakraApp.CircleViewModel.prototype.updateCharacteristic = function(key, value) 
   
   // Get emoji based on attribute or if it's a Me square
   ChakraApp.SquareViewModel.prototype._getEmojiForAttribute = function() {
-    if (this.isMe) {
-      return '🧑🏼'; // Person emoji for Me square
-    }
-    
     if (this.attribute && ChakraApp.Config.attributeInfo[this.attribute]) {
       return ChakraApp.Config.attributeInfo[this.attribute].emoji;
     }

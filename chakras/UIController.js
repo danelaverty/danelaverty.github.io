@@ -387,12 +387,13 @@
     
     // Determine if this is a "things" type circle
     const isThingsCircle = this._isThingsCircle(circle);
+    const isLeftCircle = this._isLeftCircle(circle);
     
     if (isThingsCircle) {
       // Show black filled silhouette for "things" circle
       this._setSilhouetteVisibility(true, false, true);
       this._setLeftPanelBackground('rgba(255, 255, 255, 0.2)');
-    } else {
+    } else if (isLeftCircle) {
       // Show colored filled silhouette for "left" type circle
       this._setSilhouetteVisibility(true, true, false);
     }
@@ -425,6 +426,19 @@
     return false;
   };
   
+  ChakraApp.UIController.prototype._isLeftCircle = function(circle) {
+    if (circle.panelId === 'left') {
+      return true;
+    }
+    
+    const document = ChakraApp.appState.getDocument(circle.documentId);
+    if (document && document.panelId === 'left') {
+      return true;
+    }
+
+    return false;
+  };
+
   /**
    * Set visibility of silhouette SVG elements
    * @private
