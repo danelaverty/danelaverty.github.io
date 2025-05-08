@@ -136,57 +136,34 @@
       '#FFFFFF'  // White
     ],
 
-    conceptTypes: [
+    circleTypes: [
   {
-    id: 'things',
-    name: 'Things',
-    description: 'Conditions & Systems',
-    shape: 'triangle', // What shape to render in the panel
-    color: '#58963d', // Default color for this concept type
-    position: 1 // Order from left to right
+    id: 'standard',
+    name: 'Feelings',
+    description: 'Emotional states and experiences',
+    shape: 'standard',
+    color: '#FF0000',
+    position: 1,
   },
   {
-    id: 'paths',
-    name: 'Paths',
-    description: 'Problems & Capacities',
-    shape: 'star',
-    color: '#6aa84f',
+    id: 'triangle',
+    name: 'Things',
+    description: 'Conditions & Systems',
+    shape: 'triangle', 
+    color: '#88B66d',
     position: 2
   },
   {
-    id: 'themes',
+    id: 'gem',
     name: 'Themes',
     description: 'Themes & Values',
-    shape: 'gem', // New shape type
+    shape: 'gem',
     color: '#4a6fc9',
-    position: 3,
-    panelId: 'bottom'
-  },
-  /*{
-    id: 'patterns',
-    name: 'Patterns',
-    description: 'Habits & Behaviors',
-    shape: 'hexagon',
-    color: '#3d85c6',
     position: 3
-  },
-  /*{
-    id: 'people',
-    name: 'People',
-    description: 'Individuals and groups',
-    shape: 'oval',
-    color: '#9fc5e8',
-    position: 4
-  },
-  {
-    id: 'events',
-    name: 'Events',
-    description: 'Actions and occurrences',
-    shape: 'diamond',
-    color: '#f1c232',
-    position: 5
-  }*/
+  }
 ],
+
+
     
     // Attribute info - kept as is due to text content
     attributeInfo: {
@@ -211,6 +188,7 @@
       parts: { emoji: '⚙️', color: '#AAAAAA', displayName: 'Parts' },
       machine: { emoji: '🏗️', color: '#666633', displayName: 'The Machine' },
       action: { emoji: '👍', color: '#779977', displayName: 'Action' },
+      event: { emoji: '💥', color: '#EECC99', displayName: 'Event' },
       chapter: { emoji: '📃', color: '#EEEEEE', displayName: 'Chapter' },
       book: { emoji: '📕', color: '#DDDDAA', displayName: 'Book' },
       positive: { emoji: '👍', color: '#AADDAA', displayName: 'Positive' },
@@ -266,7 +244,7 @@
         }
       },
       
-	    completion: {
+	    /*completion: {
   key: 'completion',
   displayName: 'Completion',
   buttonEmoji: '🏗️',
@@ -310,12 +288,12 @@
     type: 'emoji',
     template: '<span>{EMOJI}</span> <span>{DISPLAY}</span>'
   }
-},
+},*/
     },
     
     // Directly copy these properties
     predefinedColors: CompressedConfig.predefinedColors,
-    conceptTypes: CompressedConfig.conceptTypes,
+    circleTypes: CompressedConfig.circleTypes,
     attributeInfo: CompressedConfig.attributeInfo,
     sizes: CompressedConfig.sizes,
     meridian: CompressedConfig.meridian,

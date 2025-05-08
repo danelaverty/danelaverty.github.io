@@ -72,19 +72,28 @@
     var self = this;
     
     // Listen for circle events
-    ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.CIRCLE_CREATED, function(circle) {
-      // Get panel from document
-      var doc = ChakraApp.appState.getDocument(circle.documentId);
-      if (!doc) return;
+     ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.CIRCLE_CREATED, function(circle) {
+    // Get the circle type and document
+    var circleType = circle.circleType || 'standard';
+    var doc = ChakraApp.appState.getDocument(circle.documentId);
+    
+    if (doc) {
+      // Check if this circle is for the currently selected document of its type
+      var selectedDocId = ChakraApp.appState.selectedDocumentIds[circleType];
       
-      var panelId = doc.panelId;
-      var selectedDocId = ChakraApp.appState.selectedDocumentIds[panelId];
-      
-      // Only create view if circle belongs to selected document in its panel
       if (selectedDocId && circle.documentId === selectedDocId) {
-        self.createCircleView(circle, panelId);
+        // Create the view for this circle
+        self.createCircleView(circle);
+        
+        // Force a re-rendering to ensure visibility
+        self.renderCirclesForPanel('left');
+        
+      } else {
       }
-    });
+    } else {
+      console.error("Circle created but has no associated document:", circle.id);
+    }
+  });
     
     ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.CIRCLE_DELETED, function(circle) {
       self.removeCircleView(circle.id);
@@ -123,33 +132,29 @@
     });
   };
   
-  /**
-   * Create a circle view
-   * @param {Circle} circleModel - Circle model
-   * @param {string} panelId - Panel ID
-   * @returns {CircleView} The created view
-   */
-  ChakraApp.ViewManager.prototype.createCircleView = function(circleModel, panelId) {
-  // If panelId not provided, get it from the circle's document
-  if (!panelId) {
+  ChakraApp.ViewManager.prototype.createCircleView = function(circleModel) {
+  // Ensure we have a valid circle model
+  if (!circleModel) {
+    console.error("Cannot create circle view: no circle model provided");
+    return null;
+  }
+  
+  // Get the circle type - either directly from the circle or from its document
+  var circleType = circleModel.circleType;
+  if (!circleType && circleModel.documentId) {
     var doc = ChakraApp.appState.getDocument(circleModel.documentId);
     if (doc) {
-      panelId = doc.panelId;
-    } else {
-      console.error("Cannot create circle view: missing panel ID and document");
-      return null;
+      circleType = doc.circleType;
     }
   }
   
-  // Map things and bottom panel circles to left panel for rendering
-  if (panelId === 'things' || panelId === 'bottom') {
-    panelId = 'left';
-  }
+  // Default to standard if no type is found
+  circleType = circleType || 'standard';
   
-  // Get the appropriate container
-  var container = this.zoomContainers[panelId];
+  // We'll always use the left panel for rendering any circle type
+  var container = document.querySelector('.circle-panel[data-panel-id="left"]');
   if (!container) {
-    console.error("Cannot create circle view: container not found for panel " + panelId);
+    console.error("Cannot create circle view: left panel not found");
     return null;
   }
   
@@ -305,68 +310,51 @@
       self.renderCirclesForPanel(panelId);
     });
   };
+
+ChakraApp.ViewManager.prototype._removeAllCircleViews = function() {
+  var self = this;
+  var circlesToRemove = [];
+  
+  // Identify all circles to remove
+  this.circleViews.forEach(function(view, circleId) {
+    circlesToRemove.push(circleId);
+  });
+  
+  // Remove the views
+  circlesToRemove.forEach(function(circleId) {
+    self.removeCircleView(circleId);
+  });
+};
   
   /**
    * Render circles for a specific panel
    * @param {string} panelId - Panel ID
    */
-  ChakraApp.ViewManager.prototype.renderCirclesForPanel = function(panelId) {
-  // First remove existing circle views for this panel
-  this._removeCircleViewsForPanel(panelId);
+// Fix the renderCirclesForPanel method in ViewManager.js
+ChakraApp.ViewManager.prototype.renderCirclesForPanel = function() {
+  // First remove existing circle views
+  this._removeAllCircleViews();
   
-  // If this is the left panel, also get circles from things panel and bottom panel
-  if (panelId === 'left') {
-    // Get the selected document for the left panel
-    var leftDocId = ChakraApp.appState.selectedDocumentIds[panelId];
-    
-    // Get the selected document for the things panel
-    var thingsDocId = ChakraApp.appState.selectedDocumentIds['things'];
-    
-    // Get the selected document for the bottom panel
-    var bottomDocId = ChakraApp.appState.selectedDocumentIds['bottom'];
-    
-    // Create views for circles in all three selected documents
-    var self = this;
-    
-    // First add circles for the left document
-    if (leftDocId) {
-      ChakraApp.appState.circles.forEach(function(circleModel) {
-        if (circleModel.documentId === leftDocId) {
-          self.createCircleView(circleModel, panelId);
-        }
-      });
-    }
-    
-    // Then add circles for the things document 
-    if (thingsDocId) {
-      ChakraApp.appState.circles.forEach(function(circleModel) {
-        if (circleModel.documentId === thingsDocId) {
-          self.createCircleView(circleModel, panelId);
-        }
-      });
-    }
-    
-    // Then add circles for the bottom document
-    if (bottomDocId) {
-      ChakraApp.appState.circles.forEach(function(circleModel) {
-        if (circleModel.documentId === bottomDocId) {
-          self.createCircleView(circleModel, panelId);
-        }
-      });
-    }
-  } else {
-    // Original behavior for other panels
-    var selectedDocId = ChakraApp.appState.selectedDocumentIds[panelId];
-    if (!selectedDocId) return;
-    
-    // Create views for circles in the selected document
-    var self = this;
-    ChakraApp.appState.circles.forEach(function(circleModel) {
-      if (circleModel.documentId === selectedDocId) {
-        self.createCircleView(circleModel, panelId);
+  var self = this;
+  
+  // For each circle type in the config
+  if (ChakraApp.Config && ChakraApp.Config.circleTypes) {
+    ChakraApp.Config.circleTypes.forEach(function(circleType) {
+      var typeId = circleType.id;
+      var selectedDocId = ChakraApp.appState.selectedDocumentIds[typeId];
+      
+      // If a document of this type is selected
+      if (selectedDocId) {
+        // Create views for all circles of this type and document
+        ChakraApp.appState.circles.forEach(function(circle) {
+          if (circle.documentId === selectedDocId && circle.circleType === typeId) {
+            self.createCircleView(circle);
+          }
+        });
       }
     });
   }
+  
 };
   
   /**
@@ -382,10 +370,17 @@ ChakraApp.ViewManager.prototype._removeCircleViewsForPanel = function(panelId) {
   var panelDocIds = [];
   
   if (panelId === 'left') {
-    // For left panel, include documents from left, things, and bottom panels
+    // For left panel, include documents from left and all concept panels
     ChakraApp.appState.documents.forEach(function(doc) {
-      if (doc.panelId === 'left' || doc.panelId === 'things' || doc.panelId === 'bottom') {
+      if (doc.panelId === 'left') {
         panelDocIds.push(doc.id);
+      } else if (ChakraApp.Config && ChakraApp.Config.conceptTypes) {
+        // Check if doc's panelId matches any concept type
+        ChakraApp.Config.conceptTypes.forEach(function(conceptType) {
+          if (doc.panelId === conceptType.id) {
+            panelDocIds.push(doc.id);
+          }
+        });
       }
     });
   } else {

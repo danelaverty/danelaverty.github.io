@@ -30,7 +30,7 @@
       "Navigating the Maze": ["path", "destination"],
       "Building the Machine": ["tools", "parts", "machine", 'action'],
       "Writing the Book": ["chapter", "book"],
-      "Kind of Thing": ['physicalThing', 'behavioralThing', 'conceptualThing'],
+      "Kind of Thing": ['physicalThing', 'behavioralThing', 'event', 'conceptualThing'],
       "Describing the Thing": ['model', 'roleModel', 'trait'],
     };
   };
@@ -298,8 +298,8 @@
         var attributeType = this.dataset.attribute;
         
         // Create a square at a random position
-        var bottomPanel = document.getElementById('bottom-panel');
-        var panelRect = bottomPanel.getBoundingClientRect();
+        var centerPanel = document.getElementById('center-panel');
+        var panelRect = centerPanel.getBoundingClientRect();
         var centerX = panelRect.width / 2;
         var centerY = panelRect.height / 2;
         

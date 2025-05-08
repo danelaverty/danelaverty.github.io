@@ -74,12 +74,24 @@
   };
   
   ChakraApp.PanelController.prototype.mapExistingPanels = function() {
-    var conceptTypes = ChakraApp.Config.conceptTypes;
+  // Use circleTypes instead of conceptTypes
+  var circleTypes = ChakraApp.Config.circleTypes || [];
+  
+  circleTypes.forEach(function(circleType) {
+    // Adapt the circleType to the format expected by mapPanelIfExists
+    var adaptedType = {
+      id: circleType.id,
+      name: circleType.name,
+      description: circleType.description,
+      shape: circleType.shape,
+      color: circleType.color,
+      position: circleType.position,
+      panelId: circleType.id  // Add a panelId property for backward compatibility
+    };
     
-    conceptTypes.forEach(function(conceptType) {
-      this.mapPanelIfExists(conceptType);
-    }, this);
-  };
+    this.mapPanelIfExists(adaptedType);
+  }, this);
+};
   
   ChakraApp.PanelController.prototype.mapPanelIfExists = function(conceptType) {
     if (!conceptType.panelId) return;
@@ -102,20 +114,26 @@
   
   ChakraApp.PanelController.prototype.updateExistingPanelAttributes = function(conceptType, panel) {
     panel.dataset.conceptType = conceptType.id;
-    
-    var titleElement = panel.querySelector('h3');
-    if (titleElement) {
-      titleElement.textContent = conceptType.name;
-    }
   };
   
-  ChakraApp.PanelController.prototype.createNewPanels = function() {
-    var conceptTypes = ChakraApp.Config.conceptTypes;
+ChakraApp.PanelController.prototype.createNewPanels = function() {
+  var circleTypes = ChakraApp.Config.circleTypes || [];
+  
+  circleTypes.forEach(function(circleType) {
+    // Adapt the circleType to the format expected by createPanelIfNeeded
+    var adaptedType = {
+      id: circleType.id,
+      name: circleType.name,
+      description: circleType.description,
+      shape: circleType.shape,
+      color: circleType.color,
+      position: circleType.position,
+      panelId: circleType.id  // Add a panelId property for backward compatibility
+    };
     
-    conceptTypes.forEach(function(conceptType) {
-      this.createPanelIfNeeded(conceptType);
-    }, this);
-  };
+    this.createPanelIfNeeded(adaptedType);
+  }, this);
+};
   
   ChakraApp.PanelController.prototype.createPanelIfNeeded = function(conceptType) {
     if (conceptType.panelId || this.concepts.panels[conceptType.id]) return;
@@ -215,15 +233,15 @@
     var panelIds = this.collectAllPanelIds();
     this.updateAppStatePanels(panelIds);
     this.initializeAppPanelVisibility(panelIds);
-    this.initializeSelectedDocumentIds(panelIds);
+    //this.initializeSelectedDocumentIds(panelIds);
     this.initializeDocumentListVisibility(panelIds);
   };
   
   ChakraApp.PanelController.prototype.collectAllPanelIds = function() {
-    var panelIds = ['left', 'bottom'];
+    var panelIds = ['left'];
     
     Object.values(this.concepts.panels).forEach(function(panel) {
-      if (panel.id !== 'left' && panel.id !== 'bottom' && !panelIds.includes(panel.id)) {
+      if (panel.id !== 'left' && !panelIds.includes(panel.id)) {
         panelIds.push(panel.id);
       }
     });
@@ -235,13 +253,13 @@
     ChakraApp.appState.panels = panelIds;
   };
   
-  ChakraApp.PanelController.prototype.initializeAppPanelVisibility = function(panelIds) {
-    var savedPanelVisibility = this.loadSavedPanelVisibility();
-    
-    panelIds.forEach(function(panelId) {
-      this.initializeSinglePanelVisibility(panelId, savedPanelVisibility);
-    }, this);
-  };
+ChakraApp.PanelController.prototype.initializeAppPanelVisibility = function(panelIds) {
+  var savedPanelVisibility = this.loadSavedPanelVisibility();
+  
+  panelIds.forEach(function(panelId) {
+    this.initializeSinglePanelVisibility(panelId, savedPanelVisibility);
+  }, this);
+};
   
   ChakraApp.PanelController.prototype.loadSavedPanelVisibility = function() {
     try {
@@ -271,16 +289,19 @@
     });
   };
   
-  ChakraApp.PanelController.prototype.initializeDocumentListVisibility = function(panelIds) {
-    panelIds.forEach(function(panelId) {
-      if (ChakraApp.appState.documentListVisible[panelId] === undefined) {
-        ChakraApp.appState.documentListVisible[panelId] = false;
+ChakraApp.PanelController.prototype.initializeDocumentListVisibility = function() {
+  // Initialize for all circle types, not panels
+  if (ChakraApp.Config && ChakraApp.Config.circleTypes) {
+    ChakraApp.Config.circleTypes.forEach(function(circleType) {
+      if (ChakraApp.appState.documentListVisible[circleType.id] === undefined) {
+        ChakraApp.appState.documentListVisible[circleType.id] = false;
       }
     });
-  };
+  }
+};
 
   ChakraApp.PanelController.prototype.createToggleButtonsForPanels = function() {
-    var standardPanels = ['left', 'bottom'];
+    var standardPanels = ['left'];
     standardPanels.forEach(this.createToggleButtonForPanel.bind(this));
     //this.createToggleButtonsForDynamicPanels();
   };
@@ -294,7 +315,7 @@
   ChakraApp.PanelController.prototype.createToggleButtonsForDynamicPanels = function() {
     var self = this;
     Object.values(this.concepts.panels).forEach(function(panel, index) {
-      if (panel.existing || panel.id === 'left' || panel.id === 'bottom') return;
+      if (panel.existing || panel.id === 'left') return;
       
       if (!self.toggleButtons[panel.id]) {
         self.createDynamicPanelToggleButton(panel, index);
@@ -621,12 +642,12 @@ ChakraApp.PanelController.prototype.addHidingStyles = function() {
     this.setMainPanelsZIndex();
   };
   
-  ChakraApp.PanelController.prototype.getSortedConceptTypes = function() {
-    var conceptTypes = ChakraApp.Config.conceptTypes;
-    return conceptTypes.slice().sort(function(a, b) {
-      return a.position - b.position;
-    });
-  };
+ChakraApp.PanelController.prototype.getSortedConceptTypes = function() {
+  var circleTypes = ChakraApp.Config.circleTypes || [];
+  return circleTypes.slice().sort(function(a, b) {
+    return a.position - b.position;
+  });
+};
   
 ChakraApp.PanelController.prototype.positionPanelsFromRight = function(sortedTypes) {
   // Reset positions of all panels first

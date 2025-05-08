@@ -187,12 +187,12 @@ ChakraApp.CircleView.prototype.generateRandomGemConfig = function() {
   var rotation = Math.floor(Math.random() * 45);
   
   // Generate random sparkle positions
-  var sparkleCount = 1 + Math.floor(Math.random() * 5); // 1 or 2 sparkles
+  var sparkleCount = 3 + Math.floor(Math.random() * 4);
   var sparkles = [];
   for (var i = 0; i < sparkleCount; i++) {
     sparkles.push({
-      x: 5 + Math.floor(Math.random() * 20),
-      y: 5 + Math.floor(Math.random() * 20),
+      x: 7 + Math.floor(Math.random() * 12),
+      y: 7 + Math.floor(Math.random() * 12),
       size: 0.5 + Math.random() * 1.5,
       opacity: 0.5 + Math.random() * 0.5
     });
@@ -622,6 +622,25 @@ ChakraApp.CircleView.prototype.addGemHighlights = function(svg, gemConfig) {
   
 };
 
+ChakraApp.CircleView.prototype.renderShapeBasedOnType = function() {
+  var circleType = this.viewModel.circleType;
+  
+  switch (circleType) {
+    case 'triangle':
+      this._renderTriangle();
+      break;
+    case 'gem':
+      this._renderGem();
+      break;
+    case 'standard':
+    default:
+      this._renderStandardCircle();
+      break;
+  }
+};
+
+
+
 ChakraApp.CircleView.prototype.renderShapeBasedOnConcept = function() {
   var conceptType = this._getConceptTypeForCircle();
   
@@ -629,9 +648,15 @@ ChakraApp.CircleView.prototype.renderShapeBasedOnConcept = function() {
   var doc = ChakraApp.appState.getDocument(this.viewModel.documentId);
   var docPanelId = doc ? doc.panelId : null;
   
-  // Check if this is a bottom panel circle (gem)
-  if (docPanelId === 'bottom') {
-    // Always render as gem if from bottom panel
+  // DIRECT CHECK: If circleType is 'triangle', always render as triangle
+  if (this.viewModel.circleType === 'triangle') {
+    this._renderTriangle();
+    return;
+  }
+  
+  // First, check if this is explicitly a gem type circle by properties or color
+  if (this.viewModel.circleType === 'gem' || this.viewModel.color === '#4a6fc9' || docPanelId === 'bottom') {
+    // Render as gem if it's a gem type circle
     this._renderGem();
     return;
   }
@@ -640,18 +665,11 @@ ChakraApp.CircleView.prototype.renderShapeBasedOnConcept = function() {
   if (conceptType) {
     // For triangles in things panel, check if there's a completion level
     if (conceptType.shape === 'triangle' && docPanelId === 'things') {
-      var completionLevel = this.getCompletionLevel();
-      if (completionLevel === "no-completion") {
-        this._renderSimpleCircleGlow();
-      } else {
-        this.renderShapeByType(conceptType.shape);
-      }
+      // ALWAYS render as triangle regardless of completion level
+      this._renderTriangle();
     } else {
       this.renderShapeByType(conceptType.shape);
     }
-  } else if (docPanelId === 'bottom') {
-    // For bottom panel, render gems
-    this._renderGem();
   } else {
     this._renderStandardCircle();
   }
@@ -1158,6 +1176,26 @@ ChakraApp.CircleView.prototype.updateTriangleCompletionIfNeeded = function() {
     }
   }
 };
+
+ChakraApp.CircleView.prototype._isGemType = function() {
+  // Check explicit circle type
+  if (this.viewModel.circleType === 'gem') {
+    return true;
+  }
+  
+  // Check color as a fallback
+  if (this.viewModel.color === '#4a6fc9') {
+    return true;
+  }
+  
+  // Check document panel for backward compatibility
+  var doc = ChakraApp.appState.getDocument(this.viewModel.documentId);
+  if (doc && doc.panelId === 'bottom') {
+    return true;
+  }
+  
+  return false;
+};
   
 ChakraApp.CircleView.prototype.updateColors = function() {
   // Update regular circle elements
@@ -1170,11 +1208,15 @@ ChakraApp.CircleView.prototype.updateColors = function() {
     }
   }
   
-  // Check if this is a bottom panel circle (gem)
+  // Check if this is a gem-type circle by direct property or by panel type
+  var isGemType = this.viewModel.circleType === 'gem' || 
+                  this.viewModel.color === '#4a6fc9';
+  
+  // Also check document panel for backward compatibility
   var doc = ChakraApp.appState.getDocument(this.viewModel.documentId);
   var isPanelBottom = doc && doc.panelId === 'bottom';
   
-  if ((isPanelBottom || this.panelId === 'bottom') && this.shapeWrap) {
+  if ((isGemType || isPanelBottom || this.panelId === 'bottom') && this.shapeWrap) {
     // Find the SVG element inside the shape wrap
     var svg = this.shapeWrap.querySelector('svg');
     if (svg) {

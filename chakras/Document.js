@@ -6,16 +6,19 @@
    * Document model
    * @param {Object} data - Document data
    */
-  ChakraApp.Document = function(data) {
-    // Call parent constructor
-    ChakraApp.BaseModel.call(this, data);
-    
-    // Initialize with data or defaults
-    data = data || {};
-    this.name = data.name || this._generateDefaultName();
-    this.panelId = data.panelId || 'left';
-    this.selected = data.selected || false;
-  };
+	ChakraApp.Document = function(data) {
+  // Call parent constructor
+  ChakraApp.BaseModel.call(this, data);
+  
+  // Initialize with data or defaults
+  data = data || {};
+  this.name = data.name || this._generateDefaultName();
+  this.circleType = data.circleType || 'standard';
+  this.selected = data.selected || false;
+  
+  // Keep the panelId for backward compatibility but primarily use circleType
+  this.panelId = data.panelId;
+};
   
   // Inherit from BaseModel
   ChakraApp.Document.prototype = Object.create(ChakraApp.BaseModel.prototype);
@@ -50,6 +53,7 @@
     // Add Document-specific properties
     json.name = this.name;
     json.panelId = this.panelId;
+    json.circleType = this.circleType;
     
     return json;
   };

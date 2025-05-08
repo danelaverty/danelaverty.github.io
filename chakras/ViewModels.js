@@ -49,6 +49,7 @@
     this.size = circleModel.size || 20;
     this.characteristics = circleModel.characteristics || {};
     this.documentId = circleModel.documentId;
+    this.circleType = circleModel.circleType || 'standard';
     
     // Calculate chakra form based on square count
     this.chakraForm = ChakraApp.Utils.getChakraFormForCircle(
@@ -126,6 +127,7 @@
   this.crystal = this.model.crystal;
   this.characteristics = this.model.characteristics || {}; // Add this line
   this.documentId = this.model.documentId; // Fixed: changed from circleModel to this.model
+  this.circleType = this.model.circleType || 'standard';
 
   // Check if square count has changed
   var currentSquareCount = this.model.squareCount || 0;

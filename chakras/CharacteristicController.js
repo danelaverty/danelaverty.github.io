@@ -68,6 +68,11 @@
     var self = this;
     
     Object.keys(characteristics).forEach(function(key) {
+	    if (ChakraApp.appState.circles) {
+		    console.log(ChakraApp.appState.selectedCircleId);
+		    console.log(ChakraApp.appState.circles[ChakraApp.appState.selectedCircleId]);
+	    }
+	    console.log(key);
       self._createActionButton(key, characteristics[key], buttonContainer);
     });
     

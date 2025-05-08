@@ -6,23 +6,35 @@
    * Circle model
    * @param {Object} data - Circle data
    */
-  ChakraApp.Circle = function(data) {
-    // Call parent constructor
-    ChakraApp.BaseModel.call(this, data);
-    
-    // Initialize with data or defaults
-    data = data || {};
-    this.x = data.x || 0;
-    this.y = data.y || 0;
-    this.color = data.color || '#FF0000';
-    this.name = data.name || '???';
-    this.crystal = data.crystal || null;
-    this.squareCount = data.squareCount || 0;
-    this.documentId = data.documentId || null;
-    this.size = data.size || 20;
-    this.selected = data.selected || false;
-    this.characteristics = data.characteristics || {};
-  };
+	ChakraApp.Circle = function(data) {
+  // Call parent constructor
+  ChakraApp.BaseModel.call(this, data);
+  
+  // Initialize with data or defaults
+  data = data || {};
+  this.x = data.x || 0;
+  this.y = data.y || 0;
+  this.color = data.color || '#FF0000';
+  this.name = data.name || '???';
+  this.crystal = data.crystal || null;
+  this.squareCount = data.squareCount || 0;
+  this.documentId = data.documentId || null;
+  this.size = data.size || 20;
+  this.selected = data.selected || false;
+  this.characteristics = data.characteristics || {};
+  
+  // Explicitly set circleType based on the provided value or infer from color
+  if (data.circleType) {
+    this.circleType = data.circleType;
+  } else if (data.color === '#4a6fc9') {
+    this.circleType = 'gem';
+  } else if (data.color === '#88B66d') {
+    this.circleType = 'triangle';
+  } else {
+    this.circleType = 'standard';
+  }
+  
+};
   
   // Inherit from BaseModel
   ChakraApp.Circle.prototype = Object.create(ChakraApp.BaseModel.prototype);
@@ -52,6 +64,7 @@
     json.squareCount = this.squareCount;
     json.characteristics = this.characteristics;
     json.documentId = this.documentId;
+    json.circleType = this.circleType;
     
     return json;
   };
