@@ -48,6 +48,7 @@ h3 {
 	top: -12px;
 	padding: 0px 6px;
 	white-space: nowrap;
+	font-size: 12px;
 }
 
 #main-container {
@@ -124,7 +125,7 @@ h3 {
   align-items: flex-start;
   padding: 10px 20px;
   height: auto;
-  min-height: 80px;
+  min-height: 40px;
   background-color: var(--color-bg-dark);
   border-bottom: none;
 }
@@ -162,7 +163,7 @@ h3 {
 }
 
 #silhouette-filled {
-    opacity: .2;
+    opacity: .1;
 }
 
 #silhouette-filled-black {
@@ -204,7 +205,7 @@ h3 {
 .add-btn {
   position: absolute;
   top: 30px;
-  font-size: 13px;
+  font-size: 10px;
   z-index: 100;
 }
 
@@ -953,7 +954,7 @@ h3 {
   top: 54px;
   left: -6px;
   color: rgba(255, 255, 255, 0.7);
-  font-size: 14px;
+  font-size: 12px;
   font-weight: bold;
   padding: 5px 15px;
   background-color: rgba(0, 0, 0, 0.4);
@@ -1690,4 +1691,8 @@ Add these styles to styles.css:
 
 .circle-left .triangle-shape {
   filter: drop-shadow(0 0 2px rgba(56, 118, 29, 0.6));
+}
+
+.gem-wrap {
+	top: -5px;
 }

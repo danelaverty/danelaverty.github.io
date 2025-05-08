@@ -25,6 +25,7 @@
   };
   
   ChakraApp.App.prototype.initializeAppComponents = function() {
+  
     this.initializeOverlappingGroups();
     this.loadPanelState();
     this.initializeConceptPanels();
@@ -37,6 +38,76 @@
     this.renderViews();
     this.markAsInitialized();
   };
+
+  ChakraApp.App.prototype.fixCircleTypes = function() {
+  var fixApplied = false;
+  
+  // First make sure the appropriate types exist in Config
+  this._ensureCircleTypesConfigured();
+  
+  // Update existing circles based on color or other attributes
+  ChakraApp.appState.circles.forEach(function(circle) {
+    var originalType = circle.circleType;
+    var newType = null;
+    
+    // Is it already classified?
+    if (circle.circleType === 'gem' || circle.circleType === 'triangle' || circle.circleType === 'standard') {
+      return; // Already has a valid type
+    }
+    
+    // Set type based on color if not already set
+    if (!circle.circleType || circle.circleType === 'standard') {
+      if (circle.color === '#4a6fc9') {
+        newType = 'gem';
+      } else if (circle.color === '#88B66d') {
+        newType = 'triangle';
+      }
+    }
+    
+    // Apply the new type if determined
+    if (newType && newType !== circle.circleType) {
+      circle.circleType = newType;
+      fixApplied = true;
+      console.log("Fixed circle", circle.id, "to type '" + newType + "'");
+    }
+  });
+  
+  if (fixApplied) {
+    // Save the fixed state
+    ChakraApp.appState.saveToStorageNow();
+    console.log("Saved fixed circle types to storage");
+  }
+  
+  return fixApplied;
+};
+
+ChakraApp.App.prototype._ensureCircleTypesConfigured = function() {
+  // Make sure we have Config.circleTypes defined
+  if (!ChakraApp.Config.circleTypes) {
+    ChakraApp.Config.circleTypes = [];
+  }
+  
+  // Check if we have a gem type defined
+  var gemTypeExists = ChakraApp.Config.circleTypes.some(function(type) {
+    return type.id === 'gem' || (type.shape === 'gem');
+  });
+  
+  // If not, create it with default values
+  if (!gemTypeExists) {
+    var gemCircleType = {
+      id: 'gem',
+      name: 'Themes',
+      description: 'Themes & Values',
+      shape: 'gem',
+      color: '#4a6fc9',
+      position: 3
+    };
+    
+    // Add to the circle types
+    ChakraApp.Config.circleTypes.push(gemCircleType);
+    console.log("Added missing gem circle type configuration");
+  }
+};
   
   ChakraApp.App.prototype.initializeOverlappingGroups = function() {
     ChakraApp.overlappingGroups = [];
@@ -93,51 +164,44 @@
     ChakraApp.OverlappingSquaresManager.init();
   };
   
-  ChakraApp.App.prototype.loadOrCreateData = function() {
-    var dataLoaded = ChakraApp.appState.loadFromStorage();
-    
-    if (!dataLoaded) {
-      this.createSampleData();
+ChakraApp.App.prototype.loadOrCreateData = function() {
+  var dataLoaded = ChakraApp.appState.loadFromStorage();
+
+  if (dataLoaded) {
+    // Clean up selectedDocumentIds to remove 'left' panel id
+    if (ChakraApp.appState.cleanupSelectedDocumentIds) {
+      ChakraApp.appState.cleanupSelectedDocumentIds();
     }
-  };
+    
+    // Fix any circles with incorrect types
+    this.fixCircleTypes();
+    
+    // Migrate document state
+    if (ChakraApp.appState._migrateDocumentState) {
+      ChakraApp.appState._migrateDocumentState();
+    }
+  } else {
+    this.createSampleData();
+  }
+};
   
+
   ChakraApp.App.prototype.createSampleData = function() {
     var welcomeCircle = this.createWelcomeCircle();
-    this.createSampleGem(welcomeCircle.id);
-    this.createSampleMountain(welcomeCircle.id);
     this.saveSampleData();
   };
   
-  ChakraApp.App.prototype.createWelcomeCircle = function() {
-    return ChakraApp.appState.addCircle({
-      x: 200,
-      y: 200,
-      color: '#4B0082',
-      name: 'Welcome',
-    });
-  };
   
-  ChakraApp.App.prototype.createSampleGem = function(circleId) {
-    ChakraApp.appState.addSquare({
-      circleId: circleId,
-      x: 150,
-      y: 150,
-      color: ChakraApp.Config.attributeInfo.treasure.color,
-      name: 'Sample Gem',
-      attribute: 'treasure'
-    });
-  };
-  
-  ChakraApp.App.prototype.createSampleMountain = function(circleId) {
-    ChakraApp.appState.addSquare({
-      circleId: circleId,
-      x: 250,
-      y: 150,
-      color: ChakraApp.Config.attributeInfo.door.color,
-      name: 'Sample Mountain',
-      attribute: 'door'
-    });
-  };
+// Fixed to ensure circles are created with appropriate types
+ChakraApp.App.prototype.createWelcomeCircle = function() {
+  return ChakraApp.appState.addCircle({
+    x: 200,
+    y: 200,
+    color: '#4B0082',
+    name: 'Welcome',
+    circleType: 'standard' // Explicitly set type
+  });
+};
   
   ChakraApp.App.prototype.saveSampleData = function() {
     ChakraApp.appState.saveToStorage();

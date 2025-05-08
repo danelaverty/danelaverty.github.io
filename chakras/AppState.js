@@ -27,11 +27,27 @@
   };
   
   ChakraApp.AppState.prototype._initializeSelectionState = function() {
-    this.selectedDocumentIds = { left: null, bottom: null };
-    this.selectedCircleId = null;
-    this.selectedSquareId = null;
-    this.selectedTabId = null;
-  };
+  // Initialize with only circle types, not panels
+  this.selectedDocumentIds = {};
+  
+  // Add entries for each circle type in the config
+  if (ChakraApp.Config && ChakraApp.Config.circleTypes) {
+    ChakraApp.Config.circleTypes.forEach(function(circleType) {
+      this.selectedDocumentIds[circleType.id] = null;
+    }, this);
+  } else {
+    // Fallback if config isn't available
+    this.selectedDocumentIds = {
+      standard: null,
+      triangle: null,
+      gem: null
+    };
+  }
+  
+  this.selectedCircleId = null;
+  this.selectedSquareId = null;
+  this.selectedTabId = null;
+};
   
   ChakraApp.AppState.prototype._initializeUIState = function() {
     this.panelVisibility = { left: true, bottom: true };
@@ -265,37 +281,70 @@
   };
   
   // Storage methods
-  ChakraApp.AppState.prototype.loadFromStorage = function() {
-    try {
-      this._isLoading = true;
-      
-      var savedData = localStorage.getItem('chakraVisualizerData');
-      if (!savedData) {
-        this._isLoading = false;
-        return false;
-      }
-      
-      var data = JSON.parse(savedData);
-      this._resetState();
-      this._loadEntities(data);
-      this._selectLastViewedDocuments();
-      this._notifyStateChanged('all', data);
-      ChakraApp.EventBus.publish(ChakraApp.EventTypes.STATE_LOADED, data);
-      
-      if (typeof ChakraApp.cleanupOverlappingGroups === 'function') {
-        ChakraApp.cleanupOverlappingGroups();
-      }
-      
-      this._isLoading = false;
-      this.saveToStorageNow();
-      
-      return true;
-    } catch (error) {
-      console.error('Error loading state from localStorage:', error);
+ChakraApp.AppState.prototype.loadFromStorage = function() {
+  try {
+    this._isLoading = true;
+    
+    var savedData = localStorage.getItem('chakraVisualizerData');
+    if (!savedData) {
       this._isLoading = false;
       return false;
     }
-  };
+    
+    var data = JSON.parse(savedData);
+    this._resetState();
+    this._loadEntities(data);
+    
+    // Restore selectedDocumentIds if it exists in saved data
+    if (data.selectedDocumentIds) {
+      this.selectedDocumentIds = data.selectedDocumentIds;
+      
+      // Clean up to ensure only valid circle types
+      this.cleanupSelectedDocumentIds();
+    }
+    
+    // Don't use _selectLastViewedDocuments anymore - it's panel-based
+    // Instead, try to select documents based on the restored selectedDocumentIds
+    this._selectSavedDocuments();
+    
+    this._notifyStateChanged('all', data);
+    ChakraApp.EventBus.publish(ChakraApp.EventTypes.STATE_LOADED, data);
+    
+    if (typeof ChakraApp.cleanupOverlappingGroups === 'function') {
+      ChakraApp.cleanupOverlappingGroups();
+    }
+    
+    this._isLoading = false;
+    this.saveToStorageNow();
+    
+    return true;
+  } catch (error) {
+    console.error('Error loading state from localStorage:', error);
+    this._isLoading = false;
+    return false;
+  }
+};
+
+ChakraApp.AppState.prototype._selectSavedDocuments = function() {
+  var self = this;
+  
+  // For each circle type in selectedDocumentIds
+  Object.keys(this.selectedDocumentIds).forEach(function(circleTypeId) {
+    var docId = self.selectedDocumentIds[circleTypeId];
+    
+    // If we have a document ID for this type
+    if (docId) {
+      var doc = self.documents.get(docId);
+      if (doc) {
+        // Select the document again - this will trigger UI updates
+        self.selectDocument(docId, circleTypeId);
+      } else {
+        // Document doesn't exist anymore, clear selection
+        self.selectedDocumentIds[circleTypeId] = null;
+      }
+    }
+  });
+};
   
   ChakraApp.AppState.prototype._resetState = function() {
     this.entityCollections.forEach(collection => this[collection].clear());
@@ -377,25 +426,26 @@
     }
   };
   
-  ChakraApp.AppState.prototype._actualSaveToStorage = function() {
-    try {
-      var data = {
-        documents: this._serializeCollection('documents'),
-        circles: this._serializeCollection('circles'),
-        squares: this._serializeCollection('squares'),
-        tabs: this._serializeCollection('tabs'),
-        selectedDocumentIds: this.selectedDocumentIds
-      };
-      
-      localStorage.setItem('chakraVisualizerData', JSON.stringify(data));
-      ChakraApp.EventBus.publish(ChakraApp.EventTypes.STATE_SAVED, data);
-      
-      return true;
-    } catch (error) {
-      console.error('Error saving state:', error);
-      return false;
-    }
-  };
+ChakraApp.AppState.prototype._actualSaveToStorage = function() {
+  try {
+    var data = {
+      documents: this._serializeCollection('documents'),
+      circles: this._serializeCollection('circles'),
+      squares: this._serializeCollection('squares'),
+      tabs: this._serializeCollection('tabs'),
+      // This is important - ensure we save the entire selectedDocumentIds object
+      selectedDocumentIds: this.selectedDocumentIds
+    };
+    
+    localStorage.setItem('chakraVisualizerData', JSON.stringify(data));
+    ChakraApp.EventBus.publish(ChakraApp.EventTypes.STATE_SAVED, data);
+    
+    return true;
+  } catch (error) {
+    console.error('Error saving state:', error);
+    return false;
+  }
+};
   
   ChakraApp.AppState.prototype._serializeCollection = function(entityType) {
     return Array.from(this[entityType].values()).map(entity => entity.toJSON());
@@ -409,6 +459,18 @@
     
     return this._actualSaveToStorage();
   };
+
+  ChakraApp.AppState.prototype.getDocumentsForCircleType = function(circleTypeId) {
+  var docsForType = [];
+  
+  this.documents.forEach(function(doc) {
+    if (doc.circleType === circleTypeId) {
+      docsForType.push(doc);
+    }
+  });
+  
+  return docsForType;
+};
   
   // Create singleton instance
   ChakraApp.appState = new ChakraApp.AppState();

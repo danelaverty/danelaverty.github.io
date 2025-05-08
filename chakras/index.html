@@ -61,6 +61,8 @@
     <script src="KeyboardController.js"></script>
     <script src="ImportExportController.js"></script>
     
+    <script src="circle-dimming-fix.js"></script>
+
     <!-- Main application -->
     <script src="App.js"></script>
 </head>
@@ -69,10 +71,6 @@
     <div id="main-container">
         <!-- Left Panel -->
         <div id="left-panel" class="circle-panel" data-panel-id="left">
-		<h3>Feelings</h3>
-		<h3 style="right: 10px; left: unset;">Things</h3>
-		<h3 style="right: 10px; left: unset; top: unset; bottom: 45px;">Themes</h3>
-            <button id="add-circle-btn-left" class="add-btn circle-btn" data-panel-id="left">+</button>
             <div id="zoom-container-left" class="zoom-container" data-panel-id="left">
 		    <object data="silhouette-filled-black.svg" class="silhouette-svg" id="silhouette-filled-black" type="image/svg+xml"></object>
 		    <object data="silhouette.svg" class="silhouette-svg" id="silhouette-outline" type="image/svg+xml"></object>
@@ -96,14 +94,6 @@
                 </div>
             </div>
             
-            <!-- Bottom Circle Panel -->
-            <div id="bottom-panel" class="circle-panel" data-panel-id="bottom">
-		<h3>Themes</h3>
-                <button id="add-circle-btn-bottom" class="add-btn circle-btn" data-panel-id="bottom">+</button>
-                <div id="zoom-container-bottom" class="zoom-container" data-panel-id="bottom">
-                    <!-- This will contain the background image and chakra circles for bottom panel -->
-                </div>
-            </div>
         </div>
         
     </div>

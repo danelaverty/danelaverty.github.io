@@ -1,4 +1,4 @@
-// src/controllers/UIController.js
+// src/controllers/UIController.js - FIXED VERSION
 (function(ChakraApp) {
   /**
    * UI controller - acts as a facade for specialized controllers
@@ -33,6 +33,8 @@
     
     this._initializeDomElements();
     this._setupEventHandlers();
+    this._addHeaderStyles();
+    this._setupButtonHandlersPostCreation();
     
     // Initialize silhouette state
     this._updateSilhouetteVisibility(null);
@@ -61,6 +63,56 @@
     // Create UI elements
     this._createChakraTitle();
     this._createMeridianLines();
+    
+    // Create headers container with all section headers and buttons
+    this._createHeadersContainer();
+  };
+
+  ChakraApp.UIController.prototype._addHeaderStyles = function() {
+    var style = document.createElement('style');
+    style.textContent = `
+      .headers-container {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+      
+      .header-section {
+        display: flex;
+        align-items: center;
+      }
+      
+      .header-section h3 {
+        margin: 0;
+        white-space: nowrap;
+      }
+      
+      .document-toggle-btn {
+        font-size: 10px;
+      }
+
+      .document-toggle-btn, .add-btn.circle-btn {
+        width: 17px;
+        height: 17px;
+        margin-right: 2px;
+        position: relative;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border-radius: 50%;
+        background-color: var(--color-btn);
+        color: var(--color-text);
+        border: none;
+        cursor: pointer;
+        transition: background-color var(--transition-fast), transform var(--transition-fast);
+      }
+      
+      .document-toggle-btn:hover, .add-btn.circle-btn:hover {
+        background-color: var(--color-btn-hover);
+        transform: scale(1.05);
+      }
+    `;
+    document.head.appendChild(style);
   };
   
   /**
@@ -94,7 +146,7 @@
       this.chakraTitle.style.marginBottom = '0';
       
       // Add to top panel
-      this.topPanel.insertBefore(this.chakraTitle, this.topPanel.firstChild);
+      //this.topPanel.insertBefore(this.chakraTitle, this.topPanel.firstChild);
     } else {
       this.chakraTitle = document.getElementById('chakra-title');
     }
@@ -144,123 +196,9 @@
    * @private
    */
   ChakraApp.UIController.prototype._setupButtonHandlers = function() {
-  var self = this;
-  
-  // Clear all existing event listeners for the add buttons first
-  ChakraApp.appState.panels.forEach(function(panelId) {
-    var addCircleBtn = self.addCircleBtns[panelId];
-    if (addCircleBtn) {
-      // Clone and replace to remove all event listeners
-      var newBtn = addCircleBtn.cloneNode(true);
-      if (addCircleBtn.parentNode) {
-        addCircleBtn.parentNode.replaceChild(newBtn, addCircleBtn);
-        self.addCircleBtns[panelId] = newBtn;
-      }
-    }
-  });
-  
-  // Also handle the things button in the left panel separately
-  var thingsAddBtn = document.getElementById('add-circle-btn-things');
-  if (thingsAddBtn) {
-    var newThingsBtn = thingsAddBtn.cloneNode(true);
-    if (thingsAddBtn.parentNode) {
-      thingsAddBtn.parentNode.replaceChild(newThingsBtn, thingsAddBtn);
-      thingsAddBtn = newThingsBtn;
-    }
-  }
-  
-  // Now set up fresh event listeners for each button
-  ChakraApp.appState.panels.forEach(function(panelId) {
-    if (panelId === 'things') return; // Skip normal handling for things panel
-    
-    var addCircleBtn = self.addCircleBtns[panelId];
-    if (addCircleBtn) {
-      addCircleBtn.addEventListener('click', function(e) {
-        e.stopPropagation();
-        
-        // Deselect current items
-        if (ChakraApp.appState.selectedCircleId) {
-          ChakraApp.appState.deselectCircle();
-        }
-        
-        // Create a new circle at a random position near the center of this panel
-        var panel = document.querySelector('.circle-panel[data-panel-id="' + panelId + '"]');
-        if (!panel) return;
-        
-        var panelRect = panel.getBoundingClientRect();
-        var centerX = panelRect.width / 2;
-        var centerY = panelRect.height / 2;
-        
-        // Random position within ±100px of center
-        var randomX = Math.max(50, Math.min(panelRect.width - 100, centerX + (Math.random() * 200 - 100)));
-        var randomY = Math.max(50, Math.min(panelRect.height - 100, centerY + (Math.random() * 200 - 100)));
-        
-        // Create circle
-        var circleData = {
-          x: randomX,
-          y: randomY,
-          color: ChakraApp.Config.predefinedColors[0],
-          name: ChakraApp.Config.defaultName
-        };
-        
-        var circle = ChakraApp.appState.addCircle(circleData, panelId);
-        
-        // Select the new circle
-        ChakraApp.appState.selectCircle(circle.id);
-      });
-    }
-  });
-  
-  // Add special handling for the things button in the left panel
-  if (thingsAddBtn) {
-    thingsAddBtn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      
-      // Deselect current items
-      if (ChakraApp.appState.selectedCircleId) {
-        ChakraApp.appState.deselectCircle();
-      }
-      
-      // Get the left panel for sizing
-      var panel = document.querySelector('.circle-panel[data-panel-id="left"]');
-      if (!panel) return;
-      
-      var panelRect = panel.getBoundingClientRect();
-      var centerX = panelRect.width / 2;
-      var centerY = panelRect.height / 2;
-      
-      // Random position within ±100px of center
-      var randomX = Math.max(50, Math.min(panelRect.width - 100, centerX + (Math.random() * 200 - 100)));
-      var randomY = Math.max(50, Math.min(panelRect.height - 100, centerY + (Math.random() * 200 - 100)));
-      
-      // Find things panel color
-      var thingsColor = '#88B66d'; // Default
-      ChakraApp.Config.conceptTypes.forEach(function(type) {
-        if (type.panelId === 'things') {
-          thingsColor = type.color;
-        }
-      });
-      
-      // Create circle for things panel type
-      var circleData = {
-        x: randomX,
-        y: randomY,
-        color: thingsColor,
-        name: ChakraApp.Config.defaultName,
-        // Add characteristics explicitly to make it a triangle
-        characteristics: {
-          completion: "level2" // This should make it render as a full triangle
-        }
-      };
-      
-      // Explicitly specify 'things' as the panel ID
-      var circle = ChakraApp.appState.addCircle(circleData, 'things');
-      
-      // Select the new circle
-      ChakraApp.appState.selectCircle(circle.id);
-    });
-  }
-};
+    // This is intentionally empty now - all button handling is in _setupButtonHandlersPostCreation
+    // We're overriding this method to ensure it doesn't attach any listeners
+  };
   
   /**
    * Set up panel click handlers
@@ -303,7 +241,7 @@
       });
     }
   };
-  
+
   /**
    * Set up circle event listeners
    * @private
@@ -392,7 +330,7 @@
     if (isThingsCircle) {
       // Show black filled silhouette for "things" circle
       this._setSilhouetteVisibility(true, false, true);
-      this._setLeftPanelBackground('rgba(255, 255, 255, 0.2)');
+      this._setLeftPanelBackground('rgba(255, 255, 255, 0.1)');
     } else if (isLeftCircle) {
       // Show colored filled silhouette for "left" type circle
       this._setSilhouetteVisibility(true, true, false);
@@ -508,6 +446,211 @@
       }
     }
   };
+
+ChakraApp.UIController.prototype._createHeadersContainer = function() {
+  // Create headers container
+  this.headersContainer = document.createElement('div');
+  this.headersContainer.id = 'headers-container';
+  this.headersContainer.className = 'headers-container';
+  this.headersContainer.style.position = 'absolute';
+  this.headersContainer.style.bottom = '10px';
+  this.headersContainer.style.left = '10px';
+  this.headersContainer.style.zIndex = '20';
+  
+  // Define our sections based on circle types instead of panels
+  var circleTypes = ChakraApp.Config.circleTypes.map(type => ({
+    id: type.id,
+    name: type.name,
+    color: type.color
+  }));
+  
+  // Create a section for each header
+  var self = this;
+  circleTypes.forEach(function(circleType, index) {
+    self._createHeaderSection(circleType, index);
+  });
+  
+  // Add to left panel
+  this.leftPanel.appendChild(this.headersContainer);
+};
+  
+
+  // Create an individual header section with its buttons
+  ChakraApp.UIController.prototype._createHeaderSection = function(section, index) {
+    var sectionContainer = document.createElement('div');
+    sectionContainer.className = 'header-section';
+    sectionContainer.style.display = 'flex';
+    sectionContainer.style.alignItems = 'center';
+    sectionContainer.style.marginBottom = '0';
+    
+    // Create toggle document list button
+    var toggleBtn = document.createElement('button');
+    toggleBtn.id = 'toggle-document-list-btn-' + section.id;
+    toggleBtn.className = 'document-toggle-btn';
+    toggleBtn.title = 'Toggle Document List for ' + section.name;
+    toggleBtn.dataset.panelId = section.id;
+    toggleBtn.style.position = 'relative';
+    toggleBtn.style.top = '0';
+    toggleBtn.style.left = '0';
+    toggleBtn.style.marginRight = '5px';
+    
+    if (section.id !== 'left') {
+      toggleBtn.style.backgroundColor = '#666';
+    }
+    
+    // Create arrow icon - only create one and empty the button first
+    toggleBtn.innerHTML = ''; // Clear any existing content
+    var arrowIcon = document.createElement('span');
+    arrowIcon.innerHTML = '▼';
+    arrowIcon.className = 'arrow-icon';
+    toggleBtn.appendChild(arrowIcon);
+    
+    // Create add circle button
+    var addBtn = document.createElement('button');
+    addBtn.id = 'add-circle-btn-' + section.id;
+    addBtn.className = 'add-btn circle-btn';
+    addBtn.dataset.panelId = section.id;
+    addBtn.textContent = '+';
+    addBtn.title = 'Add Circle to ' + section.name;
+    addBtn.style.position = 'relative';
+    addBtn.style.top = '0';
+    addBtn.style.left = '0';
+    addBtn.style.marginRight = '5px';
+    
+    if (section.id !== 'left') {
+      addBtn.style.backgroundColor = '#666';
+    }
+    
+    // Create header text
+    var header = document.createElement('h3');
+    header.textContent = section.name;
+    header.style.position = 'relative';
+    header.style.margin = '0';
+    header.style.padding = '0';
+    header.style.top = '0';
+    header.style.color = '#666';
+    
+    // Add elements to section container
+    sectionContainer.appendChild(toggleBtn);
+    sectionContainer.appendChild(addBtn);
+    sectionContainer.appendChild(header);
+    
+    // Add section to headers container
+    this.headersContainer.appendChild(sectionContainer);
+    
+    // Store button references for DocumentController to use
+    if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.document) {
+      ChakraApp.app.controllers.document.toggleDocumentListBtns[section.id] = toggleBtn;
+    }
+    
+    // Store add button references
+    this.addCircleBtns[section.id] = addBtn;
+  };
+
+ChakraApp.UIController.prototype._setupButtonHandlersPostCreation = function() {
+  var self = this;
+  
+  // Process each circle type button
+  ChakraApp.Config.circleTypes.forEach(function(circleType) {
+    var typeId = circleType.id;
+    
+    // Handle add circle buttons
+    var addBtn = document.getElementById('add-circle-btn-' + typeId);
+    if (addBtn) {
+      var newAddBtn = addBtn.cloneNode(false);
+      newAddBtn.textContent = '+';
+      
+      if (addBtn.parentNode) {
+        addBtn.parentNode.replaceChild(newAddBtn, addBtn);
+      }
+      
+      // Update reference
+      self.addCircleBtns[typeId] = newAddBtn;
+      
+      // Add click handler
+      newAddBtn.addEventListener('click', function(e) {
+	      e.stopPropagation();
+  
+  // Ensure document for circle type
+  self._ensureDocumentForCircleType(typeId);
+  
+  // Create a new circle
+  var circleData = {
+    circleType: typeId, // Set the circle type explicitly
+    color: circleType.color
+  };
+  
+  // Add the circle with the appropriate type
+  var circle = ChakraApp.appState.addCircle(circleData);
+  
+      });
+    }
+    
+    // Handle document toggle buttons (rest of the function remains the same)
+    var toggleBtn = document.getElementById('toggle-document-list-btn-' + typeId);
+    if (toggleBtn) {
+      var newToggleBtn = toggleBtn.cloneNode(true);
+      
+      if (toggleBtn.parentNode) {
+        toggleBtn.parentNode.replaceChild(newToggleBtn, toggleBtn);
+      }
+      
+      // Update reference in DocumentController if needed
+      if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.document) {
+        ChakraApp.app.controllers.document.toggleDocumentListBtns[typeId] = newToggleBtn;
+      }
+      
+      // Add click handler
+      newToggleBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        
+        // Toggle document list for this circle type
+        ChakraApp.appState.toggleDocumentList(typeId);
+        
+        // Update arrow icon
+        var arrowIcon = this.querySelector('.arrow-icon');
+        if (arrowIcon) {
+          arrowIcon.innerHTML = ChakraApp.appState.documentListVisible[typeId] ? '▲' : '▼';
+        }
+        
+        // Update document list - call through to DocumentController
+        if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.document) {
+          ChakraApp.app.controllers.document._updateDocumentList(typeId);
+        }
+      });
+    }
+  });
+};
+
+ChakraApp.UIController.prototype._ensureDocumentForCircleType = function(typeId) {
+  // Get documents for this circle type
+  var docs = ChakraApp.appState.getDocumentsForCircleType(typeId);
+  
+  if (docs.length === 0) {
+    // Find the circle type configuration
+    var circleTypeConfig = null;
+    if (ChakraApp.Config && ChakraApp.Config.circleTypes) {
+      circleTypeConfig = ChakraApp.Config.circleTypes.find(function(type) {
+        return type.id === typeId;
+      });
+    }
+    
+    // Create a new document for this circle type
+    var docName = circleTypeConfig ? circleTypeConfig.name + " Document" : "New Document";
+    
+    var newDoc = ChakraApp.appState.addDocument({
+      name: docName,
+      circleType: typeId
+    });
+    
+    ChakraApp.appState.selectDocument(newDoc.id, typeId);
+  } else {
+    // Select the first document if not already selected
+    if (!ChakraApp.appState.selectedDocumentIds[typeId]) {
+      ChakraApp.appState.selectDocument(docs[0].id, typeId);
+    }
+  }
+};
   
   /**
    * Clean up resources
