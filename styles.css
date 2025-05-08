@@ -1,0 +1,1703 @@
+/* Optimized CSS - Part 1: Core Variables and Base Layout */
+
+/* Base variables for consistent theming */
+:root {
+  /* Color palette */
+  --color-bg-dark: #000;
+  --color-bg-panel: #222;
+  --color-bg-dialog: #222;
+  --color-border: #444;
+  --color-text: white;
+  --color-text-dim: #aaa;
+  --color-btn: #555;
+  --color-btn-hover: #777;
+  --color-btn-danger: #f44336;
+  --color-highlight: rgba(255, 255, 255, 0.7);
+  --color-dim: rgba(0, 0, 0, 0.7);
+  
+  /* Shadows */
+  --shadow-standard: 0 2px 8px rgba(0, 0, 0, 0.5);
+  --shadow-emphasized: 0 4px 15px rgba(0, 0, 0, 0.5);
+  
+  /* Dimensions */
+  --circle-size: 20px;
+  --square-size: 30px;
+  --btn-size: 40px;
+  --radius-standard: 5px;
+  --panel-border: 2px solid var(--color-border);
+  
+  /* Animation speeds */
+  --transition-standard: 0.3s ease;
+  --transition-fast: 0.2s ease;
+}
+
+/* ---------- BASE LAYOUT ---------- */
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  background-color: var(--color-bg-dark);
+  font-family: Arial, sans-serif;
+}
+
+h3 {
+	color: #AAA;
+	position: absolute;
+	top: -12px;
+	padding: 0px 6px;
+	white-space: nowrap;
+	font-size: 12px;
+}
+
+#main-container {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Panel Base Styles */
+.circle-panel {
+  background-color: var(--color-bg-dark);
+  position: relative;
+  user-select: none;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.4s ease, opacity 0.4s ease, width 0.4s ease, height 0.4s ease;
+}
+
+#left-panel {
+  width: 400px;
+  height: 100%;
+  border-right: var(--panel-border);
+}
+
+#right-panel {
+  height: 100%;
+  border-left: var(--panel-border);
+}
+
+#farRight-panel {
+  height: 100%;
+  border-left: var(--panel-border);
+}
+
+#bottom-panel {
+  width: 100%;
+  border-top: var(--panel-border);
+}
+
+/* Hidden Panel States */
+.circle-panel.hidden {
+  transform: translateX(-100%);
+  opacity: 0;
+  width: 0;
+}
+
+#right-panel.hidden {
+  transform: translateX(100%);
+}
+
+#farRight-panel.hidden {
+  transform: translateX(100%);
+}
+
+#bottom-panel.hidden {
+  transform: translateY(100%);
+  height: 0;
+}
+
+/* Center Container */
+#center-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+#top-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 10px 20px;
+  height: auto;
+  min-height: 40px;
+  background-color: var(--color-bg-dark);
+  border-bottom: none;
+}
+
+#center-panel {
+  flex: 1;
+  background-color: var(--color-bg-dark);
+  position: relative;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Zoom Containers */
+.zoom-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.silhouette-svg {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+    width: 290px;
+    height: 675px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+#silhouette-outline {
+    opacity: .3;
+}
+
+#silhouette-filled {
+    opacity: .1;
+}
+
+#silhouette-filled-black {
+    opacity: 1;
+}
+
+/* Optimized CSS - Part 2: Common UI Elements and Buttons */
+
+/* ---------- COMMON UI ELEMENTS ---------- */
+
+/* Button Base Style */
+.btn {
+  background-color: var(--color-btn);
+  color: var(--color-text);
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.btn:hover {
+  background-color: var(--color-btn-hover);
+}
+
+.btn:active {
+  transform: scale(0.95);
+}
+
+/* Round Button Style */
+.btn-round {
+  border-radius: 50%;
+  width: var(--btn-size);
+  height: var(--btn-size);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Add Buttons */
+.add-btn {
+  position: absolute;
+  top: 30px;
+  font-size: 10px;
+  z-index: 100;
+}
+
+.add-btn.circle-btn {
+  left: 45px;
+}
+
+/* Document Toggle Button */
+.document-toggle-btn {
+  position: absolute;
+  top: 80px;
+  left: 20px;
+  z-index: 100;
+}
+
+#bottom-panel .document-toggle-btn {
+  top: 20px;
+  left: 80px;
+}
+
+/* Action Button Container */
+.action-btn-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-right: 0px;
+}
+
+.action-btn-title {
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--color-text-dim);
+  text-align: center;
+  margin-bottom: 5px;
+  user-select: none;
+  opacity: 0;
+  transform: translateY(5px);
+  transition: opacity var(--transition-standard), transform var(--transition-standard);
+  display: none;
+}
+
+.action-btn {
+  width: 35px;
+  height: 35px;
+  background-color: var(--color-btn);
+  transition: all var(--transition-fast);
+}
+
+.action-btn:hover {
+  background-color: var(--color-btn-hover);
+  transform: scale(1.05);
+}
+
+/* Show titles when buttons are visible */
+.action-btn-container:has(.action-btn[style*="display: flex"]) .action-btn-title {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Top Panel Controls */
+.top-panel-controls {
+  display: flex;
+  gap: 15px;
+  align-self: flex-start;
+  justify-content: flex-start;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+/* Current Value Display */
+.current-value {
+  font-size: 11px;
+  color: var(--color-text);
+  background: rgba(60, 60, 60, 0.8);
+  padding: 3px 6px;
+  border-radius: var(--radius-standard);
+  min-width: 50px;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all var(--transition-fast);
+}
+
+.current-value.clickable {
+  display: flex;
+  align-items: center;
+  min-width: 80px;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.current-value.clickable:hover {
+  background-color: rgba(80, 80, 80, 0.8);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Delete Value Button */
+.current-value.delete-value {
+  background-color: rgba(180, 60, 60, 0.8);
+}
+
+.current-value.delete-value:hover {
+  background-color: rgba(220, 80, 80, 0.8);
+}
+
+/* Color Value Display */
+.color-value {
+  position: relative;
+  padding-left: 18px;
+}
+
+.color-value-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  position: relative;
+  left: 0;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Optimized CSS - Part 3: Circle and Square Elements */
+
+/* ---------- CIRCLE AND SQUARE ELEMENTS ---------- */
+
+/* Common styles for interactive elements */
+.interactive-item {
+  position: absolute;
+  cursor: move;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+  transition: box-shadow var(--transition-standard);
+  transform: translate(-50%, -50%);
+  margin-bottom: 20px;
+}
+
+/* Circle and Square specifics */
+.circle, .square {
+  position: absolute;
+  cursor: move;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+  transition: box-shadow 0.2s ease;
+  transform: translate(-50%, -50%);
+  margin-bottom: 20px;
+}
+
+.circle {
+  border-radius: 50%;
+  background-color: transparent !important;
+}
+
+.square {
+  border-radius: 5px;
+  padding: 2px;
+}
+
+/* Selection state */
+.circle.selected, .square.selected {
+  box-shadow: 0 0 12px 4px white;
+  z-index: 15;
+}
+
+/* Item Name */
+.item-name {
+  position: absolute;
+  top: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  font-size: 11px;
+  background: rgba(0, 0, 0, 0.7);
+  border: none;
+  text-align: center;
+  outline: none;
+  padding: 3px 5px;
+  border-radius: 3px;
+  z-index: 25;
+  white-space: nowrap;
+  cursor: text;
+  user-select: text;
+  box-sizing: border-box;
+  max-height: none;
+  spellcheck: false;
+  -webkit-spellcheck: false;
+}
+
+.square .item-name {
+  white-space: normal;
+  max-width: 100px;
+  width: max-content;
+}
+
+.circle.selected .item-name,
+.square.selected .item-name {
+  z-index: 30;
+}
+
+.item-name:hover, .item-name:focus {
+  background-color: rgba(0, 0, 0, 0.8);
+  z-index: 100;
+}
+
+/* Circle Glow Effect */
+.circle-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  z-index: 1;
+  -webkit-animation: glow 3s linear 0s infinite alternate;
+  pointer-events: none;
+}
+
+@-webkit-keyframes glow {
+  0% { -webkit-filter: blur(5px); }
+  100% { -webkit-filter: blur(10px); }
+}
+
+/* Circle Element Symbol */
+.circle-element-symbol {
+  position: absolute;
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.9);
+  z-index: 10;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: "Arial Unicode MS", "Segoe UI Symbol", sans-serif;
+  pointer-events: none;
+  text-shadow: 0 0 5px rgba(0, 0, 0, 0.7);
+}
+
+/* Square Content (Attribute Emoji) */
+.square-content {
+  font-size: 24px;
+  position: absolute;
+  pointer-events: none;
+  z-index: 20;
+}
+
+/* Circle and Square Animation States */
+.circle.dimmed {
+  opacity: 0.35;
+}
+
+.circle.dimmed:hover {
+  opacity: 0.85;
+}
+
+.circle.selected {
+  //animation: selected-pulse 3s ease-in-out infinite;
+}
+
+@keyframes selected-pulse {
+  0% { box-shadow: 0 0 12px 4px rgba(255, 255, 255, 0.8); }
+  50% { box-shadow: 0 0 18px 6px rgba(255, 255, 255, 1); }
+  100% { box-shadow: 0 0 12px 4px rgba(255, 255, 255, 0.8); }
+}
+
+.no-transition {
+  transition: none !important;
+}
+
+/* Chakra Form (Polygon Shapes) */
+.outer-polygon-container {
+  position: absolute;
+}
+
+.inner-polygon-container {
+  position: absolute;
+  transform-origin: 50% 50%;
+  width: 0;
+  height: 0;
+}
+
+.shape {
+  width: 40px;
+  height: 40px;
+  background-color: #FFA;
+  transform: translate(-50%, -50%);
+}
+
+/* Transform origins */
+.circle .item-name {
+  transform-origin: top center;
+}
+
+.circle .particles,
+.circle .circle-glow {
+  transform-origin: center center;
+}
+
+.circle .shape {
+  transform-origin: center center;
+}
+
+/* Circle Particles Animation */
+.particles {
+  position: absolute;
+}
+.angle {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.position {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.pulse {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.particle {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  border: 1px solid white;
+}
+.pulse {
+  -webkit-animation: pulse 1.5s linear 0s infinite alternate;
+}
+@-webkit-keyframes angle {
+  0% { -webkit-transform: rotate(0deg); }
+  100% { -webkit-transform: rotate(360deg); }
+}
+@-webkit-keyframes anglerev {
+  0% { -webkit-transform: rotate(360deg); }
+  100% { -webkit-transform: rotate(0deg); }
+}
+@-webkit-keyframes position {
+  0% { -webkit-transform: translate(0,0); opacity: 1; }
+  100% { -webkit-transform: translate(5px,5px); opacity: 0; }
+}
+@-webkit-keyframes pulse {
+  0% { -webkit-transform: scale(1); }
+  100% { -webkit-transform: scale(.5); }
+}
+.particles .angle:nth-child(1) {
+  -webkit-animation: angle 10s steps(5) 0s infinite;
+}
+.particles .angle:nth-child(1) .position {
+  -webkit-animation: position 2s linear 0s infinite;
+}
+.particles .angle:nth-child(2) {
+  -webkit-animation: angle 4.95s steps(3) -1.65s infinite;
+}
+.particles .angle:nth-child(2) .position {
+  -webkit-animation: position 1.65s linear 0s infinite;
+}
+
+/* Meridian line styling */
+#meridian-line {
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+}
+
+.circle.snapping {
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+  animation: snap-pulse 1s infinite;
+}
+
+@keyframes snap-pulse {
+  0% { box-shadow: 0 0 12px rgba(255, 255, 255, 0.8); }
+  50% { box-shadow: 0 0 18px rgba(255, 255, 255, 0.9); }
+  100% { box-shadow: 0 0 12px rgba(255, 255, 255, 0.8); }
+}
+
+/* Optimized CSS - Part 4: Connections, Overlapping Squares, and Utility Components */
+
+/* ---------- CONNECTIONS ---------- */
+
+/* Connection lines container */
+#line-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.connection-line {
+  position: absolute;
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.8);
+  transform-origin: left center;
+  z-index: 1;
+  pointer-events: none;
+  box-shadow: 0 0 2px rgba(255, 255, 255, 0.2);
+  transition: opacity 0.6s ease;
+}
+
+/* Connection line with selected square */
+.square.selected ~ #line-container .connection-line {
+  background-color: rgba(255, 255, 255, 0.5);
+  height: 1.5px;
+  box-shadow: 0 0 3px rgba(255, 255, 255, 0.3);
+}
+
+/* Connection radius indicator */
+.connection-radius-indicator {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  background-color: rgba(255, 255, 255, 1);
+  z-index: 4;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.square.dragging .connection-radius-indicator {
+  opacity: 0.1;
+}
+
+/* ---------- OVERLAPPING SQUARES ---------- */
+
+/* Overlapping squares effect */
+.square.overlapping {
+  width: 45px !important;
+  height: 45px !important;
+  border-radius: 50% !important;
+  transition: width 0.3s ease, height 0.3s ease, border-radius 0.3s ease;
+  z-index: 12;
+}
+
+.square.overlapping .item-name {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.square.overlapping.selected {
+  z-index: 16;
+}
+
+/* Glowing effect for overlapping squares */
+.square.overlapping::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  right: -5px;
+  bottom: -5px;
+  border-radius: 50%;
+  z-index: -1;
+  pointer-events: none;
+}
+
+@keyframes pulse-overlap {
+  0% { opacity: 0.3; }
+  100% { opacity: 0.6; }
+}
+
+/* Special connection line for overlapping squares */
+.connection-line.overlap-connection {
+  display: none !important;
+}
+
+/* Connection indicator between overlapping squares */
+.overlap-indicator {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background-color: rgba(255, 255, 255, 0.7);
+  border-radius: 50%;
+  z-index: 13;
+  pointer-events: none;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+  animation: pulse-indicator 1.5s infinite alternate;
+}
+
+@keyframes pulse-indicator {
+  0% { transform: scale(0.8); opacity: 0.6; }
+  100% { transform: scale(1.2); opacity: 0.9; }
+}
+
+/* Combined names list for overlapping squares */
+.combined-names-list {
+  position: absolute;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  border-radius: 5px;
+  font-size: 10px;
+  z-index: 20;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  min-width: 100px;
+  max-width: 200px;
+  pointer-events: none;
+  transform: translateX(-50%);
+  transition: opacity 0.3s ease;
+}
+
+.combined-names-list ul {
+  margin: 0;
+  padding: 0 0 0 18px;
+  list-style-type: disc;
+  text-align: left;
+}
+
+.combined-names-list li {
+  margin: 3px 0;
+  line-height: 1.2;
+  white-space: normal;
+}
+
+/* ---------- MULTI-SELECTION ---------- */
+
+/* Style for squares that are multi-selected */
+.square.multi-selected {
+  box-shadow: 0 0 15px 3px rgba(64, 196, 255, 0.8) !important;
+  z-index: 15 !important;
+}
+
+/* Visual indicator for multi-selected squares */
+.square.multi-selected::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  border: 2px solid rgba(64, 196, 255, 0.8);
+  border-radius: 7px;
+  pointer-events: none;
+}
+
+/* Enhance the connection lines between multi-selected squares */
+.square.multi-selected ~ #line-container .connection-line {
+  background-color: rgba(64, 196, 255, 0.6) !important;
+  height: 2px !important;
+  box-shadow: 0 0 8px rgba(64, 196, 255, 0.5) !important;
+}
+
+/* Selection counter that shows how many squares are selected */
+.multi-selection-counter {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  pointer-events: none;
+  z-index: 1000;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(64, 196, 255, 0.5);
+  display: none;
+  animation: fade-in 0.3s ease-out;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Make sure connections between multi-selected squares are highly visible */
+.connecting-line-multi-selected {
+  background: linear-gradient(90deg, 
+    rgba(64, 196, 255, 0.4), 
+    rgba(64, 196, 255, 0.8), 
+    rgba(64, 196, 255, 0.4)) !important;
+  height: 2.5px !important;
+  box-shadow: 0 0 10px rgba(64, 196, 255, 0.6) !important;
+  z-index: 7 !important;
+}
+
+/* Make the primary selected square stand out */
+.square.selected.primary-selection {
+  box-shadow: 0 0 18px 5px rgba(255, 215, 0, 0.8) !important;
+}
+
+/* Style for squares being group-dragged */
+.square.group-dragging {
+  box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.7);
+  z-index: 18 !important;
+  transition: none !important;
+}
+
+/* Visual indicator for group-dragged squares */
+.square.group-dragging::after {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  right: -5px;
+  bottom: -5px;
+  border: 2px dashed rgba(255, 255, 255, 0.6);
+  border-radius: 7px;
+  animation: pulse-border 1s infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes pulse-border {
+  from { border-color: rgba(255, 255, 255, 0.4); }
+  to { border-color: rgba(255, 255, 255, 0.8); }
+}
+
+/* Enhance connection lines during group dragging */
+.square.group-dragging ~ #line-container .connection-line {
+  background-color: rgba(255, 255, 255, 0.7) !important;
+  height: 2px !important;
+  box-shadow: 0 0 5px rgba(255, 255, 255, 0.5) !important;
+}
+
+/* ---------- UTILITY COMPONENTS ---------- */
+
+/* Document list container */
+.document-list-container {
+  position: absolute;
+  left: 70px;
+  top: 140px;
+  width: 280px;
+  max-height: 300px;
+  overflow-y: auto;
+  background-color: rgba(40, 40, 40, 0.95);
+  border: 1px solid #555;
+  border-radius: 5px;
+  z-index: 100;
+  padding: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+  animation: fadeInList 0.3s ease-out forwards;
+}
+
+@keyframes fadeInList {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Document list items */
+.document-list-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  margin-bottom: 5px;
+  background-color: rgba(60, 60, 60, 0.7);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.document-list-item:hover {
+  background-color: rgba(80, 80, 80, 0.9);
+}
+
+.document-list-item.selected {
+  background-color: rgba(100, 100, 100, 0.9);
+  border-left: 3px solid #0088ff;
+}
+
+.document-icon {
+  margin-right: 10px;
+  font-size: 18px;
+}
+
+.document-name-container {
+  display: flex;
+  align-items: baseline;
+  flex: 1;
+  overflow: hidden;
+}
+
+.document-name {
+  flex: 1;
+  color: white;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.document-name.editable {
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.3);
+  outline: none;
+  padding-bottom: 2px;
+}
+
+.document-name.editable:focus {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.7);
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.document-name.editable:focus + .document-circle-count {
+  display: none;
+}
+
+.document-circle-count {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.9em;
+  margin-left: 3px;
+}
+
+.document-delete-btn {
+  background: none;
+  border: none;
+  color: #ff6b6b;
+  cursor: pointer;
+  font-size: 16px;
+  opacity: 0.7;
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.document-delete-btn:hover {
+  opacity: 1;
+  color: #ff4f4f;
+}
+
+/* New Document list item */
+.document-list-item.new-document-item {
+  background-color: rgba(0, 120, 215, 0.6);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  margin-bottom: 10px;
+  transition: all 0.2s ease;
+}
+
+.document-list-item.new-document-item:hover {
+  background-color: rgba(0, 120, 215, 0.8);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Current document display */
+.current-document-display {
+  position: absolute;
+  top: 54px;
+  left: -6px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  font-weight: bold;
+  padding: 5px 15px;
+  background-color: rgba(0, 0, 0, 0.4);
+  border-radius: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 90%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  z-index: 50;
+}
+
+/* Dialog and notifications */
+#dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: none;
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
+}
+
+#dialog-box {
+  background-color: var(--color-bg-dialog);
+  padding: 20px;
+  border-radius: 5px;
+  color: white;
+  text-align: center;
+}
+
+#dialog-buttons {
+  margin-top: 15px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.dialog-button {
+  padding: 5px 15px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+#dialog-confirm {
+  background-color: var(--color-btn-danger);
+  color: white;
+}
+
+#dialog-cancel {
+  background-color: var(--color-btn);
+  color: white;
+}
+
+/* Keyboard notification */
+.keyboard-notification {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100px);
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  z-index: 9999;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.keyboard-notification.visible {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+/* Clipboard status */
+.clipboard-status {
+  position: fixed;
+  bottom: 10px;
+  left: 10px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  user-select: none;
+  pointer-events: none;
+  z-index: 900;
+}
+
+.clipboard-status.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.clipboard-status .icon {
+  margin-right: 5px;
+  font-size: 14px;
+}
+
+.clipboard-status.copy .icon:before {
+  content: "📋";
+}
+
+.clipboard-status.cut .icon:before {
+  content: "✂️";
+}
+
+/* Tabs */
+.tabs-container {
+  display: flex;
+  width: 100%;
+  overflow-x: auto;
+  border-bottom: 1px solid #444;
+  margin-top: 15px;
+}
+
+.tab {
+  margin-right: 2px;
+  background-color: #333;
+  color: #aaa;
+  border-radius: 5px 5px 0 0;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  position: relative;
+  transition: all 0.2s ease;
+  padding: 0px 4px;
+}
+
+.tab:hover {
+  background-color: #444;
+}
+
+.tab.active {
+  background-color: #555;
+  color: white;
+}
+
+.tab-name {
+  display: inline-block;
+  min-width: 40px;
+  max-width: 150px;
+  text-overflow: ellipsis;
+  font-size: 11px;
+}
+
+.tab.add-tab {
+  width: 30px;
+  text-align: center;
+  flex-shrink: 0;
+  background-color: #2a2a2a;
+}
+
+.tab.add-tab:hover {
+  background-color: #444;
+}
+
+.tab-close {
+  margin-left: 8px;
+  font-size: 14px;
+  display: inline-block;
+  width: 16px;
+  text-align: center;
+  line-height: 14px;
+  border-radius: 50%;
+  font-size: 11px;
+}
+
+.tab-close:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.tab.active .tab-close:hover {
+  background-color: rgba(255, 0, 0, 0.3);
+}
+
+.tab-input {
+  background: transparent;
+  border: none;
+  color: white;
+  outline: none;
+  font-family: inherit;
+  font-size: inherit;
+  width: 100%;
+  min-width: 50px;
+}
+
+/* Story dropdown */
+.story-dropdown-container {
+  margin: 5px;
+  display: flex;
+}
+
+.story-dropdown {
+  background-color: #333;
+  color: white;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 2px;
+  font-size: 12px;
+  cursor: pointer;
+  min-width: 180px;
+  transition: all 0.2s ease;
+}
+
+.story-dropdown:hover {
+  background-color: #444;
+  border-color: #777;
+}
+
+.story-dropdown:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
+}
+
+/* Attribute grid */
+#attribute-grid {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  padding: 5px;
+  gap: 8px;
+  width: auto;
+  max-width: none;
+  margin: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.attribute-box {
+  width: 62px !important;
+  height: auto !important;
+  padding: 1px !important;
+  flex-grow: 0;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 62px !important;
+}
+
+.attribute-name {
+  font-size: 11px;
+  font-weight: bold;
+  margin-bottom: 2px;
+  text-align: center;
+}
+
+.attribute-box .emoji {
+  font-size: 22px;
+  margin: 2px 0;
+  text-align: center;
+}
+
+.attribute-desc {
+  font-size: 9px;
+  opacity: 0.85;
+  margin-top: 2px;
+  line-height: 1.1;
+  text-align: center;
+}
+
+/* Hide debug panel */
+#debug-panel {
+  display: none !important;
+}
+
+/* Animation for newly pasted squares */
+@keyframes paste-highlight {
+  0% { 
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 0.5;
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.8);
+  }
+  100% { 
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+    box-shadow: 0 0 0 rgba(0, 255, 0, 0);
+  }
+}
+
+.square.pasted {
+  animation: paste-highlight 0.4s ease-out forwards;
+}
+
+.circle-right {
+  /* Custom styling for right panel circles */
+}
+
+.triangle-shape {
+  transform-origin: center center;
+  transition: transform 0.3s ease;
+}
+
+@keyframes triangle-pulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.08); }
+}
+
+.circle-right.selected {
+  box-shadow: 0 0 12px 4px rgba(255, 255, 255, 0.8);
+}
+
+/* Circle shape styles for different panels */
+
+/* Base circle style for all panels */
+.circle {
+  position: absolute;
+  cursor: move;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+  transition: box-shadow 0.2s ease;
+  transform: translate(-50%, -50%);
+  margin-bottom: 20px;
+}
+
+/* Right panel - Triangle styles */
+.circle-right {
+  border-radius: 0; /* Override default circle style */
+}
+
+.triangle-shape {
+  transform-origin: center center;
+  transition: transform 0.3s ease;
+}
+
+.circle-right.selected .triangle-shape {
+  //animation: triangle-pulse 2s infinite alternate;
+}
+
+@keyframes triangle-pulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.08); }
+}
+
+.circle-right.selected {
+  box-shadow: 0 0 12px 4px rgba(255, 255, 255, 0.8);
+}
+
+/* Far Right panel - Star styles */
+.circle-farRight {
+  border-radius: 0; /* Override default circle style */
+}
+
+.star-shape {
+  transform-origin: center center;
+  transition: transform 0.3s ease;
+}
+
+.circle-farRight.selected .star-shape {
+  //animation: star-pulse 2s infinite alternate;
+}
+
+@keyframes star-pulse {
+  0% { transform: scale(1) rotate(0deg); }
+  100% { transform: scale(1.08) rotate(15deg); }
+}
+
+.circle.circle-right.selected, .circle.circle-farRight.selected {
+  box-shadow: none;
+}
+
+.circle-right.selected .shape-wrap, .circle-farRight.selected .shape-wrap {
+	filter: drop-shadow(0 0 3px #FFF) drop-shadow(0 0 5px #FFF);
+}
+
+/* Ensure element symbols are properly positioned in shapes */
+.circle-right .circle-element-symbol,
+.circle-farRight .circle-element-symbol {
+  position: absolute;
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.9);
+  z-index: 10;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: "Arial Unicode MS", "Segoe UI Symbol", sans-serif;
+  pointer-events: none;
+  text-shadow: 0 0 5px rgba(0, 0, 0, 0.7);
+}
+
+/* Dimmed state */
+.circle-right.dimmed,
+.circle-farRight.dimmed {
+  opacity: 0.35;
+}
+
+.circle-right.dimmed:hover,
+.circle-farRight.dimmed:hover {
+  opacity: 0.85;
+}
+
+/* Ensure name element is properly positioned for all circle types */
+.circle .item-name {
+  position: absolute;
+  top: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  font-size: 11px;
+  background: rgba(0, 0, 0, 0.7);
+  border: none;
+  text-align: center;
+  outline: none;
+  padding: 3px 5px;
+  border-radius: 3px;
+  z-index: 25;
+  white-space: nowrap;
+  cursor: text;
+  user-select: text;
+  box-sizing: border-box;
+  max-height: none;
+  spellcheck: false;
+  -webkit-spellcheck: false;
+}
+
+/* Attribute grid visibility styles */
+
+/* Default state - hidden */
+#attribute-grid {
+  display: none;
+}
+
+.story-dropdown-container {
+  display: none;
+}
+
+/* Visible state - when a circle is selected */
+#attribute-grid.visible {
+  display: flex;
+  animation: fade-in 0.3s ease;
+}
+
+/* Animation for smooth appearance */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Hide action-button-container by default */
+.action-btn-container {
+  display: none;
+}
+
+/* Only show action-button-container when a circle is selected */
+body.circle-selected .action-btn-container {
+  display: flex;
+}
+
+.chakra-title {
+	color: #AAA;
+}
+
+/* Panel Toggle Button Styles */
+
+.panel-toggle-btn {
+  position: fixed;
+  width: 10px;
+  height: 30px;
+  background-color: #444;
+  color: #999;
+  border: none;
+  font-size: 9px;
+  cursor: pointer;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 4px;
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.panel-toggle-btn.panel-hidden {
+	background-color: #222;
+}
+
+.panel-toggle-btn:hover {
+  background-color: var(--color-btn-hover);
+  transform: scale(1.05);
+}
+
+/* Position the toggle buttons along the edges of panels */
+#toggle-left-panel {
+  left: 400px; /* Width of left panel */
+  top: 50%;
+  transform: translateY(-50%) rotate(180deg);
+}
+
+#toggle-right-panel {
+  right: 512px; /* Width of right panel */
+  top: 40%;
+  transform: translateY(-50%) rotate(180deg);
+}
+
+#toggle-farRight-panel.panel-hidden ~ #toggle-right-panel:not(.panel-hidden) {
+  right: 302px; /* Width of right panel */
+}
+
+#toggle-farRight-panel {
+  right: 210px; /* Width of farRight panel */
+  top: 50%;
+  transform: translateY(-50%) rotate(180deg);
+}
+
+#toggle-bottom-panel {
+  bottom: 142px; /* Height of bottom panel */
+  left: 50%;
+  transform: translateX(-50%) rotate(90deg);
+}
+
+/* When panels are hidden, adjust button positions */
+#toggle-left-panel.panel-hidden {
+  left: 0;
+}
+
+#toggle-right-panel.panel-hidden {
+  right: 0;
+}
+
+#toggle-farRight-panel:not(.panel-hidden) ~ #toggle-right-panel.panel-hidden {
+  right: 210px; /* Width of far right panel */
+}
+
+#toggle-farRight-panel.panel-hidden {
+  right: 0;
+}
+
+#toggle-bottom-panel.panel-hidden {
+  bottom: 0;
+}
+
+/* Button arrow states for each panel */
+.panel-toggle-button::before {
+  content: "◀";
+}
+
+/* Reversed arrows when panels are hidden */
+.panel-toggle-button.panel-hidden::before {
+  content: "▶";
+}
+
+/* Smooth panel transitions */
+.circle-panel {
+  transition: transform 0.4s ease, opacity 0.4s ease, width 0.4s ease, height 0.4s ease;
+}
+
+/* Hidden panel states */
+.circle-panel.hidden {
+  transform: translateX(-100%);
+  opacity: 0;
+  width: 0;
+}
+
+#right-panel.hidden {
+  transform: translateX(100%);
+}
+
+#farRight-panel.hidden {
+  transform: translateX(100%);
+}
+
+#bottom-panel.hidden {
+  transform: translateY(100%);
+  height: 0;
+}
+
+.panel-toggle-btn.panel-hidden::before {
+  content: "▶";
+}
+
+.panel-toggle-btn:not(.panel-hidden)::before {
+  content: "◀";
+}
+
+.panel-toggle-btn-label {
+	position: absolute;
+	transform: rotate(90deg) translateY(-50%);
+	color: #AAA;
+	display: block;
+	margin-right: 33px;
+	font-size: 10px;
+}
+
+
+Add these styles to styles.css:
+
+/* Concept Panel Styles */
+.concept-panel {
+  transition: transform 0.4s ease, opacity 0.4s ease, width 0.4s ease, height 0.4s ease;
+}
+
+.concept-panel.hidden {
+  transform: translateX(100%);
+}
+
+/* Shape styles for different concept types */
+.hexagon-shape {
+  transform-origin: center center;
+  transition: transform 0.3s ease;
+}
+
+.circle-panel[data-concept-type="concepts"] .circle.selected .hexagon-shape {
+  //animation: hexagon-pulse 2s infinite alternate;
+}
+
+@keyframes hexagon-pulse {
+  0% { transform: scale(1) rotate(0deg); }
+  100% { transform: scale(1.08) rotate(30deg); }
+}
+
+.oval-shape {
+  transform-origin: center center;
+  transition: transform 0.3s ease;
+}
+
+.circle-panel[data-concept-type="people"] .circle.selected .oval-shape {
+  //animation: oval-pulse 2s infinite alternate;
+}
+
+@keyframes oval-pulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.1) scaleX(1.1); }
+}
+
+.diamond-shape {
+  transform-origin: center center;
+  transition: transform 0.3s ease;
+}
+
+.circle-panel[data-concept-type="events"] .circle.selected .diamond-shape {
+  //animation: diamond-pulse 2s infinite alternate;
+}
+
+@keyframes diamond-pulse {
+  0% { transform: scale(1) rotate(0deg); }
+  100% { transform: scale(1.1) rotate(45deg); }
+}
+
+/* Ensure all shape containers are properly styled when selected */
+.circle-panel[data-concept-type] .circle.selected .shape-wrap {
+  filter: drop-shadow(0 0 3px #FFF) drop-shadow(0 0 5px #FFF);
+}
+
+/* Completion level styles for triangles */
+.triangle-shape.level0 {
+  border: 2px dotted;
+  background-color: transparent !important;
+}
+
+.triangle-shape.level1 {
+  /* Filled bottom part (trapezoid shape) */
+  clip-path: polygon(20% 70%, 0% 100%, 100% 100%, 80% 70%);
+}
+
+.triangle-outline {
+  border: 2px dotted;
+  background-color: transparent !important;
+}
+
+/* When selected, add a glow effect to the borders for better visibility */
+.circle-right.selected .triangle-shape.level0,
+.circle-right.selected .triangle-outline {
+  border-color: #fff;
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.7));
+}
+
+/* Ensure trapezoid stands out when selected */
+.circle-right.selected .triangle-shape.level1 {
+  filter: brightness(1.2) drop-shadow(0 0 2px rgba(255, 255, 255, 0.5));
+}
+
+.concept-panel {
+  z-index: 20;
+  overflow: hidden !important;
+}
+
+.circle-panel {
+  position: relative;
+  z-index: 10;
+}
+
+.circle {
+  z-index: 5;
+}
+
+.circle.selected {
+  z-index: 8;
+}
+
+.square {
+  z-index: 5;
+}
+
+.square.selected {
+  z-index: 8;
+}
+
+#toggle-document-list-btn-things, #add-circle-btn-things {
+  background-color: #88B66d; 
+}
+
+#current-document-display-things {
+  top: 88px; 
+  left: 125px; 
+}
+
+.document-list-container[data-panel-id="things"] {
+  background-color: rgba(56, 118, 29, 0.1); 
+}
+
+.circle-left .triangle-shape {
+  filter: drop-shadow(0 0 2px rgba(56, 118, 29, 0.6));
+}
+
+.gem-wrap {
+	top: -5px;
+}
+
+.crystal-name {
+	font-size: 11px;
+	margin-left: 4px;
+}
