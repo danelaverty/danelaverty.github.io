@@ -21,17 +21,25 @@
     
     // Define story groups
     this.storyGroups = {
+      "- GENERAL -": [],
       "Cause & Effects": ["cause", "push", "stop"],
       "Interpretations": ["positive", "negative", "evidence"],
-      "Quest for Treasure": ["treasure", "door", "key"],
+      "Cast of Characters": ["me", "ally", "demon"],
+      "- FEELINGS -": [],
+      "Quest for Treasure": ["treasure", "mountain", "tools"],
+      "Navigating a Maze": ["door", "lock", "key", "destination"],
+      "Traveling a Road": ["me", "milestone", "destination"],
       "Battling Demons": ["demon", "sword", "chain"],
-      "Cast of Characters": ["me", "ally"],
-      "Battle for Conquest": ["battlefield", "soldier", "enemy", "strategy"],
-      "Navigating the Maze": ["path", "destination"],
-      "Building the Machine": ["tools", "parts", "machine", 'action'],
-      "Writing the Book": ["chapter", "book"],
+      "Battle for Conquest": ["battlefield", "soldier", "enemy", "strategy", "victory", "defeat"],
+      "Building the Machine": ["tools", "parts", "machine"],
+      "Solving a Mystery": ["mystery", "hypothesis", "clue"],
+      "Writing the Book": ["chapter", "key", "book"],
+      "A Too-Big Bite": ["chunk", "cut", "spit"],
+      "- THINGS -": [],
       "Kind of Thing": ['physicalThing', 'behavioralThing', 'event', 'conceptualThing'],
       "Describing the Thing": ['model', 'roleModel', 'trait'],
+      "- PATTERNS -": [],
+      "Patterns": ['feeling', 'action', 'thing', 'pattern'],
     };
   };
 
@@ -161,7 +169,7 @@
         }
         
         // Add text color adjustment for stop button
-        if (['door', 'stop', 'battlefield', 'soldier', 'enemy', 'path', 'destination', 'machine'].indexOf(key) > -1) {
+        if (['door', 'stop', 'battlefield', 'soldier', 'enemy', 'path', 'destination', 'machine', 'feeling', 'thing', 'mountain'].indexOf(key) > -1) {
           attrBox.style.color = 'white';
         }
         

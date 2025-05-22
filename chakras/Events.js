@@ -136,6 +136,9 @@
     // UI events
     PANEL_VISIBILITY_CHANGED: 'ui:panel_visibility_changed',
     
+    // Zoom events
+    ZOOM_CHANGED: 'zoom_changed',
+
     // State events
     STATE_LOADED: 'state:loaded',
     STATE_SAVED: 'state:saved',

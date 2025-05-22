@@ -1,11 +1,78 @@
 // src/controllers/CharacteristicController.js - REFACTORED
 (function(ChakraApp) {
+
   ChakraApp.CharacteristicController = function() {
     ChakraApp.BaseController.call(this);
     this.initDOMElements();
     this.initEventSubscriptions();
   };
   
+  // Static reference to colorFamilies that can be used across methods
+  ChakraApp.CharacteristicController.colorFamilies = [
+    { 
+      name: "Light Colors", 
+      colors: [
+        { color: '#FFC0CB', crystal: 'Pink' },
+        { color: '#FFAF90', crystal: 'Coral' },
+        { color: '#FFDAB9', crystal: 'Peach' },
+        { color: '#FFF0B6', crystal: 'Marigold' },
+        { color: '#FFFACD', crystal: 'Lemon' },
+        { color: '#EFFFC0', crystal: 'Spring Green' },
+        { color: '#C0FFC0', crystal: 'Light Green' },
+        { color: '#E0FFFF', crystal: 'Light Cyan' },
+        { color: '#E6E6FA', crystal: 'Lavender' },
+        { color: '#F0FFF0', crystal: 'Honeydew' },
+        { color: '#F5F5DC', crystal: 'Beige' },
+        { color: '#00BFFF', crystal: 'Sky Blue' },
+        { color: '#BA55D3', crystal: 'Orchid' },
+        { color: '#DEB887', crystal: 'Tan' },
+        { color: '#FFFFFF', crystal: 'White' },
+        { color: '#808080', crystal: 'Gray' },
+      ], 
+      bg: '#FFF5F5' 
+    },
+    { 
+      name: "Solid Colors", 
+      colors: [
+        { color: '#FF0000', crystal: 'Red' },
+        { color: '#FF4500', crystal: 'Vermilion' },
+        { color: '#FFA500', crystal: 'Orange' },
+        { color: '#FFD700', crystal: 'Gold' },
+        { color: '#FFFF00', crystal: 'Yellow' },
+        { color: '#AAFF00', crystal: 'Chartreuse' },
+        { color: '#00EE00', crystal: 'Green' },
+        { color: '#40F0D0', crystal: 'Turquoise' },
+        { color: '#00FFFF', crystal: 'Cyan' },
+        { color: '#0000FF', crystal: 'Blue' },
+        { color: '#800080', crystal: 'Purple' },
+        { color: '#CD853F', crystal: 'Bronze' },
+        { color: '#D3D3D3', crystal: 'Platinum' },
+        { color: '#2F4F4F', crystal: 'Slate' },
+      ], 
+      bg: '#F5F5FF' 
+    },
+    { 
+      name: "Dark Colors", 
+      colors: [
+        { color: '#900000', crystal: 'Maroon' },
+        { color: '#8B4000', crystal: 'Sienna' },
+        { color: '#D8A600', crystal: 'Sunset' },
+        { color: '#B8860B', crystal: 'Umber' },
+        { color: '#BDB700', crystal: 'Khaki' },
+        { color: '#758B00', crystal: 'Olive' },
+        { color: '#2E8B57', crystal: 'Sea Green' },
+        { color: '#006400', crystal: 'Dark Green' },
+        { color: '#008080', crystal: 'Teal' },
+        { color: '#00008B', crystal: 'Dark Blue' },
+        { color: '#000080', crystal: 'Navy' },
+        { color: '#4B0082', crystal: 'Indigo' },
+        { color: '#8B4513', crystal: 'Brown' },
+        { color: '#C0C0C0', crystal: 'Silver' },
+        { color: '#000000', crystal: 'Black' },
+      ], 
+      bg: '#EEE2DA' 
+    }
+];
   ChakraApp.CharacteristicController.prototype = Object.create(ChakraApp.BaseController.prototype);
   ChakraApp.CharacteristicController.prototype.constructor = ChakraApp.CharacteristicController;
   
@@ -16,6 +83,7 @@
     this.deleteCircleBtn = null;
     this.deleteValueDisplay = null;
     this.pickers = {};
+    this.imageInput = null;
   };
   
   ChakraApp.CharacteristicController.prototype.initEventSubscriptions = function() {
@@ -30,6 +98,83 @@
     this._createCharacteristicControls();
     this._setupEventSubscriptions();
   };
+
+  ChakraApp.CharacteristicController.prototype._createImageInput = function(parent) {
+  var container = this._createElem('div', { 
+    className: 'action-btn-container image-input-container',
+    style: {
+      marginLeft: '10px'
+    }
+  }, parent);
+  
+  this._createElem('div', { 
+    className: 'action-btn-title', 
+    textContent: 'Image'
+  }, container);
+  
+  var self = this;
+  
+  // Create the input field
+  this.imageInput = this._createElem('input', {
+    type: 'text',
+    id: 'circle-image-input',
+    className: 'circle-image-input',
+    placeholder: '',
+    style: {
+      display: 'none',
+      padding: '2px 4px',
+      width: '200px',
+      borderRadius: '4px',
+      backgroundColor: 'rgba(60, 60, 60, 0.8)',
+      border: '1px solid rgba(255, 255, 255, 0.2)',
+      color: 'white',
+      transition: 'all 0.2s ease'
+    },
+    events: {
+      keydown: function(e) {
+        if (e.key === 'Enter') {
+          self._saveImageValue(this.value);
+        }
+      },
+      blur: function() {
+        self._saveImageValue(this.value);
+      },
+      focus: function() {
+        this.style.backgroundColor = 'rgba(80, 80, 80, 0.8)';
+        this.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+      },
+      mouseover: function() {
+        this.style.backgroundColor = 'rgba(80, 80, 80, 0.8)';
+        this.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+      },
+      mouseout: function() {
+        if (document.activeElement !== this) {
+          this.style.backgroundColor = 'rgba(60, 60, 60, 0.8)';
+          this.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+        }
+      }
+    }
+  }, container);
+};
+
+ChakraApp.CharacteristicController.prototype._saveImageValue = function(value) {
+  if (!ChakraApp.appState.selectedCircleId) return;
+  
+  var circle = this._getSelectedCircle();
+  if (!circle) return;
+  
+  // Initialize characteristics object if needed
+  if (!circle.characteristics) {
+    circle.characteristics = {};
+  }
+  
+  // Only update if value has changed
+  if (circle.characteristics.image !== value) {
+    ChakraApp.appState.updateCircle(ChakraApp.appState.selectedCircleId, {
+      characteristics: Object.assign({}, circle.characteristics, { image: value })
+    });
+  }
+};
   
   // UI Helper Methods
   ChakraApp.CharacteristicController.prototype._createElem = function(tag, props, parent) {
@@ -68,15 +213,12 @@
     var self = this;
     
     Object.keys(characteristics).forEach(function(key) {
-	    if (ChakraApp.appState.circles) {
-		    console.log(ChakraApp.appState.selectedCircleId);
-		    console.log(ChakraApp.appState.circles[ChakraApp.appState.selectedCircleId]);
-	    }
-	    console.log(key);
+	    if (key == 'image') { return; }
       self._createActionButton(key, characteristics[key], buttonContainer);
     });
     
-    this._createDeleteButton(buttonContainer);
+    this._createImageInput(buttonContainer);
+    //this._createDeleteButton(buttonContainer);
   };
   
   ChakraApp.CharacteristicController.prototype._createActionButton = function(key, charDef, parent) {
@@ -192,7 +334,7 @@
       ChakraApp.appState.removeCircle(ChakraApp.appState.selectedCircleId);
     }
   };
-  
+
   // Pickers
   ChakraApp.CharacteristicController.prototype._showCharacteristicPicker = function(key, buttonOrDisplay) {
     var charDef = ChakraApp.Config.characteristics[key];
@@ -252,6 +394,24 @@
     if (key === 'color') return circle.color;
     return circle.characteristics && circle.characteristics[key] !== undefined ? 
            circle.characteristics[key] : null;
+  };
+  
+  // Helper method to find color info from colorFamilies
+  ChakraApp.CharacteristicController.prototype._findColorInfo = function(colorValue) {
+    var colorFamilies = ChakraApp.CharacteristicController.colorFamilies;
+    
+    // Search through all color families to find the matching color
+    for (var i = 0; i < colorFamilies.length; i++) {
+      var family = colorFamilies[i];
+      for (var j = 0; j < family.colors.length; j++) {
+        var colorInfo = family.colors[j];
+        if (colorInfo.color.toLowerCase() === colorValue.toLowerCase()) {
+          return colorInfo;
+        }
+      }
+    }
+    
+    return null; // Color not found
   };
   
   ChakraApp.CharacteristicController.prototype._createPicker = function(key, charDef) {
@@ -343,44 +503,8 @@
       style: { display: 'flex', gap: '10px' }
     }, content);
     
-    var colorFamilies = [
-      { 
-        name: "Warm Crystals", 
-        colors: [
-          { color: '#FF0050', crystal: 'Ruby' },
-          { color: '#FF0000', crystal: 'Garnet' },
-          { color: '#FFAAAA', crystal: 'Rose Quartz' },
-          { color: '#FF5234', crystal: 'Carnelian' },
-          { color: '#FFAC00', crystal: 'Amber' },
-          { color: '#FFE700', crystal: 'Citrine' },
-          { color: '#B87333', crystal: 'Tiger\'s Eye' },
-          { color: '#CD7F32', crystal: 'Sunstone' },
-          { color: '#D35400', crystal: 'Fire Agate' },
-          { color: '#A52A2A', crystal: 'Smoky Quartz' },
-          { color: '#FFFFFF', crystal: 'Clear Quartz' },
-          { color: '#FFC0CB', crystal: 'Rhodochrosite' }
-        ], 
-        bg: '#FFF5F5' 
-      },
-      { 
-        name: "Cool Crystals", 
-        colors: [
-          { color: '#D0FF00', crystal: 'Peridot' },
-          { color: '#00FF00', crystal: 'Emerald' },
-          { color: '#00FFD0', crystal: 'Aquamarine' },
-          { color: '#99EEFF', crystal: 'Turquoise' },
-          { color: '#0000FF', crystal: 'Sapphire' },
-          { color: '#AA2BFF', crystal: 'Amethyst' },
-          { color: '#FF00FF', crystal: 'Sugilite' },
-          { color: '#800080', crystal: 'Charoite' },
-          { color: '#483D8B', crystal: 'Lapis Lazuli' },
-          { color: '#999999', crystal: 'Hematite' },
-          { color: '#000000', crystal: 'Obsidian' },
-          { color: '#40E0D0', crystal: 'Amazonite' }
-        ], 
-        bg: '#F5F5FF' 
-      }
-    ];
+    // Use the static colorFamilies property
+    var colorFamilies = ChakraApp.CharacteristicController.colorFamilies;
     
     var self = this;
     colorFamilies.forEach(function(family) {
@@ -393,15 +517,6 @@
           flex: '1'
         }
       }, colorGrid);
-      
-      self._createElem('div', {
-        className: 'family-name',
-        textContent: family.name,
-        style: {
-          fontWeight: 'bold',
-          marginBottom: '10px'
-        }
-      }, familyContainer);
       
       var swatchContainer = self._createElem('div', {
         className: 'swatches-container',
@@ -429,7 +544,7 @@
       style: {
         display: 'flex',
         alignItems: 'center',
-        padding: '5px',
+        padding: '0px',
         borderRadius: '3px',
         cursor: 'pointer',
         transition: 'background-color 0.2s'
@@ -459,23 +574,24 @@
     }, container);
     
     this._createElem('div', {
-      className: 'crystal-name',
-      textContent: item.crystal,
-      style: { flex: '1' }
-    }, colorOption);
-    
-    this._createElem('div', {
       className: 'color-picker-swatch',
       style: {
         backgroundColor: item.color,
-        width: '20px',
-        height: '20px',
+        width: '16px',
+        height: '16px',
         borderRadius: '3px',
         border: '1px solid rgba(0, 0, 0, 0.3)'
       },
       dataset: { color: item.color },
       title: item.crystal + ': ' + item.color
     }, colorOption);
+
+    this._createElem('div', {
+      className: 'crystal-name',
+      textContent: item.crystal,
+      style: { flex: '1' }
+    }, colorOption);
+    
   };
   
   // Generic Picker
@@ -510,173 +626,6 @@
     });
   };
   
-  ChakraApp.CharacteristicController.prototype._createNoValueOption = function(container, key, charDef) {
-    var self = this;
-    var noValueOption = this._createElem('div', {
-      className: 'characteristic-option no-value',
-      dataset: {
-        value: '',
-        characteristic: key
-      },
-      style: {
-        backgroundColor: '#333',
-        padding: '10px',
-        borderRadius: '4px',
-        marginBottom: '10px',
-        cursor: 'pointer'
-      },
-      events: {
-        click: function() {
-          if (!ChakraApp.appState.selectedCircleId) return;
-          
-          var circle = self._getSelectedCircle();
-          if (!circle) return;
-          
-          var viewModel = null;
-          ChakraApp.app.viewManager.circleViews.forEach(function(view) {
-            if (view.viewModel.id === circle.id) {
-              viewModel = view.viewModel;
-            }
-          });
-          
-          if (viewModel) {
-            viewModel.updateCharacteristic(key, null);
-	    setTimeout(function() {
-		    var updatedCircle = ChakraApp.appState.getCircle(circle.id);
-		    if (updatedCircle) {
-			    self._updateValueDisplays(updatedCircle);
-		    }
-	    }, 0);
-            self._closeAllPickers();
-          }
-        }
-      }
-    }, container);
-    
-    this._createElem('span', {
-      className: 'characteristic-emoji',
-      textContent: '∅',
-      style: {
-        fontSize: '24px',
-        marginRight: '10px',
-	    color: 'white',
-      }
-    }, noValueOption);
-    
-    this._createElem('div', {
-      className: 'characteristic-name',
-      textContent: 'No ' + charDef.displayName,
-      style: {
-        fontWeight: 'bold',
-        marginBottom: '5px',
-        color: 'white',
-      }
-    }, noValueOption);
-    
-    this._createElem('div', {
-      className: 'characteristic-desc',
-      textContent: 'Clear ' + charDef.displayName.toLowerCase(),
-      style: {
-        fontSize: '12px',
-        opacity: '0.8',
-        color: 'white',
-      }
-    }, noValueOption);
-  };
-  
-  ChakraApp.CharacteristicController.prototype._createCharacteristicOption = function(container, key, option) {
-    var self = this;
-    var backgroundColor = option.visualStyle && option.visualStyle.color || '#333';
-    
-    var optionElement = this._createElem('div', {
-      className: 'characteristic-option',
-      dataset: {
-        value: option.value,
-        characteristic: key
-      },
-      style: {
-        padding: '10px',
-        borderRadius: '4px',
-        marginBottom: '5px',
-        cursor: 'pointer',
-        backgroundColor: backgroundColor
-      },
-      events: {
-        click: function() {
-          if (!ChakraApp.appState.selectedCircleId) return;
-          
-          var circle = self._getSelectedCircle();
-          if (!circle) return;
-          
-          var viewModel = null;
-          ChakraApp.app.viewManager.circleViews.forEach(function(view) {
-            if (view.viewModel.id === circle.id) {
-              viewModel = view.viewModel;
-            }
-          });
-          
-          if (viewModel) {
-            viewModel.updateCharacteristic(key, option.value);
-
-	    setTimeout(function() {
-		    var updatedCircle = ChakraApp.appState.getCircle(circle.id);
-		    if (updatedCircle) {
-			    self._updateValueDisplays(updatedCircle);
-		    }
-	    }, 0);
-            self._closeAllPickers();
-          }
-        }
-      }
-    }, container);
-    
-    // Special case for identity
-    if (key === 'identity' && option.visualStyle && option.visualStyle.number) {
-      this._createElem('div', {
-        className: 'identity-number',
-        textContent: option.visualStyle.number,
-        style: {
-          fontWeight: 'bold',
-          fontSize: '18px'
-        }
-      }, optionElement);
-    }
-    
-    // Add emoji if available
-    if (option.visualStyle && option.visualStyle.emoji) {
-      this._createElem('span', {
-        className: 'characteristic-emoji',
-        textContent: option.visualStyle.emoji,
-        style: {
-          fontSize: '24px',
-          marginRight: '10px',
-	    color: 'white',
-        }
-      }, optionElement);
-    }
-    
-    this._createElem('div', {
-      className: 'characteristic-name',
-      textContent: option.display,
-      style: {
-        fontWeight: 'bold',
-        color: 'white',
-      }
-    }, optionElement);
-    
-    if (option.secondary) {
-      this._createElem('div', {
-        className: 'characteristic-desc',
-        textContent: option.secondary,
-        style: {
-          fontSize: '12px',
-          opacity: '0.8',
-          color: 'white',
-        }
-      }, optionElement);
-    }
-  };
-  
   ChakraApp.CharacteristicController.prototype._closeAllPickers = function() {
     for (var key in this.pickers) {
       if (this.pickers[key]) {
@@ -689,26 +638,28 @@
   ChakraApp.CharacteristicController.prototype._setupEventSubscriptions = function() {
     var self = this;
     
-    this.circleSelectedSubscription = ChakraApp.EventBus.subscribe(
-      ChakraApp.EventTypes.CIRCLE_SELECTED,
-      function(circle) {
-        self._toggleActionButtons(true);
-        document.body.classList.add('circle-selected');
-        self._updateValueDisplays(circle);
-      }
-    );
+this.circleSelectedSubscription = ChakraApp.EventBus.subscribe(
+  ChakraApp.EventTypes.CIRCLE_SELECTED,
+  function(circle) {
+    self._toggleActionButtons(true);
+    document.body.classList.add('circle-selected');
+    self._updateValueDisplays(circle);
+    self._updateImageInputValue(circle); // Add this line
+  }
+);
     
-    this.circleUpdatedSubscription = ChakraApp.EventBus.subscribe(
-      ChakraApp.EventTypes.CIRCLE_UPDATED,
-      function(circle) {
-	      if (circle && circle.id === ChakraApp.appState.selectedCircleId) {
-		      var updatedCircle = ChakraApp.appState.getCircle(circle.id);
-		      if (updatedCircle) {
-			      self._updateValueDisplays(updatedCircle);
-		      }
-	      }
+   this.circleUpdatedSubscription = ChakraApp.EventBus.subscribe(
+  ChakraApp.EventTypes.CIRCLE_UPDATED,
+  function(circle) {
+    if (circle && circle.id === ChakraApp.appState.selectedCircleId) {
+      var updatedCircle = ChakraApp.appState.getCircle(circle.id);
+      if (updatedCircle) {
+        self._updateValueDisplays(updatedCircle);
+        self._updateImageInputValue(updatedCircle); // Add this line
       }
-    );
+    }
+  }
+); 
     
     this.circleDeselectedSubscription = ChakraApp.EventBus.subscribe(
       ChakraApp.EventTypes.CIRCLE_DESELECTED,
@@ -719,30 +670,68 @@
     );
   };
   
-  ChakraApp.CharacteristicController.prototype._toggleActionButtons = function(show) {
-    Object.values(this.characteristicValueDisplays).forEach(function(display) {
-      if (display) display.style.display = show ? 'flex' : 'none';
-    });
-    
-    if (this.deleteValueDisplay) {
-      this.deleteValueDisplay.style.display = show ? 'flex' : 'none';
-    }
-  };
+ChakraApp.CharacteristicController.prototype._toggleActionButtons = function(show) {
+  Object.values(this.characteristicValueDisplays).forEach(function(display) {
+    if (display) display.style.display = show ? 'flex' : 'none';
+  });
   
-  ChakraApp.CharacteristicController.prototype._updateValueDisplays = function(circle) {
-    if (!circle) return;
+  // Toggle image input field
+  if (this.imageInput) {
+    this.imageInput.style.display = show ? 'block' : 'none';
+  }
+  
+  if (this.deleteValueDisplay) {
+    this.deleteValueDisplay.style.display = show ? 'flex' : 'none';
+  }
+};
+
+ChakraApp.CharacteristicController.prototype._updateImageInputValue = function(circle) {
+  if (!this.imageInput || !circle) return;
+  
+  const imageValue = circle.characteristics && circle.characteristics.image ? 
+                     circle.characteristics.image : '';
+  this.imageInput.value = imageValue;
+};
+  
+ChakraApp.CharacteristicController.prototype._updateValueDisplays = function(circle) {
+  if (!circle) return;
+  
+  // Make sure we have access to the characteristics from Config
+  var characteristics = ChakraApp.Config.characteristics;
+  if (!characteristics) return; // Guard against undefined characteristics
+  
+  var self = this;
+  
+  // Use Object.keys safely with a null check
+  Object.keys(characteristics || {}).forEach(function(key) {
+    var displayEl = self.characteristicValueDisplays[key];
+    if (!displayEl) return;
     
-    var characteristics = ChakraApp.Config.characteristics;
-    var self = this;
+    var value = self._getCircleValue(key, circle);
     
-    Object.keys(characteristics).forEach(function(key) {
-      var displayEl = self.characteristicValueDisplays[key];
-      if (!displayEl) return;
-      
-      var value = self._getCircleValue(key, circle);
-      
-      if (value) {
+    if (value) {
+      if (key === 'color') {
+        // For colors, use the crystal name from colorFamilies
+        var colorInfo = self._findColorInfo(value);
+        
+        if (colorInfo) {
+          var template = characteristics[key].valueDisplayStyle.template;
+          displayEl.innerHTML = template
+            .replace('{VALUE}', value)
+            .replace('{DISPLAY}', colorInfo.crystal);
+        } else {
+          // Fallback if color not found
+          displayEl.textContent = value;
+        }
+      } else {
+        // For other characteristics, use the existing logic
         var charDef = characteristics[key];
+        if (!charDef || !charDef.categories) {
+          // Handle characteristics without categories (like our new image field)
+          displayEl.textContent = value;
+          return;
+        }
+        
         var option = null;
         
         charDef.categories.forEach(function(category) {
@@ -773,11 +762,181 @@
         } else {
           displayEl.textContent = value;
         }
-      } else {
-        displayEl.textContent = 'None';
       }
-    });
-  };
+    } else {
+      displayEl.textContent = 'None';
+    }
+  });
+};
+
+  // These are methods that were omitted from part 2 to fit within message limits
+// They should be included in the final CharacteristicController.js file
+
+ChakraApp.CharacteristicController.prototype._createNoValueOption = function(container, key, charDef) {
+  var self = this;
+  var noValueOption = this._createElem('div', {
+    className: 'characteristic-option no-value',
+    dataset: {
+      value: '',
+      characteristic: key
+    },
+    style: {
+      backgroundColor: '#333',
+      padding: '10px',
+      borderRadius: '4px',
+      marginBottom: '10px',
+      cursor: 'pointer'
+    },
+    events: {
+      click: function() {
+        if (!ChakraApp.appState.selectedCircleId) return;
+        
+        var circle = self._getSelectedCircle();
+        if (!circle) return;
+        
+        var viewModel = null;
+        ChakraApp.app.viewManager.circleViews.forEach(function(view) {
+          if (view.viewModel.id === circle.id) {
+            viewModel = view.viewModel;
+          }
+        });
+        
+        if (viewModel) {
+          viewModel.updateCharacteristic(key, null);
+          setTimeout(function() {
+            var updatedCircle = ChakraApp.appState.getCircle(circle.id);
+            if (updatedCircle) {
+              self._updateValueDisplays(updatedCircle);
+            }
+          }, 0);
+          self._closeAllPickers();
+        }
+      }
+    }
+  }, container);
+  
+  this._createElem('span', {
+    className: 'characteristic-emoji',
+    textContent: '∅',
+    style: {
+      fontSize: '24px',
+      marginRight: '10px',
+      color: 'white',
+    }
+  }, noValueOption);
+  
+  this._createElem('div', {
+    className: 'characteristic-name',
+    textContent: 'No ' + charDef.displayName,
+    style: {
+      fontWeight: 'bold',
+      marginBottom: '5px',
+      color: 'white',
+    }
+  }, noValueOption);
+  
+  this._createElem('div', {
+    className: 'characteristic-desc',
+    textContent: 'Clear ' + charDef.displayName.toLowerCase(),
+    style: {
+      fontSize: '12px',
+      opacity: '0.8',
+      color: 'white',
+    }
+  }, noValueOption);
+};
+
+ChakraApp.CharacteristicController.prototype._createCharacteristicOption = function(container, key, option) {
+  var self = this;
+  var backgroundColor = option.visualStyle && option.visualStyle.color || '#333';
+  
+  var optionElement = this._createElem('div', {
+    className: 'characteristic-option',
+    dataset: {
+      value: option.value,
+      characteristic: key
+    },
+    style: {
+      padding: '10px',
+      borderRadius: '4px',
+      marginBottom: '5px',
+      cursor: 'pointer',
+      backgroundColor: backgroundColor
+    },
+    events: {
+      click: function() {
+        if (!ChakraApp.appState.selectedCircleId) return;
+        
+        var circle = self._getSelectedCircle();
+        if (!circle) return;
+        
+        var viewModel = null;
+        ChakraApp.app.viewManager.circleViews.forEach(function(view) {
+          if (view.viewModel.id === circle.id) {
+            viewModel = view.viewModel;
+          }
+        });
+        
+        if (viewModel) {
+          viewModel.updateCharacteristic(key, option.value);
+          setTimeout(function() {
+            var updatedCircle = ChakraApp.appState.getCircle(circle.id);
+            if (updatedCircle) {
+              self._updateValueDisplays(updatedCircle);
+            }
+          }, 0);
+          self._closeAllPickers();
+        }
+      }
+    }
+  }, container);
+  
+  // Special case for identity
+  if (key === 'identity' && option.visualStyle && option.visualStyle.number) {
+    this._createElem('div', {
+      className: 'identity-number',
+      textContent: option.visualStyle.number,
+      style: {
+        fontWeight: 'bold',
+        fontSize: '18px'
+      }
+    }, optionElement);
+  }
+  
+  // Add emoji if available
+  if (option.visualStyle && option.visualStyle.emoji) {
+    this._createElem('span', {
+      className: 'characteristic-emoji',
+      textContent: option.visualStyle.emoji,
+      style: {
+        fontSize: '24px',
+        marginRight: '10px',
+        color: 'white',
+      }
+    }, optionElement);
+  }
+  
+  this._createElem('div', {
+    className: 'characteristic-name',
+    textContent: option.display,
+    style: {
+      fontWeight: 'bold',
+      color: 'white',
+    }
+  }, optionElement);
+  
+  if (option.secondary) {
+    this._createElem('div', {
+      className: 'characteristic-desc',
+      textContent: option.secondary,
+      style: {
+        fontSize: '12px',
+        opacity: '0.8',
+        color: 'white',
+      }
+    }, optionElement);
+  }
+};
   
   ChakraApp.CharacteristicController.prototype.destroy = function() {
     ChakraApp.BaseController.prototype.destroy.call(this);

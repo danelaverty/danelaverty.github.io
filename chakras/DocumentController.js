@@ -61,7 +61,7 @@ ChakraApp.DocumentController.prototype._createDocumentControls = function() {
    * @private
    * @param {string} panelId - Panel ID
    */
-  ChakraApp.DocumentController.prototype._createDocumentControlsForPanel = function(circleTypeId) {
+ChakraApp.DocumentController.prototype._createDocumentControlsForPanel = function(circleTypeId) {
   // Find the circle type
   var circleType = ChakraApp.Config.circleTypes.find(function(type) {
     return type.id === circleTypeId;
@@ -91,6 +91,16 @@ ChakraApp.DocumentController.prototype._createDocumentControls = function() {
   listContainer.style.bottom = '85px';
   listContainer.style.top = 'unset';
   
+  // Apply custom styling based on circle type
+  if (circleTypeId === 'star') {
+    listContainer.style.backgroundColor = 'rgba(255, 153, 51, 0.1)'; // Light orange background
+    listContainer.style.borderColor = '#FF9933';
+  } else if (circleTypeId === 'triangle') {
+    listContainer.style.backgroundColor = 'rgba(56, 118, 29, 0.1)';
+  } else if (circleTypeId === 'gem') {
+    listContainer.style.backgroundColor = 'rgba(74, 111, 201, 0.1)';
+  }
+  
   // Add to left panel
   targetPanel.appendChild(listContainer);
   this.documentListContainers[circleTypeId] = listContainer;
@@ -115,17 +125,15 @@ ChakraApp.DocumentController.prototype._createDocumentControls = function() {
     docDisplay.style.right = '0px';
     docDisplay.style.left = 'unset';
     docDisplay.style.color = circleType.color;
+  } else if (circleTypeId === 'star') {
+    docDisplay.style.top = '122px'; // Position it below the triangle display
+    docDisplay.style.left = '125px';
+    docDisplay.style.color = circleType.color;
   } else {
     // Standard type
     docDisplay.style.top = '54px';
     docDisplay.style.left = '-6px';
   }
-  
-  // Add to left panel
-  //targetPanel.appendChild(docDisplay);
-  
-  // Store the document display reference
-  //this.currentDocumentDisplays[circleTypeId] = docDisplay;
 };
   
   /**

@@ -52,72 +52,85 @@
   
   // Update line position
   ChakraApp.ConnectionView.prototype._updateLinePosition = function() {
-    // Get the squares
-    var square1 = ChakraApp.appState.getSquare(this.viewModel.sourceId);
-    var square2 = ChakraApp.appState.getSquare(this.viewModel.targetId);
+  // Get the squares
+  var square1 = ChakraApp.appState.getSquare(this.viewModel.sourceId);
+  var square2 = ChakraApp.appState.getSquare(this.viewModel.targetId);
 
-    if (!square1 || !square2) {
-      this.element.style.display = 'none';
-      return;
-    }
+  if (!square1 || !square2) {
+    this.element.style.display = 'none';
+    return;
+  }
 
-    // Get the DOM elements for the squares
-    var square1Element = document.querySelector('.square[data-id="' + square1.id + '"]');
-    var square2Element = document.querySelector('.square[data-id="' + square2.id + '"]');
+  // Get the DOM elements for the squares
+  var square1Element = document.querySelector('.square[data-id="' + square1.id + '"]');
+  var square2Element = document.querySelector('.square[data-id="' + square2.id + '"]');
 
-    if (!square1Element || !square2Element) {
-      this.element.style.display = 'none';
-      return;
-    }
+  if (!square1Element || !square2Element) {
+    this.element.style.display = 'none';
+    return;
+  }
 
-    // Calculate center points of squares
-    var x1 = square1.x;
-    var y1 = square1.y;
-    var x2 = square2.x;
-    var y2 = square2.y;
+  // Calculate center points of squares
+  var x1 = square1.x;
+  var y1 = square1.y;
+  var x2 = square2.x;
+  var y2 = square2.y;
 
-    // Calculate line length and angle
-    var dx = x2 - x1;
-    var dy = y2 - y1;
-    var length = Math.sqrt(dx * dx + dy * dy);
-    var angle = Math.atan2(dy, dx) * 180 / Math.PI;
+  // Calculate line length and angle
+  var dx = x2 - x1;
+  var dy = y2 - y1;
+  var length = Math.sqrt(dx * dx + dy * dy);
+  var angle = Math.atan2(dy, dx) * 180 / Math.PI;
 
-    // Get config values
-    var maxLineLength = ChakraApp.Config.connections ? 
-      ChakraApp.Config.connections.maxLineLength : 120;
+  // Get config values
+  var maxLineLength = ChakraApp.Config.connections ? 
+    ChakraApp.Config.connections.maxLineLength : 120;
+  
+  // NEW: Check if either square is bold, and if so, use extended connection length
+  var boldMaxLineLength = 180; // Extended range for bold squares
+  var effectiveMaxLength = (square1.isBold || square2.isBold) ? boldMaxLineLength : maxLineLength;
+  
+  var overlapThreshold = ChakraApp.Config.connections ? 
+    ChakraApp.Config.connections.overlapThreshold : 40;
+
+  // Set line position
+  this.element.style.width = length + 'px';
+  this.element.style.left = x1 + 'px';
+  this.element.style.top = y1 + 'px';
+  this.element.style.transform = 'rotate(' + angle + 'deg)';
+  
+  // Show/hide line based on visibility and distance
+  // NEW: Update visibility calculation based on bold status
+  var isVisible = length <= effectiveMaxLength;
+  this.element.style.display = isVisible ? 'block' : 'none';
+
+  // Check if squares are close enough to overlap
+  if (length < overlapThreshold) {
+    // Add the overlap-connection class to the line
+    this.element.classList.add('overlap-connection');
     
-    var overlapThreshold = ChakraApp.Config.connections ? 
-      ChakraApp.Config.connections.overlapThreshold : 40;
-
-    // Set line position
-    this.element.style.width = length + 'px';
-    this.element.style.left = x1 + 'px';
-    this.element.style.top = y1 + 'px';
-    this.element.style.transform = 'rotate(' + angle + 'deg)';
-    
-    // Show/hide line based on visibility
-    this.element.style.display = this.viewModel.isVisible ? 'block' : 'none';
-
-    // Check if squares are close enough to overlap
-    if (length < overlapThreshold) {
-      // Add the overlap-connection class to the line
-      this.element.classList.add('overlap-connection');
-      
-      // Register the overlap with the manager
-      if (square1 && square2) {
-        ChakraApp.OverlappingSquaresManager.registerOverlap(square1, square2);
-      }
-    } else {
-      // Remove the overlap-connection class
-      this.element.classList.remove('overlap-connection');
-      
-      // Unregister the overlap
-      ChakraApp.OverlappingSquaresManager.removeOverlap(
-        this.viewModel.sourceId, 
-        this.viewModel.targetId
-      );
+    // Register the overlap with the manager
+    if (square1 && square2) {
+      ChakraApp.OverlappingSquaresManager.registerOverlap(square1, square2);
     }
-  };
+  } else {
+    // Remove the overlap-connection class
+    this.element.classList.remove('overlap-connection');
+    
+    // Unregister the overlap
+    ChakraApp.OverlappingSquaresManager.removeOverlap(
+      this.viewModel.sourceId, 
+      this.viewModel.targetId
+    );
+  }
+  
+  // NEW: Add visual style for connections involving bold squares
+  if (square1.isBold || square2.isBold) {
+    this.element.classList.add('bold-connection');
+  } else {
+    this.element.classList.remove('bold-connection');
+  }
+};
 
   // Update view based on model changes
   ChakraApp.ConnectionView.prototype.update = function() {

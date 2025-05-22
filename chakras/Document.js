@@ -18,6 +18,9 @@
   
   // Keep the panelId for backward compatibility but primarily use circleType
   this.panelId = data.panelId;
+  
+  // Add zoomLevel property
+  this.zoomLevel = data.zoomLevel || null;
 };
   
   // Inherit from BaseModel
@@ -46,15 +49,20 @@
     return year + '-' + month + '-' + day;
   };
   
-  ChakraApp.Document.prototype.toJSON = function() {
-    // Get base properties
-    var json = ChakraApp.BaseModel.prototype.toJSON.call(this);
-    
-    // Add Document-specific properties
-    json.name = this.name;
-    json.panelId = this.panelId;
-    json.circleType = this.circleType;
-    
-    return json;
-  };
+ChakraApp.Document.prototype.toJSON = function() {
+  // Get base properties
+  var json = ChakraApp.BaseModel.prototype.toJSON.call(this);
+  
+  // Add Document-specific properties
+  json.name = this.name;
+  json.panelId = this.panelId;
+  json.circleType = this.circleType;
+  
+  // Add zoomLevel if it exists
+  if (this.zoomLevel) {
+    json.zoomLevel = this.zoomLevel;
+  }
+  
+  return json;
+};
 })(window.ChakraApp = window.ChakraApp || {});

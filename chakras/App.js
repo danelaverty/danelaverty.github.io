@@ -51,7 +51,8 @@
     var newType = null;
     
     // Is it already classified?
-    if (circle.circleType === 'gem' || circle.circleType === 'triangle' || circle.circleType === 'standard') {
+    if (circle.circleType === 'gem' || circle.circleType === 'triangle' || 
+        circle.circleType === 'standard' || circle.circleType === 'hexagon') {  // Add hexagon
       return; // Already has a valid type
     }
     
@@ -61,6 +62,8 @@
         newType = 'gem';
       } else if (circle.color === '#88B66d') {
         newType = 'triangle';
+      } else if (circle.color === '#9932CC') {  // Add hexagon color check
+        newType = 'hexagon';
       }
     }
     
@@ -92,7 +95,6 @@ ChakraApp.App.prototype._ensureCircleTypesConfigured = function() {
     return type.id === 'gem' || (type.shape === 'gem');
   });
   
-  // If not, create it with default values
   if (!gemTypeExists) {
     var gemCircleType = {
       id: 'gem',
@@ -102,10 +104,44 @@ ChakraApp.App.prototype._ensureCircleTypesConfigured = function() {
       color: '#4a6fc9',
       position: 3
     };
-    
-    // Add to the circle types
     ChakraApp.Config.circleTypes.push(gemCircleType);
     console.log("Added missing gem circle type configuration");
+  }
+  
+  // Check if we have a star type defined
+  var starTypeExists = ChakraApp.Config.circleTypes.some(function(type) {
+    return type.id === 'star' || (type.shape === 'star');
+  });
+  
+  if (!starTypeExists) {
+    var starCircleType = {
+      id: 'star',
+      name: 'Moves',
+      description: 'Actions & Strategies',
+      shape: 'star',
+      color: '#FF9933',
+      position: 4
+    };
+    ChakraApp.Config.circleTypes.push(starCircleType);
+    console.log("Added missing star circle type configuration");
+  }
+  
+  // Check if we have a hexagon type defined (ADD THIS)
+  var hexagonTypeExists = ChakraApp.Config.circleTypes.some(function(type) {
+    return type.id === 'hexagon' || (type.shape === 'hexagon');
+  });
+  
+  if (!hexagonTypeExists) {
+    var hexagonCircleType = {
+      id: 'hexagon',
+      name: 'Complexes',
+      description: 'Complex Systems & Patterns',
+      shape: 'hexagon',
+      color: '#9932CC',
+      position: 5
+    };
+    ChakraApp.Config.circleTypes.push(hexagonCircleType);
+    console.log("Added missing hexagon circle type configuration");
   }
 };
   
@@ -131,6 +167,8 @@ ChakraApp.App.prototype._ensureCircleTypesConfigured = function() {
   
   ChakraApp.App.prototype.createControllers = function() {
     this.controllers = ChakraApp.ControllerFactory.createControllers();
+    this.controllers.zoom = new ChakraApp.ZoomController();
+  this.controllers.zoom.init();
     this.createKeyboardController();
   };
   

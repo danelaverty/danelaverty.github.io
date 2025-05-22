@@ -5,26 +5,30 @@
      * Create and initialize all controllers
      * @returns {Object} Map of controller instances
      */
-    createControllers: function() {
-      var controllers = {
-        document: new ChakraApp.DocumentController(),
-        characteristic: new ChakraApp.CharacteristicController(),
-        attribute: new ChakraApp.AttributeController(),
-        dialog: new ChakraApp.DialogController(),
-        notification: new ChakraApp.NotificationController(),
-        panel: new ChakraApp.PanelController(),
-        ui: new ChakraApp.UIController(),
-        tab: new ChakraApp.TabController(),
-        importExport: new ChakraApp.ImportExportController() // Added import/export controller
-      };
-      
-      // Initialize all controllers
-      Object.values(controllers).forEach(function(controller) {
-        controller.init();
-      });
-      
-      return controllers;
-    },
+	  createControllers: function() {
+  var controllers = {
+    ui: new ChakraApp.UIController(),
+    document: new ChakraApp.DocumentController(),
+    dialog: new ChakraApp.DialogController(),
+    notification: new ChakraApp.NotificationController(),
+    panel: new ChakraApp.PanelController(),
+    characteristic: new ChakraApp.CharacteristicController(),
+    tab: new ChakraApp.TabController(),
+    attribute: new ChakraApp.AttributeController(),
+    importExport: new ChakraApp.ImportExportController(),
+    // Add zoom controller
+    zoom: new ChakraApp.ZoomController()
+  };
+  
+  // Initialize controllers
+  Object.values(controllers).forEach(function(controller) {
+    if (typeof controller.init === 'function') {
+      controller.init();
+    }
+  });
+  
+  return controllers;
+},
     
     /**
      * Destroy all controllers

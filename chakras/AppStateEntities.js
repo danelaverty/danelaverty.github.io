@@ -307,7 +307,9 @@ ChakraApp.AppState.prototype._migrateDocumentState = function() {
     cleanState = {
       standard: null,
       triangle: null,
-      gem: null
+      gem: null,
+      star: null,
+      hexagon: null
     };
   }
   
@@ -827,34 +829,40 @@ ChakraApp.AppState.prototype.addDocument = function(data) {
   };
   
   // Connection methods
-  ChakraApp.AppState.prototype._createConnection = function(square1, square2) {
-    var connectionId = ChakraApp.Utils.getLineId(square1.id, square2.id);
-    var distance = ChakraApp.Utils.calculateDistance(
-      square1.x, square1.y, square2.x, square2.y
-    );
-    
-    var maxLineLength = ChakraApp.Config.connections ? 
-      ChakraApp.Config.connections.maxLineLength : 120;
-    
-    var isVisible = distance <= maxLineLength;
-    
-    if (!this.connections.has(connectionId)) {
-      this.connections.set(connectionId, new ChakraApp.Connection({
-        id: connectionId,
-        sourceId: square1.id,
-        targetId: square2.id,
-        length: distance,
-        isVisible: isVisible,
-      }));
-    } else {
-      this.connections.get(connectionId).update({
-        length: distance,
-        isVisible: isVisible
-      });
-    }
-    
-    return this.connections.get(connectionId);
-  };
+ChakraApp.AppState.prototype._createConnection = function(square1, square2) {
+  var connectionId = ChakraApp.Utils.getLineId(square1.id, square2.id);
+  var distance = ChakraApp.Utils.calculateDistance(
+    square1.x, square1.y, square2.x, square2.y
+  );
+  
+  // Get config values
+  var maxLineLength = ChakraApp.Config.connections ? 
+    ChakraApp.Config.connections.maxLineLength : 120;
+  
+  var boldMaxLineLength = ChakraApp.Config.connections ? 
+    ChakraApp.Config.connections.boldMaxLineLength : 180;
+  
+  var effectiveMaxLength = (square1.isBold || square2.isBold) ? boldMaxLineLength : maxLineLength;
+  
+  var isVisible = distance <= effectiveMaxLength;
+  
+  if (!this.connections.has(connectionId)) {
+    this.connections.set(connectionId, new ChakraApp.Connection({
+      id: connectionId,
+      sourceId: square1.id,
+      targetId: square2.id,
+      length: distance,
+      isVisible: isVisible,
+    }));
+  } else {
+    this.connections.get(connectionId).update({
+      length: distance,
+      isVisible: isVisible
+    });
+  }
+  
+  return this.connections.get(connectionId);
+};
   
   ChakraApp.AppState.prototype._removeConnectionsForSquare = function(squareId) {
     // Store reference to the AppState instance

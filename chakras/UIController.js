@@ -101,7 +101,7 @@
         align-items: center;
         border-radius: 50%;
         background-color: var(--color-btn);
-        color: var(--color-text);
+        color: #CCC;
         border: none;
         cursor: pointer;
         transition: background-color var(--transition-fast), transform var(--transition-fast);
