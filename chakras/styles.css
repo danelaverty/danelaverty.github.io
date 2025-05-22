@@ -149,8 +149,9 @@ h3 {
 
 .silhouette-svg {
   position: absolute;
-  top: 50%;
+  top: 30px;
   left: 50%;
+  transform-origin: top center;
   transform: translate(-50%, -50%);
     width: 290px;
     height: 675px;
@@ -580,10 +581,10 @@ h3 {
   box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
 }
 
-.circle.snapping {
+/*.circle.snapping {
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
   animation: snap-pulse 1s infinite;
-}
+}*/
 
 @keyframes snap-pulse {
   0% { box-shadow: 0 0 12px rgba(255, 255, 255, 0.8); }
@@ -1696,3 +1697,123 @@ Add these styles to styles.css:
 .gem-wrap {
 	top: -5px;
 }
+
+.crystal-name {
+	font-size: 11px;
+	margin-left: 4px;
+}
+
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.zoom-controls .btn-round {
+  width: 18px;
+  height: 18px;
+  font-size: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  background-color: #444;
+  color: #999;
+  border: none;
+}
+
+.zoom-controls .btn-round:hover:not(:disabled) {
+  background-color: var(--color-btn-hover);
+  transform: scale(1.05);
+}
+
+.zoom-controls .btn-round:disabled {
+  cursor: not-allowed;
+}
+
+#zoom-level-display {
+  min-width: 50px;
+  text-align: center;
+  user-select: none;
+}
+
+.color-grid {
+	width: 370px;
+}
+
+.image-input-container {
+  display: flex;
+  flex-direction: column;
+  margin-left: 10px;
+}
+
+.circle-image-input {
+  padding: 4px 8px;
+  width: 200px;
+  border-radius: 4px;
+  background-color: rgba(60, 60, 60, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  transition: all 0.2s ease;
+  font-size: 11px;
+}
+
+.circle-image-input:focus {
+  outline: none;
+  background-color: rgba(80, 80, 80, 0.8);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.circle-image-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Add this to styles.css */
+.connection-line.bold-connection {
+  background-color: rgba(255, 255, 255, 0.9);
+  height: 1.5px;
+  box-shadow: 0 0 3px rgba(255, 255, 255, 0.4);
+}
+
+/*h3, #add-circle-btn-triangle, #add-circle-btn-gem, #toggle-document-list-btn-triangle, #toggle-document-list-btn-gem {
+	display: none;
+}*/
+
+
+.hexagon-shape {
+  transform-origin: center center;
+  transition: transform 0.3s ease;
+}
+
+/* Selection effects for hexagons */
+.circle[data-circle-type="hexagon"].selected .hexagon-shape {
+  filter: drop-shadow(0 0 3px #FFF) drop-shadow(0 0 5px #FFF);
+}
+
+/* Animation for selected hexagons */
+@keyframes hexagon-pulse {
+  0% { transform: scale(1) rotate(0deg); }
+  100% { transform: scale(1.08) rotate(30deg); }
+}
+
+/* Concept panel specific styling for hexagons */
+.circle-panel[data-concept-type="hexagon"] .circle.selected .hexagon-shape {
+  /* Uncomment if you want animation: */
+  /* animation: hexagon-pulse 2s infinite alternate; */
+}
+
+/* Ensure hexagon containers are properly styled when selected */
+.circle[data-circle-type="hexagon"].selected .shape-wrap {
+  filter: drop-shadow(0 0 3px #FFF) drop-shadow(0 0 5px #FFF);
+}
+
+/* Dimmed state for hexagons */
+.circle[data-circle-type="hexagon"].dimmed {
+  opacity: 0.35;
+}
+
+.circle[data-circle-type="hexagon"].dimmed:hover {
+  opacity: 0.85;
+}
+

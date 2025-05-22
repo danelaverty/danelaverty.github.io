@@ -14,7 +14,7 @@
   data = data || {};
   this.x = data.x || 0;
   this.y = data.y || 0;
-  this.color = data.color || '#FF0000';
+  this.color = data.color || '#C0C0C0';
   this.name = data.name || '???';
   this.crystal = data.crystal || null;
   this.squareCount = data.squareCount || 0;
@@ -30,6 +30,8 @@
     this.circleType = 'gem';
   } else if (data.color === '#88B66d') {
     this.circleType = 'triangle';
+  } else if (data.color === '#9932CC') {
+    this.circleType = 'hexagon';
   } else {
     this.circleType = 'standard';
   }

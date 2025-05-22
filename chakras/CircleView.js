@@ -100,7 +100,7 @@
   this.appendShapeToElement();
   
   // Add the chakra form on top of the gem
-  this._createChakraForm();
+  //this._createChakraForm();
 };
 
 // Create a lighter shade of a color for highlights
@@ -632,6 +632,12 @@ ChakraApp.CircleView.prototype.renderShapeBasedOnType = function() {
     case 'gem':
       this._renderGem();
       break;
+    case 'star':
+      this._renderStar();
+      break;
+    case 'hexagon':
+      this._renderHexagon();  // Add this case
+      break;
     case 'standard':
     default:
       this._renderStandardCircle();
@@ -648,24 +654,27 @@ ChakraApp.CircleView.prototype.renderShapeBasedOnConcept = function() {
   var doc = ChakraApp.appState.getDocument(this.viewModel.documentId);
   var docPanelId = doc ? doc.panelId : null;
   
-  // DIRECT CHECK: If circleType is 'triangle', always render as triangle
+  // DIRECT CHECK: Check for each circle type
   if (this.viewModel.circleType === 'triangle') {
     this._renderTriangle();
     return;
-  }
-  
-  // First, check if this is explicitly a gem type circle by properties or color
-  if (this.viewModel.circleType === 'gem' || this.viewModel.color === '#4a6fc9' || docPanelId === 'bottom') {
-    // Render as gem if it's a gem type circle
+  } else if (this.viewModel.circleType === 'gem') {
     this._renderGem();
+    return;
+  } else if (this.viewModel.circleType === 'star') {
+    this._renderStar();
+    return;
+  } else if (this.viewModel.circleType === 'hexagon') {
+    this._renderHexagon();  // Add this case
+    return;
+  } else if (this.viewModel.circleType === 'standard') {
+    this._renderStandardCircle();
     return;
   }
   
-  // Rest of the original logic
+  // Rest of the original logic...
   if (conceptType) {
-    // For triangles in things panel, check if there's a completion level
     if (conceptType.shape === 'triangle' && docPanelId === 'things') {
-      // ALWAYS render as triangle regardless of completion level
       this._renderTriangle();
     } else {
       this.renderShapeByType(conceptType.shape);
@@ -675,18 +684,44 @@ ChakraApp.CircleView.prototype.renderShapeBasedOnConcept = function() {
   }
 };
   
-  ChakraApp.CircleView.prototype.renderShapeByType = function(shapeType) {
-    var shapeRenderers = {
-      'triangle': this._renderTriangle,
-      'star': this._renderStar,
-      'hexagon': this._renderHexagon,
-      'oval': this._renderOval,
-      'diamond': this._renderDiamond
-    };
-    
-    var renderMethod = shapeRenderers[shapeType] || this._renderStandardCircle;
-    renderMethod.call(this);
+ChakraApp.CircleView.prototype.renderShapeByType = function(shapeType) {
+  var shapeRenderers = {
+    'triangle': this._renderTriangle,
+    'star': this._renderStar,
+    'hexagon': this._renderHexagon,
+    'oval': this._renderOval,
+    'diamond': this._renderDiamond
   };
+  
+  var renderMethod = shapeRenderers[shapeType] || this._renderStandardCircle;
+  renderMethod.call(this);
+  
+  // Ensure all shapes have click handlers
+  this._ensureShapeClickHandler();
+};
+
+ChakraApp.CircleView.prototype._ensureShapeClickHandler = function() {
+  var self = this;
+  
+  // Only add click handler if we have a shape wrap and it doesn't already have one
+  if (this.shapeWrap) {
+    // Remove existing handlers to avoid duplicates
+    var newShapeWrap = this.shapeWrap.cloneNode(true);
+    if (this.shapeWrap.parentNode) {
+      this.shapeWrap.parentNode.replaceChild(newShapeWrap, this.shapeWrap);
+    }
+    this.shapeWrap = newShapeWrap;
+    
+    // Add click handler
+    this.shapeWrap.style.cursor = "pointer";
+    this.shapeWrap.addEventListener('click', function(e) {
+      e.stopPropagation();
+      if (!window.wasDragged) {
+        self.viewModel.select();
+      }
+    });
+  }
+};
 
   ChakraApp.CircleView.prototype.addNameElement = function() {
     this.nameElement = this._createElement('div', {
@@ -793,7 +828,7 @@ ChakraApp.CircleView.prototype.renderShapeBasedOnConcept = function() {
 	  var completionLevel = this.getCompletionLevel();
 	  this.createTriangleShapeWrap(completionLevel);
 	  this.createTriangleShapeByCompletionLevel(completionLevel);
-	    this._createChakraForm();
+	    //this._createChakraForm();
 	  this.element.appendChild(this.shapeWrap);
   };
   
@@ -1022,16 +1057,59 @@ ChakraApp.CircleView.prototype.createDarkerShade = function(color) {
   };
   
   ChakraApp.CircleView.prototype._renderHexagon = function() {
-    this._renderBasicShape('hexagon', 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)');
-  };
+  var self = this;
+  this.createShapeWrap('hexagon-wrap');
+
+  var hexagonClipPath = 'polygon(50% 0%, 96% 25%, 96% 75%, 50% 100%, 4% 75%, 4% 25%, 50% 0%, 50% 17%, 17% 30%, 17% 70%, 50% 85%, 83% 70%, 83% 30%, 50% 17%)';
+  
+  var styles = this.getBaseShapeStyles(this.viewModel.color);
+  styles.clipPath = hexagonClipPath;
+  styles.transform = 'translate(-50%, -50%) scale(1.2)';
+  this.hexagonShape = this.createShapeElement('hexagon-shape', styles);
+  
+      var darkerColor = this.createDarkerShade(this.viewModel.color);
+  var styles2 = this.getBaseShapeStyles(darkerColor);
+  styles2.clipPath = hexagonClipPath;
+  styles2.transform = 'translate(-50%, -50%) scale(.6)';
+  this.hexagonShape2 = this.createShapeElement('hexagon-shape', styles2);
+
+  // Add explicit click handler to the shape wrap
+  this.shapeWrap.style.cursor = "pointer";
+  this.shapeWrap.addEventListener('click', function(e) {
+    e.stopPropagation();
+    if (!window.wasDragged) {
+      self.viewModel.select();
+    }
+  });
+  
+  this.appendShapeToElement();
+};
 
   ChakraApp.CircleView.prototype._renderDiamond = function() {
     this._renderBasicShape('diamond', 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)');
   };
 
-  ChakraApp.CircleView.prototype._renderStar = function() {
-    this._renderBasicShape('star', 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)');
-  };
+ChakraApp.CircleView.prototype._renderStar = function() {
+  var self = this;
+  this.createShapeWrap('star-wrap');
+  
+  var styles = this.getBaseShapeStyles(this.viewModel.color);
+  styles.clipPath = 'polygon(10% 10%, 90% 50%, 10% 90%)';
+  styles.transform = 'translate(-50%, -50%)';
+  
+  this.starShape = this.createShapeElement('star-shape', styles);
+  
+  // Add explicit click handler to the shape wrap
+  this.shapeWrap.style.cursor = "pointer";
+  this.shapeWrap.addEventListener('click', function(e) {
+    e.stopPropagation();
+    if (!window.wasDragged) {
+      self.viewModel.select();
+    }
+  });
+  
+  this.appendShapeToElement();
+};
 
   ChakraApp.CircleView.prototype._renderOval = function() {
     this.createShapeWrap();
@@ -1209,14 +1287,9 @@ ChakraApp.CircleView.prototype.updateColors = function() {
   }
   
   // Check if this is a gem-type circle by direct property or by panel type
-  var isGemType = this.viewModel.circleType === 'gem' || 
-                  this.viewModel.color === '#4a6fc9';
+  var isGemType = this._isGemType();
   
-  // Also check document panel for backward compatibility
-  var doc = ChakraApp.appState.getDocument(this.viewModel.documentId);
-  var isPanelBottom = doc && doc.panelId === 'bottom';
-  
-  if ((isGemType || isPanelBottom || this.panelId === 'bottom') && this.shapeWrap) {
+  if (isGemType && this.shapeWrap) {
     // Find the SVG element inside the shape wrap
     var svg = this.shapeWrap.querySelector('svg');
     if (svg) {
@@ -1236,6 +1309,19 @@ ChakraApp.CircleView.prototype.updateColors = function() {
         // Update fill color directly for simple fills
         if (!polygons[i].getAttribute('fill').startsWith('url(#')) {
           polygons[i].setAttribute('fill', color);
+        }
+        
+        // Update stroke color for all polygons
+        if (polygons[i].hasAttribute('stroke')) {
+          polygons[i].setAttribute('stroke', lighterColor);
+        }
+      }
+      
+      // Update path stroke colors (outlines)
+      var paths = svg.querySelectorAll('path');
+      for (var i = 0; i < paths.length; i++) {
+        if (paths[i].hasAttribute('stroke')) {
+          paths[i].setAttribute('stroke', 'rgba(255,255,255,.8)');
         }
       }
       
@@ -1257,6 +1343,35 @@ ChakraApp.CircleView.prototype.updateColors = function() {
       }
     }
   }
+  
+  // Handle triangle shapes
+  if (this.viewModel.circleType === 'triangle' && this.triangleShape) {
+    this.triangleShape.style.backgroundColor = this.viewModel.color;
+    if (this.pyramidSide) {
+      this.pyramidSide.style.backgroundColor = this.createDarkerShade(this.viewModel.color);
+    }
+  }
+
+   // Add handling for star shapes
+  if (this.viewModel.circleType === 'star' && this.starShape) {
+    this.starShape.style.backgroundColor = this.viewModel.color;
+    
+    // If the star has any specific styling elements, update those as well
+    if (this.element.querySelector('.star-shape')) {
+      this.element.querySelector('.star-shape').style.backgroundColor = this.viewModel.color;
+    }
+  }
+
+  if (this.viewModel.circleType === 'hexagon' && this.hexagonShape) {
+  this.hexagonShape.style.backgroundColor = this.viewModel.color;
+  var darkerColor = this.createDarkerShade(this.viewModel.color);
+  this.hexagonShape2.style.backgroundColor = darkerColor;
+  
+  // If the hexagon has any specific styling elements, update those as well
+  if (this.element.querySelector('.hexagon-shape')) {
+    this.element.querySelector('.hexagon-shape').style.backgroundColor = this.viewModel.color;
+  }
+}
 };
   
   ChakraApp.CircleView.prototype.updateName = function() {
@@ -1272,6 +1387,8 @@ ChakraApp.CircleView.prototype.updateColors = function() {
   };
   
   ChakraApp.CircleView.prototype.updateChakraFormIfNeeded = function() {
+	  if (this.viewModel.circleType != 'standard') return;
+
     if (this.viewModel.squareCountChanged) {
       var existingContainer = this.element.querySelector('.outer-polygon-container');
       if (existingContainer) {

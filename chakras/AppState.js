@@ -40,7 +40,9 @@
     this.selectedDocumentIds = {
       standard: null,
       triangle: null,
-      gem: null
+      gem: null,
+      star: null,
+      hexagon: null  // Add hexagon here
     };
   }
   
