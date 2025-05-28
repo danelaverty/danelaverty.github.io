@@ -207,6 +207,13 @@
       '#FFFFFF'  // White
     ],
 
+    indicatorEmojis: [
+  { id: 'good', emoji: '🌟', name: 'Good' },
+  { id: 'bad', emoji: '😖', name: 'Bad' },  
+  { id: 'start', emoji: '▶️', name: 'Start' },
+  { id: 'finish', emoji: '🏁', name: 'Finish' }
+],
+
     circleTypes: [
   {
     id: 'standard',
@@ -282,6 +289,7 @@
       negative: { emoji: '👎', color: '#DDAAAA', displayName: 'Negative' },
       problem: { emoji: '🔥', color: '#996622', displayName: 'Problem' },
       evidence: { emoji: '📃', color: '#EEEEEE', displayName: 'Evidence' },
+      done: { emoji: '✔️', color: '#AAEEAA', displayName: 'Done' },
       physicalThing: { emoji: '🧊', color: '#C99', displayName: 'Thing' },
       behavioralThing: { emoji: '🏃', color: '#9CC', displayName: 'Action' },
       conceptualThing: { emoji: '💭', color: '#C9C', displayName: 'Concept' },
@@ -292,9 +300,9 @@
       hypothesis: { emoji: '💭', color: '#77A', displayName: 'Hypothesis' },
       clue: { emoji: '🔍', color: '#7AA', displayName: 'Clue' },
       milestone: { emoji: '📍', color: '#A77', displayName: 'Milestone' },
-      feeling: { emoji: '⚪', color: '#000', displayName: 'Feeling' },
+      feeling: { emoji: '⚪', color: '#222', displayName: 'Feeling' },
       action: { emoji: '▶︎', color: '#777', displayName: 'Action' },
-      thing: { emoji: '🔺', color: '#000', displayName: 'Thing' },
+      thing: { emoji: '🔺', color: '#222', displayName: 'Thing' },
       pattern: { emoji: '⬡', color: '#AA7', displayName: 'Pattern' },
       victory: { emoji: '🏆', color: '#DC7', displayName: 'Victory' },
       defeat: { emoji: '🤕', color: '#BBB', displayName: 'Defeat' },
@@ -403,6 +411,7 @@
     
     // Directly copy these properties
     predefinedColors: CompressedConfig.predefinedColors,
+    indicatorEmojis: CompressedConfig.indicatorEmojis,
     circleTypes: CompressedConfig.circleTypes,
     attributeInfo: CompressedConfig.attributeInfo,
     sizes: CompressedConfig.sizes,

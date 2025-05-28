@@ -73,6 +73,72 @@
       }
     };
 
+       this.keyHandlers['='] = function(e) {
+      // Must be ctrl/cmd key
+      if (!(e.ctrlKey || e.metaKey)) return;
+
+      // Don't handle if we're editing text
+      if (self._isEditingText()) return;
+
+      e.preventDefault();
+
+      // Must have a square selected
+      if (ChakraApp.appState.selectedSquareId) {
+        var squareId = ChakraApp.appState.selectedSquareId;
+        var square = ChakraApp.appState.getSquare(squareId);
+
+        if (square) {
+          // Get current indicator index
+          var currentIndex = -1;
+          if (square.indicator) {
+            ChakraApp.Config.indicatorEmojis.forEach(function(config, index) {
+              if (config.id === square.indicator) {
+                currentIndex = index;
+              }
+            });
+          }
+
+          // Get next indicator
+          var nextIndex = (currentIndex + 1) % ChakraApp.Config.indicatorEmojis.length;
+          var nextIndicator = ChakraApp.Config.indicatorEmojis[nextIndex];
+
+          // Update square with new indicator
+          ChakraApp.appState.updateSquare(squareId, { indicator: nextIndicator.id });
+
+          // Show notification
+          self._showNotification('Indicator: ' + nextIndicator.emoji + ' ' + nextIndicator.name);
+        }
+      }
+    };
+
+    // Ctrl+- - Remove indicator emoji
+    this.keyHandlers['-'] = function(e) {
+      // Must be ctrl/cmd key
+      if (!(e.ctrlKey || e.metaKey)) return;
+
+      // Don't handle if we're editing text
+      if (self._isEditingText()) return;
+
+      e.preventDefault();
+
+      // Must have a square selected
+      if (ChakraApp.appState.selectedSquareId) {
+        var squareId = ChakraApp.appState.selectedSquareId;
+        var square = ChakraApp.appState.getSquare(squareId);
+
+        if (square && square.indicator) {
+          // Remove indicator
+          ChakraApp.appState.updateSquare(squareId, { indicator: null });
+
+          // Show notification
+          self._showNotification('Indicator removed');
+        } else if (square && !square.indicator) {
+          // Show notification that there's no indicator to remove
+          self._showNotification('No indicator to remove');
+        }
+      }
+    };
+
     // Escape key - deselect current item
     this.keyHandlers['Escape'] = function(e) {
       // Don't handle if we're editing text

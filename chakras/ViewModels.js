@@ -254,6 +254,7 @@ ChakraApp.CircleViewModel.prototype.updateCharacteristic = function(key, value) 
     this.isVisible = squareModel.visible;
     this.size = squareModel.size || 30;
     this.isBold = squareModel.isBold || false;
+    this.indicator = squareModel.indicator || null;
     
     // Emoji for the attribute
     this.emoji = this._getEmojiForAttribute();
@@ -310,6 +311,7 @@ ChakraApp.CircleViewModel.prototype.updateCharacteristic = function(key, value) 
     this.color = this.model.color;
     this.attribute = this.model.attribute;
     this.isBold = this.model.isBold;
+    this.indicator = this.model.indicator;
     
     // Update emoji if attribute changed
     this.emoji = this._getEmojiForAttribute();
@@ -319,6 +321,36 @@ ChakraApp.CircleViewModel.prototype.updateCharacteristic = function(key, value) 
   };
   
   // UI actions
+  ChakraApp.SquareViewModel.prototype.updateIndicator = function(indicator) {
+  ChakraApp.appState.updateSquare(this.id, { indicator: indicator });
+};
+
+// Add a method to cycle through indicators:
+ChakraApp.SquareViewModel.prototype.cycleIndicator = function() {
+  var indicators = ChakraApp.Config.indicatorEmojis;
+  var currentIndex = -1;
+  
+  // Find current indicator index
+  if (this.indicator) {
+    for (var i = 0; i < indicators.length; i++) {
+      if (indicators[i].id === this.indicator) {
+        currentIndex = i;
+        break;
+      }
+    }
+  }
+  
+  // Get next indicator
+  var nextIndex = (currentIndex + 1) % indicators.length;
+  var nextIndicator = indicators[nextIndex].id;
+  
+  this.updateIndicator(nextIndicator);
+};
+
+// Add a method to remove indicator:
+ChakraApp.SquareViewModel.prototype.removeIndicator = function() {
+  this.updateIndicator(null);
+};
   
   // Select this square
   ChakraApp.SquareViewModel.prototype.select = function() {
