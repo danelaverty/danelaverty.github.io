@@ -24,102 +24,181 @@
   // Inherit from BaseView
   ChakraApp.SquareView.prototype = Object.create(ChakraApp.BaseView.prototype);
   ChakraApp.SquareView.prototype.constructor = ChakraApp.SquareView;
+
+  ChakraApp.SquareView.prototype._createIndicatorElement = function() {
+  if (!this.viewModel.indicator) return null;
+  
+  // Find the emoji for this indicator
+  var indicatorConfig = null;
+  ChakraApp.Config.indicatorEmojis.forEach(function(config) {
+    if (config.id === this.viewModel.indicator) {
+      indicatorConfig = config;
+    }
+  }, this);
+  
+  if (!indicatorConfig) return null;
+  
+  // Create indicator element
+  var indicator = this._createElement('div', {
+    className: 'square-indicator',
+    textContent: indicatorConfig.emoji,
+    style: {
+      position: 'absolute',
+      top: '-18px',
+      right: '-18px',
+      fontSize: '22px',
+      zIndex: '10',
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      borderRadius: '50%',
+      width: '28px',
+      height: '28px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      pointerEvents: 'none'
+    }
+  });
+  
+  return indicator;
+};
   
   // Render method
-  ChakraApp.SquareView.prototype.render = function() {
-    // Create main square element
-    this.element = this._createElement('div', {
-      className: 'square',
-      dataset: { 
-        id: this.viewModel.id,
-        circleId: this.viewModel.circleId
-      },
-      style: {
-        width: this.viewModel.size + 'px',
-        height: this.viewModel.size + 'px',
-        left: this.viewModel.x + 'px',
-        top: this.viewModel.y + 'px',
-        backgroundColor: this.viewModel.color,
-        display: this.viewModel.isVisible ? 'flex' : 'none',
-        filter: this.viewModel.isBold ? 'brightness(1.4)' : 'none'
-      }
-    });
-
-    // Add connection radius indicator
-    var maxLineLength = ChakraApp.Config.connections.maxLineLength;
-    this.radiusIndicator = this._createElement('div', {
-      className: 'connection-radius-indicator',
-      style: {
-        width: (maxLineLength * 2) + 'px',
-        height: (maxLineLength * 2) + 'px'
-      }
-    });
-    this.element.appendChild(this.radiusIndicator);
-
-    // Add attribute emoji if it exists
-    if (this.viewModel.emoji) {
-      var squareContent = this._createElement('div', {
-        className: 'square-content',
-        textContent: this.viewModel.emoji
-      });
-      this.element.appendChild(squareContent);
+ChakraApp.SquareView.prototype.render = function() {
+  // Create main square element
+  this.element = this._createElement('div', {
+    className: 'square',
+    dataset: { 
+      id: this.viewModel.id,
+      circleId: this.viewModel.circleId
+    },
+    style: {
+      width: this.viewModel.size + 'px',
+      height: this.viewModel.size + 'px',
+      left: this.viewModel.x + 'px',
+      top: this.viewModel.y + 'px',
+      backgroundColor: this.viewModel.color,
+      display: this.viewModel.isVisible ? 'flex' : 'none',
+      filter: this.viewModel.isBold ? 'brightness(1.4)' : 'none'
     }
+  });
 
-    // Create name element
-    this.nameElement = this._createElement('div', {
-      className: 'item-name',
-      contentEditable: true,
-      textContent: this.viewModel.name,
-      style: {
-        fontWeight: this.viewModel.isBold ? 'bold' : 'normal',
-      }
-    });
-    this.element.appendChild(this.nameElement);
-
-    // Apply selection state
-    if (this.viewModel.isSelected) {
-      this.element.classList.add('selected');
+  // Add connection radius indicator
+  var maxLineLength = ChakraApp.Config.connections.maxLineLength;
+  this.radiusIndicator = this._createElement('div', {
+    className: 'connection-radius-indicator',
+    style: {
+      width: (maxLineLength * 2) + 'px',
+      height: (maxLineLength * 2) + 'px'
     }
+  });
+  this.element.appendChild(this.radiusIndicator);
 
-    // Add to parent element
-    this.parentElement.appendChild(this.element);
-  };
+  // Add attribute emoji if it exists
+  if (this.viewModel.emoji) {
+    var squareContent = this._createElement('div', {
+      className: 'square-content',
+      textContent: this.viewModel.emoji
+    });
+    this.element.appendChild(squareContent);
+  }
+
+  // Create name element
+  this.nameElement = this._createElement('div', {
+    className: 'item-name',
+    contentEditable: true,
+    textContent: this.viewModel.name,
+    style: {
+      fontWeight: this.viewModel.isBold ? 'bold' : 'normal',
+    }
+  });
+  this.element.appendChild(this.nameElement);
+
+  // Create and add indicator element if it exists
+  this.indicatorElement = this._createIndicatorElement();
+  if (this.indicatorElement) {
+    this.element.appendChild(this.indicatorElement);
+  }
+
+  // Apply indicator border class
+  this._updateIndicatorBorder();
+
+  // Apply selection state
+  if (this.viewModel.isSelected) {
+    this.element.classList.add('selected');
+  }
+
+  // Add to parent element
+  this.parentElement.appendChild(this.element);
+};
   
   // Update view based on model changes
-  ChakraApp.SquareView.prototype.update = function() {
-    // Update position
-    this.element.style.left = this.viewModel.x + 'px';
-    this.element.style.top = this.viewModel.y + 'px';
-    
-    // Update color
-    this.element.style.backgroundColor = this.viewModel.color;
-    
-    // Update attribute emoji
-    var existingEmoji = this.element.querySelector('.square-content');
-    if (existingEmoji) {
-      this.element.removeChild(existingEmoji);
-    }
-    
-    if (this.viewModel.emoji) {
-      var squareContent = this._createElement('div', {
-        className: 'square-content',
-        textContent: this.viewModel.emoji
-      });
-      this.element.appendChild(squareContent);
-    }
-    
-    // Update name
-    this.nameElement.textContent = this.viewModel.name;
-    
-    // Update bold state
-    if (this.viewModel.isBold) {
-      this.nameElement.style.fontWeight = 'bold';
-      this.element.style.filter = 'brightness(1.4)';
-    } else {
-      this.nameElement.style.fontWeight = 'normal';
-      this.element.style.filter = 'none';
-    }
-  };
+ChakraApp.SquareView.prototype.update = function() {
+  // Update position
+  this.element.style.left = this.viewModel.x + 'px';
+  this.element.style.top = this.viewModel.y + 'px';
+  
+  // Update color
+  this.element.style.backgroundColor = this.viewModel.color;
+  
+  // Update attribute emoji
+  var existingEmoji = this.element.querySelector('.square-content');
+  if (existingEmoji) {
+    this.element.removeChild(existingEmoji);
+  }
+  
+  if (this.viewModel.emoji) {
+    var squareContent = this._createElement('div', {
+      className: 'square-content',
+      textContent: this.viewModel.emoji
+    });
+    this.element.appendChild(squareContent);
+  }
+  
+  // Update name
+  this.nameElement.textContent = this.viewModel.name;
+  
+  // Update bold state
+  if (this.viewModel.isBold) {
+    this.nameElement.style.fontWeight = 'bold';
+    this.element.style.filter = 'brightness(1.4)';
+  } else {
+    this.nameElement.style.fontWeight = 'normal';
+    this.element.style.filter = 'none';
+  }
+
+  // Update indicator
+  this._updateIndicator();
+  this._updateIndicatorBorder();
+};
+
+ChakraApp.SquareView.prototype._updateIndicator = function() {
+  // Remove existing indicator if it exists
+  if (this.indicatorElement) {
+    this.element.removeChild(this.indicatorElement);
+    this.indicatorElement = null;
+  }
+  
+  // Create new indicator if needed
+  this.indicatorElement = this._createIndicatorElement();
+  if (this.indicatorElement) {
+    this.element.appendChild(this.indicatorElement);
+  }
+  
+  // Update the border class
+  this._updateIndicatorBorder();
+};
+
+ChakraApp.SquareView.prototype._updateIndicatorBorder = function() {
+  // Remove all existing indicator border classes
+  this.element.classList.remove('indicator-good', 'indicator-bad', 'indicator-start', 'indicator-finish');
+  
+  // Add the appropriate border class based on current indicator
+  if (this.viewModel.indicator) {
+    this.element.classList.add('indicator-' + this.viewModel.indicator);
+  }
+};
+
+
   
   // Set up event listeners
   ChakraApp.SquareView.prototype._setupEventListeners = function() {

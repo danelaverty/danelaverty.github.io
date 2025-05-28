@@ -23,6 +23,7 @@
     this.size = data.size || 30;
     this.selected = data.selected || false;
     this.visible = data.visible !== undefined ? data.visible : true;
+    this.indicator = data.indicator || null;
   };
   
   // Inherit from BaseModel
@@ -76,6 +77,7 @@
     json.isBold = this.isBold;
     json.tabId = this.tabId;
     json.visible = this.visible;
+    json.indicator = this.indicator;
     
     return json;
   };

@@ -23,7 +23,7 @@
     this.storyGroups = {
       "- GENERAL -": [],
       "Cause & Effects": ["cause", "push", "stop"],
-      "Interpretations": ["positive", "negative", "evidence"],
+      "Interpretations": ["positive", "negative", "evidence", "done"],
       "Cast of Characters": ["me", "ally", "demon"],
       "- FEELINGS -": [],
       "Quest for Treasure": ["treasure", "mountain", "tools"],
@@ -39,7 +39,7 @@
       "Kind of Thing": ['physicalThing', 'behavioralThing', 'event', 'conceptualThing'],
       "Describing the Thing": ['model', 'roleModel', 'trait'],
       "- PATTERNS -": [],
-      "Patterns": ['feeling', 'action', 'thing', 'pattern'],
+      "Patterns": ['me', 'feeling', 'action', 'thing'],
     };
   };
 
@@ -169,7 +169,7 @@
         }
         
         // Add text color adjustment for stop button
-        if (['door', 'stop', 'battlefield', 'soldier', 'enemy', 'path', 'destination', 'machine', 'feeling', 'thing', 'mountain'].indexOf(key) > -1) {
+        if (['door', 'stop', 'battlefield', 'soldier', 'enemy', 'path', 'destination', 'machine', 'feeling', 'goodFeeling', 'badFeeling', 'thing', 'mountain'].indexOf(key) > -1) {
           attrBox.style.color = 'white';
         }
         

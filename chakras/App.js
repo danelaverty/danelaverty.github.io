@@ -170,6 +170,7 @@ ChakraApp.App.prototype._ensureCircleTypesConfigured = function() {
     this.controllers.zoom = new ChakraApp.ZoomController();
   this.controllers.zoom.init();
     this.createKeyboardController();
+    
   };
   
   ChakraApp.App.prototype.createKeyboardController = function() {

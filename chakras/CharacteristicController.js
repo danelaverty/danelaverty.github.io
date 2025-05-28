@@ -9,69 +9,252 @@
   
   // Static reference to colorFamilies that can be used across methods
   ChakraApp.CharacteristicController.colorFamilies = [
-    { 
-      name: "Light Colors", 
-      colors: [
-        { color: '#FFC0CB', crystal: 'Pink' },
-        { color: '#FFAF90', crystal: 'Coral' },
-        { color: '#FFDAB9', crystal: 'Peach' },
-        { color: '#FFF0B6', crystal: 'Marigold' },
-        { color: '#FFFACD', crystal: 'Lemon' },
-        { color: '#EFFFC0', crystal: 'Spring Green' },
-        { color: '#C0FFC0', crystal: 'Light Green' },
-        { color: '#E0FFFF', crystal: 'Light Cyan' },
-        { color: '#E6E6FA', crystal: 'Lavender' },
-        { color: '#F0FFF0', crystal: 'Honeydew' },
-        { color: '#F5F5DC', crystal: 'Beige' },
-        { color: '#00BFFF', crystal: 'Sky Blue' },
-        { color: '#BA55D3', crystal: 'Orchid' },
-        { color: '#DEB887', crystal: 'Tan' },
-        { color: '#FFFFFF', crystal: 'White' },
-        { color: '#808080', crystal: 'Gray' },
-      ], 
-      bg: '#FFF5F5' 
-    },
-    { 
-      name: "Solid Colors", 
-      colors: [
-        { color: '#FF0000', crystal: 'Red' },
-        { color: '#FF4500', crystal: 'Vermilion' },
-        { color: '#FFA500', crystal: 'Orange' },
-        { color: '#FFD700', crystal: 'Gold' },
-        { color: '#FFFF00', crystal: 'Yellow' },
-        { color: '#AAFF00', crystal: 'Chartreuse' },
-        { color: '#00EE00', crystal: 'Green' },
-        { color: '#40F0D0', crystal: 'Turquoise' },
-        { color: '#00FFFF', crystal: 'Cyan' },
-        { color: '#0000FF', crystal: 'Blue' },
-        { color: '#800080', crystal: 'Purple' },
-        { color: '#CD853F', crystal: 'Bronze' },
-        { color: '#D3D3D3', crystal: 'Platinum' },
-        { color: '#2F4F4F', crystal: 'Slate' },
-      ], 
-      bg: '#F5F5FF' 
-    },
-    { 
-      name: "Dark Colors", 
-      colors: [
-        { color: '#900000', crystal: 'Maroon' },
-        { color: '#8B4000', crystal: 'Sienna' },
-        { color: '#D8A600', crystal: 'Sunset' },
-        { color: '#B8860B', crystal: 'Umber' },
-        { color: '#BDB700', crystal: 'Khaki' },
-        { color: '#758B00', crystal: 'Olive' },
-        { color: '#2E8B57', crystal: 'Sea Green' },
-        { color: '#006400', crystal: 'Dark Green' },
-        { color: '#008080', crystal: 'Teal' },
-        { color: '#00008B', crystal: 'Dark Blue' },
-        { color: '#000080', crystal: 'Navy' },
-        { color: '#4B0082', crystal: 'Indigo' },
-        { color: '#8B4513', crystal: 'Brown' },
-        { color: '#C0C0C0', crystal: 'Silver' },
-        { color: '#000000', crystal: 'Black' },
-      ], 
-      bg: '#EEE2DA' 
-    }
+  {
+    name: "Red",
+    light: { color: '#FFC0CB', crystal: 'Pink' },
+    solid: { color: '#FF0000', crystal: 'Red' },
+    dark: { color: '#900000', crystal: 'Maroon' }
+  },
+  {
+    name: "Crimson",
+    light: { color: '#FFB6C1', crystal: 'Light Pink' },
+    solid: { color: '#DC143C', crystal: 'Crimson' },
+    dark: { color: '#8B0000', crystal: 'Dark Red' }
+  },
+  {
+    name: "Rose",
+    light: { color: '#FFCCCB', crystal: 'Light Rose' },
+    solid: { color: '#FF007F', crystal: 'Rose' },
+    dark: { color: '#B22222', crystal: 'Fire Brick' }
+  },
+  {
+    name: "Ruby",
+    light: { color: '#FFE4E6', crystal: 'Blush' },
+    solid: { color: '#E0115F', crystal: 'Ruby' },
+    dark: { color: '#722F37', crystal: 'Dark Ruby' }
+  },
+  {
+    name: "Pink",
+    light: { color: '#FFE4E1', crystal: 'Misty Rose' },
+    solid: { color: '#FF69B4', crystal: 'Hot Pink' },
+    dark: { color: '#C71585', crystal: 'Deep Pink' }
+  },
+  {
+    name: "Fuchsia",
+    light: { color: '#FFE1FF', crystal: 'Pale Fuchsia' },
+    solid: { color: '#FF1493', crystal: 'Fuchsia' },
+    dark: { color: '#C41E3A', crystal: 'Cardinal' }
+  },
+  {
+    name: "Salmon",
+    light: { color: '#FFF5EE', crystal: 'Seashell' },
+    solid: { color: '#FA8072', crystal: 'Salmon' },
+    dark: { color: '#CD5C5C', crystal: 'Indian Red' }
+  },
+  {
+    name: "Coral",
+    light: { color: '#FFEFD5', crystal: 'Papaya Whip' },
+    solid: { color: '#FF7F50', crystal: 'Coral' },
+    dark: { color: '#A0522D', crystal: 'Sienna' }
+  },
+  {
+    name: "Orange", 
+    light: { color: '#FFAF90', crystal: 'Light Coral' },
+    solid: { color: '#FF4500', crystal: 'Vermilion' },
+    dark: { color: '#8B4000', crystal: 'Dark Orange' }
+  },
+  {
+    name: "Tangerine",
+    light: { color: '#FFE4B5', crystal: 'Moccasin' },
+    solid: { color: '#FF8C00', crystal: 'Tangerine' },
+    dark: { color: '#B8860B', crystal: 'Dark Goldenrod' }
+  },
+  {
+    name: "Amber",
+    light: { color: '#FFF8DC', crystal: 'Cornsilk' },
+    solid: { color: '#FFBF00', crystal: 'Amber' },
+    dark: { color: '#B8860B', crystal: 'Dark Goldenrod' }
+  },
+  {
+    name: "Brown",
+    light: { color: '#DEB887', crystal: 'Tan' },
+    solid: { color: '#CD853F', crystal: 'Bronze' },
+    dark: { color: '#8B4513', crystal: 'Brown' }
+  },
+  {
+    name: "Rust",
+    light: { color: '#DDBF94', crystal: 'Wheat' },
+    solid: { color: '#B7410E', crystal: 'Rust' },
+    dark: { color: '#8B4513', crystal: 'Saddle Brown' }
+  },
+  {
+    name: "Copper",
+    light: { color: '#FFDDAA', crystal: 'Peach Puff' },
+    solid: { color: '#B87333', crystal: 'Copper' },
+    dark: { color: '#654321', crystal: 'Dark Brown' }
+  },
+  {
+    name: "Yellow",
+    light: { color: '#FFF0B6', crystal: 'Marigold' },
+    solid: { color: '#FFD700', crystal: 'Gold' },
+    dark: { color: '#D8A600', crystal: 'Sunset' }
+  },
+  {
+    name: "Lemon",
+    light: { color: '#FFFACD', crystal: 'Lemon Chiffon' },
+    solid: { color: '#FFF700', crystal: 'Lemon' },
+    dark: { color: '#DAA520', crystal: 'Goldenrod' }
+  },
+  {
+    name: "Khaki",
+    light: { color: '#F0E68C', crystal: 'Light Khaki' },
+    solid: { color: '#C3B091', crystal: 'Khaki' },
+    dark: { color: '#BDB76B', crystal: 'Dark Khaki' }
+  },
+  {
+    name: "Olive",
+    light: { color: '#F5F5DC', crystal: 'Beige' },
+    solid: { color: '#808000', crystal: 'Olive' },
+    dark: { color: '#556B2F', crystal: 'Dark Olive Green' }
+  },
+  {
+    name: "Chartreuse",
+    light: { color: '#F0FFF0', crystal: 'Honeydew' },
+    solid: { color: '#7FFF00', crystal: 'Chartreuse' },
+    dark: { color: '#6B8E23', crystal: 'Olive Drab' }
+  },
+  {
+    name: "Lime",
+    light: { color: '#F5FFFA', crystal: 'Mint Cream' },
+    solid: { color: '#32CD32', crystal: 'Lime Green' },
+    dark: { color: '#228B22', crystal: 'Forest Green' }
+  },
+  {
+    name: "Green",
+    light: { color: '#C0FFC0', crystal: 'Light Green' },
+    solid: { color: '#00EE00', crystal: 'Green' },
+    dark: { color: '#2E8B57', crystal: 'Sea Green' }
+  },
+  {
+    name: "Emerald",
+    light: { color: '#AFEEEE', crystal: 'Pale Turquoise' },
+    solid: { color: '#50C878', crystal: 'Emerald' },
+    dark: { color: '#2E8B57', crystal: 'Sea Green' }
+  },
+  {
+    name: "Jade",
+    light: { color: '#E0FFFF', crystal: 'Light Cyan' },
+    solid: { color: '#00A86B', crystal: 'Jade' },
+    dark: { color: '#2F4F4F', crystal: 'Dark Slate Gray' }
+  },
+  {
+    name: "Mint",
+    light: { color: '#F5FFFA', crystal: 'Mint Cream' },
+    solid: { color: '#98FB98', crystal: 'Pale Green' },
+    dark: { color: '#3CB371', crystal: 'Medium Sea Green' }
+  },
+  {
+    name: "Turquoise",
+    light: { color: '#E0FFFF', crystal: 'Light Cyan' },
+    solid: { color: '#40E0D0', crystal: 'Turquoise' },
+    dark: { color: '#2E8B57', crystal: 'Sea Green' }
+  },
+  {
+    name: "Teal",
+    light: { color: '#E0FFFF', crystal: 'Light Cyan' },
+    solid: { color: '#008080', crystal: 'Teal' },
+    dark: { color: '#2F4F4F', crystal: 'Dark Slate Gray' }
+  },
+  {
+    name: "Cyan",
+    light: { color: '#E0FFFF', crystal: 'Light Cyan' },
+    solid: { color: '#00FFFF', crystal: 'Cyan' },
+    dark: { color: '#008B8B', crystal: 'Dark Cyan' }
+  },
+  {
+    name: "Aqua",
+    light: { color: '#F0FFFF', crystal: 'Azure' },
+    solid: { color: '#00FFFF', crystal: 'Aqua' },
+    dark: { color: '#5F9EA0', crystal: 'Cadet Blue' }
+  },
+  {
+    name: "Sky",
+    light: { color: '#F0F8FF', crystal: 'Alice Blue' },
+    solid: { color: '#87CEEB', crystal: 'Sky Blue' },
+    dark: { color: '#4682B4', crystal: 'Steel Blue' }
+  },
+  {
+    name: "Powder",
+    light: { color: '#F0F8FF', crystal: 'Alice Blue' },
+    solid: { color: '#B0E0E6', crystal: 'Powder Blue' },
+    dark: { color: '#4682B4', crystal: 'Steel Blue' }
+  },
+  {
+    name: "Blue",
+    light: { color: '#E6F3FF', crystal: 'Light Blue' },
+    solid: { color: '#0000FF', crystal: 'Blue' },
+    dark: { color: '#00008B', crystal: 'Dark Blue' }
+  },
+  {
+    name: "Cobalt",
+    light: { color: '#E6F2FF', crystal: 'Light Steel Blue' },
+    solid: { color: '#0047AB', crystal: 'Cobalt' },
+    dark: { color: '#191970', crystal: 'Midnight Blue' }
+  },
+  {
+    name: "Navy",
+    light: { color: '#F0F8FF', crystal: 'Alice Blue' },
+    solid: { color: '#000080', crystal: 'Navy' },
+    dark: { color: '#191970', crystal: 'Midnight Blue' }
+  },
+  {
+    name: "Royal",
+    light: { color: '#E6E6FA', crystal: 'Lavender' },
+    solid: { color: '#4169E1', crystal: 'Royal Blue' },
+    dark: { color: '#191970', crystal: 'Midnight Blue' }
+  },
+  {
+    name: "Periwinkle",
+    light: { color: '#F0F0FF', crystal: 'Lavender Blush' },
+    solid: { color: '#CCCCFF', crystal: 'Periwinkle' },
+    dark: { color: '#6495ED', crystal: 'Cornflower Blue' }
+  },
+  {
+    name: "Violet",
+    light: { color: '#F8F8FF', crystal: 'Ghost White' },
+    solid: { color: '#8A2BE2', crystal: 'Blue Violet' },
+    dark: { color: '#663399', crystal: 'Rebecca Purple' }
+  },
+  {
+    name: "Indigo",
+    light: { color: '#E6E6FA', crystal: 'Lavender' },
+    solid: { color: '#4B0082', crystal: 'Indigo' },
+    dark: { color: '#301934', crystal: 'Dark Purple' }
+  },
+  {
+    name: "Purple",
+    light: { color: '#E6E6FA', crystal: 'Lavender' },
+    solid: { color: '#C000C0', crystal: 'Purple' },
+    dark: { color: '#4B0082', crystal: 'Deep Purple' }
+  },
+  {
+    name: "Plum",
+    light: { color: '#DDA0DD', crystal: 'Plum' },
+    solid: { color: '#8B008B', crystal: 'Dark Magenta' },
+    dark: { color: '#663399', crystal: 'Rebecca Purple' }
+  },
+  {
+    name: "Magenta",
+    light: { color: '#F5F0FF', crystal: 'Ghost White' },
+    solid: { color: '#FF00FF', crystal: 'Magenta' },
+    dark: { color: '#8B008B', crystal: 'Dark Magenta' }
+  },
+  {
+    name: "Gray",
+    light: { color: '#FFFFFF', crystal: 'White' },
+    solid: { color: '#808080', crystal: 'Gray' },
+    dark: { color: '#000000', crystal: 'Black' }
+  }
 ];
   ChakraApp.CharacteristicController.prototype = Object.create(ChakraApp.BaseController.prototype);
   ChakraApp.CharacteristicController.prototype.constructor = ChakraApp.CharacteristicController;
@@ -377,9 +560,33 @@ ChakraApp.CharacteristicController.prototype._saveImageValue = function(value) {
     picker.style.top = top + 'px';
   };
   
-  ChakraApp.CharacteristicController.prototype._highlightCurrentValue = function(picker, key, circle) {
-    var currentValue = this._getCircleValue(key, circle);
-    
+ChakraApp.CharacteristicController.prototype._highlightCurrentValue = function(picker, key, circle) {
+  var currentValue = this._getCircleValue(key, circle);
+  
+  if (key === 'color') {
+    // Handle color swatches differently - show selection indicator
+    var allSwatches = picker.querySelectorAll('.color-swatch');
+    allSwatches.forEach(function(swatch) {
+      var indicator = swatch.querySelector('.selection-indicator');
+      swatch.classList.remove('selected');
+      
+      if (currentValue && swatch.dataset.value === currentValue) {
+        swatch.classList.add('selected');
+        swatch.style.borderColor = 'rgba(255, 255, 255, 0.8)';
+        swatch.style.transform = 'scale(1.1)';
+        if (indicator) {
+          indicator.style.display = 'block';
+        }
+      } else {
+        swatch.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+        swatch.style.transform = 'scale(1)';
+        if (indicator) {
+          indicator.style.display = 'none';
+        }
+      }
+    });
+  } else {
+    // Handle other characteristics as before
     var allOptions = picker.querySelectorAll('.characteristic-option');
     allOptions.forEach(function(option) {
       option.classList.remove('selected');
@@ -388,7 +595,8 @@ ChakraApp.CharacteristicController.prototype._saveImageValue = function(value) {
         option.classList.add('selected');
       }
     });
-  };
+  }
+};
   
   ChakraApp.CharacteristicController.prototype._getCircleValue = function(key, circle) {
     if (key === 'color') return circle.color;
@@ -397,22 +605,31 @@ ChakraApp.CharacteristicController.prototype._saveImageValue = function(value) {
   };
   
   // Helper method to find color info from colorFamilies
-  ChakraApp.CharacteristicController.prototype._findColorInfo = function(colorValue) {
-    var colorFamilies = ChakraApp.CharacteristicController.colorFamilies;
+ChakraApp.CharacteristicController.prototype._findColorInfo = function(colorValue) {
+  var colorFamilies = ChakraApp.CharacteristicController.colorFamilies;
+  
+  // Search through all color families to find the matching color
+  for (var i = 0; i < colorFamilies.length; i++) {
+    var family = colorFamilies[i];
     
-    // Search through all color families to find the matching color
-    for (var i = 0; i < colorFamilies.length; i++) {
-      var family = colorFamilies[i];
-      for (var j = 0; j < family.colors.length; j++) {
-        var colorInfo = family.colors[j];
-        if (colorInfo.color.toLowerCase() === colorValue.toLowerCase()) {
-          return colorInfo;
-        }
-      }
+    // Check light variant
+    if (family.light && family.light.color.toLowerCase() === colorValue.toLowerCase()) {
+      return family.light;
     }
     
-    return null; // Color not found
-  };
+    // Check solid variant
+    if (family.solid && family.solid.color.toLowerCase() === colorValue.toLowerCase()) {
+      return family.solid;
+    }
+    
+    // Check dark variant
+    if (family.dark && family.dark.color.toLowerCase() === colorValue.toLowerCase()) {
+      return family.dark;
+    }
+  }
+  
+  return null; // Color not found
+};
   
   ChakraApp.CharacteristicController.prototype._createPicker = function(key, charDef) {
     var picker = this._createElem('div', {
@@ -433,7 +650,7 @@ ChakraApp.CharacteristicController.prototype._saveImageValue = function(value) {
     }, document.body);
     
     this._createPickerCloseButton(picker);
-    this._createPickerHeader(picker, charDef.modalTitle || 'Select ' + charDef.displayName);
+    //this._createPickerHeader(picker, charDef.modalTitle || 'Select ' + charDef.displayName);
     
     var content = this._createElem('div', {
       className: key === 'color' ? 'color-picker-content' : 'characteristic-picker-content'
@@ -497,41 +714,137 @@ ChakraApp.CharacteristicController.prototype._saveImageValue = function(value) {
   };
   
   // Color Picker
-  ChakraApp.CharacteristicController.prototype._createColorContent = function(content) {
-    var colorGrid = this._createElem('div', {
-      className: 'color-grid',
-      style: { display: 'flex', gap: '10px' }
-    }, content);
-    
-    // Use the static colorFamilies property
-    var colorFamilies = ChakraApp.CharacteristicController.colorFamilies;
-    
-    var self = this;
-    colorFamilies.forEach(function(family) {
-      var familyContainer = self._createElem('div', {
-        className: 'color-family',
-        style: {
-          backgroundColor: family.bg,
-          borderRadius: '5px',
-          padding: '10px',
-          flex: '1'
+ChakraApp.CharacteristicController.prototype._createColorContent = function(content) {
+  var colorList = this._createElem('div', {
+    className: 'color-list',
+    style: { 
+      display: 'flex', 
+      flexDirection: 'column',
+      gap: '0px'
+    }
+  }, content);
+  
+  // Use the updated colorFamilies structure
+  var colorFamilies = ChakraApp.CharacteristicController.colorFamilies;
+  
+  var self = this;
+  colorFamilies.forEach(function(family) {
+    self._createColorRow(colorList, family);
+  });
+};
+
+ChakraApp.CharacteristicController.prototype._createColorRow = function(container, family) {
+  var row = this._createElem('div', {
+    className: 'color-row',
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      padding: '2px',
+      borderRadius: '4px',
+      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+      gap: '8px'
+    }
+  }, container);
+  
+  var self = this;
+  
+  // Create swatches container
+  var swatchesContainer = this._createElem('div', {
+    className: 'color-swatches',
+    style: {
+      display: 'flex',
+      gap: '2px'
+    }
+  }, row);
+  
+  // Add light, solid, and dark swatches
+  if (family.light) {
+    this._createColorSwatch(swatchesContainer, family.light, 'light');
+  }
+  if (family.solid) {
+    this._createColorSwatch(swatchesContainer, family.solid, 'solid');
+  }
+  if (family.dark) {
+    this._createColorSwatch(swatchesContainer, family.dark, 'dark');
+  }
+  
+  // Add color name
+  this._createElem('div', {
+    className: 'color-name',
+    textContent: family.name,
+    style: {
+      flex: '1',
+      color: 'white',
+      fontSize: '11px',
+      fontWeight: '500'
+    }
+  }, row);
+};
+
+ChakraApp.CharacteristicController.prototype._createColorSwatch = function(container, colorInfo, variant) {
+  var self = this;
+  var swatch = this._createElem('div', {
+    className: 'color-swatch characteristic-option',
+    dataset: {
+      value: colorInfo.color,
+      characteristic: 'color'
+    },
+    style: {
+      width: '14px',
+      height: '14px',
+      backgroundColor: colorInfo.color,
+      borderRadius: '3px',
+      border: '1px solid rgba(255, 255, 255, 0.2)',
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      position: 'relative'
+    },
+    title: colorInfo.crystal + ': ' + colorInfo.color,
+    events: {
+      mouseover: function() {
+        this.style.borderColor = 'rgba(255, 255, 255, 0.6)';
+        this.style.transform = 'scale(1.1)';
+      },
+      mouseout: function() {
+        if (!this.classList.contains('selected')) {
+          this.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+          this.style.transform = 'scale(1)';
         }
-      }, colorGrid);
-      
-      var swatchContainer = self._createElem('div', {
-        className: 'swatches-container',
-        style: {
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '5px'
+      },
+      click: function() {
+        if (ChakraApp.appState.selectedCircleId) {
+          ChakraApp.appState.updateCircle(ChakraApp.appState.selectedCircleId, { 
+            color: colorInfo.color,
+            crystal: colorInfo.crystal
+          });
+
+          var circle = ChakraApp.appState.getCircle(ChakraApp.appState.selectedCircleId);
+          if (circle) {
+            self._updateValueDisplays(circle);
+          }
+          self._closeAllPickers();
         }
-      }, familyContainer);
-      
-      family.colors.forEach(function(item) {
-        self._createColorOption(swatchContainer, item);
-      });
-    });
-  };
+      }
+    }
+  }, container);
+  
+  // Add selection indicator
+  this._createElem('div', {
+    className: 'selection-indicator',
+    innerHTML: '✓',
+    style: {
+      position: 'absolute',
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      color: 'white',
+      fontSize: '12px',
+      fontWeight: 'bold',
+      textShadow: '0 0 2px rgba(0,0,0,0.8)',
+      display: 'none'
+    }
+  }, swatch);
+};
   
   ChakraApp.CharacteristicController.prototype._createColorOption = function(container, item) {
     var self = this;

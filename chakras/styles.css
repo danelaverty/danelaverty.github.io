@@ -1817,3 +1817,80 @@ Add these styles to styles.css:
   opacity: 0.85;
 }
 
+
+.square-indicator {
+  position: absolute;
+  top: -18px;
+  right: -18px;
+  font-size: 22px;
+  z-index: 10;
+  background-color: rgba(0, 0, 0, 0.7);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Animation for indicator changes */
+.square-indicator {
+  animation: indicatorPop 0.3s ease-out;
+}
+
+@keyframes indicatorPop {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Indicator border styles */
+.square.indicator-good {
+  border: 4px solid #2C8F30 !important; /* Green border for 🌟 good */
+}
+
+.square.indicator-bad {
+  border: 4px solid #c42316 !important; /* Red border for 😖 bad */
+}
+
+.square.indicator-start {
+  border: 4px solid #ffffff !important; /* White border for ▶️ start */
+}
+
+.square.indicator-finish {
+  border: 4px solid #ffffff !important; /* White border for 🏁 finish */
+}
+
+/* Ensure borders are visible against different backgrounds */
+.square.indicator-start,
+.square.indicator-finish {
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3); /* Add subtle shadow for white borders */
+}
+
+/* Make sure indicator borders take precedence over other border styles */
+.square.indicator-good,
+.square.indicator-bad,
+.square.indicator-start,
+.square.indicator-finish {
+  border-style: solid !important;
+  border-width: 4px !important;
+}
+
+/* Ensure selected state still shows but doesn't override indicator borders */
+.square.selected.indicator-good,
+.square.selected.indicator-bad,
+.square.selected.indicator-start,
+.square.selected.indicator-finish {
+  /* Keep the existing box-shadow for selection, but maintain the indicator border */
+  box-shadow: 0 0 10px 4px rgba(255, 255, 255, 0.8);
+}

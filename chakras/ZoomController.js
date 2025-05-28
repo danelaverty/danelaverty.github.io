@@ -18,7 +18,7 @@
     this.defaultTransform = {
       translateX: -50,
       translateY: -50,
-      scale: 1
+      scale: 1.2
     };
     
     this.currentZoom = {
@@ -298,8 +298,12 @@
       };
     } else {
       // Reset to default if no zoom data exists
-      this.resetZoom();
-      return;
+      this.currentZoom = {
+      translateX: this.defaultTransform.translateX,
+      translateY: this.defaultTransform.translateY,
+      scale: 1.2
+    };
+      this.currentZoom.translateY = this.defaultTransform.translateY + (2 * this.translateYStep);
     }
     
     // Apply the loaded zoom
