@@ -60,13 +60,15 @@
      * @returns {Function} Click handler function
      */
     getTriangleClickHandler: function(circleView) {
-      return function(e) {
-        e.stopPropagation();
-        if (!window.wasDragged) {
-          circleView.viewModel.select();
-        }
-      };
-    },
+  return function(e) {
+    e.stopPropagation();
+    if (!window.wasDragged) {
+      // Use the same click handling logic as the main circle
+      // This ensures triangle circles can create circle references too
+      circleView._handleCircleClick();
+    }
+  };
+},
 
     /**
      * Create triangle shape based on completion level

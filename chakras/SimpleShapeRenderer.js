@@ -103,7 +103,7 @@
       circleView.shapeWrap.addEventListener('click', function(e) {
         e.stopPropagation();
         if (!window.wasDragged) {
-          circleView.viewModel.select();
+	      circleView._handleCircleClick();
         }
       });
     },

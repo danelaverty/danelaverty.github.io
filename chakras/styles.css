@@ -375,7 +375,7 @@ h3 {
 }
 
 /* Selection state */
-.circle.selected, .square.selected {
+.circle.selected, .square.selected, .circle-reference.selected {
   box-shadow: 0 0 12px 4px white;
   z-index: 15;
 }
@@ -1923,19 +1923,6 @@ Add these styles to styles.css:
   pointer-events: none;
 }
 
-/* Selected state */
-.circle-reference.selected {
-  box-shadow: 0 0 8px 2px rgba(255, 255, 255, 0.6);
-  transform: scale(1.1);
-  z-index: 15;
-}
-
-/* Hover state */
-.circle-reference:hover {
-  transform: scale(1.05);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-}
-
 /* Dragging state */
 .circle-reference.dragging {
   opacity: 0.8;
@@ -1986,38 +1973,4 @@ Add these styles to styles.css:
 
 .circle-reference.new {
   animation: circle-reference-appear 0.4s ease-out;
-}
-
-/* Responsive sizing for smaller screens */
-@media (max-width: 768px) {
-  .circle-reference {
-    width: 26px;
-    height: 26px;
-  }
-  
-  .circle-reference-icon {
-    font-size: 14px;
-  }
-}
-
-/* High contrast mode support */
-@media (prefers-contrast: high) {
-  .circle-reference {
-    border-width: 3px;
-  }
-  
-  .circle-reference.selected {
-    box-shadow: 0 0 8px 3px rgba(255, 255, 255, 0.8);
-  }
-}
-
-/* Reduced motion support */
-@media (prefers-reduced-motion: reduce) {
-  .circle-reference {
-    transition: none;
-  }
-  
-  .circle-reference.new {
-    animation: none;
-  }
 }
