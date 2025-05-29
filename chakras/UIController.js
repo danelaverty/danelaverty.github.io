@@ -226,19 +226,23 @@
     // Center panel click - deselect square and clear multi-selection
     var centerPanel = document.getElementById('center-panel');
     if (centerPanel) {
-      centerPanel.addEventListener('click', function(e) {
-        // Only handle clicks directly on the panel (not on children)
-        if (e.target === centerPanel) {
-          if (ChakraApp.appState.selectedSquareId) {
-            ChakraApp.appState.deselectSquare();
-          }
-          
-          // Ensure multi-selection is cleared even if no primary square is selected
-          if (ChakraApp.MultiSelectionManager && ChakraApp.MultiSelectionManager.hasSelection()) {
-            ChakraApp.MultiSelectionManager.clearSelection();
-          }
-        }
-      });
+	    centerPanel.addEventListener('click', function(e) {
+		    // Only handle clicks directly on the panel (not on children)
+		    if (e.target === centerPanel) {
+			    if (ChakraApp.appState.selectedSquareId) {
+				    ChakraApp.appState.deselectSquare();
+			    }
+
+			    if (ChakraApp.appState.selectedCircleReferenceId) {
+				    ChakraApp.appState.deselectCircleReference();
+			    }
+
+			    // Ensure multi-selection is cleared even if no primary square is selected
+			    if (ChakraApp.MultiSelectionManager && ChakraApp.MultiSelectionManager.hasSelection()) {
+				    ChakraApp.MultiSelectionManager.clearSelection();
+			    }
+		    }
+	    });
     }
   };
 

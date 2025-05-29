@@ -32,6 +32,7 @@
       "Battling Demons": ["demon", "sword", "chain"],
       "Battle for Conquest": ["battlefield", "soldier", "enemy", "strategy", "victory", "defeat"],
       "Building the Machine": ["tools", "parts", "machine"],
+      "Building the Building": ["site", "bricks", "building"],
       "Solving a Mystery": ["mystery", "hypothesis", "clue"],
       "Writing the Book": ["chapter", "key", "book"],
       "A Too-Big Bite": ["chunk", "cut", "spit"],

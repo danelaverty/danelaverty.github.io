@@ -249,7 +249,7 @@
   },
   {
     id: 'gem',
-    name: 'Chakras',
+    name: 'Themes',
     description: 'Areas of Concern',
     shape: 'gem',
     color: '#4a6fc9',
@@ -282,6 +282,9 @@
       tools: { emoji: '🛠️', color: '#555555', displayName: 'Tools' },
       parts: { emoji: '⚙️', color: '#AAAAAA', displayName: 'Parts' },
       machine: { emoji: '🏗️', color: '#666633', displayName: 'The Machine' },
+      site: { emoji: '🏞️', color: '#24CC24', displayName: 'Site' },
+      bricks: { emoji: '🧱', color: '#EE7766', displayName: 'Bricks' },
+      building: { emoji: '🏛️', color: '#DDA', displayName: 'Building' },
       event: { emoji: '💥', color: '#EECC99', displayName: 'Event' },
       chapter: { emoji: '📃', color: '#EEEEEE', displayName: 'Chapter' },
       book: { emoji: '📕', color: '#DDDDAA', displayName: 'Book' },

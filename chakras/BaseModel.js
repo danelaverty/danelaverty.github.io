@@ -15,16 +15,28 @@
   };
   
   ChakraApp.BaseModel.prototype = {
-    update: function(changes) {
-      for (var key in changes) {
-        if (changes.hasOwnProperty(key)) {
-          this[key] = changes[key];
-        }
-      }
-      this.updatedAt = new Date();
-      this._notify({type: 'update', model: this});
-      return this;
-    },
+	  update: function(changes) {
+  var changed = false;
+  
+  for (var key in changes) {
+    if (changes.hasOwnProperty(key) && this[key] !== changes[key]) {
+      this[key] = changes[key];
+      changed = true;
+    }
+  }
+  
+  if (changed) {
+    this.updatedAt = new Date();
+    this._notify({ type: 'update', model: this });
+    
+    var eventType = this._getEventType('updated');
+    if (eventType) {
+      ChakraApp.EventBus.publish(eventType, this);
+    }
+  }
+  
+  return this;
+},
     
     subscribe: function(observer) {
       this.observers.push(observer);
