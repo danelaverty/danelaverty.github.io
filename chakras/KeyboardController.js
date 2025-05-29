@@ -65,6 +65,10 @@
           ChakraApp.appState.removeSquare(ChakraApp.appState.selectedSquareId);
         });
       }
+      else if (ChakraApp.appState.selectedCircleReferenceId) {
+	      ChakraApp.appState.removeCircleReference(ChakraApp.appState.selectedCircleReferenceId);
+	      return;
+      }
       // If only a circle is selected
       else if (ChakraApp.appState.selectedCircleId) {
         self._showDeleteDialog(function() {

@@ -485,6 +485,19 @@ ChakraApp.AppState.prototype._hideCirclesForPanelType = function(panelType) {
     
     return panelDocIds;
   };
+
+ChakraApp.AppState.prototype.addCircleReference = function(data) {
+  var circleReference = new ChakraApp.CircleReference(data);
+  this.circleReferences.push(circleReference);
+  
+  // Publish event
+  ChakraApp.EventBus.publish(ChakraApp.EventTypes.CIRCLE_REFERENCE_CREATED, circleReference);
+  
+  // Save state
+  this.saveToStorage();
+  
+  return circleReference;
+};
   
   // Circle methods - explicitly defined and not generated
 ChakraApp.AppState.prototype.addCircle = function(circleData) {
@@ -776,9 +789,10 @@ ChakraApp.AppState.prototype.addDocument = function(data) {
   };
   
   // Add explicit updateCircle method
-  ChakraApp.AppState.prototype.updateCircle = function(id, changes) {
-    return this._updateEntity('circles', id, changes);
-  };
+ChakraApp.AppState.prototype.updateCircle = function(id, changes) {
+  var result = this._updateEntity('circles', id, changes);
+  return result;
+};
   
   // Add explicit getDocument method
   ChakraApp.AppState.prototype.getDocument = function(id) {
@@ -789,6 +803,96 @@ ChakraApp.AppState.prototype.addDocument = function(data) {
   ChakraApp.AppState.prototype.getCircle = function(id) {
     return this.circles.get(id) || null;
   };
+
+  ChakraApp.AppState.prototype.getCircleReference = function(id) {
+  return this.circleReferences.find(function(ref) {
+    return ref.id === id;
+  }) || null;
+};
+
+  ChakraApp.AppState.prototype.getCircleReferencesForTab = function(tabId) {
+  return this.circleReferences.filter(function(ref) {
+    return ref.tabId === tabId;
+  });
+};
+
+  ChakraApp.AppState.prototype.getCircleReferencesForSourceCircle = function(sourceCircleId) {
+  return this.circleReferences.filter(function(ref) {
+    return ref.sourceCircleId === sourceCircleId;
+  });
+};
+
+  ChakraApp.AppState.prototype.updateCircleReference = function(id, changes) {
+  var circleReference = this.getCircleReference(id);
+  if (circleReference) {
+    circleReference.update(changes);
+    this.saveToStorage();
+    return circleReference;
+  }
+  return null;
+};
+
+  ChakraApp.AppState.prototype.removeCircleReference = function(id) {
+  var index = this.circleReferences.findIndex(function(ref) {
+    return ref.id === id;
+  });
+  
+  if (index !== -1) {
+    var circleReference = this.circleReferences[index];
+    
+    // Deselect if this reference was selected
+    if (this.selectedCircleReferenceId === id) {
+      this.deselectCircleReference();
+    }
+    
+    // Remove from array
+    this.circleReferences.splice(index, 1);
+    
+    // Publish event
+    ChakraApp.EventBus.publish(ChakraApp.EventTypes.CIRCLE_REFERENCE_DELETED, { id: id });
+    
+    // Save state
+    this.saveToStorage();
+    
+    return true;
+  }
+  
+  return false;
+};
+
+  ChakraApp.AppState.prototype.selectCircleReference = function(id) {
+  // Deselect current selections
+  this.deselectSquare();
+  this.deselectCircleReference();
+  
+  var circleReference = this.getCircleReference(id);
+  if (circleReference) {
+    this.selectedCircleReferenceId = id;
+    circleReference.select();
+    return circleReference;
+  }
+  return null;
+};
+
+  ChakraApp.AppState.prototype.deselectCircleReference = function() {
+  if (this.selectedCircleReferenceId) {
+    var circleReference = this.getCircleReference(this.selectedCircleReferenceId);
+    if (circleReference) {
+      circleReference.deselect();
+    }
+    this.selectedCircleReferenceId = null;
+  }
+};
+
+  ChakraApp.AppState.prototype.removeCircleReferencesForDeletedCircle = function(sourceCircleId) {
+  var referencesToRemove = this.getCircleReferencesForSourceCircle(sourceCircleId);
+  
+  var self = this;
+  referencesToRemove.forEach(function(ref) {
+    self.removeCircleReference(ref.id);
+  });
+};
+
 
   // Panel methods
   ChakraApp.AppState.prototype.togglePanelVisibility = function(panelId) {

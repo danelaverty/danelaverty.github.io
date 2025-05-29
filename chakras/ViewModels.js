@@ -153,10 +153,13 @@
 };
 
 ChakraApp.CircleViewModel.prototype.updateCharacteristic = function(key, value) {
+  console.log('CircleViewModel.updateCharacteristic called with key:', key, 'value:', value);
+  
   var update = {};
   
   // Handle legacy properties (color) and new characteristics
   if (key === 'color') {
+    console.log('Updating color characteristic');
     update.color = value;
   } else {
     // For new characteristics (including completion), update the characteristics object
@@ -171,8 +174,10 @@ ChakraApp.CircleViewModel.prototype.updateCharacteristic = function(key, value) 
     update.characteristics = characteristics;
   }
   
+  console.log('Calling AppState.updateCircle with update:', update);
   ChakraApp.appState.updateCircle(this.id, update);
 };
+
   
   // UI actions
   

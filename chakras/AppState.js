@@ -46,8 +46,11 @@
     };
   }
   
+  this.circleReferences = [];
+
   this.selectedCircleId = null;
   this.selectedSquareId = null;
+  this.selectedCircleReferenceId = null;
   this.selectedTabId = null;
 };
   
@@ -150,15 +153,17 @@
     ChakraApp.EventBus.publish(ChakraApp.EventTypes[eventPrefix + '_CREATED'], entity);
   };
   
-  ChakraApp.AppState.prototype._updateEntity = function(entityType, id, changes) {
-    var entity = this[entityType].get(id);
-    if (!entity) return null;
-    
-    entity.update(changes);
-    this._saveStateIfNotLoading();
-    
-    return entity;
-  };
+ChakraApp.AppState.prototype._updateEntity = function(entityType, id, changes) {
+  var entity = this[entityType].get(id);
+  if (!entity) {
+    return null;
+  }
+  
+  entity.update(changes);
+  this._saveStateIfNotLoading();
+  
+  return entity;
+};
   
   ChakraApp.AppState.prototype._removeEntity = function(entityType, id, eventPrefix, customCleanup) {
     if (!this[entityType].has(id)) return false;
@@ -362,6 +367,11 @@ ChakraApp.AppState.prototype._selectSavedDocuments = function() {
     this._loadCircles(data.circles);
     this._loadSquares(data.squares);
     this._loadTabs(data.tabs);
+
+    this.circleReferences = (data.circleReferences || []).map(function(refData) {
+	    return new ChakraApp.CircleReference(refData);
+    });
+    this.selectedCircleReferenceId = data.selectedCircleReferenceId || null;
   };
   
   ChakraApp.AppState.prototype._loadDocuments = function(documents) {
@@ -435,9 +445,13 @@ ChakraApp.AppState.prototype._actualSaveToStorage = function() {
       circles: this._serializeCollection('circles'),
       squares: this._serializeCollection('squares'),
       tabs: this._serializeCollection('tabs'),
+
       // This is important - ensure we save the entire selectedDocumentIds object
       selectedDocumentIds: this.selectedDocumentIds
     };
+
+    data.circleReferences = this.circleReferences.map(function(ref) { return ref.toJSON(); });
+    data.selectedCircleReferenceId = this.selectedCircleReferenceId;
     
     localStorage.setItem('chakraVisualizerData', JSON.stringify(data));
     ChakraApp.EventBus.publish(ChakraApp.EventTypes.STATE_SAVED, data);

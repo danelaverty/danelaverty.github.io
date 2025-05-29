@@ -16,6 +16,7 @@
     tab: new ChakraApp.TabController(),
     attribute: new ChakraApp.AttributeController(),
     importExport: new ChakraApp.ImportExportController(),
+circleReferences: new ChakraApp.CircleReferencesController(),
     // Add zoom controller
     zoom: new ChakraApp.ZoomController()
   };

@@ -14,19 +14,20 @@
      * @returns {Function} Unsubscribe function
      */
     subscribe: function(event, callback) {
-      if (!listeners.has(event)) {
-        listeners.set(event, new Set());
-      }
-      
-      listeners.get(event).add(callback);
-      
-      // Return unsubscribe function
-      return function() {
-        if (listeners.has(event)) {
-          listeners.get(event).delete(callback);
-        }
-      };
-    },
+  
+  if (!listeners.has(event)) {
+    listeners.set(event, new Set());
+  }
+  
+  listeners.get(event).add(callback);
+  
+  // Return unsubscribe function
+  return function() {
+    if (listeners.has(event)) {
+      listeners.get(event).delete(callback);
+    }
+  };
+},
 
     /**
      * Publish an event
@@ -34,16 +35,19 @@
      * @param {any} data - Event data
      */
     publish: function(event, data) {
-      if (listeners.has(event)) {
-        listeners.get(event).forEach(function(callback) {
-          try {
-            callback(data);
-          } catch (error) {
-            console.error(`Error in event listener for "${event}":`, error);
-          }
-        });
+  
+  if (listeners.has(event)) {
+    var eventListeners = listeners.get(event);
+    
+    eventListeners.forEach(function(callback) {
+      try {
+        callback(data);
+      } catch (error) {
+        console.error(`Error in event listener for "${event}":`, error);
       }
-    },
+    });
+  }
+},
 
     /**
      * Clear all listeners for an event
@@ -132,6 +136,13 @@
     TAB_DELETED: 'tab:deleted',
     TAB_SELECTED: 'tab:selected',
     TAB_DESELECTED: 'tab:deselected',
+
+    // Circle Reference events
+    CIRCLE_REFERENCE_CREATED: 'circle_reference:created',
+    CIRCLE_REFERENCE_UPDATED: 'circle_reference:updated',
+    CIRCLE_REFERENCE_DELETED: 'circle_reference:deleted',
+    CIRCLE_REFERENCE_SELECTED: 'circle_reference:selected',
+    CIRCLE_REFERENCE_DESELECTED: 'circle_reference:deselected',
     
     // UI events
     PANEL_VISIBILITY_CHANGED: 'ui:panel_visibility_changed',
