@@ -487,10 +487,6 @@ ChakraApp.CircleView.prototype.updateChakraFormIfNeeded = function() {
       }
     });
     
-    this.nameElement.addEventListener('click', function(e) {
-      e.stopPropagation();
-    });
-    
     this._addDragFunctionality();
   };
   

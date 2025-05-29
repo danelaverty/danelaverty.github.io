@@ -6,27 +6,31 @@
    * Circle Reference View Model
    * @param {Object} circleReferenceModel - Circle reference model
    */
-  ChakraApp.CircleReferenceViewModel = function(circleReferenceModel) {
-    // Call parent constructor
-    ChakraApp.Observable.call(this);
-    
-    // Store model reference
-    this.model = circleReferenceModel;
-    
-    // Copy properties from model
-    this.id = this.model.id;
-    this.sourceCircleId = this.model.sourceCircleId;
-    this.tabId = this.model.tabId;
-    this.x = this.model.x;
-    this.y = this.model.y;
-    this.isSelected = this.model.selected;
-    
-    // Display properties (derived from source circle)
-    this._updateDisplayProperties();
-    
-    // Set up subscriptions
-    this._setupSubscriptions();
-  };
+	ChakraApp.CircleReferenceViewModel = function(circleReferenceModel) {
+  // Call parent constructor
+  ChakraApp.BaseViewModel.call(this);
+  
+  this.model = circleReferenceModel;
+  this.id = circleReferenceModel.id;
+  this.sourceCircleId = circleReferenceModel.sourceCircleId;
+  this.tabId = circleReferenceModel.tabId;
+  this.x = circleReferenceModel.x;
+  this.y = circleReferenceModel.y;
+  this.isSelected = circleReferenceModel.selected || false;
+  
+  // Initialize display properties
+  this.color = '#C0C0C0';
+  this.name = 'Loading...';
+  this.icon = '◉';
+  this.isValid = true;
+  this.circleType = 'standard'; // Add this line!
+  
+  // Update display properties from source circle
+  this._updateDisplayProperties();
+  
+  // Subscribe to model and circle changes
+  this._setupSubscriptions();
+};
   
   // Inherit from Observable
   ChakraApp.CircleReferenceViewModel.prototype = Object.create(ChakraApp.Observable.prototype);
@@ -37,14 +41,46 @@
    * @private
    */
   ChakraApp.CircleReferenceViewModel.prototype._updateDisplayProperties = function() {
-    var displayProps = this.model.getDisplayProperties();
+  // Get the source circle
+  var sourceCircle = ChakraApp.appState.getCircle(this.sourceCircleId);
+  
+  if (sourceCircle) {
+    // Update all display properties from source circle
+    this.color = sourceCircle.color;
+    this.name = sourceCircle.name;
+    this.circleType = sourceCircle.circleType; // Add this line!
+    this.isValid = true;
     
-    this.name = displayProps.name;
-    this.color = displayProps.color;
-    this.icon = displayProps.icon;
-    this.circleType = displayProps.circleType;
-    this.isValid = this.model.isValid();
+    // Update icon based on circle type
+    this.icon = this._getIconForCircleType(sourceCircle.circleType);
+    
+    console.log('Updated circle reference display properties:', {
+      color: this.color,
+      name: this.name,
+      circleType: this.circleType,
+      icon: this.icon
+    });
+  } else {
+    // Source circle no longer exists
+    this.isValid = false;
+    this.name = '[Deleted Circle]';
+    this.icon = '❌';
+    
+    console.log('Source circle no longer exists for reference:', this.sourceCircleId);
+  }
+};
+
+ChakraApp.CircleReferenceViewModel.prototype._getIconForCircleType = function(circleType) {
+  var iconMap = {
+    'standard': '◉',    // Circle with dot
+    'triangle': '▲',    // Triangle
+    'gem': '💎',        // Diamond/gem
+    'star': '★',        // Star
+    'hexagon': '⬡'      // Hexagon
   };
+  
+  return iconMap[circleType] || iconMap['standard'];
+};
   
   /**
    * Set up event subscriptions
