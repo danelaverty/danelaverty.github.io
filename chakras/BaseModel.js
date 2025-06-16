@@ -11,6 +11,7 @@
     this.id = data.id || ChakraApp.Utils.generateId();
     this.createdAt = data.createdAt || new Date();
     this.updatedAt = data.updatedAt || new Date();
+    this.disabled = data.disabled || false; // ADD: disabled property
     this.observers = [];
   };
   
@@ -89,7 +90,8 @@
       return {
         id: this.id,
         createdAt: this.createdAt,
-        updatedAt: this.updatedAt
+        updatedAt: this.updatedAt,
+        disabled: this.disabled // ADD: include disabled in serialization
       };
     }
   };

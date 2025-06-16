@@ -1,5 +1,5 @@
 // src/models/Circle.js
-// Circle model implementation with minimal code
+// Circle model implementation with indicator support
 
 (function(ChakraApp) {
   /**
@@ -22,6 +22,7 @@
   this.size = data.size || 20;
   this.selected = data.selected || false;
   this.characteristics = data.characteristics || {};
+  this.indicator = data.indicator || null; // Add indicator support
   
   // Explicitly set circleType based on the provided value or infer from color
   if (data.circleType) {
@@ -67,6 +68,7 @@
     json.characteristics = this.characteristics;
     json.documentId = this.documentId;
     json.circleType = this.circleType;
+    json.indicator = this.indicator; // Add indicator to JSON
     
     return json;
   };

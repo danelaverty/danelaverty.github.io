@@ -16,6 +16,8 @@
     this.targetId = data.targetId;
     this.length = data.length || 0;
     this.isVisible = data.isVisible || false;
+    this.connectionType = data.connectionType || 'square';
+    this.isDirectional = data.isDirectional || false;
   };
   
   // Inherit from BaseModel
@@ -36,6 +38,8 @@
     json.targetId = this.targetId;
     json.length = this.length;
     json.isVisible = this.isVisible;
+    json.connectionType = this.connectionType;
+    json.isDirectional = this.isDirectional;
     
     return json;
   };

@@ -11,19 +11,19 @@
   ChakraApp.CharacteristicController.colorFamilies = [
   {
     name: "Red",
-    light: { color: '#FFC0CB', crystal: 'Pink' },
+    light: { color: '#FFA0AB', crystal: 'Pink' },
     solid: { color: '#FF0000', crystal: 'Red' },
     dark: { color: '#900000', crystal: 'Maroon' }
   },
   {
     name: "Crimson",
-    light: { color: '#FFB6C1', crystal: 'Light Pink' },
+    light: { color: '#FFB6A1', crystal: 'Light Pink' },
     solid: { color: '#DC143C', crystal: 'Crimson' },
     dark: { color: '#8B0000', crystal: 'Dark Red' }
   },
   {
     name: "Rose",
-    light: { color: '#FFCCCB', crystal: 'Light Rose' },
+    light: { color: '#FFAAAB', crystal: 'Light Rose' },
     solid: { color: '#FF007F', crystal: 'Rose' },
     dark: { color: '#B22222', crystal: 'Fire Brick' }
   },
@@ -35,25 +35,25 @@
   },
   {
     name: "Pink",
-    light: { color: '#FFE4E1', crystal: 'Misty Rose' },
+    light: { color: '#FFA4A1', crystal: 'Misty Rose' },
     solid: { color: '#FF69B4', crystal: 'Hot Pink' },
     dark: { color: '#C71585', crystal: 'Deep Pink' }
   },
   {
     name: "Fuchsia",
-    light: { color: '#FFE1FF', crystal: 'Pale Fuchsia' },
+    light: { color: '#FFA1FF', crystal: 'Pale Fuchsia' },
     solid: { color: '#FF1493', crystal: 'Fuchsia' },
     dark: { color: '#C41E3A', crystal: 'Cardinal' }
   },
   {
     name: "Salmon",
-    light: { color: '#FFF5EE', crystal: 'Seashell' },
+    light: { color: '#FFF5AA', crystal: 'Seashell' },
     solid: { color: '#FA8072', crystal: 'Salmon' },
     dark: { color: '#CD5C5C', crystal: 'Indian Red' }
   },
   {
     name: "Coral",
-    light: { color: '#FFEFD5', crystal: 'Papaya Whip' },
+    light: { color: '#FFAFD5', crystal: 'Papaya Whip' },
     solid: { color: '#FF7F50', crystal: 'Coral' },
     dark: { color: '#A0522D', crystal: 'Sienna' }
   },
@@ -65,31 +65,31 @@
   },
   {
     name: "Tangerine",
-    light: { color: '#FFE4B5', crystal: 'Moccasin' },
+    light: { color: '#FFA4B5', crystal: 'Moccasin' },
     solid: { color: '#FF8C00', crystal: 'Tangerine' },
     dark: { color: '#B8860B', crystal: 'Dark Goldenrod' }
   },
   {
     name: "Amber",
-    light: { color: '#FFF8DC', crystal: 'Cornsilk' },
+    light: { color: '#FFF8AA', crystal: 'Aornsilk' },
     solid: { color: '#FFBF00', crystal: 'Amber' },
     dark: { color: '#B8860B', crystal: 'Dark Goldenrod' }
   },
   {
     name: "Brown",
-    light: { color: '#DEB887', crystal: 'Tan' },
+    light: { color: '#AAB887', crystal: 'Tan' },
     solid: { color: '#CD853F', crystal: 'Bronze' },
     dark: { color: '#8B4513', crystal: 'Brown' }
   },
   {
     name: "Rust",
-    light: { color: '#DDBF94', crystal: 'Wheat' },
+    light: { color: '#AABF94', crystal: 'Wheat' },
     solid: { color: '#B7410E', crystal: 'Rust' },
     dark: { color: '#8B4513', crystal: 'Saddle Brown' }
   },
   {
     name: "Copper",
-    light: { color: '#FFDDAA', crystal: 'Peach Puff' },
+    light: { color: '#FFAAAA', crystal: 'Peach Puff' },
     solid: { color: '#B87333', crystal: 'Copper' },
     dark: { color: '#654321', crystal: 'Dark Brown' }
   },
@@ -101,19 +101,19 @@
   },
   {
     name: "Lemon",
-    light: { color: '#FFFACD', crystal: 'Lemon Chiffon' },
+    light: { color: '#FFFAAA', crystal: 'Lemon Ahiffon' },
     solid: { color: '#FFF700', crystal: 'Lemon' },
     dark: { color: '#DAA520', crystal: 'Goldenrod' }
   },
   {
     name: "Khaki",
-    light: { color: '#F0E68C', crystal: 'Light Khaki' },
+    light: { color: '#F0D6AA', crystal: 'Light Khaki' },
     solid: { color: '#C3B091', crystal: 'Khaki' },
     dark: { color: '#BDB76B', crystal: 'Dark Khaki' }
   },
   {
     name: "Olive",
-    light: { color: '#F5F5DC', crystal: 'Beige' },
+    light: { color: '#F5F5AA', crystal: 'Beige' },
     solid: { color: '#808000', crystal: 'Olive' },
     dark: { color: '#556B2F', crystal: 'Dark Olive Green' }
   },
@@ -125,79 +125,79 @@
   },
   {
     name: "Lime",
-    light: { color: '#F5FFFA', crystal: 'Mint Cream' },
+    light: { color: '#A5FFAA', crystal: 'Mint Cream' },
     solid: { color: '#32CD32', crystal: 'Lime Green' },
     dark: { color: '#228B22', crystal: 'Forest Green' }
   },
   {
     name: "Green",
-    light: { color: '#C0FFC0', crystal: 'Light Green' },
+    light: { color: '#A0FFA0', crystal: 'Light Green' },
     solid: { color: '#00EE00', crystal: 'Green' },
     dark: { color: '#2E8B57', crystal: 'Sea Green' }
   },
   {
     name: "Emerald",
-    light: { color: '#AFEEEE', crystal: 'Pale Turquoise' },
+    light: { color: '#AFAAAA', crystal: 'Pale Turquoise' },
     solid: { color: '#50C878', crystal: 'Emerald' },
     dark: { color: '#2E8B57', crystal: 'Sea Green' }
   },
   {
     name: "Jade",
-    light: { color: '#E0FFFF', crystal: 'Light Cyan' },
+    light: { color: '#A0FFFF', crystal: 'Light Ayan' },
     solid: { color: '#00A86B', crystal: 'Jade' },
     dark: { color: '#2F4F4F', crystal: 'Dark Slate Gray' }
   },
   {
     name: "Mint",
-    light: { color: '#F5FFFA', crystal: 'Mint Cream' },
+    light: { color: '#B5FFBA', crystal: 'Mint Cream' },
     solid: { color: '#98FB98', crystal: 'Pale Green' },
     dark: { color: '#3CB371', crystal: 'Medium Sea Green' }
   },
   {
     name: "Turquoise",
-    light: { color: '#E0FFFF', crystal: 'Light Cyan' },
+    light: { color: '#A0FFFF', crystal: 'Light Cyan' },
     solid: { color: '#40E0D0', crystal: 'Turquoise' },
     dark: { color: '#2E8B57', crystal: 'Sea Green' }
   },
   {
     name: "Teal",
-    light: { color: '#E0FFFF', crystal: 'Light Cyan' },
+    light: { color: '#A0FFFF', crystal: 'Light Cyan' },
     solid: { color: '#008080', crystal: 'Teal' },
     dark: { color: '#2F4F4F', crystal: 'Dark Slate Gray' }
   },
   {
     name: "Cyan",
-    light: { color: '#E0FFFF', crystal: 'Light Cyan' },
+    light: { color: '#A0FFFF', crystal: 'Light Cyan' },
     solid: { color: '#00FFFF', crystal: 'Cyan' },
     dark: { color: '#008B8B', crystal: 'Dark Cyan' }
   },
   {
     name: "Aqua",
-    light: { color: '#F0FFFF', crystal: 'Azure' },
+    light: { color: '#A0AFFF', crystal: 'Azure' },
     solid: { color: '#00FFFF', crystal: 'Aqua' },
     dark: { color: '#5F9EA0', crystal: 'Cadet Blue' }
   },
   {
     name: "Sky",
-    light: { color: '#F0F8FF', crystal: 'Alice Blue' },
+    light: { color: '#A0A8FF', crystal: 'Alice Blue' },
     solid: { color: '#87CEEB', crystal: 'Sky Blue' },
     dark: { color: '#4682B4', crystal: 'Steel Blue' }
   },
   {
     name: "Powder",
-    light: { color: '#F0F8FF', crystal: 'Alice Blue' },
+    light: { color: '#A0A8FF', crystal: 'Alice Blue' },
     solid: { color: '#B0E0E6', crystal: 'Powder Blue' },
     dark: { color: '#4682B4', crystal: 'Steel Blue' }
   },
   {
     name: "Blue",
-    light: { color: '#E6F3FF', crystal: 'Light Blue' },
+    light: { color: '#A6F3FF', crystal: 'Light Blue' },
     solid: { color: '#0000FF', crystal: 'Blue' },
     dark: { color: '#00008B', crystal: 'Dark Blue' }
   },
   {
     name: "Cobalt",
-    light: { color: '#E6F2FF', crystal: 'Light Steel Blue' },
+    light: { color: '#A6F2FF', crystal: 'Light Steel Blue' },
     solid: { color: '#0047AB', crystal: 'Cobalt' },
     dark: { color: '#191970', crystal: 'Midnight Blue' }
   },
@@ -209,7 +209,7 @@
   },
   {
     name: "Royal",
-    light: { color: '#E6E6FA', crystal: 'Lavender' },
+    light: { color: '#A6A6FA', crystal: 'Lavender' },
     solid: { color: '#4169E1', crystal: 'Royal Blue' },
     dark: { color: '#191970', crystal: 'Midnight Blue' }
   },
@@ -221,25 +221,25 @@
   },
   {
     name: "Violet",
-    light: { color: '#F8F8FF', crystal: 'Ghost White' },
+    light: { color: '#C8C8FF', crystal: 'Ghost White' },
     solid: { color: '#8A2BE2', crystal: 'Blue Violet' },
     dark: { color: '#663399', crystal: 'Rebecca Purple' }
   },
   {
     name: "Indigo",
-    light: { color: '#E6E6FA', crystal: 'Lavender' },
+    light: { color: '#A6A6FA', crystal: 'Lavender' },
     solid: { color: '#4B0082', crystal: 'Indigo' },
     dark: { color: '#301934', crystal: 'Dark Purple' }
   },
   {
     name: "Purple",
-    light: { color: '#E6E6FA', crystal: 'Lavender' },
+    light: { color: '#A6A6FA', crystal: 'Lavender' },
     solid: { color: '#C000C0', crystal: 'Purple' },
     dark: { color: '#4B0082', crystal: 'Deep Purple' }
   },
   {
     name: "Plum",
-    light: { color: '#DDA0DD', crystal: 'Plum' },
+    light: { color: '#AA70AA', crystal: 'Plum' },
     solid: { color: '#8B008B', crystal: 'Dark Magenta' },
     dark: { color: '#663399', crystal: 'Rebecca Purple' }
   },

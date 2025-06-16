@@ -44,6 +44,30 @@
     },
     
     /**
+     * Creates a more saturated version of a color by increasing saturation by 30%
+     * @param {string} color - Color in hex, rgb, or rgba format
+     * @returns {string} RGB color string of the more saturated shade
+     */
+    createMoreSaturatedShade: function(color) {
+      var rgb = this.parseColor(color);
+      
+      if (!rgb) {
+        return 'rgb(180, 50, 50)'; // Default saturated red
+      }
+      
+      // Convert RGB to HSL
+      var hsl = this.rgbToHsl(rgb.r, rgb.g, rgb.b);
+      
+      // Increase saturation by 30% but cap at 100%
+      hsl.s = Math.min(1, hsl.s * 1.3);
+      
+      // Convert back to RGB
+      var newRgb = this.hslToRgb(hsl.h, hsl.s, hsl.l);
+      
+      return 'rgb(' + newRgb.r + ', ' + newRgb.g + ', ' + newRgb.b + ')';
+    },
+    
+    /**
      * Parses a color string and returns RGB values
      * @param {string} color - Color in hex, rgb, or rgba format
      * @returns {Object|null} Object with r, g, b properties or null if parsing fails
@@ -81,6 +105,75 @@
       }
       
       return { r: r, g: g, b: b };
+    },
+    
+    /**
+     * Converts RGB values to HSL
+     * @param {number} r - Red component (0-255)
+     * @param {number} g - Green component (0-255)
+     * @param {number} b - Blue component (0-255)
+     * @returns {Object} Object with h, s, l properties
+     */
+    rgbToHsl: function(r, g, b) {
+      r /= 255;
+      g /= 255;
+      b /= 255;
+      
+      var max = Math.max(r, g, b);
+      var min = Math.min(r, g, b);
+      var h, s, l = (max + min) / 2;
+      
+      if (max === min) {
+        h = s = 0; // achromatic
+      } else {
+        var d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        
+        switch (max) {
+          case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+          case g: h = (b - r) / d + 2; break;
+          case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+      }
+      
+      return { h: h, s: s, l: l };
+    },
+    
+    /**
+     * Converts HSL values to RGB
+     * @param {number} h - Hue (0-1)
+     * @param {number} s - Saturation (0-1)
+     * @param {number} l - Lightness (0-1)
+     * @returns {Object} Object with r, g, b properties
+     */
+    hslToRgb: function(h, s, l) {
+      var r, g, b;
+      
+      if (s === 0) {
+        r = g = b = l; // achromatic
+      } else {
+        var hue2rgb = function(p, q, t) {
+          if (t < 0) t += 1;
+          if (t > 1) t -= 1;
+          if (t < 1/6) return p + (q - p) * 6 * t;
+          if (t < 1/2) return q;
+          if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+          return p;
+        };
+        
+        var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        var p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1/3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1/3);
+      }
+      
+      return {
+        r: Math.round(r * 255),
+        g: Math.round(g * 255),
+        b: Math.round(b * 255)
+      };
     }
   };
   

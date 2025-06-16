@@ -7,51 +7,144 @@
      * Renders a gem shape for a given circle view
      * @param {Object} circleView - The CircleView instance
      */
-    render: function(circleView) {
-      var self = this;
-      circleView.createShapeWrap('gem-wrap');
-      
-      // Create an SVG element
-      var svgNS = "http://www.w3.org/2000/svg";
-      var svg = document.createElementNS(svgNS, "svg");
-      svg.setAttribute('width', '30');
-      svg.setAttribute('height', '30');
-      svg.setAttribute('viewBox', '0 0 30 30');
-      
-      // Set pointer-events to allow click through
-      svg.style.pointerEvents = "none";
-      
-      // Calculate color variations using ColorUtils
-      var darkerColor = ChakraApp.ColorUtils.createDarkerShade(circleView.viewModel.color);
-      var lighterColor = ChakraApp.ColorUtils.createLighterShade(circleView.viewModel.color);
-      
-      // Generate random gem configuration
-      var gemConfig = this.generateRandomGemConfig();
-      
-      // Create and add all gem facets based on the random configuration
-      this.createGemFacets(svg, gemConfig, darkerColor, lighterColor, circleView.viewModel.color);
-      
-      // Add outline for definition
-      this.addGemOutline(svg, gemConfig);
-      
-      // Add highlights/sparkles
-      this.addGemHighlights(svg, gemConfig);
-      
-      // Add the SVG to our shape wrapper
-      circleView.shapeWrap.appendChild(svg);
-      
-      // Add explicit click handler to the shape wrap
-      circleView.shapeWrap.style.cursor = "pointer";
-      circleView.shapeWrap.addEventListener('click', function(e) {
-        e.stopPropagation();
-        if (!window.wasDragged) {
-	      circleView._handleCircleClick();
-        }
-      });
-      
-      // Append the shape wrapper to the main element
-      circleView.appendShapeToElement();
-    },
+	  render: function(circleView) {
+  var self = this;
+  circleView.createShapeWrap('gem-wrap');
+  
+  // Create an SVG element
+  var svgNS = "http://www.w3.org/2000/svg";
+  var svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute('width', '30');
+  svg.setAttribute('height', '30');
+  svg.setAttribute('viewBox', '0 0 30 30');
+  
+  // DON'T set pointer-events to none on the main SVG - this prevents dragging!
+  // svg.style.pointerEvents = "none";  // REMOVED THIS LINE
+  
+  // Calculate color variations using ColorUtils
+  var darkerColor = ChakraApp.ColorUtils.createDarkerShade(circleView.viewModel.color);
+  var lighterColor = ChakraApp.ColorUtils.createMoreSaturatedShade(circleView.viewModel.color);
+  
+  // Generate random gem configuration
+  var gemConfig = this.generateRandomGemConfig();
+  
+  // Create and add all gem facets based on the random configuration
+  this.createGemFacets(svg, gemConfig, circleView.viewModel.color, lighterColor, circleView.viewModel.color);
+  
+  // Add outline for definition
+  this.addGemOutline(svg, gemConfig);
+  
+  // Add highlights/sparkles
+  this.addGemHighlights(svg, gemConfig);
+  
+  // Add the SVG to our shape wrapper
+  circleView.shapeWrap.appendChild(svg);
+  
+  // Add explicit click handler to the shape wrap
+  circleView.shapeWrap.style.cursor = "pointer";
+  circleView.shapeWrap.addEventListener('click', function(e) {
+    e.stopPropagation();
+    if (!window.wasDragged) {
+      circleView._handleCircleClick();
+    }
+  });
+  
+  // Append the shape wrapper to the main element
+  circleView.appendShapeToElement();
+},
+
+	updateColors: function(circleView) {
+  if (circleView.viewModel.circleType !== 'gem') return;
+  
+  // Check if this circle has a gem shape wrap
+  if (!circleView.shapeWrap) return;
+  
+  console.log('Regenerating entire gem with new colors:', circleView.viewModel.color);
+  
+  // Store the current shape wrap parent and handle case where it might not be attached
+  var parent = circleView.shapeWrap.parentNode;
+  var nextSibling = null;
+  
+  if (parent) {
+    nextSibling = circleView.shapeWrap.nextSibling;
+    // Remove the old shape wrap completely
+    parent.removeChild(circleView.shapeWrap);
+  } else {
+    // If shapeWrap isn't attached, use the main circle element as parent
+    parent = circleView.element;
+  }
+  
+  // Create a completely new shape wrap and SVG
+  circleView.createShapeWrap('gem-wrap');
+  
+  // Create an entirely new SVG element
+  var svgNS = "http://www.w3.org/2000/svg";
+  var svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute('width', '30');
+  svg.setAttribute('height', '30');
+  svg.setAttribute('viewBox', '0 0 30 30');
+  
+  // Calculate color variations using ColorUtils with NEW colors
+  var darkerColor = ChakraApp.ColorUtils.createDarkerShade(circleView.viewModel.color);
+  var lighterColor = ChakraApp.ColorUtils.createMoreSaturatedShade(circleView.viewModel.color);
+  
+  // Generate new gem configuration (this will be different from the original)
+  var gemConfig = this.generateRandomGemConfig();
+  
+  // Create and add all gem facets with the NEW colors
+  this.createGemFacets(svg, gemConfig, circleView.viewModel.color, lighterColor, circleView.viewModel.color);
+  
+  // Add outline for definition
+  this.addGemOutline(svg, gemConfig);
+  
+  // Add highlights/sparkles
+  this.addGemHighlights(svg, gemConfig);
+  
+  // Add the new SVG to our new shape wrapper
+  circleView.shapeWrap.appendChild(svg);
+  
+  // Restore all event handlers properly
+  circleView.shapeWrap.style.cursor = "pointer";
+  
+  // Make sure we preserve the original event handling mechanism
+  // that the CircleView uses for CTRL-click functionality
+  if (circleView.addEventListeners) {
+    // If CircleView has an addEventListeners method, use it
+    circleView.addEventListeners();
+  } else {
+    // Fallback: add the basic event handlers but preserve CTRL-click handling
+    circleView.shapeWrap.addEventListener('click', function(e) {
+      e.stopPropagation();
+      if (!window.wasDragged) {
+        // Pass the original event to preserve CTRL key state
+        circleView._handleCircleClick(e);
+      }
+    });
+    
+    // Also ensure mousedown/mouseup events are handled for drag detection
+    circleView.shapeWrap.addEventListener('mousedown', function(e) {
+      if (circleView._handleMouseDown) {
+        circleView._handleMouseDown(e);
+      }
+    });
+    
+    circleView.shapeWrap.addEventListener('mouseup', function(e) {
+      if (circleView._handleMouseUp) {
+        circleView._handleMouseUp(e);
+      }
+    });
+  }
+  
+  // Insert the new shape wrap back into the DOM at the correct position
+  if (nextSibling && parent) {
+    parent.insertBefore(circleView.shapeWrap, nextSibling);
+  } else {
+    // Fallback: just append to the parent (either original parent or circle element)
+    parent.appendChild(circleView.shapeWrap);
+  }
+  
+  console.log('Gem completely regenerated with new colors');
+},
 
     /**
      * Generate a random gem configuration

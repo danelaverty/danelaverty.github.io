@@ -375,7 +375,7 @@ h3 {
 }
 
 /* Selection state */
-.circle.selected, .square.selected, .circle-reference.selected {
+.circle.selected, .square.selected {
   box-shadow: 0 0 12px 4px white;
   z-index: 15;
 }
@@ -768,7 +768,7 @@ h3 {
   right: 20px;
   background-color: rgba(0, 0, 0, 0.7);
   color: white;
-  padding: 8px 12px;
+  padding: 3px 5px;
   border-radius: 20px;
   font-size: 14px;
   pointer-events: none;
@@ -861,7 +861,7 @@ h3 {
 .document-list-item {
   display: flex;
   align-items: center;
-  padding: 8px 10px;
+  padding: 4px 6px;
   margin-bottom: 5px;
   background-color: rgba(60, 60, 60, 0.7);
   border-radius: 4px;
@@ -884,9 +884,8 @@ h3 {
 }
 
 .document-name-container {
-  display: flex;
+  display: inline-block;
   align-items: baseline;
-  flex: 1;
   overflow: hidden;
 }
 
@@ -1855,6 +1854,14 @@ Add these styles to styles.css:
 }
 
 /* Indicator border styles */
+.square.indicator-important {
+  border: 4px solid #ECEC30 !important; /* Yellow border for important */
+}
+
+.square.indicator-done {
+  border: 4px solid #2C8F30 !important; /* Green border for 🌟 good */
+}
+
 .square.indicator-good {
   border: 4px solid #2C8F30 !important; /* Green border for 🌟 good */
 }
@@ -1910,7 +1917,6 @@ Add these styles to styles.css:
   user-select: none;
   z-index: 10;
   transition: all 0.2s ease;
-  border: 2px solid;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
@@ -1942,18 +1948,93 @@ Add these styles to styles.css:
   color: #ccc;
 }
 
-/* Distinguish from squares with a subtle border effect */
-.circle-reference::before {
-  content: '';
+/* Animation for newly created circle references */
+@keyframes circle-reference-appear {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.circle-reference.new {
+  animation: circle-reference-appear 0.4s ease-out;
+}
+
+/* Base circle reference styles */
+.circle-reference {
   position: absolute;
-  top: -3px;
-  left: -3px;
-  right: -3px;
-  bottom: -3px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
-  background: linear-gradient(45deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
-  z-index: -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  z-index: 10;
+  transition: all 0.2s ease;
+}
+
+/* Field element for circle references */
+.circle-reference-field {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 1;
+  transition: all 0.3s ease;
+  opacity: 0.1;
+  -webkit-filter: blur(5px);
+}
+
+/* Field becomes more visible when circle reference is selected */
+.circle-reference.selected .circle-reference-field {
+  opacity: 0.2;
+  border-width: 3px;
+}
+
+/* Icon within circle reference */
+.circle-reference-icon {
+  font-size: 16px;
+  color: white;
+  font-weight: bold;
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+/* Dragging state */
+.circle-reference.dragging {
+  opacity: 0.8;
+  transform: scale(1.1);
+  z-index: 20;
+}
+
+/* Dragging state for field - make it more visible during drag */
+.circle-reference.dragging .circle-reference-field {
   opacity: 0.5;
+  border-width: 3px;
+}
+
+/* Invalid state (source circle deleted) */
+.circle-reference.invalid {
+  opacity: 0.5;
+  border-style: dashed;
+  background-color: #666 !important;
+}
+
+.circle-reference.invalid .circle-reference-icon {
+  color: #ccc;
+}
+
+.circle-reference.invalid .circle-reference-field {
+  opacity: 0.05;
+  border-style: dashed;
 }
 
 /* Animation for newly created circle references */
@@ -1973,4 +2054,473 @@ Add these styles to styles.css:
 
 .circle-reference.new {
   animation: circle-reference-appear 0.4s ease-out;
+}
+
+/* Disable transitions during dragging to prevent lag */
+.circle-reference.no-transition,
+.circle-reference.no-transition .circle-reference-field {
+  transition: none !important;
+}
+
+/* Field hover effect when circle reference is hovered */
+.circle-reference:hover .circle-reference-field {
+  border-width: 2.5px;
+}
+
+/* Ensure field doesn't interfere with square interactions */
+.circle-reference-field {
+  pointer-events: none !important;
+}
+
+/* Make sure circle reference names are positioned correctly relative to the field */
+.circle-reference .item-name {
+  position: absolute;
+  top: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  font-size: 11px;
+  background: rgba(0, 0, 0, 0.7);
+  border: none;
+  text-align: center;
+  outline: none;
+  padding: 3px 5px;
+  border-radius: 3px;
+  z-index: 25;
+  white-space: nowrap;
+  cursor: default;
+  user-select: text;
+  box-sizing: border-box;
+  max-height: none;
+  spellcheck: false;
+  -webkit-spellcheck: false;
+}
+
+/* Selection state for circle references */
+.circle-reference.selected {
+  z-index: 15;
+  border: 1px solid white;
+}
+
+/* Ensure fields render behind squares but above other elements */
+.circle-reference-field {
+  z-index: 1;
+}
+
+.circle-reference {
+  z-index: 10;
+}
+
+.square {
+  z-index: 5;
+}
+
+.square.selected {
+  z-index: 8;
+}
+
+/* CSS Styles for Hexagon Cluster */
+
+/* Hexagon cluster container */
+.hexagon-cluster-container {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* Mini standard circle in cluster */
+.mini-standard-circle {
+  position: absolute;
+  border-radius: 50%;
+  z-index: 3;
+  pointer-events: none;
+  box-shadow: 0 0 3px rgba(255, 255, 255, 0.5);
+  transition: all 0.3s ease;
+}
+
+/* Mini triangle in cluster */
+.mini-triangle {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.5));
+  transition: all 0.3s ease;
+}
+
+/* Mini star in cluster */
+.mini-star {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.5));
+  transition: all 0.3s ease;
+}
+
+/* Enhanced glow effects when hexagon circle is selected */
+.circle[data-circle-type="hexagon"].selected .mini-standard-circle {
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.8), 0 0 8px rgba(255, 255, 255, 0.4);
+}
+
+.circle[data-circle-type="hexagon"].selected .mini-triangle,
+.circle[data-circle-type="hexagon"].selected .mini-star {
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.8)) drop-shadow(0 0 6px rgba(255, 255, 255, 0.4));
+}
+
+/* Animation for selected hexagon clusters */
+.circle[data-circle-type="hexagon"].selected .hexagon-cluster-container {
+  animation: cluster-pulse 3s ease-in-out infinite;
+}
+
+@keyframes cluster-pulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+}
+
+/* Ensure hexagon containers are properly styled when selected */
+.circle[data-circle-type="hexagon"].selected .shape-wrap {
+  filter: none; /* Remove the main shape filter so mini shapes can have their own */
+}
+
+/* Dimmed state for hexagon clusters */
+.circle[data-circle-type="hexagon"].dimmed .mini-standard-circle,
+.circle[data-circle-type="hexagon"].dimmed .mini-triangle,
+.circle[data-circle-type="hexagon"].dimmed .mini-star {
+  opacity: 0.35;
+}
+
+.circle[data-circle-type="hexagon"].dimmed:hover .mini-standard-circle,
+.circle[data-circle-type="hexagon"].dimmed:hover .mini-triangle,
+.circle[data-circle-type="hexagon"].dimmed:hover .mini-star {
+  opacity: 0.85;
+}
+
+/* Circle reference specific styles for hexagon clusters */
+.circle-reference .hexagon-cluster-container {
+  width: 24px;
+  height: 24px;
+}
+
+.circle-reference .mini-standard-circle,
+.circle-reference .mini-triangle,
+.circle-reference .mini-star {
+  width: 6px;
+  height: 6px;
+}
+
+/* Enhanced visibility for mini shapes in circle references */
+.circle-reference .mini-standard-circle {
+  box-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
+}
+
+.circle-reference .mini-triangle,
+.circle-reference .mini-star {
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.8));
+}
+
+/* Selected circle reference cluster effects */
+.circle-reference.selected .mini-standard-circle {
+  box-shadow: 0 0 3px rgba(255, 255, 255, 1);
+}
+
+.circle-reference.selected .mini-triangle,
+.circle-reference.selected .mini-star {
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 1));
+}
+
+/* Ensure cluster positioning works well in different contexts */
+.hexagon-wrap .hexagon-cluster-container {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Responsive scaling for different circle sizes */
+.circle[style*="width: 40px"] .hexagon-cluster-container {
+  width: 40px;
+  height: 40px;
+}
+
+.circle[style*="width: 40px"] .mini-standard-circle,
+.circle[style*="width: 40px"] .mini-triangle,
+.circle[style*="width: 40px"] .mini-star {
+  width: 10px;
+  height: 10px;
+}
+
+/* Ensure cluster elements don't interfere with interactions */
+.hexagon-cluster-container,
+.mini-standard-circle,
+.mini-triangle,
+.mini-star {
+  pointer-events: none !important;
+}
+
+/* Make sure the cluster is visible on different backgrounds */
+.mini-standard-circle,
+.mini-triangle,
+.mini-star {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+
+
+.circle.disabled {
+  filter: saturate(0.1) brightness(0.6);
+}
+
+.circle.disabled .item-name {
+  color: #999 !important;
+}
+
+/* Disabled square styles */
+.square.disabled {
+  filter: saturate(0.1) brightness(0.6);
+}
+
+.square.disabled .item-name {
+  color: #999 !important;
+}
+
+/* Additional styling to ensure disabled elements are visually distinct */
+.circle.disabled,
+.square.disabled {
+  transition: opacity 0.3s ease, filter 0.3s ease;
+}
+
+.connection-line.circle-connection {
+  background-color: rgba(100, 149, 237, 0.8) !important; /* Cornflower blue */
+  height: 2px !important;
+  box-shadow: 0 0 4px rgba(100, 149, 237, 0.6) !important;
+  z-index: 3 !important; /* Above square connections */
+}
+
+.connection-line.circle-connection.directional-connection {
+  background: linear-gradient(90deg, 
+    rgba(100, 149, 237, 0.4), 
+    rgba(100, 149, 237, 0.8), 
+    rgba(100, 149, 237, 1)) !important;
+}
+
+/* Arrow styling for directional connections */
+.connection-arrow {
+  filter: drop-shadow(0 0 2px rgba(100, 149, 237, 0.8));
+}
+
+/* Hover effects for circle connections */
+.connection-line.circle-connection:hover {
+  background-color: rgba(100, 149, 237, 1) !important;
+  height: 3px !important;
+  box-shadow: 0 0 6px rgba(100, 149, 237, 0.8) !important;
+}
+
+/* Different styling when a circle is selected */
+.circle.selected ~ .connection-line.circle-connection {
+  background-color: rgba(255, 215, 0, 0.8) !important; /* Gold */
+  box-shadow: 0 0 5px rgba(255, 215, 0, 0.6) !important;
+}
+
+.connection-line.circle-connection {
+  background-color: rgba(100, 149, 237, 0.8) !important; /* Cornflower blue */
+  height: 2px !important;
+  box-shadow: 0 0 4px rgba(100, 149, 237, 0.6) !important;
+  z-index: 3 !important; /* Above square connections but below circles */
+}
+
+/* Directional connection gradient */
+.connection-line.circle-connection.directional-connection {
+  background: linear-gradient(90deg, 
+    rgba(100, 149, 237, 0.6), 
+    rgba(100, 149, 237, 0.8), 
+    rgba(100, 149, 237, 1)) !important;
+  height: 2.5px !important;
+}
+
+/* Arrow styling for directional connections */
+.connection-arrow {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 8px solid rgba(100, 149, 237, 0.9);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  pointer-events: none;
+  filter: drop-shadow(0 0 2px rgba(100, 149, 237, 0.8));
+  z-index: 4;
+}
+
+/* Enhanced arrow for directional connections */
+.connection-line.directional-connection .connection-arrow {
+  border-left-color: rgba(100, 149, 237, 1);
+  filter: drop-shadow(0 0 3px rgba(100, 149, 237, 1));
+}
+
+/* Hover effects for circle connections */
+.connection-line.circle-connection:hover {
+  background-color: rgba(100, 149, 237, 1) !important;
+  height: 3px !important;
+  box-shadow: 0 0 8px rgba(100, 149, 237, 0.9) !important;
+  transform-origin: left center;
+}
+
+.connection-line.circle-connection:hover .connection-arrow {
+  border-left-color: rgba(100, 149, 237, 1);
+  filter: drop-shadow(0 0 4px rgba(100, 149, 237, 1));
+}
+
+/* Different styling when a circle is selected */
+.circle.selected ~ #circle-line-container .connection-line.circle-connection {
+  background-color: rgba(255, 215, 0, 0.8) !important; /* Gold */
+  box-shadow: 0 0 6px rgba(255, 215, 0, 0.7) !important;
+}
+
+.circle.selected ~ #circle-line-container .connection-line.circle-connection .connection-arrow {
+  border-left-color: rgba(255, 215, 0, 0.9);
+  filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.8));
+}
+
+/* Pulsing animation for active circle connections */
+.connection-line.circle-connection.active {
+  animation: circle-connection-pulse 2s ease-in-out infinite;
+}
+
+@keyframes circle-connection-pulse {
+  0%, 100% {
+    opacity: 0.8;
+    box-shadow: 0 0 4px rgba(100, 149, 237, 0.6);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 8px rgba(100, 149, 237, 0.9);
+  }
+}
+
+/* Circle connection container */
+#circle-line-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Special styling for bidirectional connections (if implemented later) */
+.connection-line.circle-connection.bidirectional {
+  background: linear-gradient(90deg, 
+    rgba(100, 149, 237, 1),
+    rgba(100, 149, 237, 0.6),
+    rgba(100, 149, 237, 1)) !important;
+}
+
+.connection-line.circle-connection.bidirectional::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-right: 8px solid rgba(100, 149, 237, 0.9);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  pointer-events: none;
+  filter: drop-shadow(0 0 2px rgba(100, 149, 237, 0.8));
+}
+
+/* Make sure circle connections don't interfere with circle interactions */
+.circle-connection {
+  pointer-events: none !important;
+}
+
+/* Enhanced visibility when both connected circles are visible */
+.connection-line.circle-connection.both-circles-visible {
+  opacity: 1;
+  background-color: rgba(100, 149, 237, 0.9) !important;
+}
+
+/* Subtle animation on connection creation */
+@keyframes connection-appear {
+  0% {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+.connection-line.circle-connection.new-connection {
+  animation: connection-appear 0.5s ease-out;
+}
+
+.circle-indicator {
+  position: absolute;
+  top: -18px;
+  right: -18px;
+  font-size: 22px;
+  z-index: 10;
+  background-color: rgba(0, 0, 0, 0.7);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Animation for indicator changes */
+.circle-indicator {
+  animation: indicatorPop 0.3s ease-out;
+}
+
+@keyframes indicatorPop {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Ensure circle indicators are visible on all circle types */
+.circle .circle-indicator {
+  z-index: 15; /* Higher than shape elements */
+}
+
+/* Special positioning for different circle types */
+.circle-right .circle-indicator,
+.circle-farRight .circle-indicator {
+  top: -15px;
+  right: -15px;
+  width: 24px;
+  height: 24px;
+  font-size: 18px;
+}
+
+/* Make sure indicators don't interfere with selection glow */
+.circle.selected .circle-indicator {
+  z-index: 20;
 }

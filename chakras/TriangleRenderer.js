@@ -60,15 +60,15 @@
      * @returns {Function} Click handler function
      */
     getTriangleClickHandler: function(circleView) {
-  return function(e) {
-    e.stopPropagation();
-    if (!window.wasDragged) {
-      // Use the same click handling logic as the main circle
-      // This ensures triangle circles can create circle references too
-      circleView._handleCircleClick();
-    }
-  };
-},
+      return function(e) {
+        e.stopPropagation();
+        if (!window.wasDragged) {
+          // Use the same click handling logic as the main circle
+          // This ensures triangle circles can create circle references too
+          circleView._handleCircleClick();
+        }
+      };
+    },
 
     /**
      * Create triangle shape based on completion level
@@ -257,6 +257,41 @@
         zIndex: '5',
         pointerEvents: 'none'
       };
+    },
+
+    /**
+     * Update colors for triangle shapes
+     * @param {Object} circleView - The CircleView instance
+     */
+    updateColors: function(circleView) {
+      if (circleView.viewModel.circleType !== 'triangle') return;
+      
+      var darkerColor = ChakraApp.ColorUtils.createDarkerShade(circleView.viewModel.color);
+      
+      // Update main triangle shape reference
+      if (circleView.triangleShape) {
+        circleView.triangleShape.style.backgroundColor = circleView.viewModel.color;
+      }
+      
+      // Update pyramid side reference
+      if (circleView.pyramidSide) {
+        circleView.pyramidSide.style.backgroundColor = darkerColor;
+      }
+      
+      // Also update all triangle shapes found in the DOM
+      var triangleElements = circleView.element.querySelectorAll('.triangle-shape');
+      for (var i = 0; i < triangleElements.length; i++) {
+        // Skip pyramid side elements
+        if (!triangleElements[i].classList.contains('pyramid-side')) {
+          triangleElements[i].style.backgroundColor = circleView.viewModel.color;
+        }
+      }
+      
+      // Update pyramid side elements found in the DOM
+      var pyramidElements = circleView.element.querySelectorAll('.pyramid-side');
+      for (var i = 0; i < pyramidElements.length; i++) {
+        pyramidElements[i].style.backgroundColor = darkerColor;
+      }
     },
 
     /**

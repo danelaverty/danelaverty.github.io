@@ -25,8 +25,13 @@
     this.createMainElement();
     this.addPanelSpecificClass();
     this.renderShapeBasedOnConcept();
+    this.indicatorElement = this._createIndicatorElement();
+    if (this.indicatorElement) {
+	    this.element.appendChild(this.indicatorElement);
+    }
     this.addNameElement();
     this.applySelectionState();
+    this.applyDisabledState();
     this.addToParent();
   };
 
@@ -92,23 +97,17 @@ ChakraApp.CircleView.prototype.renderShapeBasedOnConcept = function() {
   // DIRECT CHECK: Check for each circle type
   if (this.viewModel.circleType === 'triangle') {
     this._renderTriangle();
-    return;
   } else if (this.viewModel.circleType === 'gem') {
     this._renderGem();
-    return;
   } else if (this.viewModel.circleType === 'star') {
     this._renderStar();
-    return;
   } else if (this.viewModel.circleType === 'hexagon') {
-    this._renderHexagon();  // Add this case
-    return;
+    this._renderHexagon();
   } else if (this.viewModel.circleType === 'standard') {
     this._renderStandardCircle();
-    return;
   }
-  
   // Rest of the original logic...
-  if (conceptType) {
+  else if (conceptType) {
     if (conceptType.shape === 'triangle' && docPanelId === 'things') {
       this._renderTriangle();
     } else {
@@ -117,6 +116,9 @@ ChakraApp.CircleView.prototype.renderShapeBasedOnConcept = function() {
   } else {
     this._renderStandardCircle();
   }
+  
+  // IMPORTANT: Ensure ALL shapes get proper click handlers after rendering
+  this._ensureShapeClickHandler();
 };
   
 ChakraApp.CircleView.prototype.renderShapeByType = function(shapeType) {
@@ -138,24 +140,66 @@ ChakraApp.CircleView.prototype.renderShapeByType = function(shapeType) {
 ChakraApp.CircleView.prototype._ensureShapeClickHandler = function() {
   var self = this;
   
-  // Only add click handler if we have a shape wrap and it doesn't already have one
-  if (this.shapeWrap) {
-    // Remove existing handlers to avoid duplicates
-    var newShapeWrap = this.shapeWrap.cloneNode(true);
-    if (this.shapeWrap.parentNode) {
-      this.shapeWrap.parentNode.replaceChild(newShapeWrap, this.shapeWrap);
+  // Get all possible clickable elements within this circle, EXCEPT the main element
+  var clickableElements = [
+    this.shapeWrap, // Shape wrapper
+    this.glowElement // Glow element for standard circles
+  ];
+  
+  // Also find any rendered shape elements by class
+  var shapeSelectors = [
+    '.shape-wrap',
+    '.triangle-wrap', 
+    '.gem-wrap', 
+    '.star-wrap', 
+    '.hexagon-wrap',
+    '.triangle-shape',
+    '.gem-shape',
+    '.star-shape',
+    '.hexagon-shape',
+    '.circle-glow',
+    'svg' // For gem shapes which use SVG
+  ];
+  
+  shapeSelectors.forEach(function(selector) {
+    var elements = self.element.querySelectorAll(selector);
+    for (var i = 0; i < elements.length; i++) {
+      clickableElements.push(elements[i]);
     }
-    this.shapeWrap = newShapeWrap;
-    
-    // Add click handler
-    this.shapeWrap.style.cursor = "pointer";
-    this.shapeWrap.addEventListener('click', function(e) {
-      e.stopPropagation();
-      if (!window.wasDragged) {
-        self._handleCircleClick();
+  });
+  
+  // Remove duplicates, null elements, AND the main circle element
+  clickableElements = clickableElements.filter(function(el, index, arr) {
+    return el && el !== self.element && arr.indexOf(el) === index;
+  });
+  
+  // Add click handlers to all clickable elements (but NOT the main element)
+  clickableElements.forEach(function(element) {
+    if (element) {
+      // Remove any existing click handlers by cloning the element
+      var newElement = element.cloneNode(true);
+      if (element.parentNode) {
+        element.parentNode.replaceChild(newElement, element);
+        element = newElement;
+        
+        // Update our references if this was a tracked element
+        if (element.classList.contains('shape-wrap')) {
+          self.shapeWrap = element;
+        } else if (element.classList.contains('circle-glow')) {
+          self.glowElement = element;
+        }
       }
-    });
-  }
+      
+      // Add the new click handler that passes the event
+      element.style.cursor = "pointer";
+      element.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (!window.wasDragged) {
+          self._handleCircleClick(e);
+        }
+      });
+    }
+  });
 };
 
   ChakraApp.CircleView.prototype.addNameElement = function() {
@@ -291,8 +335,9 @@ ChakraApp.CircleView.prototype._renderStandardCircle = function() {
   /**
    * Handle circle click - either select circle or create circle reference
    * @private
+   * @param {Event} e - The click event
    */
-  ChakraApp.CircleView.prototype._handleCircleClick = function() {
+  ChakraApp.CircleView.prototype._handleCircleClick = function(e) {
     var currentSelectedCircleId = ChakraApp.appState.selectedCircleId;
     var currentSelectedTabId = ChakraApp.appState.selectedTabId;
     
@@ -301,8 +346,11 @@ ChakraApp.CircleView.prototype._renderStandardCircle = function() {
       return;
     }
     
-    // If we have a different circle selected AND a tab selected, create a circle reference
-    if (currentSelectedCircleId && currentSelectedTabId && currentSelectedCircleId !== this.viewModel.id) {
+    // Check if CTRL/CMD key is held down
+    var isCtrlHeld = e && (e.ctrlKey || e.metaKey);
+    
+    // If we have a different circle selected AND a tab selected AND CTRL is held, create a circle reference
+    if (currentSelectedCircleId && currentSelectedTabId && currentSelectedCircleId !== this.viewModel.id && isCtrlHeld) {
       this._createCircleReference(currentSelectedTabId);
     } else {
       // Otherwise, just select this circle normally
@@ -338,7 +386,9 @@ ChakraApp.CircleView.prototype._createCircleReference = function(tabId) {
     this.updateColors();
     this.updateName();
     this.updateSelectionState();
+    this.updateDisabledState();
     this.updateDimmingState();
+    this.updateIndicator();
     this.updateChakraFormIfNeeded();
   };
   
@@ -346,6 +396,30 @@ ChakraApp.CircleView.prototype._createCircleReference = function(tabId) {
     this.element.style.left = this.viewModel.x + 'px';
     this.element.style.top = this.viewModel.y + 'px';
   };
+
+ChakraApp.CircleView.prototype.updateDisabledState = function() {
+  this.element.classList.toggle('disabled', this.viewModel.disabled);
+};
+
+ChakraApp.CircleView.prototype.updateIndicator = function() {
+  // Remove existing indicator if it exists
+  if (this.indicatorElement) {
+    this.element.removeChild(this.indicatorElement);
+    this.indicatorElement = null;
+  }
+  
+  // Create new indicator if needed
+  this.indicatorElement = this._createIndicatorElement();
+  if (this.indicatorElement) {
+    this.element.appendChild(this.indicatorElement);
+  }
+};
+
+ChakraApp.CircleView.prototype.applyDisabledState = function() {
+  if (this.viewModel.disabled) {
+    this.element.classList.add('disabled');
+  }
+};
   
 ChakraApp.CircleView.prototype.updateTriangleCompletionIfNeeded = function() {
   ChakraApp.TriangleRenderer.updateTriangleCompletion(this);
@@ -372,75 +446,16 @@ ChakraApp.CircleView.prototype._isGemType = function() {
 };
   
 ChakraApp.CircleView.prototype.updateColors = function() {
-  // Update regular circle elements
-	ChakraApp.StandardCircleRenderer.updateColors(this);
+  // Update regular circle elements first
+  ChakraApp.StandardCircleRenderer.updateColors(this);
   
-  // Check if this is a gem-type circle by direct property or by panel type
-  var isGemType = this._isGemType();
-  
-  if (isGemType && this.shapeWrap) {
-    // Find the SVG element inside the shape wrap
-    var svg = this.shapeWrap.querySelector('svg');
-    if (svg) {
-      // Calculate new colors based on the updated viewModel color
-      var baseColor = this.viewModel.color;
-      var darkerColor = ChakraApp.ColorUtils.createDarkerShade(baseColor);
-      var lighterColor = ChakraApp.ColorUtils.createLighterShade(baseColor);
-      
-      // Update all polygon facets
-      var polygons = svg.querySelectorAll('polygon');
-      for (var i = 0; i < polygons.length; i++) {
-        // Alternate between base color and darker color for facets
-        // First polygon is often the table, which might have a special color
-        var color = (i === 0) ? lighterColor : 
-                   (i % 2 === 1) ? baseColor : darkerColor;
-        
-        // Update fill color directly for simple fills
-        if (!polygons[i].getAttribute('fill').startsWith('url(#')) {
-          polygons[i].setAttribute('fill', color);
-        }
-        
-        // Update stroke color for all polygons
-        if (polygons[i].hasAttribute('stroke')) {
-          polygons[i].setAttribute('stroke', lighterColor);
-        }
-      }
-      
-      // Update path stroke colors (outlines)
-      var paths = svg.querySelectorAll('path');
-      for (var i = 0; i < paths.length; i++) {
-        if (paths[i].hasAttribute('stroke')) {
-          paths[i].setAttribute('stroke', 'rgba(255,255,255,.8)');
-        }
-      }
-      
-      // Update gradients if they exist
-      var gradients = svg.querySelectorAll('linearGradient, radialGradient');
-      for (var i = 0; i < gradients.length; i++) {
-        var stops = gradients[i].querySelectorAll('stop');
-        for (var j = 0; j < stops.length; j++) {
-          // Update stop colors based on position
-          if (stops[j].getAttribute('offset') === "0%" || 
-              stops[j].getAttribute('offset') === "100%") {
-            // Edge stops use the base or darker color
-            stops[j].setAttribute('stop-color', j % 2 === 0 ? baseColor : darkerColor);
-          } else {
-            // Middle stops use lighter color for sheen
-            stops[j].setAttribute('stop-color', lighterColor);
-          }
-        }
-      }
-    }
-  }
+  // Handle gem-type circles
+  ChakraApp.GemRenderer.updateColors(this);
   
   // Handle triangle shapes
-  if (this.viewModel.circleType === 'triangle' && this.triangleShape) {
-    this.triangleShape.style.backgroundColor = this.viewModel.color;
-    if (this.pyramidSide) {
-      this.pyramidSide.style.backgroundColor = ChakraApp.ColorUtils.createDarkerShade(this.viewModel.color);
-    }
-  }
+  ChakraApp.TriangleRenderer.updateColors(this);
 
+  // Handle other shape types (hexagon, star, diamond, oval) via SimpleShapeRenderer
   ChakraApp.SimpleShapeRenderer.updateColors(this);
 };
   
@@ -463,12 +478,11 @@ ChakraApp.CircleView.prototype.updateChakraFormIfNeeded = function() {
   ChakraApp.CircleView.prototype._setupEventListeners = function() {
     var self = this;
     
+    // Main circle element click handler - handle clicks on the circle itself or any child
     this.element.addEventListener('click', function(e) {
-      if (e.target === self.element) {
-        e.stopPropagation();
-        if (!window.wasDragged) {
-          self._handleCircleClick();
-        }
+      e.stopPropagation();
+      if (!window.wasDragged) {
+        self._handleCircleClick(e);
       }
     });
     
@@ -490,78 +504,182 @@ ChakraApp.CircleView.prototype.updateChakraFormIfNeeded = function() {
     this._addDragFunctionality();
   };
   
-  ChakraApp.CircleView.prototype._addDragFunctionality = function() {
-    var isDragging = false;
-    var self = this;
+ChakraApp.CircleView.prototype._addDragFunctionality = function() {
+  var self = this;
+  
+  // Mark view model as circle for drag handler
+  this.viewModel.isCircle = true;
+  
+  // Determine drag targets based on circle type
+  var dragTargets = [this.element];
+  var dragClasses = ['shape-wrap', 'triangle-shape', 'star-shape', 
+                     'hexagon-shape', 'oval-shape', 'diamond-shape', 'gem-shape'];
+  
+  // Add glow element if it exists
+  if (this.glowElement) {
+    dragTargets.push(this.glowElement);
+  }
+  
+  // Add shape wrap if it exists
+  if (this.shapeWrap) {
+    dragTargets.push(this.shapeWrap);
+  }
+  
+  // Check if this circle is in the left panel for meridian snapping
+  var panelId = this.parentElement.getAttribute('data-panel-id');
+  var enableSnapping = panelId === 'left';
+  
+  var dragConfig = {
+    viewModel: this.viewModel,
+    parentElement: this.parentElement,
+    dragTargets: dragTargets,
+    dragClasses: dragClasses,
+    enableSnapping: enableSnapping,
     
-    this.element.addEventListener('mousedown', function(e) {
-      var dragTargets = [self.element, self.glowElement, self.shapeWrap];
-      var dragClasses = ['shape-wrap', 'triangle-shape', 'star-shape', 
-                        'hexagon-shape', 'oval-shape', 'diamond-shape'];
+    // Custom drag target checker for circles (includes SVG elements for gems)
+    isDragTarget: function(dragState, event) {
+      var target = event.target;
       
-      var isTarget = dragTargets.includes(e.target) || 
-                     dragClasses.some(function(cls) { return e.target.classList.contains(cls); });
+      // Check standard targets
+      if (dragTargets.includes(target)) return true;
       
-      if (isTarget) {
-        e.preventDefault();
-        isDragging = true;
-        window.wasDragged = false;
-        self.element.classList.add('no-transition');
-        self.element.style.zIndex = 20;
+      // Check drag classes
+      if (dragClasses.some(function(cls) { return target.classList.contains(cls); })) {
+        return true;
       }
-    });
+      
+      // Special handling for gem SVG elements
+      var svgTags = ['svg', 'polygon', 'path'];
+      if (svgTags.includes(target.tagName) || target.closest('svg')) {
+        return true;
+      }
+      
+      return false;
+    },
     
-    document.addEventListener('mousemove', function(e) {
-      if (isDragging) {
-        e.preventDefault();
-        window.wasDragged = true;
+    updatePosition: function(x, y) {
+      // Update visual position immediately for smooth dragging
+      self.element.style.left = x + 'px';
+      self.element.style.top = y + 'px';
+    },
+    
+    onDragEnd: function(dragState) {
+      // Update the view model with final position
+      var finalX = parseFloat(self.element.style.left);
+      var finalY = parseFloat(self.element.style.top);
+      self.viewModel.updatePosition(finalX, finalY);
+    }
+  };
+  
+  // Add drag functionality using the unified system
+  this.dragState = ChakraApp.DragHandler.addDragFunctionality(this.element, dragConfig);
+  
+  // Store cleanup function
+  this._addHandler(function() {
+    ChakraApp.DragHandler.removeDragFunctionality(self.dragState);
+  });
+};
+
+ChakraApp.CircleView.prototype._createIndicatorElement = function() {
+  if (!this.viewModel.indicator) return null;
+  
+  // Find the emoji for this indicator
+  var indicatorConfig = null;
+  ChakraApp.Config.indicatorEmojis.forEach(function(config) {
+    if (config.id === this.viewModel.indicator) {
+      indicatorConfig = config;
+    }
+  }, this);
+  
+  if (!indicatorConfig) return null;
+  
+  // Create indicator element
+  var indicator = this._createElement('div', {
+    className: 'circle-indicator',
+    textContent: indicatorConfig.emoji,
+    style: {
+      position: 'absolute',
+      top: '-18px',
+      right: '-18px',
+      fontSize: '22px',
+      zIndex: '10',
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      borderRadius: '50%',
+      width: '28px',
+      height: '28px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      pointerEvents: 'none'
+    }
+  });
+  
+  return indicator;
+};
+
+ChakraApp.CircleView.prototype._updateCircleConnectionsDuringDrag = function(newX, newY) {
+  var circleId = this.viewModel.id;
+  
+  // Find all circle connections involving this circle
+  ChakraApp.appState.connections.forEach(function(connection, connectionId) {
+    if (connection.connectionType === 'circle' && 
+        (connection.sourceId === circleId || connection.targetId === circleId)) {
+      
+      // Get the connection view
+      var connectionView = null;
+      if (ChakraApp.app && ChakraApp.app.viewManager && ChakraApp.app.viewManager.connectionViews) {
+        connectionView = ChakraApp.app.viewManager.connectionViews.get(connectionId);
+      }
+      
+      if (connectionView) {
+        // Determine source and target positions
+        var sourceX, sourceY, targetX, targetY;
         
-        var zoomContainer = self.parentElement;
-        var containerRect = zoomContainer.getBoundingClientRect();
-        
-        var x = Math.max(0, Math.min(containerRect.width, e.clientX - containerRect.left));
-        var y = Math.max(0, Math.min(containerRect.height, e.clientY - containerRect.top));
-        
-        self.element.style.left = x + 'px';
-        self.element.style.top = y + 'px';
-        
-        var panelId = self.parentElement.getAttribute('data-panel-id');
-        if (panelId === 'left') {
-          var meridianX = ChakraApp.Config.meridian.x;
-          var distanceToMeridian = Math.abs(x - meridianX);
+        if (connection.sourceId === circleId) {
+          // This circle is the source
+          sourceX = newX;
+          sourceY = newY;
           
-          if (distanceToMeridian < ChakraApp.Config.meridian.snapThreshold) {
-            self.element.style.left = meridianX + 'px';
-            self.element.classList.add('snapping');
+          // Get target circle position
+          var targetCircle = ChakraApp.appState.getCircle(connection.targetId);
+          if (targetCircle) {
+            targetX = targetCircle.x;
+            targetY = targetCircle.y;
           } else {
-            self.element.classList.remove('snapping');
+            return; // Skip if target circle not found
+          }
+        } else {
+          // This circle is the target
+          targetX = newX;
+          targetY = newY;
+          
+          // Get source circle position
+          var sourceCircle = ChakraApp.appState.getCircle(connection.sourceId);
+          if (sourceCircle) {
+            sourceX = sourceCircle.x;
+            sourceY = sourceCircle.y;
+          } else {
+            return; // Skip if source circle not found
           }
         }
+        
+        // Use the optimized update method if available, otherwise fallback to full update
+        if (typeof connectionView.updateCircleConnectionPosition === 'function') {
+          connectionView.updateCircleConnectionPosition(sourceX, sourceY, targetX, targetY);
+        } else {
+          connectionView._updateLinePosition();
+        }
       }
-    });
-    
-    document.addEventListener('mouseup', function() {
-      if (isDragging) {
-        isDragging = false;
-        
-        var finalX = parseFloat(self.element.style.left);
-        var finalY = parseFloat(self.element.style.top);
-        self.viewModel.updatePosition(finalX, finalY);
-        
-        self.element.style.zIndex = self.viewModel.isSelected ? 15 : 10;
-        self.element.classList.remove('no-transition');
-        
-        ChakraApp.appState.saveToStorageNow();
-        
-        setTimeout(function() {
-          window.wasDragged = false;
-        }, 50);
-      }
-    });
-    
-    this._addHandler(function() {
-      document.removeEventListener('mousemove', self.mouseMoveHandler);
-      document.removeEventListener('mouseup', self.mouseUpHandler);
-    });
-  };
+    }
+  }, this);
+};
+
+// **NEW METHOD**: Finalize circle connections after drag
+ChakraApp.CircleView.prototype._finalizeCircleConnectionsAfterDrag = function() {
+  // Trigger a full update of circle connections to ensure everything is correct
+  if (ChakraApp.app && ChakraApp.app.viewManager) {
+    ChakraApp.app.viewManager._updateCircleConnectionViews();
+  }
+};
+
 })(window.ChakraApp = window.ChakraApp || {});
