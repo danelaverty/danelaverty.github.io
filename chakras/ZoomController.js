@@ -18,7 +18,7 @@
     this.defaultTransform = {
       translateX: -50,
       translateY: -50,
-      scale: 1.2
+      scale: 1.0
     };
     
     this.currentZoom = {
@@ -301,7 +301,7 @@
       this.currentZoom = {
       translateX: this.defaultTransform.translateX,
       translateY: this.defaultTransform.translateY,
-      scale: 1.2
+      scale: 1.0
     };
       this.currentZoom.translateY = this.defaultTransform.translateY + (2 * this.translateYStep);
     }

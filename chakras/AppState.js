@@ -58,7 +58,35 @@
     this.panelVisibility = { left: true, bottom: true };
     this.documentListVisible = { left: false, bottom: false };
   };
-  
+
+  // NEW: Instance management methods
+  ChakraApp.AppState.prototype._getInstanceId = function() {
+    // Try to get from URL parameter first (?instance=myapp1)
+    const params = new URLSearchParams(window.location.search);
+    const urlInstance = params.get('instance');
+    if (urlInstance) {
+      return urlInstance;
+    }
+    
+    // For file:// URLs, use the directory path
+    if (window.location.protocol === 'file:') {
+      const path = window.location.pathname;
+      // Extract directory name from path like /C:/http/chakras-dev1/index.html
+      const pathParts = path.split('/');
+      const dirName = pathParts[pathParts.length - 2]; // Get the directory name
+      return dirName || 'default';
+    }
+    
+    // Fall back to port-based instance ID for http/https
+    const port = window.location.port || '3000';
+    return `instance${port}`;
+  };
+
+  ChakraApp.AppState.prototype._getStorageKey = function(keyName) {
+    const instanceId = this._getInstanceId();
+    return `${instanceId}.${keyName}`;
+  };
+
   // Event Listeners
   ChakraApp.AppState.prototype._setupEventListeners = function() {
     var self = this;
@@ -93,15 +121,74 @@
     console.log("Stub _handleSquareUpdated called, should be overridden");
   };
   
-  ChakraApp.AppState.prototype._handleCircleSelection = function(circle) {
-    // This is a stub that will be overridden by AppStateEntities.js
-    console.log("Stub _handleCircleSelection called, should be overridden");
-  };
+ChakraApp.AppState.prototype._handleCircleSelection = function(circle) {
+  var circleId = circle.id || circle;
   
-  ChakraApp.AppState.prototype._handleCircleDeselection = function() {
-    // This is a stub that will be overridden by AppStateEntities.js
-    console.log("Stub _handleCircleDeselection called, should be overridden");
-  };
+  if (typeof ChakraApp.cleanupOverlappingGroups === 'function') {
+    ChakraApp.cleanupOverlappingGroups();
+  }
+  
+  // Hide all squares first
+  this._hideAllSquares();
+  
+  // Get squares for this circle and make them visible
+  var squaresForCircle = this.getSquaresForCircle(circleId);
+  
+  // Show these squares
+  this._showSquaresForCircle(circleId);
+  
+  // IMPORTANT: Only clear SQUARE connections, not circle connections
+  var squareConnectionsToRemove = [];
+  var self = this;
+  
+  this.connections.forEach(function(conn, connId) {
+    // Only remove square connections (connectionType is undefined/null or explicitly 'square')
+    if (!conn.connectionType || conn.connectionType === 'square') {
+      squareConnectionsToRemove.push(connId);
+    }
+  });
+  
+  squareConnectionsToRemove.forEach(function(connId) {
+    self.connections.delete(connId);
+  });
+  
+  // Update only square connections for this circle
+  this._updateConnectionsForCircleId(circleId);
+  
+  // Publish event to update views - this will update square connections but preserve circle connections
+  ChakraApp.EventBus.publish(ChakraApp.EventTypes.CONNECTION_UPDATED, circleId);
+  
+};
+  
+ChakraApp.AppState.prototype._handleCircleDeselection = function() {
+  
+  this._hideAllSquares();
+  this._cleanupSquareViews();
+  this.deselectSquare();
+  
+  // IMPORTANT: Only clear SQUARE connections, not circle connections
+  var squareConnectionsToRemove = [];
+  var self = this;
+  
+  this.connections.forEach(function(conn, connId) {
+    // Only remove square connections (connectionType is undefined/null or explicitly 'square')
+    if (!conn.connectionType || conn.connectionType === 'square') {
+      squareConnectionsToRemove.push(connId);
+    }
+  });
+  
+  squareConnectionsToRemove.forEach(function(connId) {
+    self.connections.delete(connId);
+  });
+  
+  if (ChakraApp.OverlappingSquaresManager) {
+    ChakraApp.OverlappingSquaresManager.cleanup();
+  }
+  
+  // Publish event to update views - this will clear square connection views but preserve circle connections
+  ChakraApp.EventBus.publish(ChakraApp.EventTypes.CONNECTION_UPDATED, null);
+  
+};
 
   // Generic entity operations
   ChakraApp.AppState.prototype._notifyStateChanged = function(section, data) {
@@ -261,10 +348,10 @@ ChakraApp.AppState.prototype._updateEntity = function(entityType, id, changes) {
     // This will be implemented in AppStateEntities.js
   };
 
-  // Panel state methods
+  // Panel state methods - UPDATED to use instance-specific storage
   ChakraApp.AppState.prototype._loadPanelState = function() {
     try {
-      var savedState = localStorage.getItem('chakraPanelVisibility');
+      var savedState = localStorage.getItem(this._getStorageKey('chakraPanelVisibility'));
       if (!savedState) return;
       
       var panelState = JSON.parse(savedState);
@@ -281,18 +368,18 @@ ChakraApp.AppState.prototype._updateEntity = function(entityType, id, changes) {
   
   ChakraApp.AppState.prototype._savePanelState = function() {
     try {
-      localStorage.setItem('chakraPanelVisibility', JSON.stringify(this.panelVisibility));
+      localStorage.setItem(this._getStorageKey('chakraPanelVisibility'), JSON.stringify(this.panelVisibility));
     } catch (e) {
       console.error('Error saving panel state:', e);
     }
   };
   
-  // Storage methods
+  // Storage methods - UPDATED to use instance-specific storage and include migration
 ChakraApp.AppState.prototype.loadFromStorage = function() {
   try {
     this._isLoading = true;
     
-    var savedData = localStorage.getItem('chakraVisualizerData');
+    var savedData = localStorage.getItem(this._getStorageKey('chakraVisualizerData'));
     if (!savedData) {
       this._isLoading = false;
       return false;
@@ -362,17 +449,20 @@ ChakraApp.AppState.prototype._selectSavedDocuments = function() {
     this.selectedTabId = null;
   };
   
-  ChakraApp.AppState.prototype._loadEntities = function(data) {
-    this._loadDocuments(data.documents);
-    this._loadCircles(data.circles);
-    this._loadSquares(data.squares);
-    this._loadTabs(data.tabs);
+ChakraApp.AppState.prototype._loadEntities = function(data) {
+  this._loadDocuments(data.documents);
+  this._loadCircles(data.circles);
+  this._loadSquares(data.squares);
+  this._loadTabs(data.tabs);
 
-    this.circleReferences = (data.circleReferences || []).map(function(refData) {
-	    return new ChakraApp.CircleReference(refData);
-    });
-    this.selectedCircleReferenceId = data.selectedCircleReferenceId || null;
-  };
+  this.circleReferences = (data.circleReferences || []).map(function(refData) {
+    return new ChakraApp.CircleReference(refData);
+  });
+  this.selectedCircleReferenceId = data.selectedCircleReferenceId || null;
+  
+  // IMPORTANT: Update circle connections after loading everything
+  this._updateCircleConnections();
+};
   
   ChakraApp.AppState.prototype._loadDocuments = function(documents) {
     if (documents && Array.isArray(documents)) {
@@ -453,7 +543,7 @@ ChakraApp.AppState.prototype._actualSaveToStorage = function() {
     data.circleReferences = this.circleReferences.map(function(ref) { return ref.toJSON(); });
     data.selectedCircleReferenceId = this.selectedCircleReferenceId;
     
-    localStorage.setItem('chakraVisualizerData', JSON.stringify(data));
+    localStorage.setItem(this._getStorageKey('chakraVisualizerData'), JSON.stringify(data));
     ChakraApp.EventBus.publish(ChakraApp.EventTypes.STATE_SAVED, data);
     
     return true;

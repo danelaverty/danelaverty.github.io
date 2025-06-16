@@ -24,32 +24,164 @@
     },
 
     /**
-     * Renders a hexagon shape
+     * Renders a hexagon shape as a cluster of mini standard, triangle, and star
      * @param {Object} circleView - The CircleView instance
      */
     renderHexagon: function(circleView) {
-      var self = this;
       circleView.createShapeWrap('hexagon-wrap');
-
-      var hexagonClipPath = 'polygon(50% 0%, 96% 25%, 96% 75%, 50% 100%, 4% 75%, 4% 25%, 50% 0%, 50% 17%, 17% 30%, 17% 70%, 50% 85%, 83% 70%, 83% 30%, 50% 17%)';
       
-      // Main hexagon
-      var styles = circleView.getBaseShapeStyles(circleView.viewModel.color);
-      styles.clipPath = hexagonClipPath;
-      styles.transform = 'translate(-50%, -50%) scale(1.2)';
-      circleView.hexagonShape = circleView.createShapeElement('hexagon-shape', styles);
+      // Create container for the cluster
+      var clusterContainer = circleView._createElement('div', {
+        className: 'hexagon-cluster-container',
+        style: {
+          position: 'absolute',
+          width: '30px',
+          height: '30px',
+          left: '50%',
+          top: '50%',
+          transform: 'translate(-50%, -50%)'
+        }
+      });
       
-      // Inner hexagon with darker color
-      var darkerColor = ChakraApp.ColorUtils.createDarkerShade(circleView.viewModel.color);
-      var styles2 = circleView.getBaseShapeStyles(darkerColor);
-      styles2.clipPath = hexagonClipPath;
-      styles2.transform = 'translate(-50%, -50%) scale(.6)';
-      circleView.hexagonShape2 = circleView.createShapeElement('hexagon-shape', styles2);
-
+      // Create mini standard circle (top)
+      this._createMiniStandardCircle(circleView, clusterContainer, {
+        x: '50%',
+        y: '15%',
+        size: '13px'
+      });
+      
+      // Create mini triangle (bottom left)
+      this._createMiniTriangle(circleView, clusterContainer, {
+        x: '20%',
+        y: '70%',
+        size: '13px'
+      });
+      
+      // Create mini star (bottom right)
+      this._createMiniStar(circleView, clusterContainer, {
+        x: '80%',
+        y: '70%',
+        size: '13px'
+      });
+      
+      circleView.shapeWrap.appendChild(clusterContainer);
+      
       // Add explicit click handler to the shape wrap
       this.addClickHandler(circleView);
       
       circleView.appendShapeToElement();
+    },
+
+    /**
+     * Create a mini standard circle for the cluster
+     * @param {Object} circleView - The CircleView instance
+     * @param {HTMLElement} container - Container element
+     * @param {Object} position - Position and size info
+     */
+    _createMiniStandardCircle: function(circleView, container, position) {
+      var miniCircle = circleView._createElement('div', {
+        className: 'mini-standard-circle',
+        style: {
+          position: 'absolute',
+          width: position.size,
+          height: position.size,
+          borderRadius: '50%',
+          backgroundColor: circleView.viewModel.color,
+          left: position.x,
+          top: position.y,
+          transform: 'translate(-50%, -50%)',
+          boxShadow: '0 0 3px rgba(255, 255, 255, 0.5)',
+          zIndex: '3',
+          pointerEvents: 'none',
+	      webkitFilter: 'blur(2px)',
+        }
+      });
+      
+      container.appendChild(miniCircle);
+      
+      // Store reference for color updates
+      if (!circleView.miniShapes) circleView.miniShapes = [];
+      circleView.miniShapes.push({type: 'standard', element: miniCircle});
+    },
+
+    /**
+     * Create a mini triangle for the cluster
+     * @param {Object} circleView - The CircleView instance
+     * @param {HTMLElement} container - Container element
+     * @param {Object} position - Position and size info
+     */
+    _createMiniTriangle: function(circleView, container, position) {
+      var miniTriangle = circleView._createElement('div', {
+        className: 'mini-triangle',
+        style: {
+          position: 'absolute',
+          width: position.size,
+          height: position.size,
+          backgroundColor: circleView.viewModel.color,
+          clipPath: 'polygon(45% 0%, 0% 100%, 90% 100%)',
+          left: position.x,
+          top: position.y,
+          transform: 'translate(-50%, -50%)',
+          filter: 'drop-shadow(0 0 2px rgba(255, 255, 255, 0.5))',
+          zIndex: '3',
+          pointerEvents: 'none'
+        }
+      });
+      container.appendChild(miniTriangle);
+      
+
+      var miniPyramidSide = circleView._createElement('div', {
+        className: 'mini-pyramid-side',
+        style: {
+          position: 'absolute',
+          width: position.size,
+          height: position.size,
+          backgroundColor: ChakraApp.ColorUtils.createDarkerShade(circleView.viewModel.color),
+        clipPath: 'polygon(45% 0%, 90% 100%, 100% 70%)',
+          left: position.x,
+          top: position.y,
+          transform: 'translate(-50%, -50%)',
+          filter: 'drop-shadow(0 0 2px rgba(255, 255, 255, 0.5))',
+          zIndex: '3',
+          pointerEvents: 'none'
+        }
+      });
+      container.appendChild(miniPyramidSide);
+
+      // Store reference for color updates
+      if (!circleView.miniShapes) circleView.miniShapes = [];
+      circleView.miniShapes.push({type: 'triangle', element: miniTriangle});
+    },
+
+    /**
+     * Create a mini star for the cluster
+     * @param {Object} circleView - The CircleView instance
+     * @param {HTMLElement} container - Container element
+     * @param {Object} position - Position and size info
+     */
+    _createMiniStar: function(circleView, container, position) {
+      var miniStar = circleView._createElement('div', {
+        className: 'mini-star',
+        style: {
+          position: 'absolute',
+          width: position.size,
+          height: position.size,
+          backgroundColor: circleView.viewModel.color,
+      clipPath: 'polygon(10% 10%, 90% 50%, 10% 90%)',
+          left: position.x,
+          top: position.y,
+          transform: 'translate(-50%, -50%)',
+          filter: 'drop-shadow(0 0 2px rgba(255, 255, 255, 0.5))',
+          zIndex: '3',
+          pointerEvents: 'none'
+        }
+      });
+      
+      container.appendChild(miniStar);
+      
+      // Store reference for color updates
+      if (!circleView.miniShapes) circleView.miniShapes = [];
+      circleView.miniShapes.push({type: 'star', element: miniStar});
     },
 
     /**
@@ -103,13 +235,13 @@
       circleView.shapeWrap.addEventListener('click', function(e) {
         e.stopPropagation();
         if (!window.wasDragged) {
-	      circleView._handleCircleClick();
+          circleView._handleCircleClick();
         }
       });
     },
 
     /**
-     * Updates colors for simple shapes
+     * Updates colors for simple shapes including the new hexagon cluster
      * @param {Object} circleView - The CircleView instance
      */
     updateColors: function(circleView) {
@@ -124,31 +256,49 @@
         }
       }
 
-      // Handle hexagon shapes
-      if (circleView.viewModel.circleType === 'hexagon' && circleView.hexagonShape) {
-        circleView.hexagonShape.style.backgroundColor = circleView.viewModel.color;
-        var darkerColor = ChakraApp.ColorUtils.createDarkerShade(circleView.viewModel.color);
-        if (circleView.hexagonShape2) {
-          circleView.hexagonShape2.style.backgroundColor = darkerColor;
+      // Handle hexagon cluster shapes
+      if (circleView.viewModel.circleType === 'hexagon') {
+        // Update mini shapes in the cluster
+        if (circleView.miniShapes) {
+          circleView.miniShapes.forEach(function(miniShape) {
+            miniShape.element.style.backgroundColor = circleView.viewModel.color;
+          });
         }
         
-        // If the hexagon has any specific styling elements, update those as well
-        var hexagonElement = circleView.element.querySelector('.hexagon-shape');
-        if (hexagonElement) {
-          hexagonElement.style.backgroundColor = circleView.viewModel.color;
+        // Also update any mini shapes found in the DOM
+        var miniElements = circleView.element.querySelectorAll('.mini-standard-circle, .mini-triangle, .mini-star');
+        for (var i = 0; i < miniElements.length; i++) {
+          miniElements[i].style.backgroundColor = circleView.viewModel.color;
+        }
+
+        var miniElements = circleView.element.querySelectorAll('.mini-pyramid-side');
+        for (var i = 0; i < miniElements.length; i++) {
+          miniElements[i].style.backgroundColor = ChakraApp.ColorUtils.createDarkerShade(circleView.viewModel.color);
         }
       }
 
       // Handle diamond shapes
       if (circleView.viewModel.circleType === 'diamond' && circleView.diamondShape) {
         circleView.diamondShape.style.backgroundColor = circleView.viewModel.color;
+        
+        // Also update any diamond shapes found in the DOM
+        var diamondElements = circleView.element.querySelectorAll('.diamond-shape');
+        for (var i = 0; i < diamondElements.length; i++) {
+          diamondElements[i].style.backgroundColor = circleView.viewModel.color;
+        }
       }
 
       // Handle oval shapes
       if (circleView.viewModel.circleType === 'oval' && circleView.ovalShape) {
         circleView.ovalShape.style.backgroundColor = circleView.viewModel.color;
+        
+        // Also update any oval shapes found in the DOM
+        var ovalElements = circleView.element.querySelectorAll('.oval-shape');
+        for (var i = 0; i < ovalElements.length; i++) {
+          ovalElements[i].style.backgroundColor = circleView.viewModel.color;
+        }
       }
-    }
+    },
   };
   
 })(window.ChakraApp = window.ChakraApp || {});

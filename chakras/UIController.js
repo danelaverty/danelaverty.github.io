@@ -111,10 +111,328 @@
         background-color: var(--color-btn-hover);
         transform: scale(1.05);
       }
+
+         .template-toggle-btn {
+        font-size: 10px;
+        width: 14px;
+        height: 14px;
+        margin-right: 2px;
+        position: relative;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border-radius: 50%;
+        background-color: #444;
+        color: #BBB;
+        border: none;
+        cursor: pointer;
+        transition: background-color var(--transition-fast), transform var(--transition-fast);
+        padding: 0;
+      }
+
+      .template-toggle-btn:hover {
+        background-color: #999;
+        transform: scale(1.05);
+      }
+
+      /* Use Template Button Styles */
+      .use-template-btn {
+	      position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 3px 7px;
+    background-color: #777;
+    color: white;
+    border: none;
+    border-radius: 15px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+    transition: all 0.3s ease;
+    z-index: 200;
+      }
+
+      .use-template-btn:hover {
+        background-color: #45a049;
+        transform: translateX(-50%) translateY(-2px);
+        box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+      }
+
+      .use-template-btn:active {
+        transform: translateX(-50%) scale(0.95);
+      }
+
+      .use-template-btn.visible {
+        display: block;
+        animation: slideUp 0.3s ease-out;
+      }
+
+      @keyframes slideUp {
+        from {
+          opacity: 0;
+          transform: translateX(-50%) translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(-50%) translateY(0);
+        }
+      }
+
+        /* Mini-icon styles */
+      .circle-type-mini-icon {
+        width: 12px;
+        height: 12px;
+        margin-right: 4px;
+        margin-left: 2px;
+        position: relative;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      /* Standard circle mini-icon */
+      .mini-icon-standard {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background-color: #666;
+        box-shadow: 0 0 2px rgba(255, 255, 255, 0.3);
+	      -webkit-filter: blur(1px);
+      }
+
+      /* Triangle mini-icon */
+      .mini-icon-triangle {
+        width: 10px;
+        height: 10px;
+        background-color: #666;
+        clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+        filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.3));
+      }
+
+      /* Star mini-icon */
+      .mini-icon-star {
+        width: 10px;
+        height: 10px;
+        background-color: #666;
+        clip-path: polygon(10% 10%, 90% 50%, 10% 90%);
+        filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.3));
+      }
+
+      /* Gem mini-icon */
+      .mini-icon-gem {
+        width: 10px;
+        height: 10px;
+        background-color: #666;
+        clip-path: polygon(50% 0%, 80% 10%, 100% 35%, 82% 70%, 50% 100%, 18% 70%, 0% 35%, 20% 10%);
+        filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.3));
+      }
+
+      /* Hexagon cluster mini-icon */
+      .mini-icon-hexagon {
+        width: 12px;
+        height: 12px;
+        position: relative;
+      }
+
+      .mini-icon-hexagon .cluster-mini-standard {
+        position: absolute;
+        width: 3px;
+        height: 3px;
+        border-radius: 50%;
+        background-color: #666;
+        left: 50%;
+        top: 10%;
+        transform: translateX(-50%);
+      }
+
+      .mini-icon-hexagon .cluster-mini-triangle {
+        position: absolute;
+        width: 3px;
+        height: 3px;
+        background-color: #666;
+        clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+        left: 20%;
+        top: 70%;
+        transform: translateX(-50%);
+      }
+
+      .mini-icon-hexagon .cluster-mini-star {
+        position: absolute;
+        width: 3px;
+        height: 3px;
+        background-color: #666;
+        clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+        left: 80%;
+        top: 70%;
+        transform: translateX(-50%);
+      }
+
+       .document-toggle-btn, .add-btn.circle-btn {
+        width: 17px;
+        height: 17px;
+        margin-right: 2px;
+        position: relative;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border-radius: 50%;
+        background-color: var(--color-btn);
+        color: #CCC;
+        border: none;
+        cursor: pointer;
+        transition: background-color var(--transition-fast), transform var(--transition-fast);
+        padding: 0; /* Add this to ensure proper centering */
+      }
+
+      /* Adjust mini-icon styles for use in buttons */
+      .add-btn.circle-btn .circle-type-mini-icon {
+        width: 12px;
+        height: 12px;
+        margin: 0; /* Remove margins when used in buttons */
+        position: relative;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      /* Make mini-icons slightly smaller and lighter colored for buttons */
+      .add-btn.circle-btn .mini-icon-standard {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: #CCC;
+        box-shadow: 0 0 1px rgba(255, 255, 255, 0.5);
+      }
+
+      .add-btn.circle-btn .mini-icon-triangle {
+        width: 8px;
+        height: 8px;
+        background-color: #CCC;
+        clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+        filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.5));
+      }
+
+      .add-btn.circle-btn .mini-icon-star {
+        width: 8px;
+        height: 8px;
+        background-color: #CCC;
+        clip-path: polygon(10% 10%, 90% 50%, 10% 90%);
+        filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.5));
+      }
+
+      .add-btn.circle-btn .mini-icon-gem {
+        width: 8px;
+        height: 8px;
+        background-color: #CCC;
+        clip-path: polygon(50% 0%, 80% 10%, 100% 35%, 82% 70%, 50% 100%, 18% 70%, 0% 35%, 20% 10%);
+        filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.5));
+      }
+
+      .add-btn.circle-btn .mini-icon-hexagon {
+        width: 10px;
+        height: 10px;
+        position: relative;
+      }
+
+      .add-btn.circle-btn .cluster-mini-standard {
+        position: absolute;
+        width: 2px;
+        height: 2px;
+        border-radius: 50%;
+        background-color: #CCC;
+        left: 50%;
+        top: 15%;
+        transform: translateX(-50%);
+      }
+
+      .add-btn.circle-btn .cluster-mini-triangle {
+        position: absolute;
+        width: 2px;
+        height: 2px;
+        background-color: #CCC;
+        clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+        left: 25%;
+        top: 70%;
+        transform: translateX(-50%);
+      }
+
+      .add-btn.circle-btn .cluster-mini-star {
+        position: absolute;
+        width: 2px;
+        height: 2px;
+        background-color: #CCC;
+        clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+        left: 75%;
+        top: 70%;
+        transform: translateX(-50%);
+      }
     `;
     document.head.appendChild(style);
   };
   
+  ChakraApp.UIController.prototype._createMiniIcon = function(circleType) {
+    var iconContainer = document.createElement('div');
+    iconContainer.className = 'circle-type-mini-icon';
+    
+    switch (circleType) {
+      case 'standard':
+        var standardIcon = document.createElement('div');
+        standardIcon.className = 'mini-icon-standard';
+        iconContainer.appendChild(standardIcon);
+        break;
+        
+      case 'triangle':
+        var triangleIcon = document.createElement('div');
+        triangleIcon.className = 'mini-icon-triangle';
+        iconContainer.appendChild(triangleIcon);
+        break;
+        
+      case 'star':
+        var starIcon = document.createElement('div');
+        starIcon.className = 'mini-icon-star';
+        iconContainer.appendChild(starIcon);
+        break;
+        
+      case 'gem':
+        var gemIcon = document.createElement('div');
+        gemIcon.className = 'mini-icon-gem';
+        iconContainer.appendChild(gemIcon);
+        break;
+        
+      case 'hexagon':
+        var hexagonIcon = document.createElement('div');
+        hexagonIcon.className = 'mini-icon-hexagon';
+        
+        // Create mini cluster elements
+        var miniStandard = document.createElement('div');
+        miniStandard.className = 'cluster-mini-standard';
+        
+        var miniTriangle = document.createElement('div');
+        miniTriangle.className = 'cluster-mini-triangle';
+        
+        var miniStar = document.createElement('div');
+        miniStar.className = 'cluster-mini-star';
+        
+        hexagonIcon.appendChild(miniStandard);
+        hexagonIcon.appendChild(miniTriangle);
+        hexagonIcon.appendChild(miniStar);
+        
+        iconContainer.appendChild(hexagonIcon);
+        break;
+        
+      default:
+        // Fallback to standard icon
+        var defaultIcon = document.createElement('div');
+        defaultIcon.className = 'mini-icon-standard';
+        iconContainer.appendChild(defaultIcon);
+        break;
+    }
+    
+    return iconContainer;
+  };
+
   /**
    * Set up event handlers
    * @private
@@ -128,6 +446,8 @@
     
     // Subscribe to events
     this._setupCircleEvents();
+
+    this._setupTemplateEvents();
   };
   
   /**
@@ -480,89 +800,117 @@ ChakraApp.UIController.prototype._createHeadersContainer = function() {
   
 
   // Create an individual header section with its buttons
-  ChakraApp.UIController.prototype._createHeaderSection = function(section, index) {
-    var sectionContainer = document.createElement('div');
-    sectionContainer.className = 'header-section';
-    sectionContainer.style.display = 'flex';
-    sectionContainer.style.alignItems = 'center';
-    sectionContainer.style.marginBottom = '0';
-    
-    // Create toggle document list button
-    var toggleBtn = document.createElement('button');
-    toggleBtn.id = 'toggle-document-list-btn-' + section.id;
-    toggleBtn.className = 'document-toggle-btn';
-    toggleBtn.title = 'Toggle Document List for ' + section.name;
-    toggleBtn.dataset.panelId = section.id;
-    toggleBtn.style.position = 'relative';
-    toggleBtn.style.top = '0';
-    toggleBtn.style.left = '0';
-    toggleBtn.style.marginRight = '5px';
-    
-    if (section.id !== 'left') {
-      toggleBtn.style.backgroundColor = '#666';
-    }
-    
-    // Create arrow icon - only create one and empty the button first
-    toggleBtn.innerHTML = ''; // Clear any existing content
-    var arrowIcon = document.createElement('span');
-    arrowIcon.innerHTML = '▼';
-    arrowIcon.className = 'arrow-icon';
-    toggleBtn.appendChild(arrowIcon);
-    
-    // Create add circle button
-    var addBtn = document.createElement('button');
-    addBtn.id = 'add-circle-btn-' + section.id;
-    addBtn.className = 'add-btn circle-btn';
-    addBtn.dataset.panelId = section.id;
-    addBtn.textContent = '+';
-    addBtn.title = 'Add Circle to ' + section.name;
-    addBtn.style.position = 'relative';
-    addBtn.style.top = '0';
-    addBtn.style.left = '0';
-    addBtn.style.marginRight = '5px';
-    
-    if (section.id !== 'left') {
-      addBtn.style.backgroundColor = '#666';
-    }
-    
-    // Create header text
-    var header = document.createElement('h3');
-    header.textContent = section.name;
-    header.style.position = 'relative';
-    header.style.margin = '0';
-    header.style.padding = '0';
-    header.style.top = '0';
-    header.style.color = '#666';
-    
-    // Add elements to section container
-    sectionContainer.appendChild(toggleBtn);
-    sectionContainer.appendChild(addBtn);
-    sectionContainer.appendChild(header);
-    
-    // Add section to headers container
-    this.headersContainer.appendChild(sectionContainer);
-    
-    // Store button references for DocumentController to use
-    if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.document) {
-      ChakraApp.app.controllers.document.toggleDocumentListBtns[section.id] = toggleBtn;
-    }
-    
-    // Store add button references
-    this.addCircleBtns[section.id] = addBtn;
-  };
+ChakraApp.UIController.prototype._createHeaderSection = function(section, index) {
+  var sectionContainer = document.createElement('div');
+  sectionContainer.className = 'header-section';
+  sectionContainer.style.display = 'flex';
+  sectionContainer.style.alignItems = 'center';
+  sectionContainer.style.marginBottom = '0';
+  
+  // Create toggle document list button
+  var toggleBtn = document.createElement('button');
+  toggleBtn.id = 'toggle-document-list-btn-' + section.id;
+  toggleBtn.className = 'document-toggle-btn';
+  toggleBtn.title = 'Toggle Document List for ' + section.name;
+  toggleBtn.dataset.panelId = section.id;
+  toggleBtn.style.position = 'relative';
+  toggleBtn.style.top = '0';
+  toggleBtn.style.left = '0';
+  toggleBtn.style.marginRight = '5px';
+  toggleBtn.style.backgroundColor = 'black';
+  toggleBtn.style.fontSize = '7px';
+  toggleBtn.style.color = '#777';
+  
+  // Create arrow icon
+  toggleBtn.innerHTML = '';
+  var arrowIcon = document.createElement('span');
+  arrowIcon.innerHTML = '▼';
+  arrowIcon.className = 'arrow-icon';
+  toggleBtn.appendChild(arrowIcon);
+  
+  // Create toggle template list button
+  var templateToggleBtn = document.createElement('button');
+  templateToggleBtn.id = 'toggle-template-list-btn-' + section.id;
+  templateToggleBtn.className = 'template-toggle-btn';
+  templateToggleBtn.title = 'Toggle Template List for ' + section.name;
+  templateToggleBtn.dataset.panelId = section.id;
+  templateToggleBtn.style.position = 'relative';
+  templateToggleBtn.style.top = '0';
+  templateToggleBtn.style.left = '0';
+  templateToggleBtn.style.marginLeft = '5px';
+  templateToggleBtn.style.backgroundColor = '#444';
+  templateToggleBtn.style.fontSize = '7px';
+  templateToggleBtn.style.color = '#BBB';
+  
+  // Create template arrow icon
+  templateToggleBtn.innerHTML = '';
+  var templateArrowIcon = document.createElement('span');
+  templateArrowIcon.innerHTML = 'T';
+  templateArrowIcon.className = 'template-arrow-icon';
+  templateToggleBtn.appendChild(templateArrowIcon);
+  
+  // Create add circle button with mini-icon instead of plus
+  var addBtn = document.createElement('button');
+  addBtn.id = 'add-circle-btn-' + section.id;
+  addBtn.className = 'add-btn circle-btn';
+  addBtn.dataset.panelId = section.id;
+  addBtn.title = 'Add ' + section.name + ' Circle';
+  addBtn.style.position = 'relative';
+  addBtn.style.top = '0';
+  addBtn.style.left = '0';
+  addBtn.style.marginRight = '5px';
+  
+  if (section.id !== 'left') {
+    addBtn.style.backgroundColor = '#666';
+  }
+  
+  // Add mini-icon to the button instead of plus sign
+  var miniIcon = this._createMiniIcon(section.id);
+  addBtn.appendChild(miniIcon);
+  
+  // Create header text
+  var header = document.createElement('h3');
+  header.textContent = section.name;
+  header.style.position = 'relative';
+  header.style.margin = '0';
+  header.style.padding = '0';
+  header.style.top = '0';
+  header.style.color = '#666';
+  
+  // Add elements to section container - include template toggle button
+  sectionContainer.appendChild(toggleBtn);
+  sectionContainer.appendChild(addBtn);
+  sectionContainer.appendChild(header);
+if (section.id == 'gem') {
+  sectionContainer.appendChild(templateToggleBtn);
+}
+  
+  // Add section to headers container
+  this.headersContainer.appendChild(sectionContainer);
+  
+  // Store button references
+  if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.document) {
+    ChakraApp.app.controllers.document.toggleDocumentListBtns[section.id] = toggleBtn;
+  }
+  
+  // Store template button reference for the template controller
+  if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.template) {
+    ChakraApp.app.controllers.template.toggleTemplateListBtns[section.id] = templateToggleBtn;
+  }
+  
+  this.addCircleBtns[section.id] = addBtn;
+};
 
 ChakraApp.UIController.prototype._setupButtonHandlersPostCreation = function() {
   var self = this;
   
-  // Process each circle type button
   ChakraApp.Config.circleTypes.forEach(function(circleType) {
     var typeId = circleType.id;
     
     // Handle add circle buttons
     var addBtn = document.getElementById('add-circle-btn-' + typeId);
     if (addBtn) {
-      var newAddBtn = addBtn.cloneNode(false);
-      newAddBtn.textContent = '+';
+      var newAddBtn = addBtn.cloneNode(true); // Clone with children to preserve mini-icon
       
       if (addBtn.parentNode) {
         addBtn.parentNode.replaceChild(newAddBtn, addBtn);
@@ -573,24 +921,22 @@ ChakraApp.UIController.prototype._setupButtonHandlersPostCreation = function() {
       
       // Add click handler
       newAddBtn.addEventListener('click', function(e) {
-	      e.stopPropagation();
-  
-  // Ensure document for circle type
-  self._ensureDocumentForCircleType(typeId);
-  
-  // Create a new circle
-  var circleData = {
-    circleType: typeId, // Set the circle type explicitly
-    color: circleType.color
-  };
-  
-  // Add the circle with the appropriate type
-  var circle = ChakraApp.appState.addCircle(circleData);
-  
+        e.stopPropagation();
+        
+        // Ensure document for circle type
+        self._ensureDocumentForCircleType(typeId);
+        
+        // Create a new circle
+        var circleData = {
+          circleType: typeId,
+          color: circleType.color
+        };
+        
+        var circle = ChakraApp.appState.addCircle(circleData);
       });
     }
     
-    // Handle document toggle buttons (rest of the function remains the same)
+    // Handle document toggle buttons (unchanged)
     var toggleBtn = document.getElementById('toggle-document-list-btn-' + typeId);
     if (toggleBtn) {
       var newToggleBtn = toggleBtn.cloneNode(true);
@@ -599,29 +945,29 @@ ChakraApp.UIController.prototype._setupButtonHandlersPostCreation = function() {
         toggleBtn.parentNode.replaceChild(newToggleBtn, toggleBtn);
       }
       
-      // Update reference in DocumentController if needed
       if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.document) {
         ChakraApp.app.controllers.document.toggleDocumentListBtns[typeId] = newToggleBtn;
       }
       
-      // Add click handler
       newToggleBtn.addEventListener('click', function(e) {
-        e.stopPropagation();
-        
-        // Toggle document list for this circle type
-        ChakraApp.appState.toggleDocumentList(typeId);
-        
-        // Update arrow icon
-        var arrowIcon = this.querySelector('.arrow-icon');
-        if (arrowIcon) {
-          arrowIcon.innerHTML = ChakraApp.appState.documentListVisible[typeId] ? '▲' : '▼';
-        }
-        
-        // Update document list - call through to DocumentController
-        if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.document) {
-          ChakraApp.app.controllers.document._updateDocumentList(typeId);
-        }
-      });
+  e.stopPropagation();
+  
+  // FIRST: Close all template lists before toggling document list
+  if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.document) {
+    ChakraApp.app.controllers.document._closeAllTemplateLists();
+  }
+  
+  ChakraApp.appState.toggleDocumentList(typeId);
+  
+  var arrowIcon = this.querySelector('.arrow-icon');
+  if (arrowIcon) {
+    arrowIcon.innerHTML = ChakraApp.appState.documentListVisible[typeId] ? '▲' : '▼';
+  }
+  
+  if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.document) {
+    ChakraApp.app.controllers.document._updateDocumentList(typeId);
+  }
+});
     }
   });
 };
@@ -673,5 +1019,85 @@ ChakraApp.UIController.prototype._ensureDocumentForCircleType = function(typeId)
     // Clear subscriptions object
     this.eventSubscriptions = {};
   };
+
+ChakraApp.UIController.prototype._setupTemplateEvents = function() {
+  // Listen for template selection events
+  this.eventSubscriptions.templateSelected = ChakraApp.EventBus.subscribe(
+    'TEMPLATE_SELECTED',
+    this._handleTemplateSelected.bind(this)
+  );
+  
+  this.eventSubscriptions.templateDeselected = ChakraApp.EventBus.subscribe(
+    'TEMPLATE_DESELECTED',
+    this._handleTemplateDeselected.bind(this)
+  );
+};
+
+/**
+ * Handle template selection event
+ * @private
+ */
+ChakraApp.UIController.prototype._handleTemplateSelected = function(template) {
+  // Show the "USE THIS TEMPLATE" button
+  this._showUseTemplateButton(template);
+};
+
+/**
+ * Handle template deselection event
+ * @private
+ */
+ChakraApp.UIController.prototype._handleTemplateDeselected = function() {
+  // Hide the "USE THIS TEMPLATE" button
+  this._hideUseTemplateButton();
+};
+
+/**
+ * Show the "USE THIS TEMPLATE" button
+ * @private
+ */
+ChakraApp.UIController.prototype._showUseTemplateButton = function(template) {
+  var existingBtn = document.getElementById('use-template-btn');
+  if (existingBtn) {
+    existingBtn.remove();
+  }
+
+  var useTemplateBtn = document.createElement('button');
+  useTemplateBtn.id = 'use-template-btn';
+  useTemplateBtn.className = 'use-template-btn visible';
+  useTemplateBtn.textContent = 'USE THIS TEMPLATE';
+  
+  var self = this;
+  useTemplateBtn.addEventListener('click', function() {
+    self._useTemplate(template);
+  });
+  
+  this.leftPanel.appendChild(useTemplateBtn);
+};
+
+/**
+ * Hide the "USE THIS TEMPLATE" button
+ * @private
+ */
+ChakraApp.UIController.prototype._hideUseTemplateButton = function() {
+  var useTemplateBtn = document.getElementById('use-template-btn');
+  if (useTemplateBtn) {
+    useTemplateBtn.remove();
+  }
+};
+
+/**
+ * Use a template to create a new document
+ * @private
+ */
+ChakraApp.UIController.prototype._useTemplate = function(template) {
+  if (!ChakraApp.app.controllers.template) {
+    console.error('Template controller not available');
+    return;
+  }
+  
+  // Use the template controller to create a document from the template
+  ChakraApp.app.controllers.template.useTemplate(template.id);
+};
+
   
 })(window.ChakraApp = window.ChakraApp || {});

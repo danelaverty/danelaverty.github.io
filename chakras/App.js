@@ -10,6 +10,7 @@
     if (this.initialized) return;
     
     this.waitForDOMReady();
+    ChakraApp.app.viewManager._updateCircleConnectionViews();
   };
   
   ChakraApp.App.prototype.waitForDOMReady = function() {

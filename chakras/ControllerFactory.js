@@ -17,8 +17,8 @@
     attribute: new ChakraApp.AttributeController(),
     importExport: new ChakraApp.ImportExportController(),
 circleReferences: new ChakraApp.CircleReferencesController(),
-    // Add zoom controller
-    zoom: new ChakraApp.ZoomController()
+    zoom: new ChakraApp.ZoomController(),
+	template: new ChakraApp.TemplateController(),
   };
   
   // Initialize controllers

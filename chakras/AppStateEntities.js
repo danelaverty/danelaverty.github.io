@@ -203,18 +203,45 @@
   };
   
 ChakraApp.AppState.prototype.deselectDocument = function(circleTypeId) {
-  if (!this.selectedDocumentIds[circleTypeId]) return false;
+  // Find any currently selected document of this circle type
+  var selectedDoc = null;
+  var selectedDocId = this.selectedDocumentIds[circleTypeId];
   
-  var docId = this.selectedDocumentIds[circleTypeId];
-  var doc = this.documents.get(docId);
-  
-  if (doc) {
-    doc.deselect();
+  // First, try to get the document from selectedDocumentIds
+  if (selectedDocId) {
+    selectedDoc = this.documents.get(selectedDocId);
   }
   
-  this.selectedDocumentIds[circleTypeId] = null;
+  // If we didn't find it there, search through all documents of this circle type
+  if (!selectedDoc) {
+    this.documents.forEach(function(doc) {
+      if (doc.circleType === circleTypeId && doc.selected) {
+        selectedDoc = doc;
+        selectedDocId = doc.id;
+      }
+    });
+  }
   
-  return true;
+  // If we found a selected document, deselect it
+  if (selectedDoc) {
+    // Set selectedDocumentIds to null FIRST
+    this.selectedDocumentIds[circleTypeId] = null;
+    
+    // IMPORTANT FIX: Hide circles for this document before deselecting
+    this._hideCirclesForDocument(selectedDocId);
+    
+    // Then deselect the document model
+    selectedDoc.deselect();
+    
+    // Publish the deselection event
+    ChakraApp.EventBus.publish(ChakraApp.EventTypes.DOCUMENT_DESELECTED, selectedDoc);
+    
+    return true;
+  } else {
+    // Make sure selectedDocumentIds is null anyway
+    this.selectedDocumentIds[circleTypeId] = null;
+    return false;
+  }
 };
 
 ChakraApp.AppState.prototype.cleanupSelectedDocumentIds = function() {
@@ -243,6 +270,35 @@ ChakraApp.AppState.prototype.cleanupSelectedDocumentIds = function() {
   
   
   return true;
+};
+
+ChakraApp.AppState.prototype._hideCirclesForDocument = function(documentId) {
+  var circleCount = 0;
+  var viewManager = ChakraApp.app && ChakraApp.app.viewManager;
+  
+  this.circles.forEach(function(circle) {
+    if (circle.documentId === documentId) {
+      
+      // Method 1: Remove the circle view completely
+      if (viewManager && viewManager.circleViews && viewManager.circleViews.has(circle.id)) {
+        var circleView = viewManager.circleViews.get(circle.id);
+        if (circleView && circleView.element && circleView.element.parentNode) {
+          circleView.element.parentNode.removeChild(circleView.element);
+        }
+        // Remove from view manager
+        viewManager.circleViews.delete(circle.id);
+      }
+      
+      // Method 2: Also try direct DOM manipulation as backup
+      var circleElement = document.querySelector('.circle[data-id="' + circle.id + '"]');
+      if (circleElement) {
+        circleElement.style.display = 'none';
+      }
+      
+      circleCount++;
+    }
+  }, this);
+  
 };
 
 ChakraApp.AppState.prototype.toggleDocumentList = function(circleTypeId) {
@@ -493,19 +549,122 @@ ChakraApp.AppState.prototype.addCircleReference = function(data) {
   // Publish event
   ChakraApp.EventBus.publish(ChakraApp.EventTypes.CIRCLE_REFERENCE_CREATED, circleReference);
   
+  // IMPORTANT: Update circle connections immediately after adding the reference
+  this._updateCircleConnections();
+  
   // Save state
   this.saveToStorage();
   
   return circleReference;
 };
   
+ChakraApp.AppState.prototype._createCircleConnection = function(sourceCircleId, targetCircleId) {
+  // Use a unique ID for circle connections
+  var connectionId = 'circle-' + sourceCircleId + '-to-' + targetCircleId;
+  
+  // Get the circles
+  var sourceCircle = this.circles.get(sourceCircleId);
+  var targetCircle = this.circles.get(targetCircleId);
+  
+  if (!sourceCircle || !targetCircle) {
+    return null;
+  }
+  
+  // Calculate distance for visual purposes
+  var distance = ChakraApp.Utils.calculateDistance(
+    sourceCircle.x, sourceCircle.y, targetCircle.x, targetCircle.y
+  );
+  
+  if (!this.connections.has(connectionId)) {
+    var connection = new ChakraApp.Connection({
+      id: connectionId,
+      sourceId: sourceCircleId,
+      targetId: targetCircleId,
+      length: distance,
+      isVisible: true,
+      connectionType: 'circle',
+      isDirectional: true
+    });
+    
+    this.connections.set(connectionId, connection);
+    return connection;
+  } else {
+    var existingConnection = this.connections.get(connectionId);
+    existingConnection.update({
+      length: distance,
+      isVisible: true,
+      connectionType: 'circle',
+      isDirectional: true
+    });
+    return existingConnection;
+  }
+};
+
+ChakraApp.AppState.prototype._updateCircleConnections = function() {
+  
+  // Clear existing circle connections
+  var connectionsToRemove = [];
+  this.connections.forEach(function(conn, connId) {
+    if (conn.connectionType === 'circle') {
+      connectionsToRemove.push(connId);
+    }
+  });
+  
+  var self = this;
+  connectionsToRemove.forEach(function(connId) {
+    self.connections.delete(connId);
+  });
+  
+  // Create new circle connections based on circle references
+  this.circleReferences.forEach(function(circleRef) {
+    
+    // Get the tab this reference belongs to
+    var tab = self.getTab(circleRef.tabId);
+    if (!tab) {
+      return;
+    }
+    
+    
+    // Get the circle that owns this tab
+    var ownerCircle = self.getCircle(tab.circleId);
+    if (!ownerCircle) {
+      return;
+    }
+    
+    
+    // Get the referenced circle
+    var referencedCircle = self.getCircle(circleRef.sourceCircleId);
+    if (!referencedCircle) {
+      return;
+    }
+    
+    
+    // Create connection from owner circle to referenced circle
+    var connection = self._createCircleConnection(ownerCircle.id, circleRef.sourceCircleId);
+    if (connection) {
+    } else {
+    }
+  });
+  
+  var circleConnections = 0;
+  this.connections.forEach(function(conn) {
+    if (conn.connectionType === 'circle') {
+      circleConnections++;
+    }
+  });
+  
+  // Publish update event
+  ChakraApp.EventBus.publish(ChakraApp.EventTypes.CONNECTION_UPDATED, 'circles');
+  this._saveStateIfNotLoading();
+};
+
   // Circle methods - explicitly defined and not generated
 ChakraApp.AppState.prototype.addCircle = function(circleData) {
   var circle = circleData instanceof ChakraApp.Circle ? 
     circleData : new ChakraApp.Circle(circleData || {});
 
    if (circle.x === 0 && circle.y === 0) {
-    circle.x = Math.floor(Math.random() * 81) + 20;  // Random X between 20 and 100
+    circle.x = Math.floor(Math.random() * 81) + 100;  // Random X between 100 and 180
     circle.y = Math.floor(Math.random() * 81) + 100; // Random Y between 100 and 180
   }
   
@@ -683,6 +842,7 @@ ChakraApp.AppState.prototype.addDocument = function(data) {
     this.connections.clear();
     ChakraApp.EventBus.publish(ChakraApp.EventTypes.CONNECTION_UPDATED, null);
     this._updateConnectionsForCircleId(circleId);
+    this._updateCircleConnections();
   };
   
   ChakraApp.AppState.prototype._hideAllSquares = function() {
@@ -757,6 +917,7 @@ ChakraApp.AppState.prototype.addDocument = function(data) {
       ChakraApp.OverlappingSquaresManager.cleanup();
     }
     
+    this._updateCircleConnections();
     ChakraApp.EventBus.publish(ChakraApp.EventTypes.CONNECTION_UPDATED, null);
   };
   
@@ -792,6 +953,36 @@ ChakraApp.AppState.prototype.addDocument = function(data) {
 ChakraApp.AppState.prototype.updateCircle = function(id, changes) {
   var result = this._updateEntity('circles', id, changes);
   return result;
+};
+
+// Addition to AppStateEntities.js for circle reference updates
+// This method should be added to the existing AppStateEntities.js file
+
+ChakraApp.AppState.prototype.updateCircleReference = function(id, changes) {
+  var circleReference = this.getCircleReference(id);
+  if (circleReference) {
+    // Update the model properties
+    for (var key in changes) {
+      if (changes.hasOwnProperty(key)) {
+        circleReference[key] = changes[key];
+      }
+    }
+    
+    // Update the updatedAt timestamp
+    circleReference.updatedAt = new Date();
+    
+    // Trigger model update notification (this will notify view models)
+    circleReference._notify({ type: 'update', model: circleReference });
+    
+    // Publish update event for any other listeners
+    ChakraApp.EventBus.publish(ChakraApp.EventTypes.CIRCLE_REFERENCE_UPDATED, circleReference);
+    
+    // Save state
+    this.saveToStorage();
+    
+    return circleReference;
+  }
+  return null;
 };
   
   // Add explicit getDocument method
@@ -853,9 +1044,13 @@ ChakraApp.AppState.prototype.updateCircle = function(id, changes) {
     
     // Save state
     this.saveToStorage();
+
+    this._updateCircleConnections();
     
     return true;
   }
+
+  this._updateCircleConnections();
   
   return false;
 };
@@ -1101,14 +1296,12 @@ ChakraApp.AppState.prototype._createConnection = function(square1, square2) {
         square.hide();
       }
     });
-    this.squares.forEach((square) => { if (square.name == 'test') console.log(square.name, square.visible, square.tabId, tabId, square.circleId, this.selectedCircleId) } );
     
     this.squares.forEach(square => {
       if (square.tabId === tabId && square.circleId === this.selectedCircleId) {
         square.show();
       }
     });
-    this.squares.forEach((square) => { if (square.name == 'test') console.log(square.name, square.visible, square.tabId, tabId, square.circleId, this.selectedCircleId) } );
     
     this._updateConnectionsForCircleId(this.selectedCircleId);
   };

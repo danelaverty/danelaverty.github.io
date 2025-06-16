@@ -1,5 +1,5 @@
 // src/utils/MultiSelectionManager.js
-// Manages multi-selection of squares
+// Updated to work with the unified drag system
 
 (function(ChakraApp) {
   /**
@@ -40,16 +40,16 @@
      * Clear multi-selection
      */
     clearSelection: function() {
-  // Remove multi-selected class from all squares
-  this._removeMultiSelectedClass();
-  
-  // Clear selection arrays
-  this.selectedSquareIds = [];
-  this.primarySquareId = null;
-  
-  // Publish multi-deselection event
-  ChakraApp.EventBus.publish('SQUARES_MULTI_DESELECTED', {});
-},
+      // Remove multi-selected class from all squares
+      this._removeMultiSelectedClass();
+      
+      // Clear selection arrays
+      this.selectedSquareIds = [];
+      this.primarySquareId = null;
+      
+      // Publish multi-deselection event
+      ChakraApp.EventBus.publish('SQUARES_MULTI_DESELECTED', {});
+    },
     
     /**
      * Check if multi-selection is active
@@ -81,6 +81,7 @@
     
     /**
      * Move the primary square and all connected squares
+     * Updated to work with the unified drag system
      * @param {Object} mainViewModel - Primary square view model
      * @param {number} dx - X delta movement
      * @param {number} dy - Y delta movement
@@ -89,27 +90,32 @@
     moveSelectedSquares: function(mainViewModel, dx, dy, parentElement) {
       if (!this.primarySquareId || !mainViewModel) return;
       
-      // Calculate new position for the main square
-      var currentLeft = mainViewModel.x;
-      var currentTop = mainViewModel.y;
-      
-      // Calculate boundaries
+      // Get the container bounds
       var parentRect = parentElement.getBoundingClientRect();
       var elementWidth = 30; // Assuming square size is 30px
       var elementHeight = 30;
       
-      // Calculate new position within the parent element's bounds
+      // Calculate new position for the main square
+      var currentLeft = mainViewModel.x;
+      var currentTop = mainViewModel.y;
+      
+      // Calculate the actual delta applied (might be less than requested due to boundary constraints)
       var newLeft = Math.max(0, Math.min(parentRect.width - elementWidth, currentLeft + dx));
       var newTop = Math.max(0, Math.min(parentRect.height - elementHeight, currentTop + dy));
       
-      // Calculate the actual delta applied (might be less than requested due to boundary constraints)
       var appliedDx = newLeft - currentLeft;
       var appliedDy = newTop - currentTop;
       
-      // Update the main view model
+      // Only proceed if there's actual movement
+      if (appliedDx === 0 && appliedDy === 0) {
+        return;
+      }
+      
+      // Update the main view model position
       mainViewModel.updatePosition(newLeft, newTop);
       
       // Update all connected squares with the same delta
+      var self = this;
       this.selectedSquareIds.forEach(function(squareId) {
         var square = ChakraApp.appState.getSquare(squareId);
         if (square) {
@@ -156,14 +162,26 @@
       // Mark current square as visited
       visited.push(squareId);
       
-      // Get all connections
+      // Get the current tab ID to filter connections
+      var currentTabId = ChakraApp.appState.selectedTabId;
+      
+      // Get all connections, but only consider squares on the current tab
       var connections = [];
       ChakraApp.appState.connections.forEach(function(conn) {
         if (conn.isVisible) {
-          if (conn.sourceId === squareId && !visited.includes(conn.targetId)) {
-            connections.push(conn.targetId);
-          } else if (conn.targetId === squareId && !visited.includes(conn.sourceId)) {
-            connections.push(conn.sourceId);
+          var sourceSquare = ChakraApp.appState.getSquare(conn.sourceId);
+          var targetSquare = ChakraApp.appState.getSquare(conn.targetId);
+          
+          // Only consider connections where both squares are on the current tab
+          if (sourceSquare && targetSquare && 
+              sourceSquare.tabId === currentTabId && 
+              targetSquare.tabId === currentTabId) {
+            
+            if (conn.sourceId === squareId && !visited.includes(conn.targetId)) {
+              connections.push(conn.targetId);
+            } else if (conn.targetId === squareId && !visited.includes(conn.sourceId)) {
+              connections.push(conn.sourceId);
+            }
           }
         }
       });
@@ -250,24 +268,28 @@
      */
     deleteAllSelected: function() {
       var count = 0;
+      var self = this;
       
-      // First delete the primary selected square
-      if (this.primarySquareId) {
-        ChakraApp.appState.removeSquare(this.primarySquareId);
+      // Store the IDs we need to delete before we start deleting
+      var primaryId = this.primarySquareId;
+      var multiSelectedIds = this.selectedSquareIds.slice(); // Create a copy
+      
+      // Clear selection first to avoid any state issues during deletion
+      this.clearSelection();
+      
+      // Delete the primary selected square
+      if (primaryId) {
+        ChakraApp.appState.removeSquare(primaryId);
         count++;
       }
       
-      // Sort IDs in reverse order to avoid issues with indices changing during deletion
-      var sortedIds = this.selectedSquareIds.slice().sort().reverse();
-      
-      // Then delete all multi-selected squares
-      sortedIds.forEach(function(squareId) {
-        ChakraApp.appState.removeSquare(squareId);
-        count++;
+      // Delete all multi-selected squares
+      multiSelectedIds.forEach(function(squareId) {
+        if (squareId && ChakraApp.appState.getSquare(squareId)) {
+          ChakraApp.appState.removeSquare(squareId);
+          count++;
+        }
       });
-      
-      // Clear selection
-      this.clearSelection();
       
       return count;
     },

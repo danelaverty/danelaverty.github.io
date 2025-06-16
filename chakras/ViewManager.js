@@ -123,13 +123,31 @@
     ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.DOCUMENT_SELECTED, function(doc) {
       // Re-render circles for this panel's document
       self.renderCirclesForPanel(doc.panelId);
+      setTimeout(function() {
+    self._updateCircleConnectionViews();
+  }, 100);
     });
     
     // Listen for document deletion events
     ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.DOCUMENT_DELETED, function(doc) {
       // Re-render circles for this panel
       self.renderCirclesForPanel(doc.panelId);
+      self._updateCircleConnectionViews();
     });
+
+    ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.CIRCLE_REFERENCE_CREATED, function(circleReference) {
+  // Force update of circle connections when a reference is created
+  setTimeout(function() {
+    self._updateCircleConnectionViews();
+  }, 100); // Small delay to ensure everything is processed
+});
+
+ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.CIRCLE_REFERENCE_DELETED, function(data) {
+  // Force update of circle connections when a reference is deleted
+  setTimeout(function() {
+    self._updateCircleConnectionViews();
+  }, 100);
+});
   };
   
   ChakraApp.ViewManager.prototype.createCircleView = function(circleModel) {
@@ -268,34 +286,172 @@
     });
   };
   
+ChakraApp.ViewManager.prototype._updateCircleConnectionViews = function() {
+  var self = this;
+  
+  // Remove existing circle connection views
+  var circleConnectionsToRemove = [];
+  this.connectionViews.forEach(function(view, connectionId) {
+    if (view.viewModel && view.viewModel.connectionType === 'circle') {
+      circleConnectionsToRemove.push(connectionId);
+    }
+  });
+  
+  circleConnectionsToRemove.forEach(function(connectionId) {
+    var view = self.connectionViews.get(connectionId);
+    if (view) {
+      view.destroy();
+      self.connectionViews.delete(connectionId);
+    }
+  });
+  
+  // Create views for current circle connections
+  var circleConnectionsCreated = 0;
+  ChakraApp.appState.connections.forEach(function(connectionModel, connectionId) {
+    if (connectionModel.connectionType === 'circle') {
+      
+      var sourceCircle = ChakraApp.appState.getCircle(connectionModel.sourceId);
+      var targetCircle = ChakraApp.appState.getCircle(connectionModel.targetId);
+      
+      
+      // NEW: Check if both circles exist AND are visible
+      var sourceVisible = sourceCircle && self._isCircleVisible(sourceCircle);
+      var targetVisible = targetCircle && self._isCircleVisible(targetCircle);
+      
+      
+      // Only create connection if both circles exist and are visible
+      if (sourceVisible && targetVisible) {
+        // For circle connections, we need to render to the left panel
+        var leftPanelContainer = document.getElementById('zoom-container-left');
+        if (!leftPanelContainer) {
+          console.error('Left panel container not found');
+          return;
+        }
+        
+        
+        // Create a separate line container for circle connections if it doesn't exist
+        var circleLineContainer = leftPanelContainer.querySelector('#circle-line-container');
+        if (!circleLineContainer) {
+          circleLineContainer = document.createElement('div');
+          circleLineContainer.id = 'circle-line-container';
+          circleLineContainer.style.position = 'absolute';
+          circleLineContainer.style.top = '0';
+          circleLineContainer.style.left = '0';
+          circleLineContainer.style.width = '100%';
+          circleLineContainer.style.height = '100%';
+          circleLineContainer.style.pointerEvents = 'none';
+          circleLineContainer.style.zIndex = '3';
+          leftPanelContainer.appendChild(circleLineContainer);
+        }
+        
+        // Validate the container before creating the view
+        if (!circleLineContainer) {
+          console.error('Failed to get or create circle line container');
+          return;
+        }
+        
+        // Create the connection view with the circle line container
+        try {
+          var viewModel = new ChakraApp.ConnectionViewModel(connectionModel);
+          
+          var view = new ChakraApp.ConnectionView(viewModel, circleLineContainer);
+          
+          // Validate the view was created successfully
+          if (view && view.element) {
+            // Store the view in the connectionViews map
+            self.connectionViews.set(connectionId, view);
+            circleConnectionsCreated++;
+          } else {
+            console.error('Failed to create connection view or element for:', connectionId);
+          }
+          
+        } catch (error) {
+          console.error('Error creating circle connection view:', error);
+        }
+      }
+    }
+  });
+};
+
+ChakraApp.ViewManager.prototype._isCircleVisible = function(circle) {
+  // A circle is visible if:
+  // 1. It exists
+  // 2. Its document is selected for its circle type
+  // 3. There's actually a circle view element for it in the DOM
+  
+  if (!circle) {
+    return false;
+  }
+  
+  // Check if the circle's document is currently selected
+  var circleType = circle.circleType || 'standard';
+  var selectedDocId = ChakraApp.appState.selectedDocumentIds[circleType];
+  
+  if (circle.documentId !== selectedDocId) {
+    return false;
+  }
+  
+  // Check if there's actually a DOM element for this circle
+  var circleElement = document.querySelector('.circle[data-id="' + circle.id + '"]');
+  if (!circleElement) {
+    return false;
+  }
+  
+  // Check if the circle element is actually visible (not hidden)
+  var isElementVisible = circleElement.style.display !== 'none' && 
+                        circleElement.offsetParent !== null;
+  
+  if (!isElementVisible) {
+    return false;
+  }
+  
+  return true;
+};
+
   /**
    * Update all connection views
    * @private
    */
-  ChakraApp.ViewManager.prototype._updateConnectionViews = function() {
-    // Clear existing connection views
-    var self = this;
-    this.connectionViews.forEach(function(view) {
-      view.destroy();
-    });
-    this.connectionViews.clear();
-
-    // Only proceed if a circle is selected
-    if (!ChakraApp.appState.selectedCircleId) {
-      return;
+ChakraApp.ViewManager.prototype._updateConnectionViews = function() {
+  var self = this;
+  
+  // IMPORTANT: Only clear SQUARE connection views, NOT circle connections
+  var squareConnectionsToRemove = [];
+  this.connectionViews.forEach(function(view, connectionId) {
+    // Only remove square connections (connectionType is undefined/null or explicitly 'square')
+    if (!view.viewModel || !view.viewModel.connectionType || view.viewModel.connectionType === 'square') {
+      squareConnectionsToRemove.push(connectionId);
     }
+  });
+  
+  squareConnectionsToRemove.forEach(function(connectionId) {
+    var view = self.connectionViews.get(connectionId);
+    if (view) {
+      view.destroy();
+      self.connectionViews.delete(connectionId);
+    }
+  });
 
-    // Create views for all current connections
+  // Only proceed with square connections if a circle is selected
+  if (ChakraApp.appState.selectedCircleId) {
+    // Create views for square connections
     ChakraApp.appState.connections.forEach(function(connectionModel, connectionId) {
-      var sourceSquare = ChakraApp.appState.getSquare(connectionModel.sourceId);
-      var targetSquare = ChakraApp.appState.getSquare(connectionModel.targetId);
+      // Only process square connections
+      if (!connectionModel.connectionType || connectionModel.connectionType === 'square') {
+        var sourceSquare = ChakraApp.appState.getSquare(connectionModel.sourceId);
+        var targetSquare = ChakraApp.appState.getSquare(connectionModel.targetId);
 
-      // Only create connection if both squares exist and are visible
-      if (sourceSquare && targetSquare && sourceSquare.visible && targetSquare.visible) {
-        self.createConnectionView(connectionModel);
+        // Only create connection if both squares exist and are visible
+        if (sourceSquare && targetSquare && sourceSquare.visible && targetSquare.visible) {
+          self.createConnectionView(connectionModel);
+        }
       }
     });
-  };
+  }
+  
+  // ALWAYS update circle connections - this ensures they stay visible
+  this._updateCircleConnectionViews();
+};
   
   /**
    * Render all views from current state
@@ -355,6 +511,10 @@ ChakraApp.ViewManager.prototype.renderCirclesForPanel = function() {
     });
   }
   
+  var self = this;
+  setTimeout(function() {
+    self._updateCircleConnectionViews();
+  }, 50);
 };
   
   /**

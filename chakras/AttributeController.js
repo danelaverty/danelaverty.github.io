@@ -17,14 +17,14 @@
     this.circleDeselectedSubscription = null;
     
     // Store the current story selection
-    this.currentStory = "Cause & Effects"; // Default story
+    this.currentStory = "Factors"; // Default story
     
     // Define story groups
     this.storyGroups = {
       "- GENERAL -": [],
-      "Cause & Effects": ["cause", "push", "stop"],
-      "Interpretations": ["positive", "negative", "evidence", "done"],
-      "Cast of Characters": ["me", "ally", "demon"],
+      "Factors": ["cause"],
+      "Interpretations": ["evidence", "push", "stop", "bulbOn", "bulbOff"],
+      "Characters": ["me", "ally", "group"],
       "- FEELINGS -": [],
       "Quest for Treasure": ["treasure", "mountain", "tools"],
       "Navigating a Maze": ["door", "lock", "key", "destination"],
@@ -37,7 +37,7 @@
       "Writing the Book": ["chapter", "key", "book"],
       "A Too-Big Bite": ["chunk", "cut", "spit"],
       "- THINGS -": [],
-      "Kind of Thing": ['physicalThing', 'behavioralThing', 'event', 'conceptualThing'],
+      "Kind of Thing": ['physicalThing', 'behavioralThing', 'event', 'conceptualThing', 'words'],
       "Describing the Thing": ['model', 'roleModel', 'trait'],
       "- PATTERNS -": [],
       "Patterns": ['me', 'feeling', 'action', 'thing'],
@@ -170,7 +170,7 @@
         }
         
         // Add text color adjustment for stop button
-        if (['door', 'stop', 'battlefield', 'soldier', 'enemy', 'path', 'destination', 'machine', 'feeling', 'goodFeeling', 'badFeeling', 'thing', 'mountain'].indexOf(key) > -1) {
+        if (['door', 'stop', 'battlefield', 'soldier', 'enemy', 'path', 'destination', 'machine', 'feeling', 'goodFeeling', 'badFeeling', 'thing', 'mountain', 'bulbOff'].indexOf(key) > -1) {
           attrBox.style.color = 'white';
         }
         
@@ -183,6 +183,9 @@
         var emojiDiv = document.createElement('div');
         emojiDiv.className = 'emoji';
         emojiDiv.textContent = attr.emoji;
+        if (['bulbOff'].indexOf(key) > -1) {
+          emojiDiv.style.filter = 'grayscale(1) brightness(0.5)';
+	}
         
         // Create description element (at the bottom)
         var descDiv = document.createElement('div');
@@ -319,13 +322,16 @@
         // Get attribute data
         var attributeData = ChakraApp.Config.attributeInfo[attributeType];
         
+        // Determine the name to use - check if attribute has a defaultName
+        var squareName = attributeData.defaultName || ChakraApp.Config.defaultName;
+        
         // Create square
         var squareData = {
           circleId: ChakraApp.appState.selectedCircleId,
           x: randomX,
           y: randomY,
           color: attributeData.color,
-          name: '???',
+          name: squareName, // Use the determined name (defaultName if available, otherwise global default)
           attribute: attributeType
         };
         

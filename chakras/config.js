@@ -208,10 +208,12 @@
     ],
 
     indicatorEmojis: [
+  { id: 'important', emoji: '❗', name: 'Important' },
+  { id: 'done', emoji: '✔️', name: 'Done' },
   { id: 'good', emoji: '🌟', name: 'Good' },
   { id: 'bad', emoji: '😖', name: 'Bad' },  
   { id: 'start', emoji: '▶️', name: 'Start' },
-  { id: 'finish', emoji: '🏁', name: 'Finish' }
+  { id: 'finish', emoji: '🏁', name: 'Finish' },
 ],
 
     circleTypes: [
@@ -241,7 +243,7 @@
   },
   {
     id: 'hexagon',
-    name: 'Complexes',
+    name: 'Combos',
     description: 'Complex Systems & Patterns',
     shape: 'hexagon',
     color: '#9932CC', 
@@ -249,7 +251,7 @@
   },
   {
     id: 'gem',
-    name: 'Themes',
+    name: 'Buckets',
     description: 'Areas of Concern',
     shape: 'gem',
     color: '#4a6fc9',
@@ -257,11 +259,76 @@
   },
 ],
 
+circleTypeTemplates: [
+  {
+    id: 'modern7',
+    name: '7 Chakras',
+    type: 'gem',
+    circles: [
+      { x: 50, y: 330, color: '#FF0000', name: 'SURVIVAL' },
+      { x: 50, y: 280, color: '#FF8800', name: 'PLEASURE' },
+      { x: 50, y: 230, color: '#FFFF00', name: 'POWER' },
+      { x: 50, y: 180, color: '#00AA00', name: 'LOVE' },
+      { x: 50, y: 130, color: '#0099FF', name: 'VOICE' },
+      { x: 50, y: 80, color: '#550099', name: 'INSIGHT' },
+      { x: 50, y: 30, color: '#FF00FF', name: 'SPIRIT' },
+    ],
+  },
+  {
+    id: 'basic_emotions',
+    name: 'Basic Emotions',
+    type: 'standard',
+    circles: [
+      { x: 50, y: 50, color: '#FF0000', name: 'Anger' },
+      { x: 100, y: 50, color: '#0000FF', name: 'Sadness' },
+      { x: 150, y: 50, color: '#FFFF00', name: 'Joy' },
+      { x: 200, y: 50, color: '#00FF00', name: 'Fear' },
+      { x: 250, y: 50, color: '#FF00FF', name: 'Disgust' },
+      { x: 300, y: 50, color: '#FFA500', name: 'Surprise' },
+    ],
+  },
+  {
+    id: 'basic_actions',
+    name: 'Basic Actions',
+    type: 'star',
+    circles: [
+      { x: 80, y: 80, color: '#FF6B35', name: 'Plan' },
+      { x: 160, y: 80, color: '#F7931E', name: 'Execute' },
+      { x: 240, y: 80, color: '#FFD23F', name: 'Review' },
+      { x: 320, y: 80, color: '#88D8B0', name: 'Adjust' },
+    ],
+  },
+  {
+    id: 'basic_systems',
+    name: 'Basic Systems',
+    type: 'triangle',
+    circles: [
+      { x: 100, y: 100, color: '#88B66d', name: 'Input' },
+      { x: 200, y: 100, color: '#7BA05B', name: 'Process' },
+      { x: 300, y: 100, color: '#6E8B3D', name: 'Output' },
+      { x: 200, y: 180, color: '#5C7A29', name: 'Feedback' },
+    ],
+  },
+  {
+    id: 'complex_pattern',
+    name: 'Complex Pattern',
+    type: 'hexagon',
+    circles: [
+      { x: 150, y: 80, color: '#9932CC', name: 'Core' },
+      { x: 100, y: 130, color: '#8A2BE2', name: 'Support A' },
+      { x: 200, y: 130, color: '#8A2BE2', name: 'Support B' },
+      { x: 75, y: 180, color: '#7B68EE', name: 'Element C' },
+      { x: 150, y: 200, color: '#7B68EE', name: 'Element D' },
+      { x: 225, y: 180, color: '#7B68EE', name: 'Element E' },
+    ],
+  },
+],
+
 
     
     // Attribute info - kept as is due to text content
     attributeInfo: {
-      cause: { emoji: '⚡', color: '#9999CC', displayName: 'Cause' },
+      cause: { emoji: '⚡', color: '#9999CC', displayName: 'Factor' },
       push: { emoji: '🏃', color: '#FFFFB0', displayName: 'Pushes' },
       stop: { emoji: '🛑', color: '#BD2C2C', displayName: 'Stops' },
       treasure: { emoji: '💎', color: '#66D6FF', displayName: 'Gems' },
@@ -270,7 +337,8 @@
       sword: { emoji: '🗡️', color: '#C0C0C0', displayName: 'Swords' },
       chain: { emoji: '⛓️', color: '#2F4F4F', displayName: 'Chains' },
       ally: { emoji: '🧝🏻‍♂️', color: '#FF8C00', displayName: 'Allies' },
-      me: { emoji: '🧑🏼', color: '#FFCC88', displayName: 'Me' },
+      group: { emoji: '👥', color: '#DDCC99', displayName: 'Group' },
+      me: { emoji: '🧑🏼', color: '#FFCC88', displayName: 'Me', defaultName: 'Me' },
       battlefield: { emoji: '⚔️', color: '#5B2503', displayName: 'Battlefield' },
       soldier: { emoji: '💂', color: '#00008B', displayName: 'Soldier' },
       enemy: { emoji: '💂', color: '#8B0000', displayName: 'Enemy' },
@@ -296,6 +364,7 @@
       physicalThing: { emoji: '🧊', color: '#C99', displayName: 'Thing' },
       behavioralThing: { emoji: '🏃', color: '#9CC', displayName: 'Action' },
       conceptualThing: { emoji: '💭', color: '#C9C', displayName: 'Concept' },
+      words: { emoji: '💬', color: '#99C', displayName: 'Words' },
       model: { emoji: '🖼️', color: '#2D7', displayName: 'Example' },
       roleModel: { emoji: '🕺', color: '#D72', displayName: 'Role Model' },
       trait: { emoji: '⚡', color: '#D27', displayName: 'Trait' },
@@ -312,6 +381,8 @@
       chunk: { emoji: '🥩', color: '#EBB', displayName: 'Chunk' },
       cut: { emoji: '🔪', color: '#DDD', displayName: 'Cut' },
       spit: { emoji: '💦', color: '#BDE', displayName: 'Spit' },
+      bulbOn: { emoji: '💡', color: '#EEA', displayName: 'On' },
+      bulbOff: { emoji: '💡', color: '#444', displayName: 'Off' },
     },
     
     // Layout configuration
@@ -420,6 +491,7 @@
     sizes: CompressedConfig.sizes,
     meridian: CompressedConfig.meridian,
     connections: CompressedConfig.connections,
+    circleTypeTemplates: CompressedConfig.circleTypeTemplates,
     
     // Expand chakra forms from compressed format
     chakraForms: expandChakraForm(CompressedConfig.chakraFormsCompressed),

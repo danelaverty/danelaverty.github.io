@@ -50,6 +50,8 @@
     this.characteristics = circleModel.characteristics || {};
     this.documentId = circleModel.documentId;
     this.circleType = circleModel.circleType || 'standard';
+    this.disabled = circleModel.disabled || false;
+    this.indicator = circleModel.indicator || null;
     
     // Calculate chakra form based on square count
     this.chakraForm = ChakraApp.Utils.getChakraFormForCircle(
@@ -128,6 +130,8 @@
   this.characteristics = this.model.characteristics || {}; // Add this line
   this.documentId = this.model.documentId; // Fixed: changed from circleModel to this.model
   this.circleType = this.model.circleType || 'standard';
+  this.disabled = this.model.disabled || false;
+  this.indicator = this.model.indicator || null;
 
   // Check if square count has changed
   var currentSquareCount = this.model.squareCount || 0;
@@ -152,14 +156,50 @@
   this.notify({ type: 'update' });
 };
 
+/**
+   * Update indicator for this circle
+   * @param {string|null} indicator - Indicator ID or null to remove
+   */
+  ChakraApp.CircleViewModel.prototype.updateIndicator = function(indicator) {
+    ChakraApp.appState.updateCircle(this.id, { indicator: indicator });
+  };
+
+  /**
+   * Cycle through indicators
+   */
+  ChakraApp.CircleViewModel.prototype.cycleIndicator = function() {
+    var indicators = ChakraApp.Config.indicatorEmojis;
+    var currentIndex = -1;
+    
+    // Find current indicator index
+    if (this.indicator) {
+      for (var i = 0; i < indicators.length; i++) {
+        if (indicators[i].id === this.indicator) {
+          currentIndex = i;
+          break;
+        }
+      }
+    }
+    
+    // Get next indicator
+    var nextIndex = (currentIndex + 1) % indicators.length;
+    var nextIndicator = indicators[nextIndex].id;
+    
+    this.updateIndicator(nextIndicator);
+  };
+
+  /**
+   * Remove indicator
+   */
+  ChakraApp.CircleViewModel.prototype.removeIndicator = function() {
+    this.updateIndicator(null);
+  };
+
 ChakraApp.CircleViewModel.prototype.updateCharacteristic = function(key, value) {
-  console.log('CircleViewModel.updateCharacteristic called with key:', key, 'value:', value);
-  
   var update = {};
   
   // Handle legacy properties (color) and new characteristics
   if (key === 'color') {
-    console.log('Updating color characteristic');
     update.color = value;
   } else {
     // For new characteristics (including completion), update the characteristics object
@@ -174,7 +214,6 @@ ChakraApp.CircleViewModel.prototype.updateCharacteristic = function(key, value) 
     update.characteristics = characteristics;
   }
   
-  console.log('Calling AppState.updateCircle with update:', update);
   ChakraApp.appState.updateCircle(this.id, update);
 };
 
@@ -260,6 +299,7 @@ ChakraApp.CircleViewModel.prototype.updateCharacteristic = function(key, value) 
     this.size = squareModel.size || 30;
     this.isBold = squareModel.isBold || false;
     this.indicator = squareModel.indicator || null;
+    this.disabled = squareModel.disabled || false;
     
     // Emoji for the attribute
     this.emoji = this._getEmojiForAttribute();
@@ -317,6 +357,8 @@ ChakraApp.CircleViewModel.prototype.updateCharacteristic = function(key, value) 
     this.attribute = this.model.attribute;
     this.isBold = this.model.isBold;
     this.indicator = this.model.indicator;
+    this.disabled = this.model.disabled || false;
+    
     
     // Update emoji if attribute changed
     this.emoji = this._getEmojiForAttribute();
@@ -417,23 +459,30 @@ ChakraApp.SquareViewModel.prototype.removeIndicator = function() {
    * Connection view model
    * @param {Connection} connectionModel - Connection model instance
    */
-  ChakraApp.ConnectionViewModel = function(connectionModel) {
-    // Call parent constructor
-    ChakraApp.BaseViewModel.call(this);
-    
-    this.model = connectionModel;
-    this.id = connectionModel.id;
-    
-    // Properties derived from the model
-    this.sourceId = connectionModel.sourceId;
-    this.targetId = connectionModel.targetId;
-    this.length = connectionModel.length;
-    this.isHighlighted = connectionModel.isHighlighted;
-    this.isVisible = connectionModel.isVisible;
-    
-    // Subscribe to model changes
-    this._setupSubscriptions();
-  };
+	ChakraApp.ConnectionViewModel = function(connectionModel) {
+  if (!connectionModel) {
+    console.error('ConnectionViewModel: No connection model provided');
+    return;
+  }
+  
+  // Call parent constructor if it exists
+  if (ChakraApp.BaseViewModel) {
+    ChakraApp.BaseViewModel.call(this, connectionModel);
+  }
+  
+  // Store reference to model
+  this.model = connectionModel;
+  
+  // Copy essential properties
+  this.id = connectionModel.id;
+  this.sourceId = connectionModel.sourceId;
+  this.targetId = connectionModel.targetId;
+  this.length = connectionModel.length;
+  this.isVisible = connectionModel.isVisible !== false; // Default to true
+  this.connectionType = connectionModel.connectionType || 'square';
+  this.isDirectional = connectionModel.isDirectional || false;
+  
+};
   
   // Inherit from BaseViewModel
   ChakraApp.ConnectionViewModel.prototype = Object.create(ChakraApp.BaseViewModel.prototype);

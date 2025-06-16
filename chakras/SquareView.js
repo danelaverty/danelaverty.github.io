@@ -99,6 +99,9 @@ ChakraApp.SquareView.prototype.render = function() {
       className: 'square-content',
       textContent: this.viewModel.emoji
     });
+    if (this.viewModel.model.attribute == 'bulbOff') {
+	    squareContent.style.filter = 'grayscale(1) brightness(0.5)';
+    }
     this.element.appendChild(squareContent);
   }
 
@@ -126,6 +129,10 @@ ChakraApp.SquareView.prototype.render = function() {
   if (this.viewModel.isSelected) {
     this.element.classList.add('selected');
   }
+
+  if (this.viewModel.disabled) {
+  this.element.classList.add('disabled');
+}
 
   // Add to parent element
   this.parentElement.appendChild(this.element);
@@ -169,6 +176,8 @@ ChakraApp.SquareView.prototype.update = function() {
   // Update indicator
   this._updateIndicator();
   this._updateIndicatorBorder();
+
+  this.element.classList.toggle('disabled', this.viewModel.disabled);
 };
 
 ChakraApp.SquareView.prototype._updateIndicator = function() {
@@ -190,7 +199,7 @@ ChakraApp.SquareView.prototype._updateIndicator = function() {
 
 ChakraApp.SquareView.prototype._updateIndicatorBorder = function() {
   // Remove all existing indicator border classes
-  this.element.classList.remove('indicator-good', 'indicator-bad', 'indicator-start', 'indicator-finish');
+  this.element.classList.remove('indicator-good', 'indicator-bad', 'indicator-start', 'indicator-finish', 'indicator-done', 'indicator-important');
   
   // Add the appropriate border class based on current indicator
   if (this.viewModel.indicator) {
@@ -256,181 +265,37 @@ ChakraApp.SquareView.prototype._updateIndicatorBorder = function() {
   };
   
   // Add drag functionality
-  ChakraApp.SquareView.prototype._addDragFunctionality = function() {
-    var isDragging = false;
-    var isGroupDragging = false;
-    var startX, startY;
-    var currentHoverBox = null;
-    var self = this;
-    // Store original position at the start of drag
-    var originalX, originalY;
-
-    // Mouse down to start drag
-    this.element.addEventListener('mousedown', function(e) {
-      // Only start dragging if the element is the target (not children)
-      if (e.target === self.element) {
-        e.preventDefault();
-        isDragging = true;
-        window.wasDragged = false;
-
-        // Store initial mouse position
-        startX = e.clientX;
-        startY = e.clientY;
-        
-        // Store original square position
-        originalX = self.viewModel.x;
-        originalY = self.viewModel.y;
-
-        // Check if we should do group dragging
-        isGroupDragging = ChakraApp.MultiSelectionManager.hasSelection() && 
-            (self.viewModel.id === ChakraApp.MultiSelectionManager.primarySquareId || 
-            ChakraApp.MultiSelectionManager.selectedSquareIds.includes(self.viewModel.id));
-
-        // Add dragging styles
-        self.element.style.zIndex = 20;
-        self.element.classList.add('dragging');
-
-        // Show connection radius on all visible squares in the same circle
-        if (ChakraApp.appState.selectedCircleId) {
-          var allSquareElements = document.querySelectorAll('.square[data-circle-id="' + 
-              ChakraApp.appState.selectedCircleId + '"]');
-              
-          for (var i = 0; i < allSquareElements.length; i++) {
-            if (allSquareElements[i] !== self.element) {
-              allSquareElements[i].classList.add('square-dragging-active');
-            }
-          }
-        }
-      }
-    });
-
-    // Global mouse move for drag
-    var mouseMoveHandler = function(e) {
-      if (isDragging) {
-        e.preventDefault();
-        window.wasDragged = true;
-
-        // Calculate movement delta
-        var dx = e.clientX - startX;
-        var dy = e.clientY - startY;
-
-        // Update start position for next move
-        startX = e.clientX;
-        startY = e.clientY;
-
-        if (isGroupDragging) {
-          // Move the main square and all connected squares
-          ChakraApp.MultiSelectionManager.moveSelectedSquares(
-              self.viewModel, 
-              dx, 
-              dy, 
-              self.parentElement
-          );
-        } else {
-          // Regular single square dragging
-          // Calculate new position within the parent element's bounds
-          var parentRect = self.parentElement.getBoundingClientRect();
-          var newLeft = Math.max(0, Math.min(parentRect.width - self.element.clientWidth, 
-              self.viewModel.x + dx));
-          var newTop = Math.max(0, Math.min(parentRect.height - self.element.clientHeight, 
-              self.viewModel.y + dy));
-
-          // Update view model
-          self.viewModel.updatePosition(newLeft, newTop);
-        }
-
-        // Check if over an attribute box (only for single square dragging)
-        if (!self.viewModel.isMe && !isGroupDragging) {
-          var squareRect = self.element.getBoundingClientRect();
-          var hoveredBox = null;
-
-          // Get all attribute boxes
-          var attributeBoxes = document.querySelectorAll('.attribute-box');
-
-          // Check each attribute box for intersection
-          for (var i = 0; i < attributeBoxes.length; i++) {
-            var box = attributeBoxes[i];
-            var boxRect = box.getBoundingClientRect();
-
-            // Simple intersection check
-            if (squareRect.left < boxRect.right && 
-                squareRect.right > boxRect.left &&
-                squareRect.top < boxRect.bottom &&
-                squareRect.bottom > boxRect.top) {
-              hoveredBox = box;
-              break;
-            }
-          }
-
-          // Update highlight
-          if (currentHoverBox && currentHoverBox !== hoveredBox) {
-            currentHoverBox.classList.remove('highlight');
-          }
-
-          if (hoveredBox) {
-            hoveredBox.classList.add('highlight');
-          }
-
-          currentHoverBox = hoveredBox;
-        }
-      }
-    };
-
-    // Global mouse up to end drag
-    var mouseUpHandler = function() {
-      if (isDragging) {
-        isDragging = false;
-        self.element.style.zIndex = self.viewModel.isSelected ? 15 : 
-            (self.element.classList.contains('overlapping') ? 12 : 10);
-
-        // Remove dragging class
-        self.element.classList.remove('dragging');
-
-        // Hide connection radius on all squares
-        var activeElements = document.querySelectorAll('.square-dragging-active');
-        for (var i = 0; i < activeElements.length; i++) {
-          activeElements[i].classList.remove('square-dragging-active');
-        }
-
-        // Clean up group dragging state
-        if (isGroupDragging) {
-          ChakraApp.MultiSelectionManager.endGroupDragging();
-          isGroupDragging = false;
-        }
-
-        // Check if dropped on an attribute box
-        if (currentHoverBox && !self.viewModel.isMe && !isGroupDragging) {
-          // Apply the attribute
-          var attributeType = currentHoverBox.dataset.attribute;
-          self.viewModel.applyAttribute(attributeType);
-          
-          // Return square to its original position
-          self.viewModel.updatePosition(originalX, originalY);
-          
-          // Remove highlight
-          currentHoverBox.classList.remove('highlight');
-        }
-
-        currentHoverBox = null;
-
-        // Save state when drag completes
-        ChakraApp.appState.saveToStorageNow();
-
-        // Reset drag state after a short delay
-        setTimeout(function() {
-          window.wasDragged = false;
-        }, 50);
-      }
-    };
-
-    // Add global event listeners
-    document.addEventListener('mousemove', mouseMoveHandler);
-    document.addEventListener('mouseup', mouseUpHandler);
-
-    // Store handlers for cleanup
-    this._addHandler(function() {
-      document.removeEventListener('mousemove', mouseMoveHandler);
-      document.removeEventListener('mouseup', mouseUpHandler);
-    });
+ChakraApp.SquareView.prototype._addDragFunctionality = function() {
+  var self = this;
+  
+  // Mark view model as square for drag handler
+  this.viewModel.isSquare = true;
+  
+  // Set up drag configuration
+  var dragConfig = {
+    viewModel: this.viewModel,
+    parentElement: this.parentElement,
+    dragTargets: [this.element], // Only allow dragging from the main element
+    enableAttributeDrop: !this.viewModel.isMe, // Enable attribute drop for non-Me squares
+    enableGroupDragging: true, // Enable multi-selection dragging
+    
+    onDragStart: function(dragState) {
+      // Store original position for potential attribute drop reset
+      dragState.originalX = self.viewModel.x;
+      dragState.originalY = self.viewModel.y;
+    },
+    
+    onDragEnd: function(dragState) {
+      // Any additional cleanup specific to squares
+    }
   };
+  
+  // Add drag functionality using the unified system
+  this.dragState = ChakraApp.DragHandler.addDragFunctionality(this.element, dragConfig);
+  
+  // Store cleanup function
+  this._addHandler(function() {
+    ChakraApp.DragHandler.removeDragFunctionality(self.dragState);
+  });
+};
 })(window.ChakraApp = window.ChakraApp || {});

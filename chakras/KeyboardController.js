@@ -39,45 +39,118 @@
     
     document.addEventListener('keydown', this.keydownHandler);
   };
-  
+
   // Register keyboard shortcuts
   ChakraApp.KeyboardController.prototype._registerKeyboardShortcuts = function() {
     var self = this;
 
     // Delete key - delete selected item
     this.keyHandlers['Delete'] = function(e) {
-      // Don't handle if we're editing text
-      if (self._isEditingText()) return;
+  // Don't handle if we're editing text
+  if (self._isEditingText()) return;
 
-      e.preventDefault();
+  e.preventDefault();
 
-      // Check if there is a multi-selection
-      if (ChakraApp.MultiSelectionManager.hasSelection()) {
-        self._showDeleteDialog(function() {
-          // Delete all selected squares
-          var count = ChakraApp.MultiSelectionManager.deleteAllSelected();
-          self._showNotification(`Deleted ${count} squares`);
-        });
+  // Check if there is a multi-selection
+  if (ChakraApp.MultiSelectionManager.hasSelection()) {
+    // IMPORTANT: Capture the selection state BEFORE showing the dialog
+    var primarySquareId = ChakraApp.MultiSelectionManager.primarySquareId;
+    var multiSelectedIds = ChakraApp.MultiSelectionManager.selectedSquareIds.slice(); // Make a copy
+    var totalCount = multiSelectedIds.length + (primarySquareId ? 1 : 0);
+    
+    console.log("About to delete - Primary:", primarySquareId, "Multi:", multiSelectedIds);
+    
+    self._showDeleteDialog(function() {
+      // Delete using the captured state, not the current state
+      var count = 0;
+      
+      // Delete the primary square
+      if (primarySquareId && ChakraApp.appState.getSquare(primarySquareId)) {
+        ChakraApp.appState.removeSquare(primarySquareId);
+        count++;
+        console.log("Deleted primary square:", primarySquareId);
       }
-      // Prioritize square deletion if a square is selected
-      else if (ChakraApp.appState.selectedSquareId) {
-        self._showDeleteDialog(function() {
-          ChakraApp.appState.removeSquare(ChakraApp.appState.selectedSquareId);
-        });
-      }
-      else if (ChakraApp.appState.selectedCircleReferenceId) {
-	      ChakraApp.appState.removeCircleReference(ChakraApp.appState.selectedCircleReferenceId);
-	      return;
-      }
-      // If only a circle is selected
-      else if (ChakraApp.appState.selectedCircleId) {
-        self._showDeleteDialog(function() {
-          ChakraApp.appState.removeCircle(ChakraApp.appState.selectedCircleId);
-        });
-      }
-    };
+      
+      // Delete all multi-selected squares
+      multiSelectedIds.forEach(function(squareId) {
+        if (squareId && ChakraApp.appState.getSquare(squareId)) {
+          ChakraApp.appState.removeSquare(squareId);
+          count++;
+          console.log("Deleted multi-selected square:", squareId);
+        }
+      });
+      
+      // Clear the multi-selection state
+      ChakraApp.MultiSelectionManager.clearSelection();
+      
+      self._showNotification(`Deleted ${count} squares`);
+      console.log("Total deleted:", count);
+    });
+  }
+  // Prioritize square deletion if a square is selected
+  else if (ChakraApp.appState.selectedSquareId) {
+    self._showDeleteDialog(function() {
+      ChakraApp.appState.removeSquare(ChakraApp.appState.selectedSquareId);
+    });
+  }
+  else if (ChakraApp.appState.selectedCircleReferenceId) {
+    ChakraApp.appState.removeCircleReference(ChakraApp.appState.selectedCircleReferenceId);
+    return;
+  }
+  // If only a circle is selected
+  else if (ChakraApp.appState.selectedCircleId) {
+    self._showDeleteDialog(function() {
+      ChakraApp.appState.removeCircle(ChakraApp.appState.selectedCircleId);
+    });
+  }
+};
 
-       this.keyHandlers['='] = function(e) {
+    this.keyHandlers['/'] = function(e) {
+  // Must be ctrl/cmd key
+  if (!(e.ctrlKey || e.metaKey)) return;
+
+  // Don't handle if we're editing text
+  if (self._isEditingText()) return;
+
+  e.preventDefault();
+
+  // If both circle and square are selected, toggle square (square takes priority)
+  if (ChakraApp.appState.selectedSquareId && ChakraApp.appState.selectedCircleId) {
+    var square = ChakraApp.appState.getSquare(ChakraApp.appState.selectedSquareId);
+    if (square) {
+      var newDisabledState = !square.disabled;
+      ChakraApp.appState.updateSquare(ChakraApp.appState.selectedSquareId, { 
+        disabled: newDisabledState 
+      });
+      self._showNotification(newDisabledState ? 'Square disabled' : 'Square enabled');
+    }
+  }
+  // If only square is selected, toggle square
+  else if (ChakraApp.appState.selectedSquareId) {
+    var square = ChakraApp.appState.getSquare(ChakraApp.appState.selectedSquareId);
+    if (square) {
+      var newDisabledState = !square.disabled;
+      ChakraApp.appState.updateSquare(ChakraApp.appState.selectedSquareId, { 
+        disabled: newDisabledState 
+      });
+      self._showNotification(newDisabledState ? 'Square disabled' : 'Square enabled');
+    }
+  }
+  // If only circle is selected, toggle circle
+  else if (ChakraApp.appState.selectedCircleId) {
+    var circle = ChakraApp.appState.getCircle(ChakraApp.appState.selectedCircleId);
+    if (circle) {
+      var newDisabledState = !circle.disabled;
+      ChakraApp.appState.updateCircle(ChakraApp.appState.selectedCircleId, { 
+        disabled: newDisabledState 
+      });
+      self._showNotification(newDisabledState ? 'Circle disabled' : 'Circle enabled');
+    }
+  }
+};
+
+    // Ctrl+= - For squares: cycle indicator emoji; For circle references: increase field radius
+this.keyHandlers['='] = function(e) {
       // Must be ctrl/cmd key
       if (!(e.ctrlKey || e.metaKey)) return;
 
@@ -86,7 +159,49 @@
 
       e.preventDefault();
 
-      // Must have a square selected
+      // Check if a circle reference is selected
+      if (ChakraApp.appState.selectedCircleReferenceId) {
+        // Get the circle reference VIEW MODEL, not the model
+        var circleReferenceViewData = self._getCircleReferenceViewData(ChakraApp.appState.selectedCircleReferenceId);
+        if (circleReferenceViewData && circleReferenceViewData.viewModel) {
+          var oldRadius = circleReferenceViewData.viewModel.fieldRadius;
+          // Call the view model method instead of the model method
+          circleReferenceViewData.viewModel.increaseFieldRadius();
+          self._showNotification(`Field radius: ${circleReferenceViewData.viewModel.fieldRadius}px (was ${oldRadius}px)`);
+        }
+        return;
+      }
+
+      // Check if a circle is selected
+      if (ChakraApp.appState.selectedCircleId) {
+        var circleId = ChakraApp.appState.selectedCircleId;
+        var circle = ChakraApp.appState.getCircle(circleId);
+
+        if (circle) {
+          // Get current indicator index
+          var currentIndex = -1;
+          if (circle.indicator) {
+            ChakraApp.Config.indicatorEmojis.forEach(function(config, index) {
+              if (config.id === circle.indicator) {
+                currentIndex = index;
+              }
+            });
+          }
+
+          // Get next indicator
+          var nextIndex = (currentIndex + 1) % ChakraApp.Config.indicatorEmojis.length;
+          var nextIndicator = ChakraApp.Config.indicatorEmojis[nextIndex];
+
+          // Update circle with new indicator
+          ChakraApp.appState.updateCircle(circleId, { indicator: nextIndicator.id });
+
+          // Show notification
+          self._showNotification('Circle Indicator: ' + nextIndicator.emoji + ' ' + nextIndicator.name);
+        }
+        return;
+      }
+
+      // Must have a square selected for indicator functionality
       if (ChakraApp.appState.selectedSquareId) {
         var squareId = ChakraApp.appState.selectedSquareId;
         var square = ChakraApp.appState.getSquare(squareId);
@@ -110,13 +225,13 @@
           ChakraApp.appState.updateSquare(squareId, { indicator: nextIndicator.id });
 
           // Show notification
-          self._showNotification('Indicator: ' + nextIndicator.emoji + ' ' + nextIndicator.name);
+          self._showNotification('Square Indicator: ' + nextIndicator.emoji + ' ' + nextIndicator.name);
         }
       }
     };
 
-    // Ctrl+- - Remove indicator emoji
-    this.keyHandlers['-'] = function(e) {
+    // Ctrl+- - For squares: remove indicator emoji; For circle references: decrease field radius
+this.keyHandlers['-'] = function(e) {
       // Must be ctrl/cmd key
       if (!(e.ctrlKey || e.metaKey)) return;
 
@@ -125,7 +240,38 @@
 
       e.preventDefault();
 
-      // Must have a square selected
+      // Check if a circle reference is selected
+      if (ChakraApp.appState.selectedCircleReferenceId) {
+        // Get the circle reference VIEW MODEL, not the model
+        var circleReferenceViewData = self._getCircleReferenceViewData(ChakraApp.appState.selectedCircleReferenceId);
+        if (circleReferenceViewData && circleReferenceViewData.viewModel) {
+          var oldRadius = circleReferenceViewData.viewModel.fieldRadius;
+          // Call the view model method instead of the model method
+          circleReferenceViewData.viewModel.decreaseFieldRadius();
+          self._showNotification(`Field radius: ${circleReferenceViewData.viewModel.fieldRadius}px (was ${oldRadius}px)`);
+        }
+        return;
+      }
+
+      // Check if a circle is selected
+      if (ChakraApp.appState.selectedCircleId) {
+        var circleId = ChakraApp.appState.selectedCircleId;
+        var circle = ChakraApp.appState.getCircle(circleId);
+
+        if (circle && circle.indicator) {
+          // Remove indicator
+          ChakraApp.appState.updateCircle(circleId, { indicator: null });
+
+          // Show notification
+          self._showNotification('Circle indicator removed');
+        } else if (circle && !circle.indicator) {
+          // Show notification that there's no indicator to remove
+          self._showNotification('No circle indicator to remove');
+        }
+        return;
+      }
+
+      // Must have a square selected for indicator functionality
       if (ChakraApp.appState.selectedSquareId) {
         var squareId = ChakraApp.appState.selectedSquareId;
         var square = ChakraApp.appState.getSquare(squareId);
@@ -135,10 +281,10 @@
           ChakraApp.appState.updateSquare(squareId, { indicator: null });
 
           // Show notification
-          self._showNotification('Indicator removed');
+          self._showNotification('Square indicator removed');
         } else if (square && !square.indicator) {
           // Show notification that there's no indicator to remove
-          self._showNotification('No indicator to remove');
+          self._showNotification('No square indicator to remove');
         }
       }
     };
@@ -158,6 +304,10 @@
       // Deselect square first if selected
       if (ChakraApp.appState.selectedSquareId) {
         ChakraApp.appState.deselectSquare();
+      }
+      // Then deselect circle reference if selected
+      else if (ChakraApp.appState.selectedCircleReferenceId) {
+        ChakraApp.appState.deselectCircleReference();
       }
       // Then deselect circle if selected
       else if (ChakraApp.appState.selectedCircleId) {
@@ -308,6 +458,15 @@
         }
       }
     };
+  };
+  
+  // Helper method to get circle reference view data
+  ChakraApp.KeyboardController.prototype._getCircleReferenceViewData = function(circleReferenceId) {
+    // Access the circle references controller to get the view model
+    if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.circleReferences) {
+      return ChakraApp.app.controllers.circleReferences.circleReferenceViews.get(circleReferenceId);
+    }
+    return null;
   };
   
   // Handle keydown events
