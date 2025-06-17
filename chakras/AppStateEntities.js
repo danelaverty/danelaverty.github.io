@@ -164,9 +164,10 @@
   };
   
 
-  ChakraApp.AppState.prototype.selectDocument = function(id, circleTypeId) {
+  ChakraApp.AppState.prototype.selectDocument = function(id, circleTypeId, listType) {
   var doc = this.documents.get(id);
   if (!doc) return null;
+  
   
   // Always use the document's circle type, or default to 'standard'
   var docType = doc.circleType || 'standard';
@@ -177,23 +178,77 @@
     // Continue anyway, but use the document's actual type
   }
   
-  // If there was a previously selected document of this type, deselect it
-  if (this.selectedDocumentIds[docType] && this.selectedDocumentIds[docType] !== id) {
-    this.deselectDocument(docType);
+  // Determine listType from document if not provided
+  var targetListType = listType || doc.listType || 'list1';
+  
+  // Ensure the selection structure exists
+  if (!this.selectedDocumentIds[docType]) {
+    this.selectedDocumentIds[docType] = { list1: null, list2: null };
   }
   
-  // Select the new document
-  this.selectedDocumentIds[docType] = id;
+  // If there was a previously selected document of this type and list, deselect it
+  var previousDocId = this.selectedDocumentIds[docType][targetListType];
+  if (previousDocId && previousDocId !== id) {
+    var previousDoc = this.documents.get(previousDocId);
+    if (previousDoc) {
+      previousDoc.deselect();
+    }
+  }
+  
+  // Select the new document for the specific list
+  this.selectedDocumentIds[docType][targetListType] = id;
   doc.select();
   
-  this._deselectCircleIfSelected();
-  this._filterCirclesByDocument(doc.id, docType);
-  this.saveLastViewedDocument(doc.id, docType);
+  // Track this as the most recent selection for this circle type
+  this.mostRecentDocumentSelection[docType] = {
+    docId: id,
+    listType: targetListType
+  };
+  
+  // Update visual indicators for document toggle buttons
+  this._updateDocumentToggleButtonIndicators(docType);
+  
+  // Instead of the problematic _showCirclesForBothSelectedDocuments, 
+  // just trigger a view refresh
+  if (ChakraApp.app && ChakraApp.app.viewManager) {
+    // Use a timeout to ensure the state is fully updated
+    setTimeout(function() {
+      ChakraApp.app.viewManager.renderCirclesForPanel('left');
+    }, 10);
+  }
+  
+  this.saveLastViewedDocument(doc.id, docType, targetListType);
   
   // Save the state immediately when a document is selected
   this.saveToStorageNow();
   
+  // Publish the selection event
+  ChakraApp.EventBus.publish(ChakraApp.EventTypes.DOCUMENT_SELECTED, doc);
+  
   return doc;
+};
+
+ChakraApp.AppState.prototype._updateDocumentToggleButtonIndicators = function(circleType) {
+  var recentSelection = this.mostRecentDocumentSelection[circleType];
+  
+  // Get both toggle buttons for this circle type
+  var toggleBtn1 = document.getElementById('toggle-document-list-btn-' + circleType);
+  var toggleBtn2 = document.getElementById('toggle-document-list-btn2-' + circleType);
+  
+  if (toggleBtn1 && toggleBtn2) {
+    // Remove active class from both
+    toggleBtn1.classList.remove('most-recent-selection');
+    toggleBtn2.classList.remove('most-recent-selection');
+    
+    // Add active class to the most recent one
+    if (recentSelection) {
+      if (recentSelection.listType === 'list1') {
+        toggleBtn1.classList.add('most-recent-selection');
+      } else if (recentSelection.listType === 'list2') {
+        toggleBtn2.classList.add('most-recent-selection');
+      }
+    }
+  }
 };
   
   ChakraApp.AppState.prototype._deselectCircleIfSelected = function() {
@@ -202,36 +257,56 @@
     }
   };
   
-ChakraApp.AppState.prototype.deselectDocument = function(circleTypeId) {
-  // Find any currently selected document of this circle type
-  var selectedDoc = null;
-  var selectedDocId = this.selectedDocumentIds[circleTypeId];
-  
-  // First, try to get the document from selectedDocumentIds
-  if (selectedDocId) {
-    selectedDoc = this.documents.get(selectedDocId);
-  }
-  
-  // If we didn't find it there, search through all documents of this circle type
-  if (!selectedDoc) {
-    this.documents.forEach(function(doc) {
-      if (doc.circleType === circleTypeId && doc.selected) {
-        selectedDoc = doc;
-        selectedDocId = doc.id;
+ChakraApp.AppState.prototype.deselectDocument = function(circleTypeId, listType) {
+  // If listType not specified, deselect from both lists
+  if (!listType) {
+    var deselected = false;
+    if (this.selectedDocumentIds[circleTypeId]) {
+      if (this.selectedDocumentIds[circleTypeId].list1) {
+        deselected = this.deselectDocument(circleTypeId, 'list1') || deselected;
       }
-    });
+      if (this.selectedDocumentIds[circleTypeId].list2) {
+        deselected = this.deselectDocument(circleTypeId, 'list2') || deselected;
+      }
+    }
+    return deselected;
   }
   
-  // If we found a selected document, deselect it
+  // Find the selected document for the specific list
+  var selectedDocId = this.selectedDocumentIds[circleTypeId] && this.selectedDocumentIds[circleTypeId][listType];
+  var selectedDoc = selectedDocId ? this.documents.get(selectedDocId) : null;
+  
   if (selectedDoc) {
     // Set selectedDocumentIds to null FIRST
-    this.selectedDocumentIds[circleTypeId] = null;
+    this.selectedDocumentIds[circleTypeId][listType] = null;
     
-    // IMPORTANT FIX: Hide circles for this document before deselecting
-    this._hideCirclesForDocument(selectedDocId);
-    
-    // Then deselect the document model
+    // Deselect the document model
     selectedDoc.deselect();
+    
+    // NEW: Update most recent selection tracking
+    var recentSelection = this.mostRecentDocumentSelection[circleTypeId];
+    if (recentSelection && recentSelection.docId === selectedDocId && recentSelection.listType === listType) {
+      // Check if there's still a selection in the other list
+      var otherListType = listType === 'list1' ? 'list2' : 'list1';
+      var otherSelection = this.selectedDocumentIds[circleTypeId][otherListType];
+      
+      if (otherSelection) {
+        // Update to point to the other list's selection
+        this.mostRecentDocumentSelection[circleTypeId] = {
+          docId: otherSelection,
+          listType: otherListType
+        };
+      } else {
+        // No selections left, clear recent tracking
+        this.mostRecentDocumentSelection[circleTypeId] = null;
+      }
+      
+      // Update visual indicators
+      this._updateDocumentToggleButtonIndicators(circleTypeId);
+    }
+    
+    // Update circle visibility for this circle type
+    this._showCirclesForBothSelectedDocuments(circleTypeId);
     
     // Publish the deselection event
     ChakraApp.EventBus.publish(ChakraApp.EventTypes.DOCUMENT_DESELECTED, selectedDoc);
@@ -239,7 +314,9 @@ ChakraApp.AppState.prototype.deselectDocument = function(circleTypeId) {
     return true;
   } else {
     // Make sure selectedDocumentIds is null anyway
-    this.selectedDocumentIds[circleTypeId] = null;
+    if (this.selectedDocumentIds[circleTypeId]) {
+      this.selectedDocumentIds[circleTypeId][listType] = null;
+    }
     return false;
   }
 };
@@ -252,13 +329,39 @@ ChakraApp.AppState.prototype.cleanupSelectedDocumentIds = function() {
   if (ChakraApp.Config && ChakraApp.Config.circleTypes) {
     ChakraApp.Config.circleTypes.forEach(function(circleType) {
       var typeId = circleType.id;
-      cleanState[typeId] = this.selectedDocumentIds[typeId] || null;
+      var currentValue = this.selectedDocumentIds[typeId];
+      
+      // Handle both old and new formats
+      if (typeof currentValue === 'object' && currentValue !== null) {
+        // New format: preserve the object structure
+        cleanState[typeId] = {
+          list1: currentValue.list1 || null,
+          list2: currentValue.list2 || null
+        };
+      } else {
+        // Old format or null: migrate to new format
+        cleanState[typeId] = {
+          list1: currentValue || null,
+          list2: null
+        };
+      }
     }, this);
   } else {
     // Fallback if config isn't available
-    var defaultTypes = ['standard', 'triangle', 'gem'];
+    var defaultTypes = ['standard', 'triangle', 'gem', 'star', 'hexagon'];
     defaultTypes.forEach(function(typeId) {
-      cleanState[typeId] = this.selectedDocumentIds[typeId] || null;
+      var currentValue = this.selectedDocumentIds[typeId];
+      if (typeof currentValue === 'object' && currentValue !== null) {
+        cleanState[typeId] = {
+          list1: currentValue.list1 || null,
+          list2: currentValue.list2 || null
+        };
+      } else {
+        cleanState[typeId] = {
+          list1: currentValue || null,
+          list2: null
+        };
+      }
     }, this);
   }
   
@@ -267,7 +370,6 @@ ChakraApp.AppState.prototype.cleanupSelectedDocumentIds = function() {
   
   // Save the cleaned state
   this.saveToStorageNow();
-  
   
   return true;
 };
@@ -301,6 +403,57 @@ ChakraApp.AppState.prototype._hideCirclesForDocument = function(documentId) {
   
 };
 
+ChakraApp.AppState.prototype.getDocumentsForCircleTypeAndList = function(circleTypeId, listType) {
+  var docsForTypeAndList = [];
+  
+  this.documents.forEach(function(doc) {
+    if (doc.circleType === circleTypeId && doc.listType === listType) {
+      docsForTypeAndList.push(doc);
+    }
+  });
+  
+  return docsForTypeAndList;
+};
+
+// NEW: Enhanced addDocument to accept listType
+ChakraApp.AppState.prototype.addDocument = function(data, listType) {
+  var doc = data instanceof ChakraApp.Document ? 
+    data : new ChakraApp.Document(data || {});
+  
+  // Ensure document has a circleType
+  if (!doc.circleType) {
+    doc.circleType = 'standard'; // Default to standard if not specified
+  }
+  
+  // Set listType if provided
+  if (listType) {
+    doc.listType = listType;
+  }
+  
+  this.documents.set(doc.id, doc);
+  this._subscribeToEntityChanges('documents', doc);
+  this._notifyAndPublishEntityCreation('documents', doc, 'DOCUMENT');
+  this._saveStateIfNotLoading();
+  
+  return doc;
+};
+
+// NEW: Get documents for circle type, optionally filtered by list
+ChakraApp.AppState.prototype.getDocumentsForCircleType = function(circleTypeId, listType) {
+  var docsForType = [];
+  
+  this.documents.forEach(function(doc) {
+    if (doc.circleType === circleTypeId) {
+      // If listType is specified, filter by it; otherwise return all
+      if (!listType || doc.listType === listType) {
+        docsForType.push(doc);
+      }
+    }
+  });
+  
+  return docsForType;
+};
+
 ChakraApp.AppState.prototype.toggleDocumentList = function(circleTypeId) {
   // Make sure we're using a valid circle type
   var isValidType = false;
@@ -327,18 +480,29 @@ ChakraApp.AppState.prototype.toggleDocumentList = function(circleTypeId) {
   if (this.documentListVisible[circleTypeId]) {
     ChakraApp.Config.circleTypes.forEach(function(otherType) {
       var otherTypeId = otherType.id;
-      // Skip the current type
       if (otherTypeId === circleTypeId) return;
       
-      // Close other document lists if open
       if (this.documentListVisible[otherTypeId]) {
         this.documentListVisible[otherTypeId] = false;
         
-        // Publish event for this type
-        ChakraApp.EventBus.publish(ChakraApp.EventTypes.DOCUMENT_LIST_TOGGLED, {
-          panelId: otherTypeId,
-          visible: false
-        });
+        // Close BOTH first and second lists for other types
+        if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.document) {
+          ChakraApp.app.controllers.document._updateDocumentList(otherTypeId);
+          ChakraApp.app.controllers.document._updateDocumentList2(otherTypeId);
+        }
+        
+        // Update arrow icons for both buttons
+        var toggleBtn = document.getElementById('toggle-document-list-btn-' + otherTypeId);
+        if (toggleBtn) {
+          var arrowIcon = toggleBtn.querySelector('.arrow-icon');
+          if (arrowIcon) arrowIcon.innerHTML = '▼';
+        }
+        
+        var toggleBtn2 = document.getElementById('toggle-document-list-btn2-' + otherTypeId);
+        if (toggleBtn2) {
+          var arrowIcon2 = toggleBtn2.querySelector('.arrow-icon');
+          if (arrowIcon2) arrowIcon2.innerHTML = '▼';
+        }
       }
     }, this);
   }
@@ -426,11 +590,19 @@ ChakraApp.AppState.prototype._migrateDocumentState = function() {
   
 };
   
-  ChakraApp.AppState.prototype.saveLastViewedDocument = function(documentId, panelId) {
-    if (documentId && panelId) {
-      localStorage.setItem('chakraLastViewedDocumentId_' + panelId, documentId);
-    }
-  };
+ChakraApp.AppState.prototype.saveLastViewedDocument = function(documentId, circleTypeId, listType) {
+  if (documentId && circleTypeId && listType) {
+    var key = 'chakraLastViewedDocumentId_' + circleTypeId + '_' + listType;
+    localStorage.setItem(key, documentId);
+  }
+};
+
+// Update getLastViewedDocument method to include listType
+ChakraApp.AppState.prototype.getLastViewedDocument = function(circleTypeId, listType) {
+  if (!listType) return null;
+  var key = 'chakraLastViewedDocumentId_' + circleTypeId + '_' + listType;
+  return localStorage.getItem(key);
+};
 
   ChakraApp.AppState.prototype._hideAllCircles = function() {
   this.circles.forEach(function(circle) {
@@ -465,6 +637,39 @@ ChakraApp.AppState.prototype._filterCirclesByDocument = function(documentId, pan
     }, this);
   }
 };
+
+ChakraApp.AppState.prototype._hideCirclesForCircleType = function(circleType) {
+  var viewManager = ChakraApp.app && ChakraApp.app.viewManager;
+  
+  this.circles.forEach(function(circle) {
+    if (circle.circleType === circleType) {
+      // Method 1: Remove the circle view completely
+      if (viewManager && viewManager.circleViews && viewManager.circleViews.has(circle.id)) {
+        var circleView = viewManager.circleViews.get(circle.id);
+        if (circleView && circleView.element && circleView.element.parentNode) {
+          circleView.element.parentNode.removeChild(circleView.element);
+        }
+        // Remove from view manager
+        viewManager.circleViews.delete(circle.id);
+      }
+      
+      // Method 2: Also try direct DOM manipulation as backup
+      var circleElement = document.querySelector('.circle[data-id="' + circle.id + '"]');
+      if (circleElement) {
+        circleElement.style.display = 'none';
+      }
+    }
+  }, this);
+};
+
+ChakraApp.AppState.prototype._showCirclesForBothSelectedDocuments = function(circleType) {
+  
+  // Instead of hiding and showing, just trigger a view refresh
+  if (ChakraApp.app && ChakraApp.app.viewManager) {
+    ChakraApp.app.viewManager.renderCirclesForPanel('left');
+  }
+};
+
   
   ChakraApp.AppState.prototype._showCirclesForDocument = function(documentId) {
     this.circles.forEach(circle => {
@@ -660,10 +865,11 @@ ChakraApp.AppState.prototype._updateCircleConnections = function() {
 
   // Circle methods - explicitly defined and not generated
 ChakraApp.AppState.prototype.addCircle = function(circleData) {
+  
   var circle = circleData instanceof ChakraApp.Circle ? 
     circleData : new ChakraApp.Circle(circleData || {});
 
-   if (circle.x === 0 && circle.y === 0) {
+  if (circle.x === 0 && circle.y === 0) {
     circle.x = Math.floor(Math.random() * 81) + 100;  // Random X between 100 and 180
     circle.y = Math.floor(Math.random() * 81) + 100; // Random Y between 100 and 180
   }
@@ -673,37 +879,48 @@ ChakraApp.AppState.prototype.addCircle = function(circleData) {
   
   // If no document ID is provided, assign one based on the circle type
   if (!circle.documentId) {
-    // Get the appropriate selected document ID for this circle type
     var selectedDocId = null;
     
-    // First check if there's a selected document for this circle type
-    var docsForType = this.getDocumentsForCircleType(circleType);
-    if (docsForType.length > 0) {
-      // Find a selected document of this type
-      docsForType.forEach(function(doc) {
-        if (!selectedDocId && this.selectedDocumentIds[doc.circleType] === doc.id) {
-          selectedDocId = doc.id;
-        }
-      }, this);
+    // NEW: Use the most recently selected document for this circle type
+    var recentSelection = this.mostRecentDocumentSelection[circleType];
+    
+    if (recentSelection && recentSelection.docId) {
+      // Verify the document still exists and is still selected
+      var recentDoc = this.getDocument(recentSelection.docId);
+      var currentSelection = this.selectedDocumentIds[circleType] && 
+                           this.selectedDocumentIds[circleType][recentSelection.listType];
       
-      // If no selected document of this type, use the first one
-      if (!selectedDocId) {
-        selectedDocId = docsForType[0].id;
-        this.selectDocument(selectedDocId, docsForType[0].circleType);
+      if (recentDoc && currentSelection === recentSelection.docId) {
+        selectedDocId = recentSelection.docId;
+        circle.documentId = selectedDocId;
       }
-    } else {
-      // No documents exist for this circle type, create one
+    }
+    
+    // NEW: If no recent selection or it's invalid, create a new document
+    if (!circle.documentId) {
+      // Always create a new document instead of using existing ones
+      var circleTypeConfig = null;
+      if (ChakraApp.Config && ChakraApp.Config.circleTypes) {
+        circleTypeConfig = ChakraApp.Config.circleTypes.find(function(type) {
+          return type.id === circleType;
+        });
+      }
+      
+      var docName = circleTypeConfig ? circleTypeConfig.name + " Document" : "New Document";
+      
+      // Create new document in List A by default
       var newDoc = this.addDocument({
-        name: circleType.charAt(0).toUpperCase() + circleType.slice(1) + " Document",
-        circleType: circleType
+        name: docName,
+        circleType: circleType,
+        listType: 'list1'
       });
       
       selectedDocId = newDoc.id;
-      this.selectDocument(selectedDocId, circleType);
+      
+      // Select this new document, making it the most recent
+      this.selectDocument(selectedDocId, circleType, 'list1');
+      circle.documentId = selectedDocId;
     }
-    
-    // Assign the document ID to the circle
-    circle.documentId = selectedDocId;
   }
   
   // Ensure circleType is set
@@ -719,7 +936,128 @@ ChakraApp.AppState.prototype.addCircle = function(circleData) {
   this._notifyAndPublishEntityCreation('circles', circle, 'CIRCLE');
   this._saveStateIfNotLoading();
   
+  // Force immediate view update
+  setTimeout(function() {
+    if (ChakraApp.app && ChakraApp.app.viewManager) {
+      ChakraApp.app.viewManager.renderCirclesForPanel('left');
+    }
+  }, 50);
+  
   return circle;
+};
+
+ChakraApp.AppState.prototype._migrateSelectedDocumentIds = function() {
+  var migrationApplied = false;
+  
+  // Initialize mostRecentDocumentSelection if it doesn't exist
+  if (!this.mostRecentDocumentSelection) {
+    this.mostRecentDocumentSelection = {};
+    migrationApplied = true;
+  }
+  
+  // Check if we have the old format (direct ID values instead of objects)
+  if (ChakraApp.Config && ChakraApp.Config.circleTypes) {
+    ChakraApp.Config.circleTypes.forEach(function(circleType) {
+      var typeId = circleType.id;
+      var currentValue = this.selectedDocumentIds[typeId];
+      
+      // Initialize recent selection tracking for this type if missing
+      if (!this.mostRecentDocumentSelection.hasOwnProperty(typeId)) {
+        this.mostRecentDocumentSelection[typeId] = null;
+        migrationApplied = true;
+      }
+      
+      // If it's a string ID instead of an object, migrate it
+      if (typeof currentValue === 'string' || currentValue === null) {
+        this.selectedDocumentIds[typeId] = {
+          list1: currentValue, // Put existing selection in list1
+          list2: null          // Initialize list2 as empty
+        };
+        
+        // Set as most recent if there was a selection
+        if (currentValue) {
+          this.mostRecentDocumentSelection[typeId] = {
+            docId: currentValue,
+            listType: 'list1'
+          };
+        }
+        
+        migrationApplied = true;
+      }
+      // If the object exists but is missing properties, fix it
+      else if (currentValue && typeof currentValue === 'object') {
+        if (!currentValue.hasOwnProperty('list1')) {
+          currentValue.list1 = null;
+          migrationApplied = true;
+        }
+        if (!currentValue.hasOwnProperty('list2')) {
+          currentValue.list2 = null;
+          migrationApplied = true;
+        }
+        
+        // Set most recent selection if we have any selection but no recent tracking
+        if (!this.mostRecentDocumentSelection[typeId] && (currentValue.list1 || currentValue.list2)) {
+          if (currentValue.list1) {
+            this.mostRecentDocumentSelection[typeId] = {
+              docId: currentValue.list1,
+              listType: 'list1'
+            };
+          } else if (currentValue.list2) {
+            this.mostRecentDocumentSelection[typeId] = {
+              docId: currentValue.list2,
+              listType: 'list2'
+            };
+          }
+          migrationApplied = true;
+        }
+      }
+    }, this);
+  }
+  
+  if (migrationApplied) {
+    this.saveToStorageNow();
+  }
+  
+  return migrationApplied;
+};
+
+ChakraApp.AppState.prototype._selectSavedDocuments = function() {
+  var self = this;
+  
+  // Ensure migration has happened first
+  this._migrateSelectedDocumentIds();
+  
+  // For each circle type in selectedDocumentIds
+  Object.keys(this.selectedDocumentIds).forEach(function(circleTypeId) {
+    var selections = self.selectedDocumentIds[circleTypeId];
+    
+    // Handle both old and new formats
+    if (typeof selections === 'object' && selections !== null) {
+      // New format: try to select from both lists
+      if (selections.list1) {
+        var doc1 = self.documents.get(selections.list1);
+        if (doc1) {
+          self.selectDocument(selections.list1, circleTypeId, 'list1');
+        } else {
+          // Document doesn't exist anymore, clear selection
+          selections.list1 = null;
+        }
+      }
+      
+      if (selections.list2) {
+        var doc2 = self.documents.get(selections.list2);
+        if (doc2) {
+          self.selectDocument(selections.list2, circleTypeId, 'list2');
+        } else {
+          // Document doesn't exist anymore, clear selection
+          selections.list2 = null;
+        }
+      }
+      
+      // NEW: Update visual indicators after restoring selections
+      self._updateDocumentToggleButtonIndicators(circleTypeId);
+    }
+  });
 };
   
   ChakraApp.AppState.prototype._assignDocumentToCircle = function(circle, panelId) {

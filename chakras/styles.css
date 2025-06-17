@@ -488,6 +488,7 @@ h3 {
 /* Chakra Form (Polygon Shapes) */
 .outer-polygon-container {
   position: absolute;
+  transform: scale(.5);
 }
 
 .inner-polygon-container {
@@ -2523,4 +2524,20 @@ Add these styles to styles.css:
 /* Make sure indicators don't interfere with selection glow */
 .circle.selected .circle-indicator {
   z-index: 20;
+}
+
+.document-toggle-btn.most-recent-selection {
+  border: 1px solid #444 !important;
+}
+
+
+.header-section h3 {
+  margin: 0;
+  white-space: nowrap;
+  transition: color 0.2s ease;
+  cursor: pointer;
+}
+
+.header-section h3:active {
+  color: #AAA !important;
 }

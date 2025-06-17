@@ -72,28 +72,22 @@
     var self = this;
     
     // Listen for circle events
-     ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.CIRCLE_CREATED, function(circle) {
-    // Get the circle type and document
-    var circleType = circle.circleType || 'standard';
-    var doc = ChakraApp.appState.getDocument(circle.documentId);
+    ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.CIRCLE_CREATED, function(circle) {
+  
+  // Always create the view for newly created circles
+  // The selection logic should be handled separately
+  var circleView = self.createCircleView(circle);
+  
+  if (circleView) {
     
-    if (doc) {
-      // Check if this circle is for the currently selected document of its type
-      var selectedDocId = ChakraApp.appState.selectedDocumentIds[circleType];
-      
-      if (selectedDocId && circle.documentId === selectedDocId) {
-        // Create the view for this circle
-        self.createCircleView(circle);
-        
-        // Force a re-rendering to ensure visibility
-        self.renderCirclesForPanel('left');
-        
-      } else {
-      }
-    } else {
-      console.error("Circle created but has no associated document:", circle.id);
-    }
-  });
+    // Force a re-rendering to ensure visibility
+    setTimeout(function() {
+      self.renderCirclesForPanel('left');
+    }, 10);
+  } else {
+    console.error('Failed to create circle view for:', circle.id);
+  }
+});
     
     ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.CIRCLE_DELETED, function(circle) {
       self.removeCircleView(circle.id);
@@ -120,13 +114,16 @@
     });
     
     // Listen for document selection events
-    ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.DOCUMENT_SELECTED, function(doc) {
-      // Re-render circles for this panel's document
-      self.renderCirclesForPanel(doc.panelId);
-      setTimeout(function() {
+ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.DOCUMENT_SELECTED, function(doc) {
+  // Re-render circles to show the newly selected document's circles
+  // This will intelligently show/hide circles based on current selections
+  self.renderCirclesForPanel('left');
+  
+  // Update circle connections after a delay to ensure all views are ready
+  setTimeout(function() {
     self._updateCircleConnectionViews();
   }, 100);
-    });
+});
     
     // Listen for document deletion events
     ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.DOCUMENT_DELETED, function(doc) {
@@ -150,12 +147,13 @@ ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.CIRCLE_REFERENCE_DELETED, func
 });
   };
   
-  ChakraApp.ViewManager.prototype.createCircleView = function(circleModel) {
+ChakraApp.ViewManager.prototype.createCircleView = function(circleModel) {
   // Ensure we have a valid circle model
   if (!circleModel) {
     console.error("Cannot create circle view: no circle model provided");
     return null;
   }
+  
   
   // Get the circle type - either directly from the circle or from its document
   var circleType = circleModel.circleType;
@@ -176,6 +174,11 @@ ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.CIRCLE_REFERENCE_DELETED, func
     return null;
   }
   
+  // Check if view already exists
+  if (this.circleViews.has(circleModel.id)) {
+    return this.circleViews.get(circleModel.id);
+  }
+  
   // Create view model
   var viewModel = new ChakraApp.CircleViewModel(circleModel);
   
@@ -184,6 +187,7 @@ ChakraApp.EventBus.subscribe(ChakraApp.EventTypes.CIRCLE_REFERENCE_DELETED, func
   
   // Store the view
   this.circleViews.set(circleModel.id, view);
+  
   
   return view;
 };
@@ -376,7 +380,7 @@ ChakraApp.ViewManager.prototype._updateCircleConnectionViews = function() {
 ChakraApp.ViewManager.prototype._isCircleVisible = function(circle) {
   // A circle is visible if:
   // 1. It exists
-  // 2. Its document is selected for its circle type
+  // 2. Its document is selected for its circle type in either list1 or list2
   // 3. There's actually a circle view element for it in the DOM
   
   if (!circle) {
@@ -385,9 +389,15 @@ ChakraApp.ViewManager.prototype._isCircleVisible = function(circle) {
   
   // Check if the circle's document is currently selected
   var circleType = circle.circleType || 'standard';
-  var selectedDocId = ChakraApp.appState.selectedDocumentIds[circleType];
+  var selectedDocs = ChakraApp.appState.selectedDocumentIds[circleType];
   
-  if (circle.documentId !== selectedDocId) {
+  var isDocumentSelected = false;
+  if (selectedDocs) {
+    isDocumentSelected = (selectedDocs.list1 === circle.documentId) || 
+                        (selectedDocs.list2 === circle.documentId);
+  }
+  
+  if (!isDocumentSelected) {
     return false;
   }
   
@@ -488,30 +498,66 @@ ChakraApp.ViewManager.prototype._removeAllCircleViews = function() {
    */
 // Fix the renderCirclesForPanel method in ViewManager.js
 ChakraApp.ViewManager.prototype.renderCirclesForPanel = function() {
-  // First remove existing circle views
-  this._removeAllCircleViews();
-  
   var self = this;
+  var circlesToShow = new Set();
+  var circlesToRemove = [];
   
   // For each circle type in the config
   if (ChakraApp.Config && ChakraApp.Config.circleTypes) {
     ChakraApp.Config.circleTypes.forEach(function(circleType) {
       var typeId = circleType.id;
-      var selectedDocId = ChakraApp.appState.selectedDocumentIds[typeId];
       
-      // If a document of this type is selected
-      if (selectedDocId) {
-        // Create views for all circles of this type and document
-        ChakraApp.appState.circles.forEach(function(circle) {
-          if (circle.documentId === selectedDocId && circle.circleType === typeId) {
-            self.createCircleView(circle);
-          }
-        });
+      // NEW: Check if this circle type is visible
+      var typeVisible = ChakraApp.appState.circleTypeVisibility[typeId] !== false;
+      if (!typeVisible) {
+        return; // Skip this circle type entirely
       }
+      
+      var selectedDocs = ChakraApp.appState.selectedDocumentIds[typeId];
+      
+      // Check both list1 and list2 for selected documents
+      var selectedDocIds = [];
+      if (selectedDocs) {
+        if (selectedDocs.list1) {
+          selectedDocIds.push(selectedDocs.list1);
+        }
+        if (selectedDocs.list2) {
+          selectedDocIds.push(selectedDocs.list2);
+        }
+      }
+      
+      
+      // Find all circles that should be visible for this circle type
+      ChakraApp.appState.circles.forEach(function(circle) {
+        if (circle.circleType === typeId) {
+          if (selectedDocIds.includes(circle.documentId)) {
+            circlesToShow.add(circle.id);
+          }
+        }
+      });
     });
   }
   
-  var self = this;
+  // Remove views for circles that shouldn't be visible
+  this.circleViews.forEach(function(view, circleId) {
+    if (!circlesToShow.has(circleId)) {
+      circlesToRemove.push(circleId);
+    }
+  });
+  
+  circlesToRemove.forEach(function(circleId) {
+    self.removeCircleView(circleId);
+  });
+  
+  // Create views for circles that should be visible but don't have views yet
+  ChakraApp.appState.circles.forEach(function(circle) {
+    if (circlesToShow.has(circle.id) && !self.circleViews.has(circle.id)) {
+      self.createCircleView(circle);
+    }
+  });
+  
+  
+  // Update circle connections after a short delay
   setTimeout(function() {
     self._updateCircleConnectionViews();
   }, 50);
