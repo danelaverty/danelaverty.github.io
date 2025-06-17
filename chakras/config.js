@@ -241,21 +241,21 @@
     color: '#88B66d',
     position: 3
   },
-  {
+  /*{
     id: 'hexagon',
     name: 'Combos',
     description: 'Complex Systems & Patterns',
     shape: 'hexagon',
     color: '#9932CC', 
     position: 4
-  },
+  },*/
   {
     id: 'gem',
     name: 'Buckets',
     description: 'Areas of Concern',
     shape: 'gem',
     color: '#4a6fc9',
-    position: 5
+    position: 4
   },
 ],
 
@@ -309,7 +309,7 @@ circleTypeTemplates: [
       { x: 200, y: 180, color: '#5C7A29', name: 'Feedback' },
     ],
   },
-  {
+  /*{
     id: 'complex_pattern',
     name: 'Complex Pattern',
     type: 'hexagon',
@@ -321,7 +321,7 @@ circleTypeTemplates: [
       { x: 150, y: 200, color: '#7B68EE', name: 'Element D' },
       { x: 225, y: 180, color: '#7B68EE', name: 'Element E' },
     ],
-  },
+  },*/
 ],
 
 

@@ -79,6 +79,7 @@
      * @param {Object} circleView - The CircleView instance
      */
     createChakraForm: function(circleView) {
+	    return;
       var chakraForm = circleView.viewModel.chakraForm;
       var outerContainer = circleView._createElement('div', { className: 'outer-polygon-container' });
       

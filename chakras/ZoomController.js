@@ -128,33 +128,34 @@
    * @private
    */
   ChakraApp.ZoomController.prototype._setupEventListeners = function() {
-    var self = this;
-    
-    // Zoom in button click handler
-    this.zoomInBtn.addEventListener('click', function() {
-      self.zoomIn();
-    });
-    
-    // Zoom out button click handler
-    this.zoomOutBtn.addEventListener('click', function() {
-      self.zoomOut();
-    });
-    
-    // Zoom reset button click handler
-    this.zoomResetBtn.addEventListener('click', function() {
-      self.resetZoom();
-    });
-    
-    // Document selection event
-    this.eventSubscriptions.documentSelected = ChakraApp.EventBus.subscribe(
-      ChakraApp.EventTypes.DOCUMENT_SELECTED,
-      function(doc) {
-        if (doc.circleType === 'standard') {
-          self._loadZoomFromDocument(doc);
-        }
+  var self = this;
+  
+  // Zoom in button click handler
+  this.zoomInBtn.addEventListener('click', function() {
+    self.zoomIn();
+  });
+  
+  // Zoom out button click handler
+  this.zoomOutBtn.addEventListener('click', function() {
+    self.zoomOut();
+  });
+  
+  // Zoom reset button click handler
+  this.zoomResetBtn.addEventListener('click', function() {
+    self.resetZoom();
+  });
+  
+  // NEW: Updated document selection event handler
+  this.eventSubscriptions.documentSelected = ChakraApp.EventBus.subscribe(
+    ChakraApp.EventTypes.DOCUMENT_SELECTED,
+    function(doc) {
+      // Only load zoom for standard type documents from List A
+      if (doc.circleType === 'standard' && doc.listType === 'list1') {
+        self._loadZoomFromDocument(doc);
       }
-    );
-  };
+    }
+  );
+};
   
   /**
    * Zoom in
@@ -260,55 +261,66 @@
    * @private
    */
   ChakraApp.ZoomController.prototype._saveZoomToCurrentDocument = function() {
-    // Get current standard document
-    var docId = ChakraApp.appState.selectedDocumentIds.standard;
-    if (!docId) return;
-    
-    var doc = ChakraApp.appState.getDocument(docId);
-    if (!doc) return;
-    
-    // Prepare the zoom data to save
-    var zoomData = {
-      zoomLevel: {
-        translateX: this.currentZoom.translateX,
-        translateY: this.currentZoom.translateY,
-        scale: this.currentZoom.scale
-      }
-    };
-    
-    // Update the document
-    ChakraApp.appState.updateDocument(docId, zoomData);
+  // NEW: Get current standard document from List A (list1)
+  var docId = ChakraApp.appState.selectedDocumentIds.standard && 
+              ChakraApp.appState.selectedDocumentIds.standard.list1;
+  if (!docId) return;
+  
+  var doc = ChakraApp.appState.getDocument(docId);
+  if (!doc) return;
+  
+  // Prepare the zoom data to save
+  var zoomData = {
+    zoomLevel: {
+      translateX: this.currentZoom.translateX,
+      translateY: this.currentZoom.translateY,
+      scale: this.currentZoom.scale
+    }
   };
+  
+  // Update the document
+  ChakraApp.appState.updateDocument(docId, zoomData);
+};
   
   /**
    * Load zoom from selected document
    * @private
    * @param {Object} doc - Selected document
    */
-  ChakraApp.ZoomController.prototype._loadZoomFromDocument = function(doc) {
-    if (!doc || doc.circleType !== 'standard') return;
-    
-    // Check if document has zoom data
-    if (doc.zoomLevel) {
-      // Use document's zoom level
-      this.currentZoom = {
-        translateX: doc.zoomLevel.translateX,
-        translateY: doc.zoomLevel.translateY,
-        scale: doc.zoomLevel.scale
-      };
-    } else {
-      // Reset to default if no zoom data exists
-      this.currentZoom = {
+/**
+ * Load zoom from selected document (prioritize List A)
+ * @private
+ * @param {Object} doc - Selected document
+ */
+ChakraApp.ZoomController.prototype._loadZoomFromDocument = function(doc) {
+  if (!doc || doc.circleType !== 'standard') return;
+  
+  // NEW: Only load zoom if this document is from List A
+  if (doc.listType !== 'list1') {
+    return; // Don't change zoom for List B documents
+  }
+  
+  // Check if document has zoom data
+  if (doc.zoomLevel) {
+    // Use document's zoom level
+    this.currentZoom = {
+      translateX: doc.zoomLevel.translateX,
+      translateY: doc.zoomLevel.translateY,
+      scale: doc.zoomLevel.scale
+    };
+  } else {
+    // Reset to default if no zoom data exists
+    this.currentZoom = {
       translateX: this.defaultTransform.translateX,
       translateY: this.defaultTransform.translateY,
       scale: 1.0
     };
-      this.currentZoom.translateY = this.defaultTransform.translateY + (2 * this.translateYStep);
-    }
-    
-    // Apply the loaded zoom
-    this._applyTransform();
-  };
+    this.currentZoom.translateY = this.defaultTransform.translateY + (2 * this.translateYStep);
+  }
+  
+  // Apply the loaded zoom
+  this._applyTransform();
+};
   
   /**
    * Clean up resources

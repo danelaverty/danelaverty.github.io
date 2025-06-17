@@ -172,36 +172,6 @@ this.keyHandlers['='] = function(e) {
         return;
       }
 
-      // Check if a circle is selected
-      if (ChakraApp.appState.selectedCircleId) {
-        var circleId = ChakraApp.appState.selectedCircleId;
-        var circle = ChakraApp.appState.getCircle(circleId);
-
-        if (circle) {
-          // Get current indicator index
-          var currentIndex = -1;
-          if (circle.indicator) {
-            ChakraApp.Config.indicatorEmojis.forEach(function(config, index) {
-              if (config.id === circle.indicator) {
-                currentIndex = index;
-              }
-            });
-          }
-
-          // Get next indicator
-          var nextIndex = (currentIndex + 1) % ChakraApp.Config.indicatorEmojis.length;
-          var nextIndicator = ChakraApp.Config.indicatorEmojis[nextIndex];
-
-          // Update circle with new indicator
-          ChakraApp.appState.updateCircle(circleId, { indicator: nextIndicator.id });
-
-          // Show notification
-          self._showNotification('Circle Indicator: ' + nextIndicator.emoji + ' ' + nextIndicator.name);
-        }
-        return;
-      }
-
-      // Must have a square selected for indicator functionality
       if (ChakraApp.appState.selectedSquareId) {
         var squareId = ChakraApp.appState.selectedSquareId;
         var square = ChakraApp.appState.getSquare(squareId);
@@ -227,6 +197,32 @@ this.keyHandlers['='] = function(e) {
           // Show notification
           self._showNotification('Square Indicator: ' + nextIndicator.emoji + ' ' + nextIndicator.name);
         }
+      } else if (ChakraApp.appState.selectedCircleId) {
+        var circleId = ChakraApp.appState.selectedCircleId;
+        var circle = ChakraApp.appState.getCircle(circleId);
+
+        if (circle) {
+          // Get current indicator index
+          var currentIndex = -1;
+          if (circle.indicator) {
+            ChakraApp.Config.indicatorEmojis.forEach(function(config, index) {
+              if (config.id === circle.indicator) {
+                currentIndex = index;
+              }
+            });
+          }
+
+          // Get next indicator
+          var nextIndex = (currentIndex + 1) % ChakraApp.Config.indicatorEmojis.length;
+          var nextIndicator = ChakraApp.Config.indicatorEmojis[nextIndex];
+
+          // Update circle with new indicator
+          ChakraApp.appState.updateCircle(circleId, { indicator: nextIndicator.id });
+
+          // Show notification
+          self._showNotification('Circle Indicator: ' + nextIndicator.emoji + ' ' + nextIndicator.name);
+        }
+        return;
       }
     };
 

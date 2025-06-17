@@ -27,37 +27,157 @@
   };
   
   ChakraApp.AppState.prototype._initializeSelectionState = function() {
-  // Initialize with only circle types, not panels
+  // Change to support both list1 and list2 selections per circle type
   this.selectedDocumentIds = {};
   
-  // Add entries for each circle type in the config
+  // NEW: Track most recently selected document per circle type
+  this.mostRecentDocumentSelection = {};
+  
+  // Add entries for each circle type in the config with both list types
   if (ChakraApp.Config && ChakraApp.Config.circleTypes) {
     ChakraApp.Config.circleTypes.forEach(function(circleType) {
-      this.selectedDocumentIds[circleType.id] = null;
+      this.selectedDocumentIds[circleType.id] = {
+        list1: null,
+        list2: null
+      };
+      // NEW: Initialize recent selection tracking
+      this.mostRecentDocumentSelection[circleType.id] = null; // Format: { docId: 'id', listType: 'list1|list2' }
     }, this);
   } else {
     // Fallback if config isn't available
     this.selectedDocumentIds = {
+      standard: { list1: null, list2: null },
+      triangle: { list1: null, list2: null },
+      gem: { list1: null, list2: null },
+      star: { list1: null, list2: null },
+      hexagon: { list1: null, list2: null }
+    };
+    this.mostRecentDocumentSelection = {
       standard: null,
       triangle: null,
       gem: null,
       star: null,
-      hexagon: null  // Add hexagon here
+      hexagon: null
     };
   }
   
   this.circleReferences = [];
-
   this.selectedCircleId = null;
   this.selectedSquareId = null;
   this.selectedCircleReferenceId = null;
   this.selectedTabId = null;
 };
   
-  ChakraApp.AppState.prototype._initializeUIState = function() {
-    this.panelVisibility = { left: true, bottom: true };
-    this.documentListVisible = { left: false, bottom: false };
-  };
+ChakraApp.AppState.prototype._initializeUIState = function() {
+  this.panelVisibility = { left: true, bottom: true };
+  this.documentListVisible = { left: false, bottom: false };
+  
+  // NEW: Track visibility state for each circle type
+  this.circleTypeVisibility = {};
+  
+  // Initialize visibility for all circle types (default to visible)
+  if (ChakraApp.Config && ChakraApp.Config.circleTypes) {
+    ChakraApp.Config.circleTypes.forEach(function(circleType) {
+      this.circleTypeVisibility[circleType.id] = true;
+    }, this);
+  } else {
+    // Fallback
+    this.circleTypeVisibility = {
+      standard: true,
+      triangle: true,
+      gem: true,
+      star: true,
+      hexagon: true
+    };
+  }
+};
+
+ChakraApp.AppState.prototype.toggleCircleTypeVisibility = function(circleTypeId) {
+  if (!this.circleTypeVisibility.hasOwnProperty(circleTypeId)) {
+    this.circleTypeVisibility[circleTypeId] = true;
+  }
+  
+  // Toggle the visibility
+  this.circleTypeVisibility[circleTypeId] = !this.circleTypeVisibility[circleTypeId];
+  
+  console.log('Toggled visibility for circle type:', circleTypeId, 'to:', this.circleTypeVisibility[circleTypeId]);
+  
+  // Update the view to show/hide circles of this type
+  if (ChakraApp.app && ChakraApp.app.viewManager) {
+    ChakraApp.app.viewManager.renderCirclesForPanel('left');
+  }
+  
+  // Update the header visual state
+  this._updateHeaderVisualState(circleTypeId);
+  
+  // Publish event for any other components that need to know
+  ChakraApp.EventBus.publish('CIRCLE_TYPE_VISIBILITY_CHANGED', {
+    circleTypeId: circleTypeId,
+    visible: this.circleTypeVisibility[circleTypeId]
+  });
+  
+  return this.circleTypeVisibility[circleTypeId];
+};
+
+// 3. Add method to set visibility (for button clicks to turn it back on):
+ChakraApp.AppState.prototype.setCircleTypeVisibility = function(circleTypeId, visible) {
+  if (!this.circleTypeVisibility.hasOwnProperty(circleTypeId)) {
+    this.circleTypeVisibility[circleTypeId] = true;
+  }
+  
+  var wasVisible = this.circleTypeVisibility[circleTypeId];
+  this.circleTypeVisibility[circleTypeId] = visible;
+  
+  // Only update if visibility actually changed
+  if (wasVisible !== visible) {
+    console.log('Set visibility for circle type:', circleTypeId, 'to:', visible);
+    
+    // Update the view
+    if (ChakraApp.app && ChakraApp.app.viewManager) {
+      ChakraApp.app.viewManager.renderCirclesForPanel('left');
+    }
+    
+    // Update the header visual state
+    this._updateHeaderVisualState(circleTypeId);
+    
+    // Publish event
+    ChakraApp.EventBus.publish('CIRCLE_TYPE_VISIBILITY_CHANGED', {
+      circleTypeId: circleTypeId,
+      visible: visible
+    });
+  }
+  
+  return visible;
+};
+
+// 4. Add method to update header visual state:
+ChakraApp.AppState.prototype._updateHeaderVisualState = function(circleTypeId) {
+  var header = document.querySelector('.header-section h3[data-circle-type="' + circleTypeId + '"]');
+  if (!header) {
+    // Fallback: find by text content
+    var allHeaders = document.querySelectorAll('.header-section h3');
+    for (var i = 0; i < allHeaders.length; i++) {
+      var circleTypeConfig = ChakraApp.Config.circleTypes.find(function(type) {
+        return type.name === allHeaders[i].textContent;
+      });
+      if (circleTypeConfig && circleTypeConfig.id === circleTypeId) {
+        header = allHeaders[i];
+        break;
+      }
+    }
+  }
+  
+  if (header) {
+    var isVisible = this.circleTypeVisibility[circleTypeId];
+    if (isVisible) {
+      header.style.color = '#666'; // Normal color
+      header.title = 'Click to hide all ' + circleTypeId + ' circles';
+    } else {
+      header.style.color = 'rgb(60, 60, 60)'; // Dimmed color
+      header.title = 'Click to show all ' + circleTypeId + ' circles (currently hidden)';
+    }
+  }
+};
 
   // NEW: Instance management methods
   ChakraApp.AppState.prototype._getInstanceId = function() {
@@ -374,7 +494,26 @@ ChakraApp.AppState.prototype._updateEntity = function(entityType, id, changes) {
     }
   };
   
-  // Storage methods - UPDATED to use instance-specific storage and include migration
+ChakraApp.AppState.prototype._migrateDocumentsToListType = function() {
+  var migrationApplied = false;
+  
+  this.documents.forEach(function(doc) {
+    // If document doesn't have listType, assign it to list1
+    if (!doc.listType) {
+      doc.listType = 'list1';
+      migrationApplied = true;
+    }
+  });
+  
+  if (migrationApplied) {
+    this.saveToStorageNow();
+    console.log('Migrated existing documents to list1');
+  }
+  
+  return migrationApplied;
+};
+
+// Update the loadFromStorage method to include the migration
 ChakraApp.AppState.prototype.loadFromStorage = function() {
   try {
     this._isLoading = true;
@@ -396,6 +535,9 @@ ChakraApp.AppState.prototype.loadFromStorage = function() {
       // Clean up to ensure only valid circle types
       this.cleanupSelectedDocumentIds();
     }
+    
+    // NEW: Migrate existing documents to have listType
+    this._migrateDocumentsToListType();
     
     // Don't use _selectLastViewedDocuments anymore - it's panel-based
     // Instead, try to select documents based on the restored selectedDocumentIds
@@ -460,7 +602,17 @@ ChakraApp.AppState.prototype._loadEntities = function(data) {
   });
   this.selectedCircleReferenceId = data.selectedCircleReferenceId || null;
   
-  // IMPORTANT: Update circle connections after loading everything
+  // Load recent selection tracking
+  if (data.mostRecentDocumentSelection) {
+    this.mostRecentDocumentSelection = data.mostRecentDocumentSelection;
+  }
+  
+  // NEW: Load circle type visibility
+  if (data.circleTypeVisibility) {
+    this.circleTypeVisibility = data.circleTypeVisibility;
+  }
+  
+  // Update circle connections after loading everything
   this._updateCircleConnections();
 };
   
@@ -536,8 +688,12 @@ ChakraApp.AppState.prototype._actualSaveToStorage = function() {
       squares: this._serializeCollection('squares'),
       tabs: this._serializeCollection('tabs'),
 
-      // This is important - ensure we save the entire selectedDocumentIds object
-      selectedDocumentIds: this.selectedDocumentIds
+      // Include selectedDocumentIds and recent selection tracking
+      selectedDocumentIds: this.selectedDocumentIds,
+      mostRecentDocumentSelection: this.mostRecentDocumentSelection,
+      
+      // NEW: Include circle type visibility
+      circleTypeVisibility: this.circleTypeVisibility
     };
 
     data.circleReferences = this.circleReferences.map(function(ref) { return ref.toJSON(); });

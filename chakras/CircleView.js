@@ -202,17 +202,27 @@ ChakraApp.CircleView.prototype._ensureShapeClickHandler = function() {
   });
 };
 
-  ChakraApp.CircleView.prototype.addNameElement = function() {
-    this.nameElement = this._createElement('div', {
-      className: 'item-name',
-      contentEditable: true,
-      textContent: this.viewModel.name,
-      style: {
-	    color: ChakraApp.appState.getDocument(ChakraApp.appState.circles.get(this.viewModel.id).documentId).panelId == 'things' ? '#88B66d' : 'white',
-      }
-    });
-    this.element.appendChild(this.nameElement);
-  };
+ChakraApp.CircleView.prototype.addNameElement = function() {
+  // Get the document this circle belongs to
+  var doc = ChakraApp.appState.getDocument(this.viewModel.documentId);
+  var nameColor = 'white'; // Default color
+  
+  if (doc) {
+    if (doc.listType === 'list2') {
+      nameColor = '#FFFF99';
+    }
+  }
+  
+  this.nameElement = this._createElement('div', {
+    className: 'item-name',
+    contentEditable: true,
+    textContent: this.viewModel.name,
+    style: {
+      color: nameColor
+    }
+  });
+  this.element.appendChild(this.nameElement);
+};
 
   ChakraApp.CircleView.prototype.applySelectionState = function() {
     if (this.viewModel.isSelected) {
@@ -459,10 +469,22 @@ ChakraApp.CircleView.prototype.updateColors = function() {
   ChakraApp.SimpleShapeRenderer.updateColors(this);
 };
   
-  ChakraApp.CircleView.prototype.updateName = function() {
-    this.nameElement.textContent = this.viewModel.name;
-  };
+ ChakraApp.CircleView.prototype.updateName = function() {
+  this.nameElement.textContent = this.viewModel.name;
   
+  // Preserve the color based on document list type
+  var doc = ChakraApp.appState.getDocument(this.viewModel.documentId);
+  var nameColor = 'white'; // Default color
+  
+  if (doc) {
+    if (doc.listType === 'list2') {
+      nameColor = '#FFFF99';
+    }
+  }
+  
+  this.nameElement.style.color = nameColor;
+};
+
   ChakraApp.CircleView.prototype.updateSelectionState = function() {
     this.element.classList.toggle('selected', this.viewModel.isSelected);
   };

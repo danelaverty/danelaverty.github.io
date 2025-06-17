@@ -208,9 +208,14 @@ ChakraApp.App.prototype.loadOrCreateData = function() {
   var dataLoaded = ChakraApp.appState.loadFromStorage();
 
   if (dataLoaded) {
-    // Clean up selectedDocumentIds to remove 'left' panel id
+    // Clean up selectedDocumentIds to remove 'left' panel id and migrate to dual format
     if (ChakraApp.appState.cleanupSelectedDocumentIds) {
       ChakraApp.appState.cleanupSelectedDocumentIds();
+    }
+    
+    // NEW: Migrate selectedDocumentIds to dual-list format
+    if (ChakraApp.appState._migrateSelectedDocumentIds) {
+      ChakraApp.appState._migrateSelectedDocumentIds();
     }
     
     // Fix any circles with incorrect types
@@ -219,6 +224,11 @@ ChakraApp.App.prototype.loadOrCreateData = function() {
     // Migrate document state
     if (ChakraApp.appState._migrateDocumentState) {
       ChakraApp.appState._migrateDocumentState();
+    }
+    
+    // NEW: Migrate documents to have listType
+    if (ChakraApp.appState._migrateDocumentsToListType) {
+      ChakraApp.appState._migrateDocumentsToListType();
     }
   } else {
     this.createSampleData();

@@ -59,8 +59,6 @@
   // Check if this circle has a gem shape wrap
   if (!circleView.shapeWrap) return;
   
-  console.log('Regenerating entire gem with new colors:', circleView.viewModel.color);
-  
   // Store the current shape wrap parent and handle case where it might not be attached
   var parent = circleView.shapeWrap.parentNode;
   var nextSibling = null;
@@ -143,7 +141,6 @@
     parent.appendChild(circleView.shapeWrap);
   }
   
-  console.log('Gem completely regenerated with new colors');
 },
 
     /**
