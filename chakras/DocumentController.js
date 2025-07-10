@@ -1,4 +1,4 @@
-// Enhanced DocumentController.js Part 1 - Constructor and Core Methods
+// Enhanced DocumentController.js - FIXED VERSION
 (function(ChakraApp) {
   /**
    * Document controller - manages document lists and operations
@@ -14,37 +14,504 @@
     this.currentDocumentDisplays = {};
     this.documentClickHandler = null;
     this.eventSubscriptions = {};
+    this._lastClickedButton = null;
     
     // NEW: Search-related properties
     this.newDocumentBtns = {};
     this.documentSearchBoxes = {};
     this.documentSearchTimers = {};
+    this.panelDocumentListVisible = {};
   };
   
   // Inherit from BaseController
   ChakraApp.DocumentController.prototype = Object.create(ChakraApp.BaseController.prototype);
   ChakraApp.DocumentController.prototype.constructor = ChakraApp.DocumentController;
   
-  // Initialize - keeping your existing init logic
   ChakraApp.DocumentController.prototype.init = function() {
-    ChakraApp.BaseController.prototype.init.call(this);
-    
-    // Your existing initialization
-    this._createDocumentControls();
-    this._setupDocumentEventListeners();
-    this._setupClickOutsideHandler();
-    
-    // NEW: Add search styles
-    this._addDocumentListStyles();
-    
-    // Initialize document lists for each circle type
-    var self = this;
-    ChakraApp.Config.circleTypes.forEach(function(circleType) {
-      self._updateDocumentList(circleType.id);
-      self._updateCurrentDocumentDisplay(circleType.id);
-    });
-  };
+	  ChakraApp.BaseController.prototype.init.call(this);
   
+  this._initializePanelVisibility();
+  this._setupInitializationStrategy();
+  this._setupDocumentEventListeners();
+  this._setupClickOutsideHandler();
+  this._addDocumentListStyles();
+};
+
+ChakraApp.DocumentController.prototype._createDeselectListItem = function(circleTypeId, listType) {
+    var self = this;
+    listType = listType || 'list1';
+    
+    var listItem = document.createElement('div');
+    listItem.className = 'document-list-item deselect-item';
+    listItem.dataset.circleTypeId = circleTypeId;
+    listItem.dataset.listType = listType;
+    
+    // Apply deselect item styling
+    listItem.style.display = 'block';
+    listItem.style.padding = '3px 5px';
+    listItem.style.marginBottom = '8px';
+    listItem.style.backgroundColor = '#666';
+    listItem.style.color = '#DDD';
+    listItem.style.border = '1px dashed #999';
+    listItem.style.borderRadius = '4px';
+    listItem.style.cursor = 'pointer';
+    listItem.style.fontSize = '12px';
+    listItem.style.transition = 'background-color 0.2s';
+    
+    // Add icon
+    var icon = document.createElement('span');
+    icon.className = 'deselect-icon';
+    icon.innerHTML = '✖️';
+    icon.style.marginRight = '8px';
+    listItem.appendChild(icon);
+    
+    // Add text with list indicator
+    var name = document.createElement('span');
+    name.className = 'deselect-name';
+    name.textContent = 'Deselect (' + (listType === 'list1' ? 'A' : 'B') + ')';
+    listItem.appendChild(name);
+    
+    // Hover effect
+    listItem.addEventListener('mouseenter', function() {
+      this.style.backgroundColor = '#777';
+    });
+    listItem.addEventListener('mouseleave', function() {
+      this.style.backgroundColor = '#666';
+    });
+    
+    // Click handler for deselection
+    listItem.addEventListener('click', function(e) {
+      e.stopPropagation();
+      
+      
+      // Determine which panel this document list belongs to
+      var panelId = self._determinePanelForDocumentSelection(e.target, circleTypeId);
+      
+      // FIXED: Deselect only from this specific panel, not globally
+      var wasDeselected = self._deselectDocumentFromSpecificPanel(circleTypeId, listType, panelId);
+      
+      if (wasDeselected) {
+        
+        // Update document lists only for this panel
+        self._updateDocumentListForPanel(circleTypeId, panelId, 'list1');
+        self._updateDocumentListForPanel(circleTypeId, panelId, 'list2');
+        
+        // Update current document display
+        self._updateCurrentDocumentDisplay(circleTypeId);
+        
+        // Show visual feedback
+        var currentDocDisplay = self.currentDocumentDisplays[circleTypeId];
+        if (currentDocDisplay) {
+          currentDocDisplay.classList.add('flash-deselect');
+          setTimeout(function() {
+            currentDocDisplay.classList.remove('flash-deselect');
+          }, 1000);
+        }
+        
+        // Update visual indicators only if this affects the global selection
+        ChakraApp.appState._updateDocumentToggleButtonIndicators(circleTypeId);
+        
+        // Trigger view updates only for the affected panel
+        if (ChakraApp.app && ChakraApp.app.viewManager) {
+          ChakraApp.app.viewManager.renderCirclesForLeftPanel(panelId);
+        }
+      } else {
+      }
+    });
+    
+    return listItem;
+  };
+
+ChakraApp.DocumentController.prototype._deselectDocumentFromSpecificPanel = function(circleTypeId, listType, panelId) {
+    
+    // Get the panel's current selections
+    var panelSelections = ChakraApp.appState.getLeftPanelSelections(panelId);
+    if (!panelSelections[circleTypeId] || !panelSelections[circleTypeId][listType]) {
+      return false;
+    }
+    
+    var selectedDocId = panelSelections[circleTypeId][listType];
+    var selectedDoc = ChakraApp.appState.getDocument(selectedDocId);
+    
+    if (!selectedDoc) {
+      return false;
+    }
+    
+    
+    // Clear the selection for this specific panel and list type
+    panelSelections[circleTypeId][listType] = null;
+    ChakraApp.appState.leftPanelSelections.set(panelId, panelSelections);
+    
+    // Update the document's panel tracking
+    if (selectedDoc._selectedFromPanels) {
+      selectedDoc._selectedFromPanels.delete(panelId);
+    }
+    
+    // Only fully deselect the document if it's not selected in any other panels
+    var stillSelectedSomewhere = ChakraApp.appState._isDocumentSelectedAnywhere(selectedDocId);
+    
+    if (!stillSelectedSomewhere) {
+      selectedDoc.deselect();
+      selectedDoc._selectedFromPanel = undefined;
+      selectedDoc._selectedFromPanels = undefined;
+      
+      // Also clear from global selectedDocumentIds for backward compatibility
+      if (ChakraApp.appState.selectedDocumentIds[circleTypeId]) {
+        if (ChakraApp.appState.selectedDocumentIds[circleTypeId][listType] === selectedDocId) {
+          ChakraApp.appState.selectedDocumentIds[circleTypeId][listType] = null;
+        }
+      }
+    } else {
+    }
+    
+    // Update most recent selection tracking if this was the most recent
+    var recentSelection = ChakraApp.appState.mostRecentDocumentSelection[circleTypeId];
+    if (recentSelection && recentSelection.docId === selectedDocId && 
+        recentSelection.listType === listType && recentSelection.panelId === panelId) {
+      
+      // Try to find another selection to make most recent
+      var foundAlternative = false;
+      
+      // Check all panels for other selections of this circle type
+      ChakraApp.appState.leftPanels.forEach(function(panel, otherPanelId) {
+        if (foundAlternative) return;
+        
+        var otherPanelSelections = ChakraApp.appState.getLeftPanelSelections(otherPanelId);
+        if (otherPanelSelections[circleTypeId]) {
+          if (otherPanelSelections[circleTypeId].list1) {
+            ChakraApp.appState.mostRecentDocumentSelection[circleTypeId] = {
+              docId: otherPanelSelections[circleTypeId].list1,
+              listType: 'list1',
+              panelId: otherPanelId
+            };
+            foundAlternative = true;
+          } else if (otherPanelSelections[circleTypeId].list2) {
+            ChakraApp.appState.mostRecentDocumentSelection[circleTypeId] = {
+              docId: otherPanelSelections[circleTypeId].list2,
+              listType: 'list2',
+              panelId: otherPanelId
+            };
+            foundAlternative = true;
+          }
+        }
+      });
+      
+      if (!foundAlternative) {
+        ChakraApp.appState.mostRecentDocumentSelection[circleTypeId] = null;
+      }
+    }
+    
+    // Publish panel-specific document deselection event
+    ChakraApp.EventBus.publish('LEFT_PANEL_DOCUMENT_DESELECTED', {
+      panelId: panelId,
+      documentId: selectedDocId,
+      circleTypeId: circleTypeId,
+      listType: listType
+    });
+    
+    // Save state
+    ChakraApp.appState.saveToStorage();
+    
+    return true;
+  };
+
+ChakraApp.DocumentController.prototype._isDocumentSelectedInPanel = function(circleTypeId, listType, panelId) {
+    var panelSelections = ChakraApp.appState.getLeftPanelSelections(panelId);
+    return !!(panelSelections[circleTypeId] && panelSelections[circleTypeId][listType]);
+  };
+
+ ChakraApp.DocumentController.prototype._isDocumentSelectedForCircleType = function(circleTypeId, listType, panelId) {
+    // If panelId is provided, check panel-specific selection
+    if (panelId !== undefined) {
+      return this._isDocumentSelectedInPanel(circleTypeId, listType, panelId);
+    }
+    
+    // Otherwise, check global selections (backward compatibility)
+    var selections = ChakraApp.appState.selectedDocumentIds[circleTypeId];
+    if (!selections || typeof selections !== 'object') {
+      return false;
+    }
+    
+    if (listType) {
+      return !!selections[listType];
+    } else {
+      // Check if any list type has a selection
+      return !!(selections.list1 || selections.list2);
+    }
+  };
+
+ChakraApp.DocumentController.prototype._deselectDocumentFromSpecificPanel = function(circleTypeId, listType, panelId) {
+    
+    // Get the panel's current selections
+    var panelSelections = ChakraApp.appState.getLeftPanelSelections(panelId);
+    if (!panelSelections[circleTypeId] || !panelSelections[circleTypeId][listType]) {
+      return false;
+    }
+    
+    var selectedDocId = panelSelections[circleTypeId][listType];
+    var selectedDoc = ChakraApp.appState.getDocument(selectedDocId);
+    
+    if (!selectedDoc) {
+      return false;
+    }
+    
+    
+    // Clear the selection for this specific panel and list type
+    panelSelections[circleTypeId][listType] = null;
+    ChakraApp.appState.leftPanelSelections.set(panelId, panelSelections);
+    
+    // Update the document's panel tracking
+    if (selectedDoc._selectedFromPanels) {
+      selectedDoc._selectedFromPanels.delete(panelId);
+    }
+    
+    // Only fully deselect the document if it's not selected in any other panels
+    var stillSelectedSomewhere = ChakraApp.appState._isDocumentSelectedAnywhere(selectedDocId);
+    
+    if (!stillSelectedSomewhere) {
+      selectedDoc.deselect();
+      selectedDoc._selectedFromPanel = undefined;
+      selectedDoc._selectedFromPanels = undefined;
+      
+      // Also clear from global selectedDocumentIds for backward compatibility
+      if (ChakraApp.appState.selectedDocumentIds[circleTypeId]) {
+        if (ChakraApp.appState.selectedDocumentIds[circleTypeId][listType] === selectedDocId) {
+          ChakraApp.appState.selectedDocumentIds[circleTypeId][listType] = null;
+        }
+      }
+    } else {
+    }
+    
+    // Update most recent selection tracking if this was the most recent
+    var recentSelection = ChakraApp.appState.mostRecentDocumentSelection[circleTypeId];
+    if (recentSelection && recentSelection.docId === selectedDocId && 
+        recentSelection.listType === listType && recentSelection.panelId === panelId) {
+      
+      // Try to find another selection to make most recent
+      var foundAlternative = false;
+      
+      // Check all panels for other selections of this circle type
+      ChakraApp.appState.leftPanels.forEach(function(panel, otherPanelId) {
+        if (foundAlternative) return;
+        
+        var otherPanelSelections = ChakraApp.appState.getLeftPanelSelections(otherPanelId);
+        if (otherPanelSelections[circleTypeId]) {
+          if (otherPanelSelections[circleTypeId].list1) {
+            ChakraApp.appState.mostRecentDocumentSelection[circleTypeId] = {
+              docId: otherPanelSelections[circleTypeId].list1,
+              listType: 'list1',
+              panelId: otherPanelId
+            };
+            foundAlternative = true;
+          } else if (otherPanelSelections[circleTypeId].list2) {
+            ChakraApp.appState.mostRecentDocumentSelection[circleTypeId] = {
+              docId: otherPanelSelections[circleTypeId].list2,
+              listType: 'list2',
+              panelId: otherPanelId
+            };
+            foundAlternative = true;
+          }
+        }
+      });
+      
+      if (!foundAlternative) {
+        ChakraApp.appState.mostRecentDocumentSelection[circleTypeId] = null;
+      }
+    }
+    
+    // Publish panel-specific document deselection event
+    ChakraApp.EventBus.publish('LEFT_PANEL_DOCUMENT_DESELECTED', {
+      panelId: panelId,
+      documentId: selectedDocId,
+      circleTypeId: circleTypeId,
+      listType: listType
+    });
+    
+    // Save state
+    ChakraApp.appState.saveToStorage();
+    
+    return true;
+  };
+
+
+ChakraApp.DocumentController.prototype._setupInitializationStrategy = function() {
+  var self = this;
+  
+  var hasLeftPanels = ChakraApp.appState.leftPanels && ChakraApp.appState.leftPanels.size > 0;
+  var leftPanelExists = document.getElementById('left-panel-0') || 
+                       document.querySelector('.left-panel[data-panel-index="0"]');
+  
+  if (hasLeftPanels && leftPanelExists) {
+    this._completeInitialization();
+  } else {
+    this._waitForPanelsToBeCreated();
+  }
+};
+
+ChakraApp.DocumentController.prototype._waitForPanelsToBeCreated = function() {
+  var self = this;
+  
+  this.eventSubscriptions.leftPanelAdded = ChakraApp.EventBus.subscribe('LEFT_PANEL_ADDED', function(data) {
+    
+    // Initialize when the first panel is created (any panel, not just panel 0)
+    self._completeInitialization();
+    
+    // Unsubscribe since we only need this once
+    if (self.eventSubscriptions.leftPanelAdded) {
+      self.eventSubscriptions.leftPanelAdded();
+      delete self.eventSubscriptions.leftPanelAdded;
+    }
+  });
+};
+
+
+// Add this new method:
+ChakraApp.DocumentController.prototype._completeInitialization = function() {
+  this._createDocumentControls();
+  
+  // Initialize document lists for each circle type
+  var self = this;
+  ChakraApp.Config.circleTypes.forEach(function(circleType) {
+    self._updateDocumentList(circleType.id);
+    self._updateCurrentDocumentDisplay(circleType.id);
+  });
+};
+
+  ChakraApp.DocumentController.prototype._initializePanelVisibility = function() {
+  var self = this;
+  
+  // Initialize for existing panels
+  if (ChakraApp.appState.leftPanels) {
+    ChakraApp.appState.leftPanels.forEach(function(panel, panelId) {
+      self._initializePanelVisibilityForPanel(panelId);
+    });
+  } else {
+    // Fallback for panel 0
+    self._initializePanelVisibilityForPanel(0);
+  }
+};
+
+ChakraApp.DocumentController.prototype._initializePanelVisibilityForPanel = function(panelId) {
+  if (!this.panelDocumentListVisible[panelId]) {
+    this.panelDocumentListVisible[panelId] = {};
+  }
+  
+  var self = this;
+  ChakraApp.Config.circleTypes.forEach(function(circleType) {
+    if (!self.panelDocumentListVisible[panelId][circleType.id]) {
+      self.panelDocumentListVisible[panelId][circleType.id] = {
+        list1: false,
+        list2: false
+      };
+    }
+  });
+};
+
+// NEW: Close document lists in other panels but not the current one
+ChakraApp.DocumentController.prototype._closeDocumentListsInOtherPanels = function(currentPanelId, currentCircleTypeId) {
+  var self = this;
+  
+  // Close lists in other panels
+  Object.keys(this.panelDocumentListVisible).forEach(function(panelId) {
+    var panelIdNum = parseInt(panelId);
+    
+    // Skip the current panel
+    if (panelIdNum === currentPanelId) return;
+    
+    // Close all lists in this other panel
+    ChakraApp.Config.circleTypes.forEach(function(circleType) {
+      var typeId = circleType.id;
+      
+      if (self.panelDocumentListVisible[panelId][typeId]) {
+        self.panelDocumentListVisible[panelId][typeId].list1 = false;
+        self.panelDocumentListVisible[panelId][typeId].list2 = false;
+        
+        // Update the UI for this other panel
+        self._updateDocumentListForPanel(typeId, panelIdNum, 'list1');
+        self._updateDocumentListForPanel(typeId, panelIdNum, 'list2');
+      }
+    });
+  });
+  
+  // Also close lists for other circle types in the current panel
+  ChakraApp.Config.circleTypes.forEach(function(circleType) {
+    var typeId = circleType.id;
+    
+    // Skip the current circle type
+    if (typeId === currentCircleTypeId) return;
+    
+    if (self.panelDocumentListVisible[currentPanelId][typeId]) {
+      self.panelDocumentListVisible[currentPanelId][typeId].list1 = false;
+      self.panelDocumentListVisible[currentPanelId][typeId].list2 = false;
+      
+      // Update the UI for other circle types in current panel
+      self._updateDocumentListForPanel(typeId, currentPanelId, 'list1');
+      self._updateDocumentListForPanel(typeId, currentPanelId, 'list2');
+    }
+  });
+};
+  
+ChakraApp.DocumentController.prototype.toggleDocumentListForPanel = function(circleTypeId, listType, panelId) {
+  
+  // FIXED: Ensure panel visibility tracking exists
+  if (!this.panelDocumentListVisible[panelId]) {
+    this._initializePanelVisibilityForPanel(panelId);
+  }
+  
+  // FIXED: Ensure document containers exist for this panel
+  if (!this.documentListContainers[circleTypeId] || !this.documentListContainers[circleTypeId][panelId] ||
+      !this.documentListContainers2[circleTypeId] || !this.documentListContainers2[circleTypeId][panelId]) {
+    this._createDocumentControlsForSpecificPanel(circleTypeId, panelId);
+  }
+  
+  // Close any template lists first
+  this._closeAllTemplateLists();
+  
+  // FIXED: Only close document lists in OTHER panels, not this one
+  this._closeDocumentListsInOtherPanels(panelId, circleTypeId);
+  
+  // Set the last clicked button to track which list was clicked
+  this._lastClickedButton = (listType === 'list1' ? 'btn1' : 'btn2') + '-' + circleTypeId + '-panel-' + panelId;
+  
+  // Toggle the document list visibility for THIS SPECIFIC PANEL
+  var currentVisibility = this.panelDocumentListVisible[panelId][circleTypeId][listType];
+  this.panelDocumentListVisible[panelId][circleTypeId][listType] = !currentVisibility;
+  var isVisible = this.panelDocumentListVisible[panelId][circleTypeId][listType];
+  
+  
+  // If opening this list, close the other list type in the same panel
+  if (isVisible) {
+    var otherListType = listType === 'list1' ? 'list2' : 'list1';
+    this.panelDocumentListVisible[panelId][circleTypeId][otherListType] = false;
+  }
+  
+  // Update both document lists for this panel and circle type
+  this._updateDocumentListForPanel(circleTypeId, panelId, 'list1');
+  this._updateDocumentListForPanel(circleTypeId, panelId, 'list2');
+  
+  // FIXED: Look for panel-specific button IDs that match the UIController button creation
+  var buttonId = 'toggle-document-list-btn-' + listType + '-' + circleTypeId + '-panel-' + panelId;
+  
+  var toggleBtn = document.getElementById(buttonId);
+  
+  // If panel-specific button not found, try the old format as fallback
+  if (!toggleBtn) {
+    buttonId = listType === 'list1' ? 
+      'toggle-document-list-btn-' + circleTypeId : 
+      'toggle-document-list-btn2-' + circleTypeId;
+    toggleBtn = document.getElementById(buttonId);
+  }
+  
+  if (toggleBtn) {
+    var arrowIcon = toggleBtn.querySelector('.arrow-icon');
+    if (arrowIcon) {
+      arrowIcon.innerHTML = isVisible ? '▲' : '▼';
+    }
+  }
+  
+  return isVisible;
+};
+
   /**
    * NEW: Add document list styles including search functionality
    * @private
@@ -114,16 +581,148 @@
     document.head.appendChild(style);
   };
   
-  // Keep your existing _createDocumentControls method
-  ChakraApp.DocumentController.prototype._createDocumentControls = function() {
-    var self = this;
-    
-    ChakraApp.Config.circleTypes.forEach(function(circleType) {
-      self._createDocumentControlsForPanel(circleType.id);
-    });
-  };
+  // FIXED: Update _createDocumentControls method to work with new panel structure
+ChakraApp.DocumentController.prototype._createDocumentControls = function() {
+  var self = this;
   
-  // Keep your existing _createDocumentControlsForPanel method
+  // Create controls for each circle type in ALL left panels
+  ChakraApp.Config.circleTypes.forEach(function(circleType) {
+    self._createDocumentControlsForCircleType(circleType.id);
+  });
+};
+
+ChakraApp.DocumentController.prototype._createDocumentControlsForCircleType = function(circleTypeId) {
+  var self = this;
+  
+  // Create document controls for ALL left panels, not just panel 0
+  if (ChakraApp.appState.leftPanels && ChakraApp.appState.leftPanels.size > 0) {
+    ChakraApp.appState.leftPanels.forEach(function(panel, panelId) {
+      self._createDocumentControlsForSpecificPanel(circleTypeId, panelId);
+    });
+  } else {
+    // Fallback to creating for panel 0 only
+    self._createDocumentControlsForSpecificPanel(circleTypeId, 0);
+  }
+};
+
+ChakraApp.DocumentController.prototype._createDocumentControlsForSpecificPanel = function(circleTypeId, panelId) {
+	var circleType = ChakraApp.Config.circleTypes.find(function(type) {
+    return type.id === circleTypeId;
+  });
+  
+  if (!circleType) {
+    console.error('Invalid circle type ID:', circleTypeId);
+    return;
+  }
+  
+  var targetPanel = null;
+  
+  var selectors = [
+    '#left-panel-' + panelId,
+    '.left-panel[data-panel-index="' + panelId + '"]',
+    '#left-container .left-panel:nth-child(' + (panelId + 1) + ')'
+  ];
+  
+  for (var i = 0; i < selectors.length; i++) {
+    targetPanel = document.querySelector(selectors[i]);
+    if (targetPanel) {
+      break;
+    }
+  }
+  
+  if (!targetPanel) {
+    console.warn('Left panel not found for panel ID:', panelId, '- will be created when panel is available');
+    return;
+  }
+  
+  // Create unique container IDs for this panel
+  var containerKey = circleTypeId + '-panel-' + panelId;
+  
+  // Create Document List Container (List 1)
+  var listContainer = document.createElement('div');
+  listContainer.id = 'document-list-container-' + containerKey;
+  listContainer.className = 'document-list-container';
+  listContainer.dataset.circleTypeId = circleTypeId;
+  listContainer.dataset.panelId = panelId;
+  
+  // Apply positioning and styling
+  listContainer.style.display = 'none';
+  listContainer.style.position = 'absolute';
+  listContainer.style.left = '10px';
+  listContainer.style.bottom = '85px';
+  listContainer.style.backgroundColor = 'rgba(40, 40, 40, 0.95)';
+  listContainer.style.border = '1px solid #555';
+  listContainer.style.borderRadius = '8px';
+  listContainer.style.padding = '10px';
+  listContainer.style.minWidth = '200px';
+  listContainer.style.maxWidth = '300px';
+  listContainer.style.maxHeight = '400px';
+  listContainer.style.overflowY = 'auto';
+  listContainer.style.zIndex = '100';
+  listContainer.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.5)';
+  
+  // Apply custom styling based on circle type
+  if (circleTypeId === 'star') {
+    listContainer.style.backgroundColor = 'rgba(255, 153, 51, 0.1)';
+    listContainer.style.borderColor = '#FF9933';
+  } else if (circleTypeId === 'triangle') {
+    listContainer.style.backgroundColor = 'rgba(56, 118, 29, 0.1)';
+  } else if (circleTypeId === 'gem') {
+    listContainer.style.backgroundColor = 'rgba(74, 111, 201, 0.1)';
+  }
+  
+  targetPanel.appendChild(listContainer);
+  
+  // Store reference using panel-specific key
+  if (!this.documentListContainers[circleTypeId]) {
+    this.documentListContainers[circleTypeId] = {};
+  }
+  this.documentListContainers[circleTypeId][panelId] = listContainer;
+
+  // Create SECOND Document List Container (List 2)
+  var listContainer2 = document.createElement('div');
+  listContainer2.id = 'document-list-container2-' + containerKey;
+  listContainer2.className = 'document-list-container';
+  listContainer2.dataset.circleTypeId = circleTypeId;
+  listContainer2.dataset.panelId = panelId;
+  
+  // Position it similarly to first container
+  listContainer2.style.display = 'none';
+  listContainer2.style.position = 'absolute';
+  listContainer2.style.left = '10px';
+  listContainer2.style.bottom = '85px';
+  listContainer2.style.backgroundColor = 'rgba(40, 40, 40, 0.95)';
+  listContainer2.style.border = '1px solid #555';
+  listContainer2.style.borderRadius = '8px';
+  listContainer2.style.padding = '10px';
+  listContainer2.style.minWidth = '200px';
+  listContainer2.style.maxWidth = '300px';
+  listContainer2.style.maxHeight = '400px';
+  listContainer2.style.overflowY = 'auto';
+  listContainer2.style.zIndex = '100';
+  listContainer2.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.5)';
+  
+  // Apply custom styling based on circle type (same as first container)
+  if (circleTypeId === 'star') {
+    listContainer2.style.backgroundColor = 'rgba(255, 153, 51, 0.1)';
+    listContainer2.style.borderColor = '#FF9933';
+  } else if (circleTypeId === 'triangle') {
+    listContainer2.style.backgroundColor = 'rgba(56, 118, 29, 0.1)';
+  } else if (circleTypeId === 'gem') {
+    listContainer2.style.backgroundColor = 'rgba(74, 111, 201, 0.1)';
+  }
+  
+  targetPanel.appendChild(listContainer2);
+  
+  // Store reference using panel-specific key
+  if (!this.documentListContainers2[circleTypeId]) {
+    this.documentListContainers2[circleTypeId] = {};
+  }
+  this.documentListContainers2[circleTypeId][panelId] = listContainer2;
+  
+};
+  
+  // FIXED: Updated _createDocumentControlsForPanel method to work with new left panel structure
   ChakraApp.DocumentController.prototype._createDocumentControlsForPanel = function(circleTypeId) {
     var circleType = ChakraApp.Config.circleTypes.find(function(type) {
       return type.id === circleTypeId;
@@ -134,9 +733,16 @@
       return;
     }
     
-    var targetPanel = document.querySelector('.circle-panel[data-panel-id="left"]');
+    // FIXED: Look for the new left panel structure with multiple fallback options
+    var targetPanel = document.getElementById('left-panel-0') || 
+                     document.querySelector('.left-panel[data-panel-index="0"]') ||
+                     document.querySelector('#left-container .left-panel:first-child') ||
+                     document.querySelector('.circle-panel[data-panel-id="left"]') ||
+                     document.getElementById('left-panel');
+    
     if (!targetPanel) {
-      console.error('Left panel not found for rendering document controls');
+      console.error('Left panel not found for rendering document controls. Available panels:', 
+        Array.from(document.querySelectorAll('[id*="panel"], [class*="panel"]')).map(p => p.id || p.className));
       return;
     }
     
@@ -176,367 +782,257 @@
     targetPanel.appendChild(listContainer);
     this.documentListContainers[circleTypeId] = listContainer;
 
-
     // Create SECOND Document List Container
-  var listContainer2 = document.createElement('div');
-  listContainer2.id = 'document-list-container2-' + circleTypeId;
-  listContainer2.className = 'document-list-container';
-  listContainer2.dataset.circleTypeId = circleTypeId;
-  
-  // Position it differently 
-  listContainer2.style.display = 'none';
-  listContainer2.style.position = 'absolute';
-  listContainer2.style.left = '10px';
-  listContainer2.style.bottom = '85px'; // Different position
-  listContainer2.style.backgroundColor = 'rgba(40, 40, 40, 0.95)';
-  listContainer2.style.border = '1px solid #555';
-  listContainer2.style.borderRadius = '8px';
-  listContainer2.style.padding = '10px';
-  listContainer2.style.minWidth = '200px';
-  listContainer2.style.maxWidth = '300px';
-  listContainer2.style.maxHeight = '400px';
-  listContainer2.style.overflowY = 'auto';
-  listContainer2.style.zIndex = '100';
-  listContainer2.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.5)';
-  
-  // Apply custom styling based on circle type (same as first container)
-  if (circleTypeId === 'star') {
-    listContainer2.style.backgroundColor = 'rgba(255, 153, 51, 0.1)';
-    listContainer2.style.borderColor = '#FF9933';
-  } else if (circleTypeId === 'triangle') {
-    listContainer2.style.backgroundColor = 'rgba(56, 118, 29, 0.1)';
-  } else if (circleTypeId === 'gem') {
-    listContainer2.style.backgroundColor = 'rgba(74, 111, 201, 0.1)';
-  }
-  
-  targetPanel.appendChild(listContainer2);
-  this.documentListContainers2[circleTypeId] = listContainer2;
+    var listContainer2 = document.createElement('div');
+    listContainer2.id = 'document-list-container2-' + circleTypeId;
+    listContainer2.className = 'document-list-container';
+    listContainer2.dataset.circleTypeId = circleTypeId;
     
-    // Create Current Document Display (keeping your existing logic)
-    var docDisplay = document.createElement('div');
-    docDisplay.id = 'current-document-display-' + circleTypeId;
-    docDisplay.className = 'current-document-display';
-    docDisplay.dataset.circleTypeId = circleTypeId;
+    // Position it differently 
+    listContainer2.style.display = 'none';
+    listContainer2.style.position = 'absolute';
+    listContainer2.style.left = '10px';
+    listContainer2.style.bottom = '85px'; // Different position
+    listContainer2.style.backgroundColor = 'rgba(40, 40, 40, 0.95)';
+    listContainer2.style.border = '1px solid #555';
+    listContainer2.style.borderRadius = '8px';
+    listContainer2.style.padding = '10px';
+    listContainer2.style.minWidth = '200px';
+    listContainer2.style.maxWidth = '300px';
+    listContainer2.style.maxHeight = '400px';
+    listContainer2.style.overflowY = 'auto';
+    listContainer2.style.zIndex = '100';
+    listContainer2.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.5)';
     
-    docDisplay.textContent = 'No Document Selected';
-    
-    // Position based on circle type (your existing positioning)
-    if (circleTypeId === 'triangle') {
-      docDisplay.style.top = '88px';
-      docDisplay.style.left = '125px';
-      docDisplay.style.color = circleType.color;
+    // Apply custom styling based on circle type (same as first container)
+    if (circleTypeId === 'star') {
+      listContainer2.style.backgroundColor = 'rgba(255, 153, 51, 0.1)';
+      listContainer2.style.borderColor = '#FF9933';
+    } else if (circleTypeId === 'triangle') {
+      listContainer2.style.backgroundColor = 'rgba(56, 118, 29, 0.1)';
     } else if (circleTypeId === 'gem') {
-      docDisplay.style.top = 'unset';
-      docDisplay.style.bottom = '10px';
-      docDisplay.style.right = '0px';
-      docDisplay.style.left = 'unset';
-      docDisplay.style.color = circleType.color;
-    } else if (circleTypeId === 'star') {
-      docDisplay.style.top = '122px';
-      docDisplay.style.left = '125px';
-      docDisplay.style.color = circleType.color;
-    } else {
-      docDisplay.style.top = '54px';
-      docDisplay.style.left = '-6px';
+      listContainer2.style.backgroundColor = 'rgba(74, 111, 201, 0.1)';
     }
+    
+    targetPanel.appendChild(listContainer2);
+    this.documentListContainers2[circleTypeId] = listContainer2;
   };
 
   ChakraApp.DocumentController.prototype._isSecondButtonClicked = function(circleTypeId) {
-  return this._lastClickedButton === 'btn2-' + circleTypeId;
-};
+    return this._lastClickedButton === 'btn2-' + circleTypeId;
+  };
 
-  ChakraApp.DocumentController.prototype._updateDocumentList2 = function(circleTypeId) {
-  var listContainer = this.documentListContainers2[circleTypeId];
-  
-  if (!listContainer) {
-    this._createDocumentControlsForPanel(circleTypeId);
-    listContainer = this.documentListContainers2[circleTypeId];
-    if (!listContainer) {
-      console.error('Failed to create second document list container for circle type:', circleTypeId);
-      return;
-    }
-  }
-  
- var isVisible = ChakraApp.appState.documentListVisible[circleTypeId] && 
-                  this._lastClickedButton === 'btn2-' + circleTypeId;
-  listContainer.style.display = isVisible ? 'block' : 'none'; 
-
-  // Clear existing list
-  listContainer.innerHTML = '';
-  
-  // Create header
-  var circleTypeConfig = ChakraApp.Config.circleTypes.find(function(type) {
-    return type.id === circleTypeId;
-  });
-  var typeName = circleTypeConfig ? circleTypeConfig.name : circleTypeId;
-  
-  var header = document.createElement('div');
-  header.className = 'document-list-header';
-  header.style.color = '#CCC';
-  header.style.fontSize = '14px';
-  header.style.fontWeight = 'bold';
-  header.style.marginBottom = '8px';
-  header.style.borderBottom = '1px solid #555';
-  header.style.paddingBottom = '5px';
-  header.textContent = typeName + ' Documents (List 2)'; // Different header
-  listContainer.appendChild(header);
-  
-  // For now, show the same documents as the first list
-  // You can modify this logic later to show different documents
-  
-  // Add "New Document" option at the top
-  var newDocItem = this._createNewDocumentListItem(circleTypeId);
-  listContainer.appendChild(newDocItem);
-  
-  // Create search box
-  var searchBox = document.createElement('input');
-  searchBox.type = 'text';
-  searchBox.className = 'document-search-box';
-  searchBox.placeholder = 'Search documents...';
-  searchBox.id = 'document-search2-' + circleTypeId;
-  listContainer.appendChild(searchBox);
-  
-  // Create no results message
-  var noResultsMsg = document.createElement('div');
-  noResultsMsg.className = 'search-no-results';
-  noResultsMsg.textContent = 'No documents found matching your search.';
-  noResultsMsg.id = 'search-no-results2-' + circleTypeId;
-  listContainer.appendChild(noResultsMsg);
-  
-  // Create documents list container
-  var documentsList = document.createElement('div');
-  documentsList.id = 'documents-list2-' + circleTypeId;
-  documentsList.className = 'documents-list';
-  listContainer.appendChild(documentsList);
-  
-  // Get documents for this circle type (same as first list for now)
-  var documents = [];
-  ChakraApp.appState.documents.forEach(function(doc) {
-    if (doc.circleType === circleTypeId) {
-      documents.push(doc);
-    }
-  });
-  documents.reverse();
-  
-  var selectedId = ChakraApp.appState.selectedDocumentIds[circleTypeId];
-  
-  // Create list items for each document
-  var self = this;
-  documents.forEach(function(doc) {
-    var listItem = doc.id === selectedId ? 
-      self._createSelectedDocumentListItem(doc, circleTypeId) : 
-      self._createDocumentListItem(doc, circleTypeId);
-    
-    documentsList.appendChild(listItem);
-  });
-  
-  // If no documents, show message
-  if (documents.length === 0) {
-    var noDocsMessage = document.createElement('div');
-    noDocsMessage.className = 'no-documents-message';
-    noDocsMessage.style.color = '#888';
-    noDocsMessage.style.fontStyle = 'italic';
-    noDocsMessage.style.textAlign = 'center';
-    noDocsMessage.style.padding = '10px';
-    noDocsMessage.textContent = 'No documents available';
-    documentsList.appendChild(noDocsMessage);
-  }
-};
-  
-  // Enhanced _updateDocumentList method with search functionality
 ChakraApp.DocumentController.prototype._updateDocumentList = function(circleTypeId) {
   if (!ChakraApp.Config.circleTypes.find(function(type) { return type.id === circleTypeId; })) {
     return;
   }
   
-  var listContainer = this.documentListContainers[circleTypeId];
-  
-  if (!listContainer) {
-    this._createDocumentControlsForPanel(circleTypeId);
-    listContainer = this.documentListContainers[circleTypeId];
-    
-    if (!listContainer) {
-      console.error('Failed to create document list container for circle type:', circleTypeId);
-      return;
-    }
-  }
-  
-  var isVisible = ChakraApp.appState.documentListVisible[circleTypeId] && 
-                this._lastClickedButton === 'btn1-' + circleTypeId;
-  listContainer.style.display = isVisible ? 'block' : 'none';
-  
-  // Clear existing list
-  listContainer.innerHTML = '';
-  
-  // Create header
-  var circleTypeConfig = ChakraApp.Config.circleTypes.find(function(type) {
-    return type.id === circleTypeId;
-  });
-  var typeName = circleTypeConfig ? circleTypeConfig.name : circleTypeId;
-  
-  var header = document.createElement('div');
-  header.className = 'document-list-header';
-  header.style.color = '#CCC';
-  header.style.fontSize = '14px';
-  header.style.fontWeight = 'bold';
-  header.style.marginBottom = '8px';
-  header.style.borderBottom = '1px solid #555';
-  header.style.paddingBottom = '5px';
-  header.textContent = typeName + ' Documents (A)';
-  listContainer.appendChild(header);
-  
-  // Add "New Document" option at the top with list1 type
-  var newDocItem = this._createNewDocumentListItem(circleTypeId, 'list1');
-  listContainer.appendChild(newDocItem);
-  
-  // Create search box
-  var searchBox = document.createElement('input');
-  searchBox.type = 'text';
-  searchBox.className = 'document-search-box';
-  searchBox.placeholder = 'Search documents...';
-  searchBox.id = 'document-search-' + circleTypeId;
-  listContainer.appendChild(searchBox);
-  
-  // Store search box reference and set up event handler
-  this.documentSearchBoxes[circleTypeId] = searchBox;
-  this._setupSearchBoxEventHandler(circleTypeId);
-  
-  // Create no results message
-  var noResultsMsg = document.createElement('div');
-  noResultsMsg.className = 'search-no-results';
-  noResultsMsg.textContent = 'No documents found matching your search.';
-  noResultsMsg.id = 'search-no-results-' + circleTypeId;
-  listContainer.appendChild(noResultsMsg);
-  
-  // Create documents list container
-  var documentsList = document.createElement('div');
-  documentsList.id = 'documents-list-' + circleTypeId;
-  documentsList.className = 'documents-list';
-  listContainer.appendChild(documentsList);
-  
-  // Get documents for this circle type and list1 only
-  var documents = ChakraApp.appState.getDocumentsForCircleTypeAndList(circleTypeId, 'list1');
-  documents.reverse();
-  
-  // NEW: Get selected ID for list1
-  var selectedId = ChakraApp.appState.selectedDocumentIds[circleTypeId] && 
-                   ChakraApp.appState.selectedDocumentIds[circleTypeId].list1;
-  
-  // Create list items for each document
+  // Update document lists for all panels that have this circle type
   var self = this;
-  documents.forEach(function(doc) {
-    var listItem = doc.id === selectedId ? 
-      self._createSelectedDocumentListItem(doc, circleTypeId) : 
-      self._createDocumentListItem(doc, circleTypeId);
-    
-    documentsList.appendChild(listItem);
-  });
-  
-  // If no documents, show message
-  if (documents.length === 0) {
-    var noDocsMessage = document.createElement('div');
-    noDocsMessage.className = 'no-documents-message';
-    noDocsMessage.style.color = '#888';
-    noDocsMessage.style.fontStyle = 'italic';
-    noDocsMessage.style.textAlign = 'center';
-    noDocsMessage.style.padding = '10px';
-    noDocsMessage.textContent = 'No documents available';
-    documentsList.appendChild(noDocsMessage);
+  if (ChakraApp.appState.leftPanels && ChakraApp.appState.leftPanels.size > 0) {
+    ChakraApp.appState.leftPanels.forEach(function(panel, panelId) {
+      self._updateDocumentListForPanel(circleTypeId, panelId, 'list1');
+    });
+  } else {
+    // Fallback to updating panel 0 only using the original method
+    self._updateDocumentListOriginal(circleTypeId);
   }
-  
-  // Apply current search if any
-  this._refreshSearchResults(circleTypeId);
 };
 
 ChakraApp.DocumentController.prototype._updateDocumentList2 = function(circleTypeId) {
-  var listContainer = this.documentListContainers2[circleTypeId];
-  
-  if (!listContainer) {
-    this._createDocumentControlsForPanel(circleTypeId);
-    listContainer = this.documentListContainers2[circleTypeId];
-    if (!listContainer) {
-      console.error('Failed to create second document list container for circle type:', circleTypeId);
+  // Update document lists for all panels that have this circle type
+  var self = this;
+  if (ChakraApp.appState.leftPanels && ChakraApp.appState.leftPanels.size > 0) {
+    ChakraApp.appState.leftPanels.forEach(function(panel, panelId) {
+      self._updateDocumentListForPanel(circleTypeId, panelId, 'list2');
+    });
+  } else {
+    // Fallback to updating panel 0 only using the original method
+    self._updateDocumentList2Original(circleTypeId);
+  }
+};
+
+ChakraApp.DocumentController.prototype._updateDocumentListForPanel = function(circleTypeId, panelId, listType) {
+    var containerKey = listType === 'list1' ? 'documentListContainers' : 'documentListContainers2';
+    var containers = this[containerKey][circleTypeId];
+    
+    if (!containers || !containers[panelId]) {
+      // Fallback to original method for panel 0
+      if (panelId === 0) {
+        if (listType === 'list1') {
+          this._updateDocumentListOriginal(circleTypeId);
+        } else {
+          this._updateDocumentList2Original(circleTypeId);
+        }
+      }
       return;
     }
+    
+    var listContainer = containers[panelId];
+    
+    // Check panel-specific visibility
+    var shouldShowList = false;
+    if (this.panelDocumentListVisible[panelId] && 
+        this.panelDocumentListVisible[panelId][circleTypeId] && 
+        this.panelDocumentListVisible[panelId][circleTypeId][listType]) {
+      shouldShowList = true;
+    }
+    
+    listContainer.style.display = shouldShowList ? 'block' : 'none';
+    
+    if (!shouldShowList) {
+      return;
+    }
+    
+    // Clear existing list
+    listContainer.innerHTML = '';
+    
+    // Create header
+    var circleTypeConfig = ChakraApp.Config.circleTypes.find(function(type) {
+      return type.id === circleTypeId;
+    });
+    var typeName = circleTypeConfig ? circleTypeConfig.name : circleTypeId;
+    
+    var header = document.createElement('div');
+    header.className = 'document-list-header';
+    header.style.color = '#CCC';
+    header.style.fontSize = '14px';
+    header.style.fontWeight = 'bold';
+    header.style.marginBottom = '8px';
+    header.style.borderBottom = '1px solid #555';
+    header.style.paddingBottom = '5px';
+    header.textContent = typeName + ' Documents (' + (listType === 'list1' ? 'A' : 'B') + ') - Panel ' + panelId;
+    listContainer.appendChild(header);
+    
+    // ENHANCED: Add deselect option if something is selected in this specific panel
+    var isDocumentSelected = this._isDocumentSelectedInPanel(circleTypeId, listType, panelId);
+    if (isDocumentSelected) {
+      var deselectItem = this._createDeselectListItem(circleTypeId, listType);
+      listContainer.appendChild(deselectItem);
+    }
+    
+    // Add "New Document" option
+    var newDocItem = this._createNewDocumentListItem(circleTypeId, listType);
+    listContainer.appendChild(newDocItem);
+    
+    // Create search box
+    var searchBox = document.createElement('input');
+    searchBox.type = 'text';
+    searchBox.className = 'document-search-box';
+    searchBox.placeholder = 'Search documents...';
+    searchBox.id = 'document-search-' + circleTypeId + '-' + panelId + '-' + listType;
+    listContainer.appendChild(searchBox);
+    
+    // Store search box reference
+    var searchKey = circleTypeId + '-' + panelId + '-' + listType;
+    this.documentSearchBoxes[searchKey] = searchBox;
+    
+    // Setup event handler for search box
+    this._setupSearchBoxEventHandlerForPanel(circleTypeId, panelId, listType);
+    
+    // Create no results message
+    var noResultsMsg = document.createElement('div');
+    noResultsMsg.className = 'search-no-results';
+    noResultsMsg.textContent = 'No documents found matching your search.';
+    noResultsMsg.id = 'search-no-results-' + circleTypeId + '-' + panelId + '-' + listType;
+    listContainer.appendChild(noResultsMsg);
+    
+    // Create documents list container
+    var documentsList = document.createElement('div');
+    documentsList.id = 'documents-list-' + circleTypeId + '-' + panelId + '-' + listType;
+    documentsList.className = 'documents-list';
+    listContainer.appendChild(documentsList);
+    
+    // Get documents for this circle type and list type
+    var documents = ChakraApp.appState.getDocumentsForCircleTypeAndList(circleTypeId, listType);
+    documents.reverse();
+    
+    // Get selected ID for this panel and list type
+    var panelSelections = ChakraApp.appState.getLeftPanelSelections(panelId);
+    var selectedId = panelSelections[circleTypeId] && panelSelections[circleTypeId][listType];
+    
+    // Create list items for each document
+    var self = this;
+    documents.forEach(function(doc) {
+      var listItem = doc.id === selectedId ? 
+        self._createSelectedDocumentListItem(doc, circleTypeId) : 
+        self._createDocumentListItem(doc, circleTypeId);
+      
+      documentsList.appendChild(listItem);
+    });
+    
+    // If no documents, show message
+    if (documents.length === 0) {
+      var noDocsMessage = document.createElement('div');
+      noDocsMessage.className = 'no-documents-message';
+      noDocsMessage.style.color = '#888';
+      noDocsMessage.style.fontStyle = 'italic';
+      noDocsMessage.style.textAlign = 'center';
+      noDocsMessage.style.padding = '10px';
+      noDocsMessage.textContent = 'No documents available';
+      documentsList.appendChild(noDocsMessage);
+    }
+  };
+
+ChakraApp.DocumentController.prototype._setupSearchBoxEventHandlerForPanel = function(circleTypeId, panelId, listType) {
+  var searchKey = circleTypeId + '-' + panelId + '-' + listType;
+  var searchBox = this.documentSearchBoxes[searchKey];
+  if (!searchBox) return;
+  
+  var self = this;
+  searchBox.addEventListener('input', function(e) {
+    self._handleSearchInputForPanel(circleTypeId, panelId, listType, e.target.value);
+  });
+};
+
+ChakraApp.DocumentController.prototype._handleSearchInputForPanel = function(circleTypeId, panelId, listType, searchText) {
+  var self = this;
+  var timerKey = circleTypeId + '-' + panelId + '-' + listType;
+  
+  if (this.documentSearchTimers[timerKey]) {
+    clearTimeout(this.documentSearchTimers[timerKey]);
   }
   
-  var isVisible = ChakraApp.appState.documentListVisible[circleTypeId] && 
-                  this._lastClickedButton === 'btn2-' + circleTypeId;
-  listContainer.style.display = isVisible ? 'block' : 'none'; 
+  this.documentSearchTimers[timerKey] = setTimeout(function() {
+    self._performSearchForPanel(circleTypeId, panelId, listType, searchText);
+  }, 300);
+};
 
-  // Clear existing list
-  listContainer.innerHTML = '';
+ChakraApp.DocumentController.prototype._performSearchForPanel = function(circleTypeId, panelId, listType, searchText) {
+  var searchTerm = searchText.toLowerCase().trim();
+  var documentsList = document.getElementById('documents-list-' + circleTypeId + '-' + panelId + '-' + listType);
+  var noResultsMsg = document.getElementById('search-no-results-' + circleTypeId + '-' + panelId + '-' + listType);
   
-  // Create header
-  var circleTypeConfig = ChakraApp.Config.circleTypes.find(function(type) {
-    return type.id === circleTypeId;
-  });
-  var typeName = circleTypeConfig ? circleTypeConfig.name : circleTypeId;
+  if (!documentsList || !noResultsMsg) return;
   
-  var header = document.createElement('div');
-  header.className = 'document-list-header';
-  header.style.color = '#CCC';
-  header.style.fontSize = '14px';
-  header.style.fontWeight = 'bold';
-  header.style.marginBottom = '8px';
-  header.style.borderBottom = '1px solid #555';
-  header.style.paddingBottom = '5px';
-  header.textContent = typeName + ' Documents (B)';
-  listContainer.appendChild(header);
+  var documentItems = documentsList.querySelectorAll('.document-list-item');
+  var visibleCount = 0;
   
-  // Add "New Document" option at the top with list2 type
-  var newDocItem = this._createNewDocumentListItem(circleTypeId, 'list2');
-  listContainer.appendChild(newDocItem);
-  
-  // Create search box
-  var searchBox = document.createElement('input');
-  searchBox.type = 'text';
-  searchBox.className = 'document-search-box';
-  searchBox.placeholder = 'Search documents...';
-  searchBox.id = 'document-search2-' + circleTypeId;
-  listContainer.appendChild(searchBox);
-  
-  // Create no results message
-  var noResultsMsg = document.createElement('div');
-  noResultsMsg.className = 'search-no-results';
-  noResultsMsg.textContent = 'No documents found matching your search.';
-  noResultsMsg.id = 'search-no-results2-' + circleTypeId;
-  listContainer.appendChild(noResultsMsg);
-  
-  // Create documents list container
-  var documentsList = document.createElement('div');
-  documentsList.id = 'documents-list2-' + circleTypeId;
-  documentsList.className = 'documents-list';
-  listContainer.appendChild(documentsList);
-  
-  // Get documents for this circle type and list2 only
-  var documents = ChakraApp.appState.getDocumentsForCircleTypeAndList(circleTypeId, 'list2');
-  documents.reverse();
-  
-  // NEW: Get selected ID for list2
-  var selectedId = ChakraApp.appState.selectedDocumentIds[circleTypeId] && 
-                   ChakraApp.appState.selectedDocumentIds[circleTypeId].list2;
-  
-  // Create list items for each document
-  var self = this;
-  documents.forEach(function(doc) {
-    var listItem = doc.id === selectedId ? 
-      self._createSelectedDocumentListItem(doc, circleTypeId) : 
-      self._createDocumentListItem(doc, circleTypeId);
+  if (searchTerm === '') {
+    documentItems.forEach(function(item) {
+      item.classList.remove('hidden');
+      visibleCount++;
+    });
+    noResultsMsg.classList.remove('visible');
+  } else {
+    var self = this;
+    documentItems.forEach(function(item) {
+      var documentId = item.dataset.id;
+      var matches = self._documentMatchesSearch(documentId, searchTerm);
+      
+      if (matches) {
+        item.classList.remove('hidden');
+        visibleCount++;
+      } else {
+        item.classList.add('hidden');
+      }
+    });
     
-    documentsList.appendChild(listItem);
-  });
-  
-  // If no documents, show message
-  if (documents.length === 0) {
-    var noDocsMessage = document.createElement('div');
-    noDocsMessage.className = 'no-documents-message';
-    noDocsMessage.style.color = '#888';
-    noDocsMessage.style.fontStyle = 'italic';
-    noDocsMessage.style.textAlign = 'center';
-    noDocsMessage.style.padding = '10px';
-    noDocsMessage.textContent = 'No documents available';
-    documentsList.appendChild(noDocsMessage);
+    if (visibleCount === 0) {
+      noResultsMsg.classList.add('visible');
+    } else {
+      noResultsMsg.classList.remove('visible');
+    }
   }
 };
   
@@ -552,6 +1048,31 @@ ChakraApp.DocumentController.prototype._updateDocumentList2 = function(circleTyp
     searchBox.addEventListener('input', function(e) {
       self._handleSearchInput(circleTypeId, e.target.value);
     });
+  };
+
+  ChakraApp.DocumentController.prototype._setupSearchBoxEventHandler2 = function(circleTypeId) {
+    var searchBox = this.documentSearchBoxes2[circleTypeId];
+    if (!searchBox) return;
+    
+    var self = this;
+    searchBox.addEventListener('input', function(e) {
+      self._handleSearchInput2(circleTypeId, e.target.value);
+    });
+  };
+
+  ChakraApp.DocumentController.prototype._handleSearchInput2 = function(circleTypeId, searchText) {
+    var self = this;
+    
+    // Use separate timer property for second search
+    this.documentSearchTimers2 = this.documentSearchTimers2 || {};
+    
+    if (this.documentSearchTimers2[circleTypeId]) {
+      clearTimeout(this.documentSearchTimers2[circleTypeId]);
+    }
+    
+    this.documentSearchTimers2[circleTypeId] = setTimeout(function() {
+      self._performSearch2(circleTypeId, searchText);
+    }, 300);
   };
   
   /**
@@ -578,6 +1099,44 @@ ChakraApp.DocumentController.prototype._updateDocumentList2 = function(circleTyp
     var searchTerm = searchText.toLowerCase().trim();
     var documentsList = document.getElementById('documents-list-' + circleTypeId);
     var noResultsMsg = document.getElementById('search-no-results-' + circleTypeId);
+    
+    if (!documentsList || !noResultsMsg) return;
+    
+    var documentItems = documentsList.querySelectorAll('.document-list-item');
+    var visibleCount = 0;
+    
+    if (searchTerm === '') {
+      documentItems.forEach(function(item) {
+        item.classList.remove('hidden');
+        visibleCount++;
+      });
+      noResultsMsg.classList.remove('visible');
+    } else {
+      var self = this;
+      documentItems.forEach(function(item) {
+        var documentId = item.dataset.id;
+        var matches = self._documentMatchesSearch(documentId, searchTerm);
+        
+        if (matches) {
+          item.classList.remove('hidden');
+          visibleCount++;
+        } else {
+          item.classList.add('hidden');
+        }
+      });
+      
+      if (visibleCount === 0) {
+        noResultsMsg.classList.add('visible');
+      } else {
+        noResultsMsg.classList.remove('visible');
+      }
+    }
+  };
+
+  ChakraApp.DocumentController.prototype._performSearch2 = function(circleTypeId, searchText) {
+    var searchTerm = searchText.toLowerCase().trim();
+    var documentsList = document.getElementById('documents-list2-' + circleTypeId);
+    var noResultsMsg = document.getElementById('search-no-results2-' + circleTypeId);
     
     if (!documentsList || !noResultsMsg) return;
     
@@ -712,7 +1271,7 @@ ChakraApp.DocumentController.prototype._createNewDocumentListItem = function(cir
     this.style.backgroundColor = '#4CAF50';
   });
   
-  // Updated click handler
+  // FIXED: Enhanced click handler for new documents with proper panel detection
   listItem.addEventListener('click', function(e) {
     e.stopPropagation();
     
@@ -732,14 +1291,20 @@ ChakraApp.DocumentController.prototype._createNewDocumentListItem = function(cir
       }
     }
     
+    // FIXED: Determine which panel this document list belongs to
+    var panelId = self._determinePanelForDocumentSelection(e.target, circleTypeId);
+    var newDocName = ChakraApp.appState.generateDateBasedDocumentName(circleTypeId, listType);
+    
     var newDoc = {
-      circleType: circleTypeId,
-      listType: listType
+	    name: newDocName,
+	    circleType: circleTypeId,
+	    listType: listType
     };
     
     var doc = ChakraApp.appState.addDocument(newDoc);
-    // NEW: Pass listType to selectDocument
-    ChakraApp.appState.selectDocument(doc.id, circleTypeId, listType);
+    
+    // FIXED: Use panel-aware selection with the detected panel ID
+    ChakraApp.appState.selectDocumentForPanel(doc.id, circleTypeId, listType, panelId);
     
     self._updateDocumentList(circleTypeId);
     self._updateDocumentList2(circleTypeId);
@@ -755,6 +1320,56 @@ ChakraApp.DocumentController.prototype._createNewDocumentListItem = function(cir
   });
   
   return listItem;
+};
+
+ChakraApp.DocumentController.prototype._determinePanelForDocumentSelection = function(targetElement, circleTypeId) {
+  
+  // Walk up the DOM tree to find the panel container
+  var element = targetElement;
+  var attempts = 0;
+  var maxAttempts = 10; // Prevent infinite loops
+  
+  while (element && element !== document.body && attempts < maxAttempts) {
+    attempts++;
+    
+    // Check for left panel with panel index (NEW STRUCTURE)
+    if (element.classList && element.classList.contains('left-panel')) {
+      var panelIndex = element.dataset.panelIndex;
+      if (panelIndex !== undefined) {
+        return parseInt(panelIndex);
+      }
+    }
+    
+    // Check for panel ID in various forms (OLD STRUCTURE COMPATIBILITY)
+    if (element.id && element.id.startsWith('left-panel-')) {
+      var panelIdMatch = element.id.match(/left-panel-(\d+)/);
+      if (panelIdMatch) {
+        return parseInt(panelIdMatch[1]);
+      }
+    }
+    
+    // Check for left-container child panels
+    if (element.parentElement && element.parentElement.id === 'left-container') {
+      // Find the index of this panel within the left-container
+      var siblings = Array.from(element.parentElement.children);
+      var index = siblings.indexOf(element);
+      if (index >= 0) {
+        return index;
+      }
+    }
+    
+    element = element.parentElement;
+  }
+  
+  
+  // Enhanced fallback: Use the most recent selection's panel if available
+  var recentSelection = ChakraApp.appState.mostRecentDocumentSelection[circleTypeId];
+  if (recentSelection && recentSelection.panelId !== undefined) {
+    return recentSelection.panelId;
+  }
+  
+  // Final fallback to panel 0
+  return 0;
 };
   
   // Enhanced _createDocumentListItem method with styling
@@ -816,56 +1431,48 @@ ChakraApp.DocumentController.prototype._createDocumentListItem = function(doc, c
     this.style.backgroundColor = '#555';
   });
   
-  // Updated click handler
+  // FIXED: Enhanced click handler with proper panel detection
   listItem.addEventListener('click', function(e) {
-  e.stopPropagation();
-  
-  if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.template) {
-    var templateController = ChakraApp.app.controllers.template;
-    if (templateController.selectedTemplateIds[circleTypeId]) {
-      templateController._deselectTemplate(circleTypeId);
-      templateController._updateTemplateList(circleTypeId);
-      
-      var templateToggleBtn = templateController.toggleTemplateListBtns[circleTypeId];
-      if (templateToggleBtn) {
-        var arrowIcon = templateToggleBtn.querySelector('.template-arrow-icon');
-        if (arrowIcon) {
-          arrowIcon.innerHTML = '▼';
+    e.stopPropagation();
+    
+    if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.template) {
+      var templateController = ChakraApp.app.controllers.template;
+      if (templateController.selectedTemplateIds[circleTypeId]) {
+        templateController._deselectTemplate(circleTypeId);
+        templateController._updateTemplateList(circleTypeId);
+        
+        var templateToggleBtn = templateController.toggleTemplateListBtns[circleTypeId];
+        if (templateToggleBtn) {
+          var arrowIcon = templateToggleBtn.querySelector('.template-arrow-icon');
+          if (arrowIcon) {
+            arrowIcon.innerHTML = '▼';
+          }
         }
       }
     }
-  }
-  
-  // FORCE SELECTION EVEN IF ALREADY SELECTED
-  // First deselect if it's already selected, then select again
-  var currentSelection = ChakraApp.appState.selectedDocumentIds[circleTypeId];
-  var isAlreadySelected = false;
-  
-  if (currentSelection) {
-    if (doc.listType === 'list1' && currentSelection.list1 === doc.id) {
-      isAlreadySelected = true;
-    } else if (doc.listType === 'list2' && currentSelection.list2 === doc.id) {
-      isAlreadySelected = true;
+    
+    // FIXED: Determine which panel this document list belongs to
+    var panelId = self._determinePanelForDocumentSelection(e.target, circleTypeId);
+    
+    // FORCE SELECTION EVEN IF ALREADY SELECTED
+    // First deselect if it's already selected, then select again
+    var currentSelection = ChakraApp.appState.selectedDocumentIds[circleTypeId];
+    var isAlreadySelected = false;
+    
+    if (currentSelection) {
+      if (doc.listType === 'list1' && currentSelection.list1 === doc.id) {
+        isAlreadySelected = true;
+      } else if (doc.listType === 'list2' && currentSelection.list2 === doc.id) {
+        isAlreadySelected = true;
+      }
     }
-  }
-  
-  // If already selected, briefly deselect then reselect to trigger the logic
-  if (isAlreadySelected) {
-    // Temporarily deselect
-    ChakraApp.appState.deselectDocument(circleTypeId, doc.listType);
-    // Immediately reselect to update most-recently-selected status
-    setTimeout(function() {
-      ChakraApp.appState.selectDocument(doc.id, circleTypeId, doc.listType);
-    }, 1);
-  } else {
-    // Normal selection for non-selected documents
-    ChakraApp.appState.selectDocument(doc.id, circleTypeId, doc.listType);
-  }
-  
-  self._updateDocumentList(circleTypeId);
-  self._updateDocumentList2(circleTypeId);
-  self._updateCurrentDocumentDisplay(circleTypeId);
-});
+    
+    ChakraApp.appState.selectDocumentForPanel(doc.id, circleTypeId, doc.listType, panelId);
+    
+    self._updateDocumentList(circleTypeId);
+    self._updateDocumentList2(circleTypeId);
+    self._updateCurrentDocumentDisplay(circleTypeId);
+  });
   
   return listItem;
 };
@@ -956,28 +1563,47 @@ ChakraApp.DocumentController.prototype._createSelectedDocumentListItem = functio
   deleteBtn.style.color = 'white';
   deleteBtn.style.cursor = 'pointer';
   deleteBtn.style.fontSize = '14px';
+
+  deleteBtn.addEventListener('click', function(e) {
+    e.stopPropagation(); // Prevent the click from bubbling up to the listItem
+    
+    // Show confirmation dialog
+    if (confirm('Are you sure you want to delete this document? This will also delete all circles in this document.')) {
+      // Remove the document
+      ChakraApp.appState.removeDocument(doc.id);
+      
+      // Update the document lists
+      self._updateDocumentList(circleTypeId);
+      self._updateDocumentList2(circleTypeId);
+      self._updateCurrentDocumentDisplay(circleTypeId);
+    }
+  });
   listItem.appendChild(deleteBtn);
   
-  // Delete click handler
+  // FIXED: Enhanced click handler for selected documents with proper panel detection
   listItem.addEventListener('click', function(e) {
-  // Don't trigger if clicking on the editable name or delete button
-  if (e.target.classList.contains('editable') || e.target.classList.contains('document-delete-btn')) {
-    return;
-  }
-  
-  e.stopPropagation();
-  
-  // FORCE RE-SELECTION to update most-recently-selected status
-  // First deselect, then reselect
-  ChakraApp.appState.deselectDocument(circleTypeId, doc.listType);
-  setTimeout(function() {
-    ChakraApp.appState.selectDocument(doc.id, circleTypeId, doc.listType);
-  }, 1);
-  
-  self._updateDocumentList(circleTypeId);
-  self._updateDocumentList2(circleTypeId);
-  self._updateCurrentDocumentDisplay(circleTypeId);
-});
+    // Don't trigger if clicking on the editable name or delete button
+    if (e.target.classList.contains('editable') || e.target.classList.contains('document-delete-btn')) {
+      return;
+    }
+    
+    e.stopPropagation();
+    
+    // FIXED: Determine which panel this document list belongs to
+    var panelId = self._determinePanelForDocumentSelection(e.target, circleTypeId);
+    
+    // FORCE RE-SELECTION to update most-recently-selected status
+    // First deselect, then reselect
+    ChakraApp.appState.deselectDocument(circleTypeId, doc.listType);
+    setTimeout(function() {
+      // FIXED: Use panel-aware selection with detected panel ID
+      ChakraApp.appState.selectDocumentForPanel(doc.id, circleTypeId, doc.listType, panelId);
+    }, 1);
+    
+    self._updateDocumentList(circleTypeId);
+    self._updateDocumentList2(circleTypeId);
+    self._updateCurrentDocumentDisplay(circleTypeId);
+  });
   
   return listItem;
 };
@@ -1114,7 +1740,49 @@ ChakraApp.DocumentController.prototype._createSelectedDocumentListItem = functio
         }
       }
     );
+
+    this.eventSubscriptions.leftPanelAdded = ChakraApp.EventBus.subscribe('LEFT_PANEL_ADDED', function(data) {
+    self._createDocumentControlsForNewPanel(data.panelId);
+  });
+  
+  this.eventSubscriptions.leftPanelRemoved = ChakraApp.EventBus.subscribe('LEFT_PANEL_REMOVED', function(data) {
+    self._removeDocumentControlsForPanel(data.panelId);
+  });
   };
+
+ChakraApp.DocumentController.prototype._createDocumentControlsForNewPanel = function(panelId) {
+  var self = this;
+  
+  ChakraApp.Config.circleTypes.forEach(function(circleType) {
+    self._createDocumentControlsForSpecificPanel(circleType.id, panelId);
+  });
+};
+
+// ADD NEW: Remove document controls for a removed panel
+ChakraApp.DocumentController.prototype._removeDocumentControlsForPanel = function(panelId) {
+  var self = this;
+  
+  ChakraApp.Config.circleTypes.forEach(function(circleType) {
+    var typeId = circleType.id;
+    
+    // Remove containers for this panel
+    if (self.documentListContainers[typeId] && self.documentListContainers[typeId][panelId]) {
+      var container1 = self.documentListContainers[typeId][panelId];
+      if (container1.parentNode) {
+        container1.parentNode.removeChild(container1);
+      }
+      delete self.documentListContainers[typeId][panelId];
+    }
+    
+    if (self.documentListContainers2[typeId] && self.documentListContainers2[typeId][panelId]) {
+      var container2 = self.documentListContainers2[typeId][panelId];
+      if (container2.parentNode) {
+        container2.parentNode.removeChild(container2);
+      }
+      delete self.documentListContainers2[typeId][panelId];
+    }
+  });
+};
   
   // Keep all your existing utility methods
 ChakraApp.DocumentController.prototype._setupClickOutsideHandler = function() {
@@ -1122,48 +1790,85 @@ ChakraApp.DocumentController.prototype._setupClickOutsideHandler = function() {
   
   if (!this.documentClickHandler) {
     this.documentClickHandler = function(e) {
-      var listsVisible = false;
-      var clickedCircleTypeId = null;
+      var hasVisibleLists = false;
+      var clickedInAnyList = false;
       
-      if (ChakraApp.Config && ChakraApp.Config.circleTypes) {
+      // Check all panels for visible lists
+      Object.keys(self.panelDocumentListVisible).forEach(function(panelId) {
+        var panelIdNum = parseInt(panelId);
+        
         ChakraApp.Config.circleTypes.forEach(function(circleType) {
           var typeId = circleType.id;
-          if (ChakraApp.appState.documentListVisible[typeId]) {
-            listsVisible = true;
+          
+          // Safety check: ensure the panel visibility tracking exists
+          if (!self.panelDocumentListVisible[panelId] || 
+              !self.panelDocumentListVisible[panelId][typeId]) {
+            return;
+          }
+          
+          var panelLists = self.panelDocumentListVisible[panelId][typeId];
+          
+          // Check if any list is visible in this panel
+          if (panelLists.list1 || panelLists.list2) {
+            hasVisibleLists = true;
             
-            // Check BOTH first and second list containers and buttons
-            var listContainer = self.documentListContainers[typeId];
-            var listContainer2 = self.documentListContainers2[typeId];
-            var toggleBtn = document.getElementById('toggle-document-list-btn-' + typeId);
+            // Check if click was inside any of the containers for this circle type and panel
+            var containers1 = self.documentListContainers[typeId];
+            var containers2 = self.documentListContainers2[typeId];
+            
+            // Check list1 container
+            if (containers1 && containers1[panelIdNum] && containers1[panelIdNum].contains(e.target)) {
+              clickedInAnyList = true;
+            }
+            
+            // Check list2 container
+            if (containers2 && containers2[panelIdNum] && containers2[panelIdNum].contains(e.target)) {
+              clickedInAnyList = true;
+            }
+            
+            // Check toggle buttons for this panel
+            var toggleBtn1 = document.getElementById('toggle-document-list-btn-' + typeId);
             var toggleBtn2 = document.getElementById('toggle-document-list-btn2-' + typeId);
             
-            if ((listContainer && listContainer.contains(e.target)) ||
-                (listContainer2 && listContainer2.contains(e.target)) ||
-                (toggleBtn && toggleBtn.contains(e.target)) ||
+            if ((toggleBtn1 && toggleBtn1.contains(e.target)) ||
                 (toggleBtn2 && toggleBtn2.contains(e.target))) {
-              clickedCircleTypeId = typeId;
+              clickedInAnyList = true;
             }
           }
         });
-      }
+      });
       
-      if (listsVisible && !clickedCircleTypeId) {
-        if (ChakraApp.Config && ChakraApp.Config.circleTypes) {
+      // If there are visible lists and click was outside all of them, close all lists
+      if (hasVisibleLists && !clickedInAnyList) {
+        Object.keys(self.panelDocumentListVisible).forEach(function(panelId) {
+          var panelIdNum = parseInt(panelId);
+          
           ChakraApp.Config.circleTypes.forEach(function(circleType) {
             var typeId = circleType.id;
-            if (ChakraApp.appState.documentListVisible[typeId]) {
-              ChakraApp.appState.documentListVisible[typeId] = false;
+            
+            // Safety check: ensure the panel visibility tracking exists
+            if (!self.panelDocumentListVisible[panelId] || 
+                !self.panelDocumentListVisible[panelId][typeId]) {
+              return;
+            }
+            
+            // Close both list types for this circle type in this panel
+            if (self.panelDocumentListVisible[panelId][typeId].list1 || 
+                self.panelDocumentListVisible[panelId][typeId].list2) {
               
-              // Update BOTH lists when closing
-              self._updateDocumentList(typeId);
-              self._updateDocumentList2(typeId);
+              self.panelDocumentListVisible[panelId][typeId].list1 = false;
+              self.panelDocumentListVisible[panelId][typeId].list2 = false;
               
-              // Update arrow icons for BOTH buttons
-              var toggleBtn = document.getElementById('toggle-document-list-btn-' + typeId);
-              if (toggleBtn) {
-                var arrowIcon = toggleBtn.querySelector('.arrow-icon');
-                if (arrowIcon) {
-                  arrowIcon.innerHTML = '▼';
+              // Update the UI
+              self._updateDocumentListForPanel(typeId, panelIdNum, 'list1');
+              self._updateDocumentListForPanel(typeId, panelIdNum, 'list2');
+              
+              // Update arrow icons for both buttons
+              var toggleBtn1 = document.getElementById('toggle-document-list-btn-' + typeId);
+              if (toggleBtn1) {
+                var arrowIcon1 = toggleBtn1.querySelector('.arrow-icon');
+                if (arrowIcon1) {
+                  arrowIcon1.innerHTML = '▼';
                 }
               }
               
@@ -1174,14 +1879,9 @@ ChakraApp.DocumentController.prototype._setupClickOutsideHandler = function() {
                   arrowIcon2.innerHTML = '▼';
                 }
               }
-              
-              ChakraApp.EventBus.publish(ChakraApp.EventTypes.DOCUMENT_LIST_TOGGLED, {
-                panelId: typeId,
-                visible: false
-              });
             }
           });
-        }
+        });
       }
     };
     
@@ -1247,10 +1947,14 @@ ChakraApp.DocumentController.prototype._setupClickOutsideHandler = function() {
     
     // Clean up timers
     Object.values(this.documentSearchTimers).forEach(function(timer) {
-      if (timer) {
-        clearTimeout(timer);
-      }
+      if (timer) clearTimeout(timer);
     });
+    
+    if (this.documentSearchTimers2) {
+      Object.values(this.documentSearchTimers2).forEach(function(timer) {
+        if (timer) clearTimeout(timer);
+      });
+    }
     
     if (this.documentClickHandler) {
       document.removeEventListener('click', this.documentClickHandler);
@@ -1287,8 +1991,227 @@ ChakraApp.DocumentController.prototype._setupClickOutsideHandler = function() {
     this.toggleDocumentListBtns = {};
     this.documentListContainers = {};
     this.currentDocumentDisplays = {};
-    this.documentSearchBoxes = {};
+    this.documentSearchBoxes2 = {};
+    this.documentSearchTimers2 = {};
     this.documentSearchTimers = {};
   };
-  
+
+ChakraApp.DocumentController.prototype._updateDocumentListOriginal = function(circleTypeId) {
+    if (!ChakraApp.Config.circleTypes.find(function(type) { return type.id === circleTypeId; })) {
+      return;
+    }
+    
+    var listContainer = this.documentListContainers[circleTypeId];
+    if (!listContainer) {
+      return;
+    }
+    
+    // Check if document list should be visible
+    var shouldShowList = this.documentListVisible && this.documentListVisible[circleTypeId];
+    listContainer.style.display = shouldShowList ? 'block' : 'none';
+    
+    if (!shouldShowList) {
+      return;
+    }
+    
+    // Clear existing list
+    listContainer.innerHTML = '';
+    
+    // Create header
+    var circleTypeConfig = ChakraApp.Config.circleTypes.find(function(type) {
+      return type.id === circleTypeId;
+    });
+    var typeName = circleTypeConfig ? circleTypeConfig.name : circleTypeId;
+    
+    var header = document.createElement('div');
+    header.className = 'document-list-header';
+    header.style.color = '#CCC';
+    header.style.fontSize = '14px';
+    header.style.fontWeight = 'bold';
+    header.style.marginBottom = '8px';
+    header.style.borderBottom = '1px solid #555';
+    header.style.paddingBottom = '5px';
+    header.textContent = typeName + ' Documents (A)';
+    listContainer.appendChild(header);
+    
+    // ENHANCED: Add deselect option if something is selected
+    var isDocumentSelected = this._isDocumentSelectedForCircleType(circleTypeId, 'list1');
+    if (isDocumentSelected) {
+      var deselectItem = this._createDeselectListItem(circleTypeId, 'list1');
+      listContainer.appendChild(deselectItem);
+    }
+    
+    // Add "New Document" option
+    var newDocItem = this._createNewDocumentListItem(circleTypeId, 'list1');
+    listContainer.appendChild(newDocItem);
+    
+    // Create search box
+    var searchBox = document.createElement('input');
+    searchBox.type = 'text';
+    searchBox.className = 'document-search-box';
+    searchBox.placeholder = 'Search documents...';
+    searchBox.id = 'document-search-' + circleTypeId;
+    listContainer.appendChild(searchBox);
+    
+    // Store search box reference
+    this.documentSearchBoxes[circleTypeId] = searchBox;
+    
+    // Setup event handler for search box
+    this._setupSearchBoxEventHandler(circleTypeId);
+    
+    // Create no results message
+    var noResultsMsg = document.createElement('div');
+    noResultsMsg.className = 'search-no-results';
+    noResultsMsg.textContent = 'No documents found matching your search.';
+    noResultsMsg.id = 'search-no-results-' + circleTypeId;
+    listContainer.appendChild(noResultsMsg);
+    
+    // Create documents list container
+    var documentsList = document.createElement('div');
+    documentsList.id = 'documents-list-' + circleTypeId;
+    documentsList.className = 'documents-list';
+    listContainer.appendChild(documentsList);
+    
+    // Get documents for this circle type and list type
+    var documents = ChakraApp.appState.getDocumentsForCircleTypeAndList(circleTypeId, 'list1');
+    documents.reverse();
+    
+    // Get selected ID
+    var selectedId = ChakraApp.appState.selectedDocumentIds[circleTypeId] && 
+                     ChakraApp.appState.selectedDocumentIds[circleTypeId].list1;
+    
+    // Create list items for each document
+    var self = this;
+    documents.forEach(function(doc) {
+      var listItem = doc.id === selectedId ? 
+        self._createSelectedDocumentListItem(doc, circleTypeId) : 
+        self._createDocumentListItem(doc, circleTypeId);
+      
+      documentsList.appendChild(listItem);
+    });
+    
+    // If no documents, show message
+    if (documents.length === 0) {
+      var noDocsMessage = document.createElement('div');
+      noDocsMessage.className = 'no-documents-message';
+      noDocsMessage.style.color = '#888';
+      noDocsMessage.style.fontStyle = 'italic';
+      noDocsMessage.style.textAlign = 'center';
+      noDocsMessage.style.padding = '10px';
+      noDocsMessage.textContent = 'No documents available';
+      documentsList.appendChild(noDocsMessage);
+    }
+  };
+
+// Add the missing _updateDocumentList2Original method:
+ChakraApp.DocumentController.prototype._updateDocumentList2Original = function(circleTypeId) {
+    if (!ChakraApp.Config.circleTypes.find(function(type) { return type.id === circleTypeId; })) {
+      return;
+    }
+    
+    var listContainer = this.documentListContainers2[circleTypeId];
+    if (!listContainer) {
+      return;
+    }
+    
+    // Check if document list should be visible
+    var shouldShowList = this.documentListVisible && this.documentListVisible[circleTypeId];
+    listContainer.style.display = shouldShowList ? 'block' : 'none';
+    
+    if (!shouldShowList) {
+      return;
+    }
+    
+    // Clear existing list
+    listContainer.innerHTML = '';
+    
+    // Create header
+    var circleTypeConfig = ChakraApp.Config.circleTypes.find(function(type) {
+      return type.id === circleTypeId;
+    });
+    var typeName = circleTypeConfig ? circleTypeConfig.name : circleTypeId;
+    
+    var header = document.createElement('div');
+    header.className = 'document-list-header';
+    header.style.color = '#CCC';
+    header.style.fontSize = '14px';
+    header.style.fontWeight = 'bold';
+    header.style.marginBottom = '8px';
+    header.style.borderBottom = '1px solid #555';
+    header.style.paddingBottom = '5px';
+    header.textContent = typeName + ' Documents (B)';
+    listContainer.appendChild(header);
+    
+    // ENHANCED: Add deselect option if something is selected
+    var isDocumentSelected = this._isDocumentSelectedForCircleType(circleTypeId, 'list2');
+    if (isDocumentSelected) {
+      var deselectItem = this._createDeselectListItem(circleTypeId, 'list2');
+      listContainer.appendChild(deselectItem);
+    }
+    
+    // Add "New Document" option
+    var newDocItem = this._createNewDocumentListItem(circleTypeId, 'list2');
+    listContainer.appendChild(newDocItem);
+    
+    // Create search box
+    var searchBox = document.createElement('input');
+    searchBox.type = 'text';
+    searchBox.className = 'document-search-box';
+    searchBox.placeholder = 'Search documents...';
+    searchBox.id = 'document-search2-' + circleTypeId;
+    listContainer.appendChild(searchBox);
+    
+    // Store search box reference
+    if (!this.documentSearchBoxes2) {
+      this.documentSearchBoxes2 = {};
+    }
+    this.documentSearchBoxes2[circleTypeId] = searchBox;
+    
+    // Setup event handler for search box
+    this._setupSearchBoxEventHandler2(circleTypeId);
+    
+    // Create no results message
+    var noResultsMsg = document.createElement('div');
+    noResultsMsg.className = 'search-no-results';
+    noResultsMsg.textContent = 'No documents found matching your search.';
+    noResultsMsg.id = 'search-no-results2-' + circleTypeId;
+    listContainer.appendChild(noResultsMsg);
+    
+    // Create documents list container
+    var documentsList = document.createElement('div');
+    documentsList.id = 'documents-list2-' + circleTypeId;
+    documentsList.className = 'documents-list';
+    listContainer.appendChild(documentsList);
+    
+    // Get documents for this circle type and list type
+    var documents = ChakraApp.appState.getDocumentsForCircleTypeAndList(circleTypeId, 'list2');
+    documents.reverse();
+    
+    // Get selected ID
+    var selectedId = ChakraApp.appState.selectedDocumentIds[circleTypeId] && 
+                     ChakraApp.appState.selectedDocumentIds[circleTypeId].list2;
+    
+    // Create list items for each document
+    var self = this;
+    documents.forEach(function(doc) {
+      var listItem = doc.id === selectedId ? 
+        self._createSelectedDocumentListItem(doc, circleTypeId) : 
+        self._createDocumentListItem(doc, circleTypeId);
+      
+      documentsList.appendChild(listItem);
+    });
+    
+    // If no documents, show message
+    if (documents.length === 0) {
+      var noDocsMessage = document.createElement('div');
+      noDocsMessage.className = 'no-documents-message';
+      noDocsMessage.style.color = '#888';
+      noDocsMessage.style.fontStyle = 'italic';
+      noDocsMessage.style.textAlign = 'center';
+      noDocsMessage.style.padding = '10px';
+      noDocsMessage.textContent = 'No documents available';
+      documentsList.appendChild(noDocsMessage);
+    }
+  };
+
 })(window.ChakraApp = window.ChakraApp || {});

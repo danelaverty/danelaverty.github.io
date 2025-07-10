@@ -8,7 +8,7 @@
      * @param {Object} circleView - The CircleView instance
      */
 	  render: function(circleView) {
-  var self = this;
+		  var self = this;
   circleView.createShapeWrap('gem-wrap');
   
   // Create an SVG element
@@ -17,9 +17,6 @@
   svg.setAttribute('width', '30');
   svg.setAttribute('height', '30');
   svg.setAttribute('viewBox', '0 0 30 30');
-  
-  // DON'T set pointer-events to none on the main SVG - this prevents dragging!
-  // svg.style.pointerEvents = "none";  // REMOVED THIS LINE
   
   // Calculate color variations using ColorUtils
   var darkerColor = ChakraApp.ColorUtils.createDarkerShade(circleView.viewModel.color);
@@ -34,7 +31,11 @@
   // Add outline for definition
   this.addGemOutline(svg, gemConfig);
   
-  // Add highlights/sparkles
+  // Add highlights/sparkles - but reduce them if there's text content
+  if (circleView.viewModel.text) {
+    // Reduce sparkles when text is present to avoid visual conflict
+    gemConfig.sparkles = gemConfig.sparkles.slice(0, Math.min(2, gemConfig.sparkles.length));
+  }
   this.addGemHighlights(svg, gemConfig);
   
   // Add the SVG to our shape wrapper
@@ -51,7 +52,7 @@
   
   // Append the shape wrapper to the main element
   circleView.appendShapeToElement();
-},
+	  },
 
 	updateColors: function(circleView) {
   if (circleView.viewModel.circleType !== 'gem') return;

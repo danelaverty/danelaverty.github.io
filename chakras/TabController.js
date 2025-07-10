@@ -342,7 +342,7 @@
       var input = document.createElement('input');
       input.className = 'tab-input';
       input.value = tab.name;
-      input.maxLength = 20;
+      input.maxLength = 30;
       
       // Replace tab name with input
       tabName.textContent = '';

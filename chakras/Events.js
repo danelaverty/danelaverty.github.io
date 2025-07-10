@@ -166,5 +166,10 @@
     SQUARES_MULTI_DESELECTED: 'squares:multi_deselected',
 
     PANELS_CREATED: 'panels_created',
+
+    LEFT_PANEL_MINIMIZED: 'left_panel:minimized',
+  LEFT_PANEL_RESTORED: 'left_panel:restored',
+  LEFT_PANEL_ADDED: 'left_panel:added',
+  LEFT_PANEL_REMOVED: 'left_panel:removed',
   };
 })(window.ChakraApp = window.ChakraApp || {});

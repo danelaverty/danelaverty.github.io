@@ -83,23 +83,49 @@
     };
     
     this.clipboardPastedHandler = function(data) {
-      // Animate the pasted squares
-      data.squareIds.forEach(function(squareId) {
-        var squareElement = document.querySelector('.square[data-id="' + squareId + '"]');
-        if (squareElement) {
-          // Add the pasted class temporarily
-          squareElement.classList.add('pasted');
-          
-          // Remove after animation completes
-          setTimeout(function() {
-            squareElement.classList.remove('pasted');
-          }, 1000);
-        }
-      });
-      
-      // Hide clipboard status
-      self.clipboardStatus.className = 'clipboard-status';
-    };
+  // Handle different paste types
+  if (data.type === 'squares' && data.squareIds) {
+    // Animate the pasted squares
+    data.squareIds.forEach(function(squareId) {
+      var squareElement = document.querySelector('.square[data-id="' + squareId + '"]');
+      if (squareElement) {
+        // Add the pasted class temporarily
+        squareElement.classList.add('pasted');
+        
+        // Remove after animation completes
+        setTimeout(function() {
+          squareElement.classList.remove('pasted');
+        }, 1000);
+      }
+    });
+  } else if ((data.type === 'circles' || data.type === 'circle') && data.circleIds) {
+    // Animate the pasted circles
+    data.circleIds.forEach(function(circleId) {
+      var circleElement = document.querySelector('.circle[data-id="' + circleId + '"]');
+      if (circleElement) {
+        // Add the pasted class temporarily
+        circleElement.classList.add('pasted');
+        
+        // Remove after animation completes
+        setTimeout(function() {
+          circleElement.classList.remove('pasted');
+        }, 1000);
+      }
+    });
+  } else if (data.type === 'circle' && data.circleId) {
+    // Handle single circle paste (legacy support)
+    var circleElement = document.querySelector('.circle[data-id="' + data.circleId + '"]');
+    if (circleElement) {
+      circleElement.classList.add('pasted');
+      setTimeout(function() {
+        circleElement.classList.remove('pasted');
+      }, 1000);
+    }
+  }
+  
+  // Hide clipboard status
+  self.clipboardStatus.className = 'clipboard-status';
+};
     
     // Subscribe to clipboard events
     this.clipboardUpdatedSubscription = ChakraApp.EventBus.subscribe('CLIPBOARD_UPDATED', this.clipboardUpdatedHandler);
@@ -139,20 +165,32 @@
    * @private
    */
   ChakraApp.NotificationController.prototype._setupMultiSelectionListeners = function() {
-    var self = this;
-    
-    // Listen for multi-selection events
-    this.multiSelectSubscription = ChakraApp.EventBus.subscribe('SQUARES_MULTI_SELECTED', function(data) {
-      // Show a counter of how many squares are selected
-      self._showMultiSelectionCounter(data.connectedSquareIds.length + 1); // +1 for the primary square
-    });
-    
-    // Listen for multi-deselection events
-    this.multiDeselectSubscription = ChakraApp.EventBus.subscribe('SQUARES_MULTI_DESELECTED', function() {
-      // Hide multi-selection UI elements
+  var self = this;
+  
+  // Listen for multi-selection events
+  this.multiSelectSubscription = ChakraApp.EventBus.subscribe('SQUARES_MULTI_SELECTED', function(data) {
+    // Show a counter of how many squares are selected
+    var count = data.count || data.selectedSquareIds.length;
+    self._showMultiSelectionCounter(count);
+  });
+  
+  // Listen for multi-selection update events
+  this.multiUpdateSubscription = ChakraApp.EventBus.subscribe('SQUARES_MULTI_UPDATED', function(data) {
+    // Update the counter
+    var count = data.count || data.selectedSquareIds.length;
+    if (count > 0) {
+      self._showMultiSelectionCounter(count);
+    } else {
       self._hideMultiSelectionCounter();
-    });
-  };
+    }
+  });
+  
+  // Listen for multi-deselection events
+  this.multiDeselectSubscription = ChakraApp.EventBus.subscribe('SQUARES_MULTI_DESELECTED', function() {
+    // Hide multi-selection UI elements
+    self._hideMultiSelectionCounter();
+  });
+};
   
   /**
    * Show multi-selection counter
@@ -211,10 +249,10 @@
       this.clipboardPastedSubscription = null;
     }
     
-    if (this.multiSelectSubscription) {
-      this.multiSelectSubscription();
-      this.multiSelectSubscription = null;
-    }
+    if (this.multiUpdateSubscription) {
+  this.multiUpdateSubscription();
+  this.multiUpdateSubscription = null;
+}
     
     if (this.multiDeselectSubscription) {
       this.multiDeselectSubscription();

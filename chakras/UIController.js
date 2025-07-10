@@ -30,43 +30,152 @@
   ChakraApp.UIController.prototype.init = function() {
     // Call parent init
     ChakraApp.BaseController.prototype.init.call(this);
+    this._setupInitializationStrategy();
+  };
+
+  ChakraApp.UIController.prototype._setupInitializationStrategy = function() {
+  var self = this;
+  
+  // FIXED: Check if ANY left panel exists, but don't require one
+  var leftPanel = this._findAnyLeftPanel();
+  
+  if (leftPanel) {
+    // Panels already exist, initialize immediately
+    this._completeInitialization();
+  } else {
+    // FIXED: Set up to initialize when the FIRST panel is created (not just panel 0)
+    this._waitForFirstPanel();
+  }
+};
+
+ChakraApp.UIController.prototype._findAnyLeftPanel = function() {
+  // Try various selectors to find any left panel
+  var selectors = [
+    '[id^="left-panel-"]',
+    '.left-panel',
+    '#left-panel'
+  ];
+  
+  for (var i = 0; i < selectors.length; i++) {
+    var panel = document.querySelector(selectors[i]);
+    if (panel) {
+      return panel;
+    }
+  }
+  
+  return null;
+};
+
+ChakraApp.UIController.prototype._waitForFirstPanel = function() {
+  var self = this;
+  
+  this.eventSubscriptions.leftPanelAdded = ChakraApp.EventBus.subscribe('LEFT_PANEL_ADDED', function(data) {
     
-    this._initializeDomElements();
+    // ANY panel creation should trigger initialization, not just panel 0
+    self._completeInitialization();
+    
+    // Unsubscribe since we only need this once
+    if (self.eventSubscriptions.leftPanelAdded) {
+      self.eventSubscriptions.leftPanelAdded();
+      delete self.eventSubscriptions.leftPanelAdded;
+    }
+  });
+};
+
+// Add this new method:
+ChakraApp.UIController.prototype._completeInitialization = function() {
+  this._initializeDomElements();
+  
+  // FIXED: Only proceed if we successfully found elements
+  if (this.leftPanel) {
     this._setupEventHandlers();
     this._addHeaderStyles();
     this._setupButtonHandlersPostCreation();
     
     // Initialize silhouette state
     this._updateSilhouetteVisibility(null);
-  };
+  } else {
+    console.warn('UIController: Could not complete initialization - no left panel available');
+  }
+};
+
+ChakraApp.UIController.prototype._findSilhouetteElements = function() {
+  // FIXED: Only try to find silhouettes if we have a left panel
+  if (!this.leftPanel) {
+    return;
+  }
+  
+  // Extract panel ID from the left panel we found
+  var panelId = this._extractPanelId(this.leftPanel);
+  
+  
+  // Try panel-specific IDs first
+  if (panelId !== null) {
+    this.silhouetteOutline = document.getElementById('silhouette-outline-' + panelId);
+    this.silhouetteFilled = document.getElementById('silhouette-filled-' + panelId);
+    this.silhouetteFilledBlack = document.getElementById('silhouette-filled-black-' + panelId);
+  }
+  
+  // Fallback to generic IDs
+  if (!this.silhouetteOutline) {
+    this.silhouetteOutline = document.getElementById('silhouette-outline');
+  }
+  if (!this.silhouetteFilled) {
+    this.silhouetteFilled = document.getElementById('silhouette-filled');
+  }
+  if (!this.silhouetteFilledBlack) {
+    this.silhouetteFilledBlack = document.getElementById('silhouette-filled-black');
+  }
+  
+};
+
+// NEW: Extract panel ID from a panel element
+ChakraApp.UIController.prototype._extractPanelId = function(panelElement) {
+  if (!panelElement) return null;
+  
+  // Try dataset first
+  if (panelElement.dataset && panelElement.dataset.panelIndex !== undefined) {
+    return parseInt(panelElement.dataset.panelIndex);
+  }
+  
+  // Try extracting from ID
+  var idMatch = panelElement.id.match(/left-panel-(\d+)/);
+  if (idMatch) {
+    return parseInt(idMatch[1]);
+  }
+  
+  // Default to 0 for backward compatibility
+  return 0;
+};
   
   /**
    * Initialize DOM elements
    * @private
    */
-  ChakraApp.UIController.prototype._initializeDomElements = function() {
-    // Get DOM elements
-    this.topPanel = document.getElementById('top-panel');
-    this.leftPanel = document.getElementById('left-panel');
-    
-    // Get silhouette SVG elements
-    this.silhouetteOutline = document.getElementById('silhouette-outline');
-    this.silhouetteFilled = document.getElementById('silhouette-filled');
-    this.silhouetteFilledBlack = document.getElementById('silhouette-filled-black');
-    
-    // Get panel-specific add circle buttons
-    var self = this;
+ChakraApp.UIController.prototype._initializeDomElements = function() {
+  // Get DOM elements
+  this.topPanel = document.getElementById('top-panel');
+  
+  this.leftPanel = this._findAnyLeftPanel();
+  
+  if (!this.leftPanel) {
+    return;
+  }
+
+  this._findSilhouetteElements();
+  
+  var self = this;
+  if (ChakraApp.appState.panels && ChakraApp.appState.panels.length > 0) {
     ChakraApp.appState.panels.forEach(function(panelId) {
       self.addCircleBtns[panelId] = document.getElementById('add-circle-btn-' + panelId);
     });
-    
-    // Create UI elements
-    this._createChakraTitle();
-    this._createMeridianLines();
-    
-    // Create headers container with all section headers and buttons
-    this._createHeadersContainer();
-  };
+  }
+  
+  // Create UI elements
+  this._createChakraTitle();
+  this._createMeridianLines();
+  
+};
 
   ChakraApp.UIController.prototype._addHeaderStyles = function() {
     var style = document.createElement('style');
@@ -100,11 +209,19 @@
         justify-content: center;
         align-items: center;
         border-radius: 50%;
-        background-color: var(--color-btn);
-        color: #CCC;
         border: none;
         cursor: pointer;
         transition: background-color var(--transition-fast), transform var(--transition-fast);
+      }
+
+      .add-btn.circle-btn {
+        background-color: #666;
+      }
+
+      .document-toggle-btn {
+		font-size: 7px;
+        color: #777;
+        background-color: black;
       }
       
       .document-toggle-btn:hover, .add-btn.circle-btn:hover {
@@ -112,7 +229,7 @@
         transform: scale(1.05);
       }
 
-         .template-toggle-btn {
+      .template-toggle-btn {
         font-size: 10px;
         width: 14px;
         height: 14px;
@@ -130,28 +247,23 @@
         padding: 0;
       }
 
-      .template-toggle-btn:hover {
-        background-color: #999;
-        transform: scale(1.05);
-      }
-
       /* Use Template Button Styles */
       .use-template-btn {
-	      position: absolute;
-    bottom: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 3px 7px;
-    background-color: #777;
-    color: white;
-    border: none;
-    border-radius: 15px;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: bold;
-    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
-    transition: all 0.3s ease;
-    z-index: 200;
+        position: absolute;
+        bottom: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 3px 7px;
+        background-color: #777;
+        color: white;
+        border: none;
+        border-radius: 15px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: bold;
+        box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+        transition: all 0.3s ease;
+        z-index: 200;
       }
 
       .use-template-btn:hover {
@@ -180,7 +292,7 @@
         }
       }
 
-        /* Mini-icon styles */
+      /* Mini-icon styles */
       .circle-type-mini-icon {
         width: 12px;
         height: 12px;
@@ -199,7 +311,7 @@
         border-radius: 50%;
         background-color: #666;
         box-shadow: 0 0 2px rgba(255, 255, 255, 0.3);
-	      -webkit-filter: blur(1px);
+        -webkit-filter: blur(1px);
       }
 
       /* Triangle mini-icon */
@@ -267,23 +379,6 @@
         left: 80%;
         top: 70%;
         transform: translateX(-50%);
-      }
-
-       .document-toggle-btn, .add-btn.circle-btn {
-        width: 17px;
-        height: 17px;
-        margin-right: 2px;
-        position: relative;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        border-radius: 50%;
-        background-color: var(--color-btn);
-        color: #CCC;
-        border: none;
-        cursor: pointer;
-        transition: background-color var(--transition-fast), transform var(--transition-fast);
-        padding: 0; /* Add this to ensure proper centering */
       }
 
       /* Adjust mini-icon styles for use in buttons */
@@ -448,6 +543,7 @@
     this._setupCircleEvents();
 
     this._setupTemplateEvents();
+    this._setupHeaderToggleEvents();
   };
   
   /**
@@ -488,28 +584,49 @@
    * @private
    * @param {string} panelId - Panel ID
    */
-  ChakraApp.UIController.prototype._createMeridianLineForPanel = function(panelId) {
-    // Create meridian line if it doesn't exist
-    var meridianLineId = 'meridian-line-' + panelId;
-    if (!document.getElementById(meridianLineId)) {
-      var zoomContainer = document.getElementById('zoom-container-' + panelId);
-      if (!zoomContainer) return;
+ChakraApp.UIController.prototype._createMeridianLineForPanel = function(panelId) {
+  // Create meridian line if it doesn't exist
+  var meridianLineId = 'meridian-line-' + panelId;
+  if (!document.getElementById(meridianLineId)) {
+    // FIXED: Find the actual zoom container for the current left panel
+    var zoomContainer = null;
+    
+    if (this.leftPanel) {
+      var actualPanelId = this._extractPanelId(this.leftPanel);
+      zoomContainer = document.getElementById('zoom-container-left-' + actualPanelId);
       
-      var meridianLine = document.createElement('div');
-      meridianLine.id = meridianLineId;
-      meridianLine.className = 'meridian-line';
-      meridianLine.style.position = 'absolute';
-      meridianLine.style.top = '0';
-      meridianLine.style.left = ChakraApp.Config.meridian.x + 'px';
-      meridianLine.style.width = '1px';
-      meridianLine.style.height = '100%';
-      //meridianLine.style.backgroundColor = ChakraApp.Config.meridian.lineColor;
-      meridianLine.style.zIndex = '2';
-      meridianLine.style.pointerEvents = 'none';
-      
-      zoomContainer.appendChild(meridianLine);
+      if (!zoomContainer) {
+        // Try finding zoom container within the left panel we found
+        zoomContainer = this.leftPanel.querySelector('.zoom-container');
+      }
     }
-  };
+    
+    // Fallback searches
+    if (!zoomContainer) {
+      zoomContainer = document.getElementById('zoom-container-' + panelId) ||
+                     document.querySelector('[id^="zoom-container-left-"]') ||
+                     document.querySelector('.zoom-container');
+    }
+      
+    if (!zoomContainer) {
+      console.warn('No zoom container found for meridian line');
+      return;
+    }
+      
+    var meridianLine = document.createElement('div');
+    meridianLine.id = meridianLineId;
+    meridianLine.className = 'meridian-line';
+    meridianLine.style.position = 'absolute';
+    meridianLine.style.top = '0';
+    meridianLine.style.left = ChakraApp.Config.meridian.x + 'px';
+    meridianLine.style.width = '1px';
+    meridianLine.style.height = '100%';
+    meridianLine.style.zIndex = '2';
+    meridianLine.style.pointerEvents = 'none';
+    
+    zoomContainer.appendChild(meridianLine);
+  }
+};
   
   /**
    * Set up button handlers
@@ -524,47 +641,111 @@
    * Set up panel click handlers
    * @private
    */
-  ChakraApp.UIController.prototype._setupPanelClickHandlers = function() {
-    var self = this;
+ChakraApp.UIController.prototype._setupPanelClickHandlers = function() {
+  var self = this;
+  
+  // Set up click handlers for each circle panel using new structure
+  ChakraApp.appState.panels.forEach(function(panelId) {
+    // FIXED: Use the new zoom container ID structure
+    var zoomContainer = document.getElementById('zoom-container-' + panelId + '-0') ||
+                       document.getElementById('zoom-container-' + panelId); // Fallback
     
-    // Set up click handlers for each circle panel
-    ChakraApp.appState.panels.forEach(function(panelId) {
-      var zoomContainer = document.getElementById('zoom-container-' + panelId);
-      if (zoomContainer) {
-        // Panel click - deselect circle
-        zoomContainer.addEventListener('click', function(e) {
-          // Only handle clicks directly on the panel (not on children)
-          if (e.target === zoomContainer) {
-            if (ChakraApp.appState.selectedCircleId) {
-              ChakraApp.appState.deselectCircle();
-            }
+    if (zoomContainer) {
+      // Panel click - deselect circle
+      zoomContainer.addEventListener('click', function(e) {
+        // Only handle clicks directly on the panel (not on children)
+        if (e.target === zoomContainer) {
+          // FIXED: Use CircleMultiSelectionManager for proper deselection
+          if (ChakraApp.CircleMultiSelectionManager.hasSelection()) {
+            ChakraApp.CircleMultiSelectionManager.clearSelection();
           }
-        });
+          // FIXED: Also clear the old system selection
+          if (ChakraApp.appState.selectedCircleId) {
+            ChakraApp.appState.deselectCircle();
+          }
+        }
+      });
+    }
+  });
+  
+  // Center panel click - deselect square and clear multi-selection
+  var centerPanel = document.getElementById('center-panel');
+  if (centerPanel) {
+    centerPanel.addEventListener('click', function(e) {
+      // Only handle clicks directly on the panel (not on children)
+      if (e.target === centerPanel) {
+        // FIXED: Clear circle multi-selection first
+        if (ChakraApp.CircleMultiSelectionManager.hasSelection()) {
+          ChakraApp.CircleMultiSelectionManager.clearSelection();
+        }
+        
+        // FIXED: Clear old system circle selection
+        if (ChakraApp.appState.selectedCircleId) {
+          ChakraApp.appState.deselectCircle();
+        }
+        
+        // Clear other selections
+        if (ChakraApp.appState.selectedSquareId) {
+          ChakraApp.appState.deselectSquare();
+        }
+
+        if (ChakraApp.appState.selectedCircleReferenceId) {
+          ChakraApp.appState.deselectCircleReference();
+        }
+
+        // Ensure multi-selection is cleared even if no primary square is selected
+        if (ChakraApp.MultiSelectionManager && ChakraApp.MultiSelectionManager.hasSelection()) {
+          ChakraApp.MultiSelectionManager.clearSelection();
+        }
       }
     });
-    
-    // Center panel click - deselect square and clear multi-selection
-    var centerPanel = document.getElementById('center-panel');
-    if (centerPanel) {
-	    centerPanel.addEventListener('click', function(e) {
-		    // Only handle clicks directly on the panel (not on children)
-		    if (e.target === centerPanel) {
-			    if (ChakraApp.appState.selectedSquareId) {
-				    ChakraApp.appState.deselectSquare();
-			    }
-
-			    if (ChakraApp.appState.selectedCircleReferenceId) {
-				    ChakraApp.appState.deselectCircleReference();
-			    }
-
-			    // Ensure multi-selection is cleared even if no primary square is selected
-			    if (ChakraApp.MultiSelectionManager && ChakraApp.MultiSelectionManager.hasSelection()) {
-				    ChakraApp.MultiSelectionManager.clearSelection();
-			    }
-		    }
-	    });
+  }
+  
+  // FIXED: Add click handlers for ALL left panels (including dynamically created ones)
+  var self = this;
+  
+  // Handle existing left panels
+  document.querySelectorAll('[id^="zoom-container-left-"]').forEach(function(zoomContainer) {
+    zoomContainer.addEventListener('click', function(e) {
+      // Only handle clicks directly on the zoom container (not on children)
+      if (e.target === zoomContainer) {
+        // FIXED: Clear circle multi-selection first
+        if (ChakraApp.CircleMultiSelectionManager.hasSelection()) {
+          ChakraApp.CircleMultiSelectionManager.clearSelection();
+        }
+        
+        // FIXED: Clear old system circle selection
+        if (ChakraApp.appState.selectedCircleId) {
+          ChakraApp.appState.deselectCircle();
+        }
+      }
+    });
+  });
+  
+  // FIXED: Listen for new left panels being created and add handlers
+  ChakraApp.EventBus.subscribe('LEFT_PANEL_ADDED', function(data) {
+    if (data && data.panelId !== undefined) {
+      setTimeout(function() {
+        var newZoomContainer = document.getElementById('zoom-container-left-' + data.panelId);
+        if (newZoomContainer) {
+          newZoomContainer.addEventListener('click', function(e) {
+            if (e.target === newZoomContainer) {
+              // Clear circle multi-selection first
+              if (ChakraApp.CircleMultiSelectionManager.hasSelection()) {
+                ChakraApp.CircleMultiSelectionManager.clearSelection();
+              }
+              
+              // Clear old system circle selection
+              if (ChakraApp.appState.selectedCircleId) {
+                ChakraApp.appState.deselectCircle();
+              }
+            }
+          });
+        }
+      }, 100); // Small delay to ensure DOM is ready
     }
-  };
+  });
+};
 
   /**
    * Set up circle event listeners
@@ -635,13 +816,19 @@
    * @param {Object|null} circle - The selected circle or null if no circle is selected
    */
   ChakraApp.UIController.prototype._updateSilhouetteVisibility = function(circle) {
-    if (!this.silhouetteOutline || !this.silhouetteFilled || !this.silhouetteFilledBlack || !this.leftPanel) {
+    // FIXED: Check for the new silhouette element IDs
+    var silhouetteOutline = this.silhouetteOutline;
+    var silhouetteFilled = this.silhouetteFilled;
+    var silhouetteFilledBlack = this.silhouetteFilledBlack;
+    var leftPanel = this.leftPanel;
+    
+    if (!silhouetteOutline || !silhouetteFilled || !silhouetteFilledBlack || !leftPanel) {
       return;
     }
     
     // Default state: Only show outline, hide filled versions, reset background
-    this._setSilhouetteVisibility(true, false, false);
-    this._setLeftPanelBackground('');
+    this._setSilhouetteVisibilityElements(silhouetteOutline, silhouetteFilled, silhouetteFilledBlack, true, false, false);
+    this._setLeftPanelBackgroundElement(leftPanel, '');
     
     if (!circle) {
       return; // No circle selected, use default state
@@ -653,11 +840,31 @@
     
     if (isThingsCircle) {
       // Show black filled silhouette for "things" circle
-      this._setSilhouetteVisibility(true, false, true);
-      this._setLeftPanelBackground('rgba(255, 255, 255, 0.1)');
+      this._setSilhouetteVisibilityElements(silhouetteOutline, silhouetteFilled, silhouetteFilledBlack, true, false, true);
+      this._setLeftPanelBackgroundElement(leftPanel, 'rgba(255, 255, 255, 0.1)');
     } else if (isLeftCircle) {
       // Show colored filled silhouette for "left" type circle
-      this._setSilhouetteVisibility(true, true, false);
+      this._setSilhouetteVisibilityElements(silhouetteOutline, silhouetteFilled, silhouetteFilledBlack, true, true, false);
+    }
+  };
+
+  ChakraApp.UIController.prototype._setLeftPanelBackgroundElement = function(leftPanel, backgroundColor) {
+    if (leftPanel) {
+      leftPanel.style.backgroundColor = backgroundColor;
+    }
+  };
+
+  ChakraApp.UIController.prototype._setSilhouetteVisibilityElements = function(outline, filled, filledBlack, showOutline, showFilled, showFilledBlack) {
+    if (outline) {
+      outline.style.display = showOutline ? 'block' : 'none';
+    }
+    
+    if (filled) {
+      filled.style.display = showFilled ? 'block' : 'none';
+    }
+    
+    if (filledBlack) {
+      filledBlack.style.display = showFilledBlack ? 'block' : 'none';
     }
   };
   
@@ -709,21 +916,7 @@
    * @param {boolean} showFilledBlack - Whether to show the black filled silhouette
    */
   ChakraApp.UIController.prototype._setSilhouetteVisibility = function(showOutline, showFilled, showFilledBlack) {
-    // SVG objects are inside <object> tags, so we need to access their contentDocument
-    // However, we can control visibility of the <object> elements themselves
-    
-    // The silhouette outline should always be visible as a background
-    if (this.silhouetteOutline) {
-      this.silhouetteOutline.style.display = showOutline ? 'block' : 'none';
-    }
-    
-    if (this.silhouetteFilled) {
-      this.silhouetteFilled.style.display = showFilled ? 'block' : 'none';
-    }
-    
-    if (this.silhouetteFilledBlack) {
-      this.silhouetteFilledBlack.style.display = showFilledBlack ? 'block' : 'none';
-    }
+    this._setSilhouetteVisibilityElements(this.silhouetteOutline, this.silhouetteFilled, this.silhouetteFilledBlack, showOutline, showFilled, showFilledBlack);
   };
   
   /**
@@ -732,9 +925,7 @@
    * @param {string} backgroundColor - CSS background color
    */
   ChakraApp.UIController.prototype._setLeftPanelBackground = function(backgroundColor) {
-    if (this.leftPanel) {
-      this.leftPanel.style.backgroundColor = backgroundColor;
-    }
+    this._setLeftPanelBackgroundElement(this.leftPanel, backgroundColor);
   };
   
   /**
@@ -771,200 +962,203 @@
     }
   };
 
-ChakraApp.UIController.prototype._createHeadersContainer = function() {
-  // Create headers container
-  this.headersContainer = document.createElement('div');
-  this.headersContainer.id = 'headers-container';
-  this.headersContainer.className = 'headers-container';
-  this.headersContainer.style.position = 'absolute';
-  this.headersContainer.style.bottom = '10px';
-  this.headersContainer.style.left = '10px';
-  this.headersContainer.style.zIndex = '20';
-  
-  // Define our sections based on circle types instead of panels
-  var circleTypes = ChakraApp.Config.circleTypes.map(type => ({
-    id: type.id,
-    name: type.name,
-    color: type.color
-  }));
-  
-  // Create a section for each header
-  var self = this;
-  circleTypes.forEach(function(circleType, index) {
-    self._createHeaderSection(circleType, index);
-  });
-  
-  // Add to left panel
-  this.leftPanel.appendChild(this.headersContainer);
-};
+  // New function to create column labels:
+  ChakraApp.UIController.prototype._createColumnLabels = function() {
+    var labelsContainer = document.createElement('div');
+    labelsContainer.className = 'column-labels';
+    
+    // Create label A
+    var labelA = document.createElement('div');
+    labelA.className = 'column-label column-label-a';
+    labelA.textContent = '●';
+    labelA.style.cursor = 'pointer';
+    labelA.style.userSelect = 'none';
+    
+    // Create label B
+    var labelB = document.createElement('div');
+    labelB.className = 'column-label column-label-b';
+    labelB.textContent = '●';
+    labelB.style.cursor = 'pointer';
+    labelB.style.userSelect = 'none';
+    
+    // Add click handlers
+    var self = this;
+    labelA.addEventListener('click', function(e) {
+      e.stopPropagation();
+      ChakraApp.appState.toggleListTypeVisibility('list1');
+    });
+    
+    labelB.addEventListener('click', function(e) {
+      e.stopPropagation();
+      ChakraApp.appState.toggleListTypeVisibility('list2');
+    });
+    
+    // Create spacer for the add button column
+    var spacerAdd = document.createElement('div');
+    spacerAdd.className = 'column-label';
+    spacerAdd.textContent = '';
+    
+    // Create spacer for the header text
+    var spacerHeader = document.createElement('div');
+    spacerHeader.style.flex = '1';
+    
+    // Add labels to container
+    labelsContainer.appendChild(labelA);
+    //labelsContainer.appendChild(labelB);
+    labelsContainer.appendChild(spacerAdd);
+    labelsContainer.appendChild(spacerHeader);
+    
+    // Add to headers container
+    this.headersContainer.appendChild(labelsContainer);
+  };
   
 
   // Create an individual header section with its buttons
-ChakraApp.UIController.prototype._createHeaderSection = function(section, index) {
-  var sectionContainer = document.createElement('div');
-  sectionContainer.className = 'header-section';
-  sectionContainer.style.display = 'flex';
-  sectionContainer.style.alignItems = 'center';
-  sectionContainer.style.marginBottom = '0';
-  
-  // Create toggle document list button
-  var toggleBtn = document.createElement('button');
-  toggleBtn.id = 'toggle-document-list-btn-' + section.id;
-  toggleBtn.className = 'document-toggle-btn';
-  toggleBtn.title = 'Toggle Document List for ' + section.name;
-  toggleBtn.dataset.panelId = section.id;
-  toggleBtn.style.position = 'relative';
-  toggleBtn.style.top = '0';
-  toggleBtn.style.left = '0';
-  toggleBtn.style.marginRight = '5px';
-  toggleBtn.style.backgroundColor = 'black';
-  toggleBtn.style.fontSize = '7px';
-  toggleBtn.style.color = '#777';
-  
-  // Create arrow icon
-  toggleBtn.innerHTML = '';
-  var arrowIcon = document.createElement('span');
-  arrowIcon.innerHTML = '▼';
-  arrowIcon.className = 'arrow-icon';
-  toggleBtn.appendChild(arrowIcon);
-  
-  var toggleBtn2 = document.createElement('button');
-  toggleBtn2.id = 'toggle-document-list-btn2-' + section.id;
-  toggleBtn2.className = 'document-toggle-btn';
-  toggleBtn2.title = 'Toggle Document List for ' + section.name;
-  toggleBtn2.dataset.panelId = section.id;
-  toggleBtn2.style.position = 'relative';
-  toggleBtn2.style.top = '0';
-  toggleBtn2.style.left = '0';
-  toggleBtn2.style.marginRight = '5px';
-  toggleBtn2.style.backgroundColor = 'black';
-  toggleBtn2.style.fontSize = '7px';
-  toggleBtn2.style.color = '#777';
-  
-  // Create arrow icon
-  toggleBtn2.innerHTML = '';
-  var arrowIcon2 = document.createElement('span');
-  arrowIcon2.innerHTML = '▼';
-  arrowIcon2.className = 'arrow-icon';
-  toggleBtn2.appendChild(arrowIcon2);
-
-  // Create toggle template list button
-  var templateToggleBtn = document.createElement('button');
-  templateToggleBtn.id = 'toggle-template-list-btn-' + section.id;
-  templateToggleBtn.className = 'template-toggle-btn';
-  templateToggleBtn.title = 'Toggle Template List for ' + section.name;
-  templateToggleBtn.dataset.panelId = section.id;
-  templateToggleBtn.style.position = 'relative';
-  templateToggleBtn.style.top = '0';
-  templateToggleBtn.style.left = '0';
-  templateToggleBtn.style.marginLeft = '5px';
-  templateToggleBtn.style.backgroundColor = '#444';
-  templateToggleBtn.style.fontSize = '7px';
-  templateToggleBtn.style.color = '#BBB';
-  
-  // Create template arrow icon
-  templateToggleBtn.innerHTML = '';
-  var templateArrowIcon = document.createElement('span');
-  templateArrowIcon.innerHTML = 'T';
-  templateArrowIcon.className = 'template-arrow-icon';
-  templateToggleBtn.appendChild(templateArrowIcon);
-  
-  // Create add circle button with mini-icon instead of plus
-  var addBtn = document.createElement('button');
-  addBtn.id = 'add-circle-btn-' + section.id;
-  addBtn.className = 'add-btn circle-btn';
-  addBtn.dataset.panelId = section.id;
-  addBtn.title = 'Add ' + section.name + ' Circle';
-  addBtn.style.position = 'relative';
-  addBtn.style.top = '0';
-  addBtn.style.left = '0';
-  addBtn.style.marginRight = '5px';
-  
-  if (section.id !== 'left') {
-    addBtn.style.backgroundColor = '#666';
-  }
-  
-  // Add mini-icon to the button instead of plus sign
-  var miniIcon = this._createMiniIcon(section.id);
-  addBtn.appendChild(miniIcon);
-  
-  // Create header text
-  var header = document.createElement('h3');
-  header.textContent = section.name;
-  header.style.position = 'relative';
-  header.style.margin = '0';
-  header.style.padding = '0';
-  header.style.top = '0';
-  header.style.color = '#666';
-  header.style.cursor = 'pointer';
-  header.style.userSelect = 'none';
-  header.title = 'Click to toggle visibility for all ' + section.name + ' circles';
-  header.dataset.circleType = section.id; // NEW: Add data attribute for easy finding
-  
-  // NEW: Add click handler for visibility toggle
-  var self = this;
-  header.addEventListener('click', function(e) {
-    e.stopPropagation();
+  ChakraApp.UIController.prototype._createHeaderSection = function(section, index) {
+    var sectionContainer = document.createElement('div');
+    sectionContainer.className = 'header-section';
+    sectionContainer.style.display = 'flex';
+    sectionContainer.style.alignItems = 'center';
+    sectionContainer.style.marginBottom = '0';
     
-    console.log('Header clicked for circle type visibility toggle:', section.id);
+    // Create toggle document list button
+    var toggleBtn = document.createElement('button');
+    toggleBtn.id = 'toggle-document-list-btn-' + section.id;
+    toggleBtn.className = 'document-toggle-btn';
+    toggleBtn.title = 'Toggle Document List for ' + section.name;
+    toggleBtn.dataset.panelId = section.id;
+    toggleBtn.style.position = 'relative';
+    toggleBtn.style.top = '0';
+    toggleBtn.style.left = '0';
+    toggleBtn.style.marginRight = '5px';
+    /*toggleBtn.style.backgroundColor = 'black';
+    toggleBtn.style.fontSize = '7px';
+    toggleBtn.style.color = '#777';*/
     
-    // Toggle visibility for this circle type
-    ChakraApp.appState.toggleCircleTypeVisibility(section.id);
-  });
-  
-  // NEW: Add hover effects
-  header.addEventListener('mouseenter', function() {
-    if (ChakraApp.appState.circleTypeVisibility[section.id] !== false) {
-      this.style.color = '#999';
-    } else {
-      this.style.color = 'rgb(80, 80, 80)'; // Slightly lighter when dimmed
-    }
-  });
-  
-  header.addEventListener('mouseleave', function() {
-    if (ChakraApp.appState.circleTypeVisibility[section.id] !== false) {
-      this.style.color = '#666';
-    } else {
-      this.style.color = 'rgb(60, 60, 60)'; // Back to dimmed color
-    }
-  });
-  
-  // Add elements to section container
-  sectionContainer.appendChild(toggleBtn);
-  sectionContainer.appendChild(toggleBtn2);
-  sectionContainer.appendChild(addBtn);
-  sectionContainer.appendChild(header);
-  if (section.id == 'gem') {
-    sectionContainer.appendChild(templateToggleBtn);
-  }
-  
-  // Add section to headers container
-  this.headersContainer.appendChild(sectionContainer);
-  
-  // Store button references
-  if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.document) {
-    ChakraApp.app.controllers.document.toggleDocumentListBtns[section.id] = toggleBtn;
-  }
+    // Create arrow icon
+    toggleBtn.innerHTML = '';
+    var arrowIcon = document.createElement('span');
+    arrowIcon.innerHTML = '▼';
+    arrowIcon.className = 'arrow-icon';
+    toggleBtn.appendChild(arrowIcon);
+    
+    var toggleBtn2 = document.createElement('button');
+    toggleBtn2.id = 'toggle-document-list-btn2-' + section.id;
+    toggleBtn2.className = 'document-toggle-btn';
+    toggleBtn2.title = 'Toggle Document List for ' + section.name;
+    toggleBtn2.dataset.panelId = section.id;
+    toggleBtn2.style.position = 'relative';
+    toggleBtn2.style.top = '0';
+    toggleBtn2.style.left = '0';
+    toggleBtn2.style.marginRight = '5px';
+    /*toggleBtn2.style.backgroundColor = 'black';
+    toggleBtn2.style.fontSize = '7px';
+    toggleBtn2.style.color = '#777';*/
+    
+    // Create arrow icon
+    toggleBtn2.innerHTML = '';
+    var arrowIcon2 = document.createElement('span');
+    arrowIcon2.innerHTML = '▼';
+    arrowIcon2.className = 'arrow-icon';
+    toggleBtn2.appendChild(arrowIcon2);
 
-  if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.document) {
-    ChakraApp.app.controllers.document.toggleDocumentListBtns2[section.id] = toggleBtn2;
-  }
-  
-  // Store template button reference for the template controller
-  if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.template) {
-    ChakraApp.app.controllers.template.toggleTemplateListBtns[section.id] = templateToggleBtn;
-  }
-  
-  this.addCircleBtns[section.id] = addBtn;
-};
+    // Create toggle template list button
+    var templateToggleBtn = document.createElement('button');
+    templateToggleBtn.id = 'toggle-template-list-btn-' + section.id;
+    templateToggleBtn.className = 'template-toggle-btn';
+    templateToggleBtn.title = 'Toggle Template List for ' + section.name;
+    templateToggleBtn.dataset.panelId = section.id;
+    templateToggleBtn.style.position = 'relative';
+    templateToggleBtn.style.top = '0';
+    templateToggleBtn.style.left = '0';
+    templateToggleBtn.style.marginLeft = '5px';
+    templateToggleBtn.style.backgroundColor = '#444';
+    templateToggleBtn.style.fontSize = '7px';
+    templateToggleBtn.style.color = '#BBB';
+    
+    // Create template arrow icon
+    templateToggleBtn.innerHTML = '';
+    var templateArrowIcon = document.createElement('span');
+    templateArrowIcon.innerHTML = 'T';
+    templateArrowIcon.className = 'template-arrow-icon';
+    templateToggleBtn.appendChild(templateArrowIcon);
+    
+    // Create add circle button with mini-icon instead of plus
+    var addBtn = document.createElement('button');
+    addBtn.id = 'add-circle-btn-' + section.id;
+    addBtn.className = 'add-btn circle-btn';
+    addBtn.dataset.panelId = section.id;
+    addBtn.title = 'Add ' + section.name + ' Circle';
+    addBtn.style.position = 'relative';
+    addBtn.style.top = '0';
+    addBtn.style.left = '0';
+    addBtn.style.marginRight = '5px';
+    
+    if (section.id !== 'left') {
+      addBtn.style.backgroundColor = '#666';
+    }
+    
+    // Add mini-icon to the button instead of plus sign
+    var miniIcon = this._createMiniIcon(section.id);
+    addBtn.appendChild(miniIcon);
+    
+    // Create header text
+    var header = document.createElement('h3');
+    header.textContent = section.name;
+    header.style.position = 'relative';
+    header.style.margin = '0';
+    header.style.padding = '0';
+    header.style.top = '0';
+    header.style.cursor = 'pointer';
+    header.style.userSelect = 'none';
+    header.title = 'Click to toggle visibility for all ' + section.name + ' circles';
+    header.dataset.circleType = section.id; // NEW: Add data attribute for easy finding
+    
+    // NEW: Add click handler for visibility toggle
+    var self = this;
+    header.addEventListener('click', function(e) {
+      e.stopPropagation();
+      
+      // Toggle visibility for this circle type
+      ChakraApp.appState.toggleCircleTypeVisibility(section.id);
+    });
+    
+    // Add elements to section container
+    sectionContainer.appendChild(toggleBtn);
+    //sectionContainer.appendChild(toggleBtn2);
+    sectionContainer.appendChild(addBtn);
+    sectionContainer.appendChild(header);
+    if (section.id == 'gem') {
+      sectionContainer.appendChild(templateToggleBtn);
+    }
+    
+    // Add section to headers container
+    this.headersContainer.appendChild(sectionContainer);
+    
+    // Store button references
+    if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.document) {
+      ChakraApp.app.controllers.document.toggleDocumentListBtns[section.id] = toggleBtn;
+    }
 
-ChakraApp.UIController.prototype._setupButtonHandlersPostCreation = function() {
+    if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.document) {
+      ChakraApp.app.controllers.document.toggleDocumentListBtns2[section.id] = toggleBtn2;
+    }
+    
+    // Store template button reference for the template controller
+    if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.template) {
+      ChakraApp.app.controllers.template.toggleTemplateListBtns[section.id] = templateToggleBtn;
+    }
+    
+    this.addCircleBtns[section.id] = addBtn;
+  };
+
+  ChakraApp.UIController.prototype._setupButtonHandlersPostCreation = function() {
   var self = this;
   
   ChakraApp.Config.circleTypes.forEach(function(circleType) {
     var typeId = circleType.id;
     
-    // Handle add circle buttons - UPDATED to restore visibility
+    // Handle add circle buttons - UPDATED to restore both visibilities
     var addBtn = document.getElementById('add-circle-btn-' + typeId);
     if (addBtn) {
       var newAddBtn = addBtn.cloneNode(true);
@@ -978,11 +1172,12 @@ ChakraApp.UIController.prototype._setupButtonHandlersPostCreation = function() {
       newAddBtn.addEventListener('click', function(e) {
         e.stopPropagation();
         
-        // NEW: Restore visibility if it was hidden
+        // Restore both circle type and list type visibility
         ChakraApp.appState.setCircleTypeVisibility(typeId, true);
+        ChakraApp.appState.setListTypeVisibility('list1', true); // Default to list1
         
-        // Ensure document for circle type
-        self._ensureDocumentForCircleType(typeId);
+        // FIXED: Ensure document for circle type in panel 0 (default)
+        self._ensureDocumentForCircleTypeInPanel(typeId, 0);
         
         // Create a new circle
         var circleData = {
@@ -994,7 +1189,7 @@ ChakraApp.UIController.prototype._setupButtonHandlersPostCreation = function() {
       });
     }
     
-    // Handle document toggle buttons - UPDATED to restore visibility
+    // FIXED: Handle toggle document list buttons (List A) - Panel 0
     var toggleBtn = document.getElementById('toggle-document-list-btn-' + typeId);
     if (toggleBtn) {
       var newToggleBtn = toggleBtn.cloneNode(true);
@@ -1003,41 +1198,37 @@ ChakraApp.UIController.prototype._setupButtonHandlersPostCreation = function() {
         toggleBtn.parentNode.replaceChild(newToggleBtn, toggleBtn);
       }
       
-      if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.document) {
-        ChakraApp.app.controllers.document.toggleDocumentListBtns[typeId] = newToggleBtn;
-      }
-      
       newToggleBtn.addEventListener('click', function(e) {
         e.stopPropagation();
         
-        // NEW: Restore visibility if it was hidden
-        ChakraApp.appState.setCircleTypeVisibility(typeId, true);
-        
-        // Track which button was clicked
+        // Set the last clicked button to indicate List A (btn1)
         if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.document) {
           ChakraApp.app.controllers.document._lastClickedButton = 'btn1-' + typeId;
         }
         
-        // Close template lists
-        if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.document) {
-          ChakraApp.app.controllers.document._closeAllTemplateLists();
-        }
+        // Toggle the document list for this circle type
+        var isVisible = ChakraApp.appState.toggleDocumentList(typeId);
         
-        ChakraApp.appState.toggleDocumentList(typeId);
-        
-        var arrowIcon = this.querySelector('.arrow-icon');
+        // Update arrow icon
+        var arrowIcon = newToggleBtn.querySelector('.arrow-icon');
         if (arrowIcon) {
-          arrowIcon.innerHTML = ChakraApp.appState.documentListVisible[typeId] ? '▲' : '▼';
+          arrowIcon.innerHTML = isVisible ? '▲' : '▼';
         }
         
+        // Update BOTH document lists if document controller is available
         if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.document) {
           ChakraApp.app.controllers.document._updateDocumentList(typeId);
           ChakraApp.app.controllers.document._updateDocumentList2(typeId);
         }
       });
+      
+      // Store reference for document controller
+      if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.document) {
+        ChakraApp.app.controllers.document.toggleDocumentListBtns[typeId] = newToggleBtn;
+      }
     }
-
-    // Handle second document toggle button - UPDATED to restore visibility
+    
+    // FIXED: Handle toggle document list buttons (List B) - Panel 0
     var toggleBtn2 = document.getElementById('toggle-document-list-btn2-' + typeId);
     if (toggleBtn2) {
       var newToggleBtn2 = toggleBtn2.cloneNode(true);
@@ -1046,41 +1237,37 @@ ChakraApp.UIController.prototype._setupButtonHandlersPostCreation = function() {
         toggleBtn2.parentNode.replaceChild(newToggleBtn2, toggleBtn2);
       }
       
-      if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.document) {
-        ChakraApp.app.controllers.document.toggleDocumentListBtns2[typeId] = newToggleBtn2;
-      }
-      
       newToggleBtn2.addEventListener('click', function(e) {
         e.stopPropagation();
         
-        // NEW: Restore visibility if it was hidden
-        ChakraApp.appState.setCircleTypeVisibility(typeId, true);
-        
-        // Track which button was clicked
+        // Set the last clicked button to indicate List B (btn2)
         if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.document) {
           ChakraApp.app.controllers.document._lastClickedButton = 'btn2-' + typeId;
         }
         
-        // Close template lists
-        if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.document) {
-          ChakraApp.app.controllers.document._closeAllTemplateLists();
+        // Toggle the document list for this circle type (List B)
+        var isVisible = ChakraApp.appState.toggleDocumentList(typeId);
+        
+        // Update arrow icon
+        var arrowIcon2 = newToggleBtn2.querySelector('.arrow-icon');
+        if (arrowIcon2) {
+          arrowIcon2.innerHTML = isVisible ? '▲' : '▼';
         }
         
-        ChakraApp.appState.toggleDocumentList(typeId);
-        
-        var arrowIcon = this.querySelector('.arrow-icon');
-        if (arrowIcon) {
-          arrowIcon.innerHTML = ChakraApp.appState.documentListVisible[typeId] ? '▲' : '▼';
-        }
-        
+        // Update BOTH document lists if document controller is available
         if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.document) {
           ChakraApp.app.controllers.document._updateDocumentList(typeId);
           ChakraApp.app.controllers.document._updateDocumentList2(typeId);
         }
       });
+      
+      // Store reference for document controller
+      if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.document) {
+        ChakraApp.app.controllers.document.toggleDocumentListBtns2[typeId] = newToggleBtn2;
+      }
     }
     
-    // Handle template toggle button - UPDATED to restore visibility
+    // Handle template toggle buttons (if they exist)
     var templateToggleBtn = document.getElementById('toggle-template-list-btn-' + typeId);
     if (templateToggleBtn) {
       var newTemplateToggleBtn = templateToggleBtn.cloneNode(true);
@@ -1089,81 +1276,399 @@ ChakraApp.UIController.prototype._setupButtonHandlersPostCreation = function() {
         templateToggleBtn.parentNode.replaceChild(newTemplateToggleBtn, templateToggleBtn);
       }
       
-      if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.template) {
-        ChakraApp.app.controllers.template.toggleTemplateListBtns[typeId] = newTemplateToggleBtn;
-      }
-      
       newTemplateToggleBtn.addEventListener('click', function(e) {
         e.stopPropagation();
         
-        // NEW: Restore visibility if it was hidden
-        ChakraApp.appState.setCircleTypeVisibility(typeId, true);
-        
-        // Continue with normal template toggle logic
-        if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.template) {
-          var templateController = ChakraApp.app.controllers.template;
-          templateController.toggleTemplateList(typeId);
-        }
+	if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.template) {
+      ChakraApp.app.controllers.template.currentPanelId = 0;
+      ChakraApp.app.controllers.template._closeAllDocumentLists();
+      ChakraApp.app.controllers.template._showVisualTemplateSelector(typeId);
+    }
       });
+      
+      // Store reference for template controller
+      if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.template) {
+        ChakraApp.app.controllers.template.toggleTemplateListBtns[typeId] = newTemplateToggleBtn;
+      }
     }
   });
   
-  // NEW: Refresh visual indicators after all buttons are created
+  // Refresh visual indicators after all buttons are created
   setTimeout(function() {
     self._refreshAllDocumentToggleIndicators();
     
-    // Also refresh header visual states
+    // Refresh header visual states
     if (ChakraApp.Config && ChakraApp.Config.circleTypes) {
       ChakraApp.Config.circleTypes.forEach(function(circleType) {
         ChakraApp.appState._updateHeaderVisualState(circleType.id);
       });
     }
+    
+    // Refresh column header visual states
+    ChakraApp.appState._updateColumnHeaderVisualState('list1');
+    ChakraApp.appState._updateColumnHeaderVisualState('list2');
   }, 100);
 };
 
-ChakraApp.UIController.prototype._ensureDocumentForCircleType = function(typeId) {
-  // NEW: Get documents for this circle type from list1 (default list)
-  var docs = ChakraApp.appState.getDocumentsForCircleTypeAndList(typeId, 'list1');
-  
-  if (docs.length === 0) {
-    // Find the circle type configuration
-    var circleTypeConfig = null;
-    if (ChakraApp.Config && ChakraApp.Config.circleTypes) {
-      circleTypeConfig = ChakraApp.Config.circleTypes.find(function(type) {
-        return type.id === typeId;
+  ChakraApp.UIController.prototype._setupPanelSpecificEventHandlers = function(panelId) {
+    // Set up click handlers for this specific panel's zoom container
+    var zoomContainer = document.getElementById('zoom-container-left-' + panelId);
+    if (zoomContainer) {
+      zoomContainer.addEventListener('click', function(e) {
+        if (e.target === zoomContainer) {
+          if (ChakraApp.appState.selectedCircleId) {
+            ChakraApp.appState.deselectCircle();
+          }
+        }
       });
     }
+  };
+
+  ChakraApp.UIController.prototype._initializePanelControls = function(panelId) {
+    this._createHeadersContainerForPanel(panelId);
+    this._setupPanelSpecificEventHandlers(panelId);
+  };
+  
+ChakraApp.UIController.prototype._createHeadersContainerForPanel = function(panelId) {
+  var leftPanel = document.getElementById('left-panel-' + panelId);
+  if (!leftPanel) return;
+  
+  // Get current header type for this panel
+  var currentHeaderType = ChakraApp.appState.getLeftPanelHeaderType(panelId);
+  
+  // Create headers container for this specific panel
+  var headersContainer = document.createElement('div');
+  headersContainer.id = 'headers-container-' + panelId;
+  headersContainer.className = 'headers-container';
+  headersContainer.style.position = 'absolute';
+  headersContainer.style.bottom = '10px';
+  headersContainer.style.left = '10px';
+  headersContainer.style.zIndex = '20';
+  
+  // Create sections only for the current header type
+  var self = this;
+  ChakraApp.Config.circleTypes.forEach(function(circleType, index) {
+    // Only create section for the current header type
+    if (circleType.id === currentHeaderType) {
+      self._createHeaderSectionForPanel(headersContainer, circleType, index, panelId);
+    }
+  });
+  
+  leftPanel.appendChild(headersContainer);
+};
+
+ChakraApp.UIController.prototype._setupHeaderToggleEvents = function() {
+  var self = this;
+  
+  this.eventSubscriptions.headerTypeChanged = ChakraApp.EventBus.subscribe(
+    'LEFT_PANEL_HEADER_TYPE_CHANGED',
+    function(data) {
+      if (data && data.panelId !== undefined) {
+        // Refresh the headers container for the changed panel
+        self._refreshHeadersContainerForPanel(data.panelId);
+      }
+    }
+  );
+};
+  
+  ChakraApp.UIController.prototype._createColumnLabelsForPanel = function(container, panelId) {
+    var labelsContainer = document.createElement('div');
+    labelsContainer.className = 'column-labels';
     
-    // Create a new document for this circle type in list1
-    var docName = circleTypeConfig ? circleTypeConfig.name + " Document" : "New Document";
+    var labelA = document.createElement('div');
+    labelA.className = 'column-label column-label-a';
+    labelA.textContent = '●';
+    labelA.style.cursor = 'pointer';
+    labelA.style.userSelect = 'none';
+    
+    var labelB = document.createElement('div');
+    labelB.className = 'column-label column-label-b';
+    labelB.textContent = '●';
+    labelB.style.cursor = 'pointer';
+    labelB.style.userSelect = 'none';
+    
+    // Add click handlers specific to this panel
+    labelA.addEventListener('click', function(e) {
+      e.stopPropagation();
+      ChakraApp.appState.toggleListTypeVisibility('list1');
+    });
+    
+    labelB.addEventListener('click', function(e) {
+      e.stopPropagation();
+      ChakraApp.appState.toggleListTypeVisibility('list2');
+    });
+    
+    var spacerAdd = document.createElement('div');
+    spacerAdd.className = 'column-label';
+    spacerAdd.textContent = '';
+    
+    var spacerHeader = document.createElement('div');
+    spacerHeader.style.flex = '1';
+    
+    labelsContainer.appendChild(labelA);
+    //labelsContainer.appendChild(labelB);
+    labelsContainer.appendChild(spacerAdd);
+    labelsContainer.appendChild(spacerHeader);
+    
+    container.appendChild(labelsContainer);
+  };
+  
+ChakraApp.UIController.prototype._createHeaderSectionForPanel = function(container, circleType, index, panelId) {
+  // Get current header type for this panel
+  var currentHeaderType = ChakraApp.appState.getLeftPanelHeaderType(panelId);
+  
+  // Only create header section if this circle type matches the current header type
+  if (circleType.id !== currentHeaderType) {
+    return; // Skip creating this header section
+  }
+  
+  var sectionContainer = document.createElement('div');
+  sectionContainer.className = 'header-section';
+  sectionContainer.id = 'header-section-' + panelId; // Add ID for easy finding
+  sectionContainer.style.display = 'flex';
+  sectionContainer.style.alignItems = 'center';
+  sectionContainer.style.marginBottom = '0';
+  
+  // Create buttons with panel-specific IDs
+  var toggleBtn = this._createDocumentToggleButton(circleType.id, 'list1', panelId);
+  var addBtn = this._createAddCircleButton(circleType, panelId);
+  var header = this._createToggleableCircleTypeHeader(circleType, panelId); // NEW: Use toggleable header
+  
+  // Create template toggle button (only for 'gem' circle type)
+  var templateToggleBtn = null;
+  if (circleType.id === 'gem') {
+    templateToggleBtn = document.createElement('button');
+    templateToggleBtn.id = 'toggle-template-list-btn-' + circleType.id + '-panel-' + panelId;
+    templateToggleBtn.className = 'template-toggle-btn';
+    templateToggleBtn.title = 'Toggle Template List for ' + circleType.name;
+    templateToggleBtn.dataset.panelId = panelId;
+    templateToggleBtn.dataset.circleTypeId = circleType.id;
+    templateToggleBtn.style.position = 'relative';
+    templateToggleBtn.style.top = '0';
+    templateToggleBtn.style.left = '0';
+    templateToggleBtn.style.marginLeft = '13px';
+    templateToggleBtn.style.backgroundColor = '#444';
+    templateToggleBtn.style.fontSize = '7px';
+    templateToggleBtn.style.color = '#BBB';
+    
+    // Create template arrow icon
+    templateToggleBtn.innerHTML = '';
+    var templateArrowIcon = document.createElement('span');
+    templateArrowIcon.innerHTML = 'T';
+    templateArrowIcon.className = 'template-arrow-icon';
+    templateToggleBtn.appendChild(templateArrowIcon);
+    
+    // Add event handler
+    var self = this;
+    templateToggleBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      
+      // Toggle the template list for this circle type
+      if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.template) {
+        ChakraApp.app.controllers.template.currentPanelId = panelId;
+        ChakraApp.app.controllers.template._closeAllDocumentLists();
+        ChakraApp.app.controllers.template._showVisualTemplateSelector(circleType.id);
+      }
+    });
+    
+    // Store reference for template controller
+    if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.template) {
+      ChakraApp.app.controllers.template.toggleTemplateListBtns[circleType.id] = templateToggleBtn;
+    }
+  }
+  
+  // Append all elements to section container
+  sectionContainer.appendChild(toggleBtn);
+  sectionContainer.appendChild(addBtn);
+  sectionContainer.appendChild(header);
+  
+  // Add template button only if it was created (for 'gem' type)
+  if (templateToggleBtn) {
+    sectionContainer.appendChild(templateToggleBtn);
+  }
+  
+  container.appendChild(sectionContainer);
+};
+
+ChakraApp.UIController.prototype._createToggleableCircleTypeHeader = function(circleType, panelId) {
+  var header = document.createElement('h3');
+  header.textContent = circleType.name;
+  header.style.position = 'relative';
+  header.style.margin = '0';
+  header.style.padding = '0';
+  header.style.top = '0';
+  header.style.cursor = 'pointer';
+  header.style.userSelect = 'none';
+  header.title = 'Click to toggle between Feelings and Concepts'; // NEW: Updated title
+  header.dataset.circleType = circleType.id;
+  header.dataset.panelId = panelId; // NEW: Add panel ID
+  
+  var self = this;
+  header.addEventListener('click', function(e) {
+    e.stopPropagation();
+    // NEW: Toggle header type instead of visibility
+    self._togglePanelHeaderType(panelId);
+  });
+  
+  return header;
+};
+
+// NEW: Handle header type toggle
+ChakraApp.UIController.prototype._togglePanelHeaderType = function(panelId) {
+  var newHeaderType = ChakraApp.appState.toggleLeftPanelHeaderType(panelId);
+  
+  // Refresh the headers container for this panel
+  this._refreshHeadersContainerForPanel(panelId);
+  
+};
+
+// NEW: Refresh headers container for a specific panel
+ChakraApp.UIController.prototype._refreshHeadersContainerForPanel = function(panelId) {
+  var leftPanel = document.getElementById('left-panel-' + panelId);
+  if (!leftPanel) return;
+  
+  // Find and remove existing headers container
+  var existingContainer = document.getElementById('headers-container-' + panelId);
+  if (existingContainer) {
+    existingContainer.remove();
+  }
+  
+  // Recreate headers container with current header type
+  this._createHeadersContainerForPanel(panelId);
+};
+  
+  ChakraApp.UIController.prototype._createDocumentToggleButton = function(circleTypeId, listType, panelId) {
+    var toggleBtn = document.createElement('button');
+    toggleBtn.id = 'toggle-document-list-btn-' + listType + '-' + circleTypeId + '-panel-' + panelId;
+    toggleBtn.className = 'document-toggle-btn';
+    toggleBtn.title = 'Toggle Document List for ' + circleTypeId;
+    toggleBtn.dataset.panelId = panelId;
+    toggleBtn.dataset.circleTypeId = circleTypeId;
+    toggleBtn.dataset.listType = listType;
+    
+    var arrowIcon = document.createElement('span');
+    arrowIcon.innerHTML = '▼';
+    arrowIcon.className = 'arrow-icon';
+    toggleBtn.appendChild(arrowIcon);
+    
+    // Add event handler
+    var self = this;
+    toggleBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      self._handleDocumentToggleClick(circleTypeId, listType, panelId);
+    });
+    
+    return toggleBtn;
+  };
+  
+  ChakraApp.UIController.prototype._createAddCircleButton = function(circleType, panelId) {
+    var addBtn = document.createElement('button');
+    addBtn.id = 'add-circle-btn-' + circleType.id + '-panel-' + panelId;
+    addBtn.className = 'add-btn circle-btn';
+    addBtn.dataset.panelId = panelId;
+    addBtn.dataset.circleTypeId = circleType.id;
+    addBtn.title = 'Add ' + circleType.name + ' Circle';
+    
+    var miniIcon = this._createMiniIcon(circleType.id);
+    addBtn.appendChild(miniIcon);
+    
+    // Add event handler
+    var self = this;
+    addBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      self._handleAddCircleClick(circleType, panelId);
+    });
+    
+    return addBtn;
+  };
+  
+  ChakraApp.UIController.prototype._handleDocumentToggleClick = function(circleTypeId, listType, panelId) {
+
+  // Toggle document list for specific panel
+  if (ChakraApp.app && ChakraApp.app.controllers && ChakraApp.app.controllers.document) {
+    ChakraApp.app.controllers.document.toggleDocumentListForPanel(circleTypeId, listType, panelId);
+  } else {
+  }
+};
+  
+ChakraApp.UIController.prototype._handleAddCircleClick = function(circleType, panelId) {
+  // FIXED: Ensure document for circle type in this specific panel
+  this._ensureDocumentForCircleTypeInPanel(circleType.id, panelId);
+  
+  // Create a new circle
+  var circleData = {
+    circleType: circleType.id,
+    color: circleType.color
+  };
+  
+  var circle = ChakraApp.appState.addCircle(circleData);
+};
+  
+ChakraApp.UIController.prototype._ensureDocumentForCircleTypeInPanel = function(circleTypeId, panelId) {
+  var selections = ChakraApp.appState.getLeftPanelSelections(panelId);
+  var docs = ChakraApp.appState.getDocumentsForCircleTypeAndList(circleTypeId, 'list1');
+  
+  if (docs.length === 0 || !selections[circleTypeId] || !selections[circleTypeId].list1) {
+    var circleTypeConfig = ChakraApp.Config.circleTypes.find(function(type) {
+      return type.id === circleTypeId;
+    });
+    
+      var docName = ChakraApp.appState.generateDateBasedDocumentName(circleTypeId, 'list1');
     
     var newDoc = ChakraApp.appState.addDocument({
       name: docName,
-      circleType: typeId,
-      listType: 'list1' // Explicitly set to list1
+      circleType: circleTypeId,
+      listType: 'list1'
     });
     
-    // NEW: Pass listType to selectDocument
-    ChakraApp.appState.selectDocument(newDoc.id, typeId, 'list1');
-  } else {
-    // NEW: Select the first document if not already selected for list1
-    var currentSelection = ChakraApp.appState.selectedDocumentIds[typeId];
-    if (!currentSelection || !currentSelection.list1) {
-      ChakraApp.appState.selectDocument(docs[0].id, typeId, 'list1');
-    }
+    // FIXED: Select document for the specific panel
+    ChakraApp.appState.selectDocumentForPanel(newDoc.id, circleTypeId, 'list1', panelId);
   }
 };
 
-ChakraApp.UIController.prototype._refreshAllDocumentToggleIndicators = function() {
-  var self = this;
-  
-  // Update visual indicators for all circle types
-  if (ChakraApp.Config && ChakraApp.Config.circleTypes) {
-    ChakraApp.Config.circleTypes.forEach(function(circleType) {
-      ChakraApp.appState._updateDocumentToggleButtonIndicators(circleType.id);
-    });
-  }
-};
+  ChakraApp.UIController.prototype._ensureDocumentForCircleType = function(typeId) {
+    // NEW: Get documents for this circle type from list1 (default list)
+    var docs = ChakraApp.appState.getDocumentsForCircleTypeAndList(typeId, 'list1');
+    
+    if (docs.length === 0) {
+      // Find the circle type configuration
+      var circleTypeConfig = null;
+      if (ChakraApp.Config && ChakraApp.Config.circleTypes) {
+        circleTypeConfig = ChakraApp.Config.circleTypes.find(function(type) {
+          return type.id === typeId;
+        });
+      }
+      
+      // Create a new document for this circle type in list1
+      var docName = circleTypeConfig ? circleTypeConfig.name + " Document" : "New Document";
+      
+      var newDoc = ChakraApp.appState.addDocument({
+        name: docName,
+        circleType: typeId,
+        listType: 'list1' // Explicitly set to list1
+      });
+      
+      // NEW: Pass listType to selectDocument
+      ChakraApp.appState.selectDocument(newDoc.id, typeId, 'list1');
+    } else {
+      // NEW: Select the first document if not already selected for list1
+      var currentSelection = ChakraApp.appState.selectedDocumentIds[typeId];
+      if (!currentSelection || !currentSelection.list1) {
+        ChakraApp.appState.selectDocument(docs[0].id, typeId, 'list1');
+      }
+    }
+  };
+
+  ChakraApp.UIController.prototype._refreshAllDocumentToggleIndicators = function() {
+    var self = this;
+    
+    // Update visual indicators for all circle types
+    if (ChakraApp.Config && ChakraApp.Config.circleTypes) {
+      ChakraApp.Config.circleTypes.forEach(function(circleType) {
+        ChakraApp.appState._updateDocumentToggleButtonIndicators(circleType.id);
+      });
+    }
+  };
   
   /**
    * Clean up resources
@@ -1183,84 +1688,108 @@ ChakraApp.UIController.prototype._refreshAllDocumentToggleIndicators = function(
     this.eventSubscriptions = {};
   };
 
-ChakraApp.UIController.prototype._setupTemplateEvents = function() {
-  // Listen for template selection events
-  this.eventSubscriptions.templateSelected = ChakraApp.EventBus.subscribe(
-    'TEMPLATE_SELECTED',
-    this._handleTemplateSelected.bind(this)
-  );
-  
-  this.eventSubscriptions.templateDeselected = ChakraApp.EventBus.subscribe(
-    'TEMPLATE_DESELECTED',
-    this._handleTemplateDeselected.bind(this)
-  );
-};
+  ChakraApp.UIController.prototype._setupTemplateEvents = function() {
+    // Listen for template selection events
+    this.eventSubscriptions.templateSelected = ChakraApp.EventBus.subscribe(
+      'TEMPLATE_SELECTED',
+      this._handleTemplateSelected.bind(this)
+    );
+    
+    this.eventSubscriptions.templateDeselected = ChakraApp.EventBus.subscribe(
+      'TEMPLATE_DESELECTED',
+      this._handleTemplateDeselected.bind(this)
+    );
+  };
 
-/**
- * Handle template selection event
- * @private
- */
-ChakraApp.UIController.prototype._handleTemplateSelected = function(template) {
-  // Show the "USE THIS TEMPLATE" button
-  this._showUseTemplateButton(template);
-};
+  /**
+   * Handle template selection event
+   * @private
+   */
+  ChakraApp.UIController.prototype._handleTemplateSelected = function(template) {
+    // Show the "USE THIS TEMPLATE" button
+    this._showUseTemplateButton(template);
+  };
 
-/**
- * Handle template deselection event
- * @private
- */
-ChakraApp.UIController.prototype._handleTemplateDeselected = function() {
-  // Hide the "USE THIS TEMPLATE" button
-  this._hideUseTemplateButton();
-};
+  /**
+   * Handle template deselection event
+   * @private
+   */
+  ChakraApp.UIController.prototype._handleTemplateDeselected = function() {
+    // Hide the "USE THIS TEMPLATE" button
+    this._hideUseTemplateButton();
+  };
 
-/**
- * Show the "USE THIS TEMPLATE" button
- * @private
- */
-ChakraApp.UIController.prototype._showUseTemplateButton = function(template) {
-  var existingBtn = document.getElementById('use-template-btn');
-  if (existingBtn) {
-    existingBtn.remove();
-  }
+  /**
+   * Show the "USE THIS TEMPLATE" button
+   * @private
+   */
+  ChakraApp.UIController.prototype._showUseTemplateButton = function(template) {
+    var existingBtn = document.getElementById('use-template-btn');
+    if (existingBtn) {
+      existingBtn.remove();
+    }
 
-  var useTemplateBtn = document.createElement('button');
-  useTemplateBtn.id = 'use-template-btn';
-  useTemplateBtn.className = 'use-template-btn visible';
-  useTemplateBtn.textContent = 'USE THIS TEMPLATE';
-  
-  var self = this;
-  useTemplateBtn.addEventListener('click', function() {
-    self._useTemplate(template);
-  });
-  
-  this.leftPanel.appendChild(useTemplateBtn);
-};
+    var useTemplateBtn = document.createElement('button');
+    useTemplateBtn.id = 'use-template-btn';
+    useTemplateBtn.className = 'use-template-btn visible';
+    useTemplateBtn.textContent = 'USE THIS TEMPLATE';
+    
+    var self = this;
+    useTemplateBtn.addEventListener('click', function() {
+      self._useTemplate(template);
+    });
+    
+    // FIXED: Make sure we have a valid left panel to append to
+    var leftPanel = this.leftPanel;
+    if (leftPanel) {
+      leftPanel.appendChild(useTemplateBtn);
+    }
+  };
 
-/**
- * Hide the "USE THIS TEMPLATE" button
- * @private
- */
-ChakraApp.UIController.prototype._hideUseTemplateButton = function() {
-  var useTemplateBtn = document.getElementById('use-template-btn');
-  if (useTemplateBtn) {
-    useTemplateBtn.remove();
-  }
-};
+  ChakraApp.UIController.prototype._createCircleTypeHeader = function(circleType) {
+    var header = document.createElement('h3');
+    header.textContent = circleType.name;
+    header.style.position = 'relative';
+    header.style.margin = '0';
+    header.style.padding = '0';
+    header.style.top = '0';
+    header.style.cursor = 'pointer';
+    header.style.userSelect = 'none';
+    header.title = 'Click to toggle visibility for all ' + circleType.name + ' circles';
+    header.dataset.circleType = circleType.id;
+    
+    var self = this;
+    header.addEventListener('click', function(e) {
+      e.stopPropagation();
+      ChakraApp.appState.toggleCircleTypeVisibility(circleType.id);
+    });
+    
+    return header;
+  };
 
-/**
- * Use a template to create a new document
- * @private
- */
-ChakraApp.UIController.prototype._useTemplate = function(template) {
-  if (!ChakraApp.app.controllers.template) {
-    console.error('Template controller not available');
-    return;
-  }
-  
-  // Use the template controller to create a document from the template
-  ChakraApp.app.controllers.template.useTemplate(template.id);
-};
+  /**
+   * Hide the "USE THIS TEMPLATE" button
+   * @private
+   */
+  ChakraApp.UIController.prototype._hideUseTemplateButton = function() {
+    var useTemplateBtn = document.getElementById('use-template-btn');
+    if (useTemplateBtn) {
+      useTemplateBtn.remove();
+    }
+  };
 
+  /**
+   * Use a template to create a new document
+   * @private
+   */
+  ChakraApp.UIController.prototype._useTemplate = function(template) {
+    if (!ChakraApp.app.controllers.template) {
+      console.error('Template controller not available');
+      return;
+    }
+    
+    // Use the template controller to create a document from the template
+    ChakraApp.app.controllers.template.useTemplate(template.id);
+  };
   
 })(window.ChakraApp = window.ChakraApp || {});

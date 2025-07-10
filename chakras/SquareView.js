@@ -1,5 +1,5 @@
 // src/views/SquareView.js
-// Consolidated Square View implementation
+// Enhanced with CTRL-click individual multi-selection
 
 (function(ChakraApp) {
   /**
@@ -26,189 +26,195 @@
   ChakraApp.SquareView.prototype.constructor = ChakraApp.SquareView;
 
   ChakraApp.SquareView.prototype._createIndicatorElement = function() {
-  if (!this.viewModel.indicator) return null;
-  
-  // Find the emoji for this indicator
-  var indicatorConfig = null;
-  ChakraApp.Config.indicatorEmojis.forEach(function(config) {
-    if (config.id === this.viewModel.indicator) {
-      indicatorConfig = config;
-    }
-  }, this);
-  
-  if (!indicatorConfig) return null;
-  
-  // Create indicator element
-  var indicator = this._createElement('div', {
-    className: 'square-indicator',
-    textContent: indicatorConfig.emoji,
-    style: {
-      position: 'absolute',
-      top: '-18px',
-      right: '-18px',
-      fontSize: '22px',
-      zIndex: '10',
-      backgroundColor: 'rgba(0, 0, 0, 0.7)',
-      borderRadius: '50%',
-      width: '28px',
-      height: '28px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      pointerEvents: 'none'
-    }
-  });
-  
-  return indicator;
-};
+    if (!this.viewModel.indicator) return null;
+    
+    // Find the emoji for this indicator
+    var indicatorConfig = null;
+    ChakraApp.Config.indicatorEmojis.forEach(function(config) {
+      if (config.id === this.viewModel.indicator) {
+        indicatorConfig = config;
+      }
+    }, this);
+    
+    if (!indicatorConfig) return null;
+    
+    // Create indicator element
+    var indicator = this._createElement('div', {
+      className: 'square-indicator',
+      textContent: indicatorConfig.emoji,
+      style: {
+        position: 'absolute',
+        top: '-18px',
+        right: '-18px',
+        fontSize: '22px',
+        zIndex: '10',
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        borderRadius: '50%',
+        width: '28px',
+        height: '28px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        pointerEvents: 'none'
+      }
+    });
+    
+    return indicator;
+  };
   
   // Render method
-ChakraApp.SquareView.prototype.render = function() {
-  // Create main square element
-  this.element = this._createElement('div', {
-    className: 'square',
-    dataset: { 
-      id: this.viewModel.id,
-      circleId: this.viewModel.circleId
-    },
-    style: {
-      width: this.viewModel.size + 'px',
-      height: this.viewModel.size + 'px',
-      left: this.viewModel.x + 'px',
-      top: this.viewModel.y + 'px',
-      backgroundColor: this.viewModel.color,
-      display: this.viewModel.isVisible ? 'flex' : 'none',
-      filter: this.viewModel.isBold ? 'brightness(1.4)' : 'none'
-    }
-  });
-
-  // Add connection radius indicator
-  var maxLineLength = ChakraApp.Config.connections.maxLineLength;
-  this.radiusIndicator = this._createElement('div', {
-    className: 'connection-radius-indicator',
-    style: {
-      width: (maxLineLength * 2) + 'px',
-      height: (maxLineLength * 2) + 'px'
-    }
-  });
-  this.element.appendChild(this.radiusIndicator);
-
-  // Add attribute emoji if it exists
-  if (this.viewModel.emoji) {
-    var squareContent = this._createElement('div', {
-      className: 'square-content',
-      textContent: this.viewModel.emoji
+  ChakraApp.SquareView.prototype.render = function() {
+    // Create main square element
+    this.element = this._createElement('div', {
+      className: 'square',
+      dataset: { 
+        id: this.viewModel.id,
+        circleId: this.viewModel.circleId
+      },
+      style: {
+        width: this.viewModel.size + 'px',
+        height: this.viewModel.size + 'px',
+        left: this.viewModel.x + 'px',
+        top: this.viewModel.y + 'px',
+        backgroundColor: this.viewModel.color,
+        display: this.viewModel.isVisible ? 'flex' : 'none',
+        filter: this.viewModel.isBold ? 'brightness(1.4)' : 'none'
+      }
     });
-    if (this.viewModel.model.attribute == 'bulbOff') {
-	    squareContent.style.filter = 'grayscale(1) brightness(0.5)';
+
+    // Add connection radius indicator
+    var maxLineLength = ChakraApp.Config.connections.maxLineLength;
+    this.radiusIndicator = this._createElement('div', {
+      className: 'connection-radius-indicator',
+      style: {
+        width: (maxLineLength * 2) + 'px',
+        height: (maxLineLength * 2) + 'px'
+      }
+    });
+    this.element.appendChild(this.radiusIndicator);
+
+    // Add attribute emoji if it exists
+    if (this.viewModel.emoji) {
+      var squareContent = this._createElement('div', {
+        className: 'square-content',
+        textContent: this.viewModel.emoji
+      });
+      var attributeInfo = ChakraApp.attributeController.getAttributeInfo(this.viewModel.model.attribute);
+      if (attributeInfo && attributeInfo.emojiCss) {
+	      squareContent.style.filter = attributeInfo.emojiCss;
+      }
+      this.element.appendChild(squareContent);
     }
-    this.element.appendChild(squareContent);
-  }
 
-  // Create name element
-  this.nameElement = this._createElement('div', {
-    className: 'item-name',
-    contentEditable: true,
-    textContent: this.viewModel.name,
-    style: {
-      fontWeight: this.viewModel.isBold ? 'bold' : 'normal',
+    // Create name element
+    this.nameElement = this._createElement('div', {
+      className: 'item-name',
+      contentEditable: true,
+      textContent: this.viewModel.name,
+      style: {
+        fontWeight: this.viewModel.isBold ? 'bold' : 'normal',
+      }
+    });
+    this.element.appendChild(this.nameElement);
+
+    // Create and add indicator element if it exists
+    this.indicatorElement = this._createIndicatorElement();
+    if (this.indicatorElement) {
+      this.element.appendChild(this.indicatorElement);
     }
-  });
-  this.element.appendChild(this.nameElement);
 
-  // Create and add indicator element if it exists
-  this.indicatorElement = this._createIndicatorElement();
-  if (this.indicatorElement) {
-    this.element.appendChild(this.indicatorElement);
-  }
+    // Apply indicator border class
+    this._updateIndicatorBorder();
 
-  // Apply indicator border class
-  this._updateIndicatorBorder();
+    // Apply selection state
+    if (this.viewModel.isSelected) {
+      this.element.classList.add('selected');
+    }
 
-  // Apply selection state
-  if (this.viewModel.isSelected) {
-    this.element.classList.add('selected');
-  }
+    if (this.viewModel.disabled) {
+      this.element.classList.add('disabled');
+    }
 
-  if (this.viewModel.disabled) {
-  this.element.classList.add('disabled');
-}
-
-  // Add to parent element
-  this.parentElement.appendChild(this.element);
-};
+    // Add to parent element
+    this.parentElement.appendChild(this.element);
+  };
   
   // Update view based on model changes
-ChakraApp.SquareView.prototype.update = function() {
-  // Update position
-  this.element.style.left = this.viewModel.x + 'px';
-  this.element.style.top = this.viewModel.y + 'px';
-  
-  // Update color
-  this.element.style.backgroundColor = this.viewModel.color;
-  
-  // Update attribute emoji
-  var existingEmoji = this.element.querySelector('.square-content');
-  if (existingEmoji) {
-    this.element.removeChild(existingEmoji);
-  }
-  
-  if (this.viewModel.emoji) {
-    var squareContent = this._createElement('div', {
-      className: 'square-content',
-      textContent: this.viewModel.emoji
-    });
-    this.element.appendChild(squareContent);
-  }
-  
-  // Update name
-  this.nameElement.textContent = this.viewModel.name;
-  
-  // Update bold state
-  if (this.viewModel.isBold) {
-    this.nameElement.style.fontWeight = 'bold';
-    this.element.style.filter = 'brightness(1.4)';
-  } else {
-    this.nameElement.style.fontWeight = 'normal';
-    this.element.style.filter = 'none';
-  }
+  ChakraApp.SquareView.prototype.update = function() {
+    // Update position
+    this.element.style.left = this.viewModel.x + 'px';
+    this.element.style.top = this.viewModel.y + 'px';
+    
+    // Update color
+    this.element.style.backgroundColor = this.viewModel.color;
+    
+    // Update attribute emoji
+    var existingEmoji = this.element.querySelector('.square-content');
+    if (existingEmoji) {
+      this.element.removeChild(existingEmoji);
+    }
+    
+    if (this.viewModel.emoji) {
+	    var squareContent = this._createElement('div', {
+		    className: 'square-content',
+		    textContent: this.viewModel.emoji
+	    });
 
-  // Update indicator
-  this._updateIndicator();
-  this._updateIndicatorBorder();
+	    // Apply emoji CSS if defined in attributeInfo
+	    var attributeInfo = ChakraApp.attributeController.getAttributeInfo(this.viewModel.model.attribute);
+	    if (attributeInfo && attributeInfo.emojiCss) {
+		    squareContent.style.filter = attributeInfo.emojiCss;
+	    }
 
-  this.element.classList.toggle('disabled', this.viewModel.disabled);
-};
+	    this.element.appendChild(squareContent);
+    }
+    
+    // Update name
+    this.nameElement.textContent = this.viewModel.name;
+    
+    // Update bold state
+    if (this.viewModel.isBold) {
+      this.nameElement.style.fontWeight = 'bold';
+      this.element.style.filter = 'brightness(1.4)';
+    } else {
+      this.nameElement.style.fontWeight = 'normal';
+      this.element.style.filter = 'none';
+    }
 
-ChakraApp.SquareView.prototype._updateIndicator = function() {
-  // Remove existing indicator if it exists
-  if (this.indicatorElement) {
-    this.element.removeChild(this.indicatorElement);
-    this.indicatorElement = null;
-  }
-  
-  // Create new indicator if needed
-  this.indicatorElement = this._createIndicatorElement();
-  if (this.indicatorElement) {
-    this.element.appendChild(this.indicatorElement);
-  }
-  
-  // Update the border class
-  this._updateIndicatorBorder();
-};
+    // Update indicator
+    this._updateIndicator();
+    this._updateIndicatorBorder();
 
-ChakraApp.SquareView.prototype._updateIndicatorBorder = function() {
-  // Remove all existing indicator border classes
-  this.element.classList.remove('indicator-good', 'indicator-bad', 'indicator-start', 'indicator-finish', 'indicator-done', 'indicator-important');
-  
-  // Add the appropriate border class based on current indicator
-  if (this.viewModel.indicator) {
-    this.element.classList.add('indicator-' + this.viewModel.indicator);
-  }
-};
+    this.element.classList.toggle('disabled', this.viewModel.disabled);
+  };
 
+  ChakraApp.SquareView.prototype._updateIndicator = function() {
+    // Remove existing indicator if it exists
+    if (this.indicatorElement) {
+      this.element.removeChild(this.indicatorElement);
+      this.indicatorElement = null;
+    }
+    
+    // Create new indicator if needed
+    this.indicatorElement = this._createIndicatorElement();
+    if (this.indicatorElement) {
+      this.element.appendChild(this.indicatorElement);
+    }
+    
+    // Update the border class
+    this._updateIndicatorBorder();
+  };
 
-  
+  ChakraApp.SquareView.prototype._updateIndicatorBorder = function() {
+    // Remove all existing indicator border classes
+    this.element.classList.remove('indicator-good', 'indicator-bad', 'indicator-start', 'indicator-finish', 'indicator-done', 'indicator-important');
+    
+    // Add the appropriate border class based on current indicator
+    if (this.viewModel.indicator) {
+      this.element.classList.add('indicator-' + this.viewModel.indicator);
+    }
+  };
+
   // Set up event listeners
   ChakraApp.SquareView.prototype._setupEventListeners = function() {
     var self = this;
@@ -219,27 +225,15 @@ ChakraApp.SquareView.prototype._updateIndicatorBorder = function() {
 
       // Only select if we weren't just dragging
       if (!window.wasDragged) {
-        if (e.shiftKey) {
-          // Multi-select mode - select this square and all connected squares
-          if (ChakraApp.appState.selectedSquareId && 
-              ChakraApp.appState.selectedSquareId !== self.viewModel.id) {
-            // Deselect previous square without clearing multi-selection state
-            var previousSquare = ChakraApp.appState.getSquare(ChakraApp.appState.selectedSquareId);
-            if (previousSquare) {
-              previousSquare.deselect();
-              ChakraApp.appState.selectedSquareId = null;
-            }
-          }
-          
-          // Select this square and its connections
-          ChakraApp.MultiSelectionManager.selectWithConnected(self.viewModel.id);
-          self.viewModel.select();
+        if (e.ctrlKey || e.metaKey) {
+          // CTRL-click: Individual multi-selection
+          self._handleCtrlClick(e);
+        } else if (e.shiftKey) {
+          // Shift-click: Connected multi-selection
+          self._handleShiftClick(e);
         } else {
-          // Normal selection - clear any existing multi-selection
-          if (ChakraApp.MultiSelectionManager.hasSelection()) {
-            ChakraApp.MultiSelectionManager.clearSelection();
-          }
-          self.viewModel.select();
+          // Normal click: Single selection
+          self._handleNormalClick(e);
         }
       }
     });
@@ -264,38 +258,69 @@ ChakraApp.SquareView.prototype._updateIndicatorBorder = function() {
     this._addDragFunctionality();
   };
   
-  // Add drag functionality
-ChakraApp.SquareView.prototype._addDragFunctionality = function() {
-  var self = this;
-  
-  // Mark view model as square for drag handler
-  this.viewModel.isSquare = true;
-  
-  // Set up drag configuration
-  var dragConfig = {
-    viewModel: this.viewModel,
-    parentElement: this.parentElement,
-    dragTargets: [this.element], // Only allow dragging from the main element
-    enableAttributeDrop: !this.viewModel.isMe, // Enable attribute drop for non-Me squares
-    enableGroupDragging: true, // Enable multi-selection dragging
-    
-    onDragStart: function(dragState) {
-      // Store original position for potential attribute drop reset
-      dragState.originalX = self.viewModel.x;
-      dragState.originalY = self.viewModel.y;
-    },
-    
-    onDragEnd: function(dragState) {
-      // Any additional cleanup specific to squares
-    }
+  /**
+   * Handle CTRL-click for individual multi-selection
+   * @private
+   * @param {Event} e - Click event
+   */
+  ChakraApp.SquareView.prototype._handleCtrlClick = function(e) {
+    // Simply toggle this square in the multi-selection
+    // No more app state primary selection interference!
+    ChakraApp.MultiSelectionManager.toggleIndividualSelection(this.viewModel.id);
   };
   
-  // Add drag functionality using the unified system
-  this.dragState = ChakraApp.DragHandler.addDragFunctionality(this.element, dragConfig);
+  /**
+   * Handle Shift-click for connected multi-selection
+   * @private
+   * @param {Event} e - Click event
+   */
+  ChakraApp.SquareView.prototype._handleShiftClick = function(e) {
+    // Select this square and its connections
+    ChakraApp.MultiSelectionManager.selectWithConnected(this.viewModel.id);
+  };
   
-  // Store cleanup function
-  this._addHandler(function() {
-    ChakraApp.DragHandler.removeDragFunctionality(self.dragState);
-  });
-};
+  /**
+   * Handle normal click for single selection
+   * @private
+   * @param {Event} e - Click event
+   */
+  ChakraApp.SquareView.prototype._handleNormalClick = function(e) {
+    // Use multi-selection system for single selection too
+    ChakraApp.MultiSelectionManager.selectSingle(this.viewModel.id);
+  };
+  
+  // Add drag functionality
+  ChakraApp.SquareView.prototype._addDragFunctionality = function() {
+    var self = this;
+    
+    // Mark view model as square for drag handler
+    this.viewModel.isSquare = true;
+    
+    // Set up drag configuration
+    var dragConfig = {
+      viewModel: this.viewModel,
+      parentElement: this.parentElement,
+      dragTargets: [this.element], // Only allow dragging from the main element
+      enableAttributeDrop: !this.viewModel.isMe, // Enable attribute drop for non-Me squares
+      enableGroupDragging: true, // Enable multi-selection dragging
+      
+      onDragStart: function(dragState) {
+        // Store original position for potential attribute drop reset
+        dragState.originalX = self.viewModel.x;
+        dragState.originalY = self.viewModel.y;
+      },
+      
+      onDragEnd: function(dragState) {
+        // Any additional cleanup specific to squares
+      }
+    };
+    
+    // Add drag functionality using the unified system
+    this.dragState = ChakraApp.DragHandler.addDragFunctionality(this.element, dragConfig);
+    
+    // Store cleanup function
+    this._addHandler(function() {
+      ChakraApp.DragHandler.removeDragFunctionality(self.dragState);
+    });
+  };
 })(window.ChakraApp = window.ChakraApp || {});

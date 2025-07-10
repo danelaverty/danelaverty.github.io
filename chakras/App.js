@@ -1,8 +1,11 @@
+// Enhanced App.js - ResizeController Integration
 (function(ChakraApp) {
   ChakraApp.App = function() {
     this.controllers = null;
     this.keyboardController = null;
     this.viewManager = null;
+    this.leftPanelManager = null;
+    this.resizeController = null; // NEW: ResizeController
     this.initialized = false;
   };
   
@@ -10,7 +13,6 @@
     if (this.initialized) return;
     
     this.waitForDOMReady();
-    ChakraApp.app.viewManager._updateCircleConnectionViews();
   };
   
   ChakraApp.App.prototype.waitForDOMReady = function() {
@@ -24,127 +26,234 @@
       this.initializeAppComponents();
     }
   };
+
+  ChakraApp.App.prototype.initializeRectangleSelection = function() {
+    var centerPanel = document.getElementById('center-panel');
+    if (centerPanel && ChakraApp.RectangleSelectionManager) {
+      ChakraApp.RectangleSelectionManager.init(centerPanel);
+    }
+  };
   
+  // FIXED: Added ResizeController initialization
   ChakraApp.App.prototype.initializeAppComponents = function() {
-  
+    
     this.initializeOverlappingGroups();
     this.loadPanelState();
     this.initializeConceptPanels();
-    this.createViewManager();
-    this.createControllers();
-    this.initializeViewManager();
-    this.createPanelToggleButtons();
-    this.initializeOverlappingSquares();
+    
     this.loadOrCreateData();
+    
+    this.initializeLeftPanelManager();
+    this.initializeResizeController(); // NEW: Initialize resize controller after left panel manager
+    
+    this.createAttributeController();
+    this.createControllers();
+    
+    this.createViewManager();
+    this.initializeViewManager();
+    
+    this.createPanelToggleButtons();
+    
+    this.initializeOverlappingSquares();
+    this.initializeRectangleSelection();
+    
     this.renderViews();
+    
+    if (ChakraApp.app.viewManager && ChakraApp.app.viewManager._updateCircleConnectionViews) {
+      ChakraApp.app.viewManager._updateCircleConnectionViews();
+    }
+    
     this.markAsInitialized();
   };
 
-  ChakraApp.App.prototype.fixCircleTypes = function() {
-  var fixApplied = false;
-  
-  // First make sure the appropriate types exist in Config
-  this._ensureCircleTypesConfigured();
-  
-  // Update existing circles based on color or other attributes
-  ChakraApp.appState.circles.forEach(function(circle) {
-    var originalType = circle.circleType;
-    var newType = null;
+  ChakraApp.App.prototype.initializeLeftPanelManager = function() {
+    this.leftPanelManager = new ChakraApp.LeftPanelManager();
+    this.leftPanelManager.init();
     
-    // Is it already classified?
-    if (circle.circleType === 'gem' || circle.circleType === 'triangle' || 
-        circle.circleType === 'standard' || circle.circleType === 'hexagon') {  // Add hexagon
-      return; // Already has a valid type
-    }
+    var anyLeftPanel = this.findAnyLeftPanel();
+    var anyZoomContainer = this.findAnyLeftZoomContainer();
     
-    // Set type based on color if not already set
-    if (!circle.circleType || circle.circleType === 'standard') {
-      if (circle.color === '#4a6fc9') {
-        newType = 'gem';
-      } else if (circle.color === '#88B66d') {
-        newType = 'triangle';
-      } else if (circle.color === '#9932CC') {  // Add hexagon color check
-        newType = 'hexagon';
+  };
+
+  // NEW: Initialize ResizeController
+  ChakraApp.App.prototype.initializeResizeController = function() {
+    this.resizeController = new ChakraApp.ResizeController();
+    this.resizeController.init();
+    
+    // Connect ResizeController with LeftPanelManager
+    this._connectResizeControllers();
+  };
+
+  // NEW: Connect resize and panel controllers
+  ChakraApp.App.prototype._connectResizeControllers = function() {
+    var self = this;
+    
+    // Subscribe to resize events to update panel widths
+    ChakraApp.EventBus.subscribe('PANEL_WIDTH_CHANGED', function(data) {
+      if (self.leftPanelManager && data.newWidth) {
+        self.leftPanelManager.updatePanelWidths(data.newWidth);
+      }
+    });
+    
+    // When panels are added/removed, update the resize controller
+    ChakraApp.EventBus.subscribe('LEFT_PANEL_ADDED', function() {
+      if (self.resizeController) {
+        // Small delay to ensure DOM is updated
+        setTimeout(function() {
+          self.resizeController._updateContainerForPanelChange('add');
+        }, 50);
+      }
+    });
+    
+    ChakraApp.EventBus.subscribe('LEFT_PANEL_REMOVED', function() {
+      if (self.resizeController) {
+        setTimeout(function() {
+          self.resizeController._updateContainerForPanelChange('remove');
+        }, 50);
+      }
+    });
+    
+    ChakraApp.EventBus.subscribe('LEFT_PANEL_MINIMIZED', function() {
+      if (self.resizeController) {
+        setTimeout(function() {
+          self.resizeController._updateContainerForPanelChange('minimize');
+        }, 50);
+      }
+    });
+    
+    ChakraApp.EventBus.subscribe('LEFT_PANEL_RESTORED', function() {
+      if (self.resizeController) {
+        setTimeout(function() {
+          self.resizeController._updateContainerForPanelChange('restore');
+        }, 50);
+      }
+    });
+  };
+
+  ChakraApp.App.prototype.findAnyLeftPanel = function() {
+    var selectors = [
+      '[id^="left-panel-"]',
+      '.left-panel',
+      '#left-panel'
+    ];
+    
+    for (var i = 0; i < selectors.length; i++) {
+      var panel = document.querySelector(selectors[i]);
+      if (panel) {
+        return panel;
       }
     }
     
-    // Apply the new type if determined
-    if (newType && newType !== circle.circleType) {
-      circle.circleType = newType;
-      fixApplied = true;
-      console.log("Fixed circle", circle.id, "to type '" + newType + "'");
-    }
-  });
-  
-  if (fixApplied) {
-    // Save the fixed state
-    ChakraApp.appState.saveToStorageNow();
-    console.log("Saved fixed circle types to storage");
-  }
-  
-  return fixApplied;
-};
+    return null;
+  };
 
-ChakraApp.App.prototype._ensureCircleTypesConfigured = function() {
-  // Make sure we have Config.circleTypes defined
-  if (!ChakraApp.Config.circleTypes) {
-    ChakraApp.Config.circleTypes = [];
-  }
-  
-  // Check if we have a gem type defined
-  var gemTypeExists = ChakraApp.Config.circleTypes.some(function(type) {
-    return type.id === 'gem' || (type.shape === 'gem');
-  });
-  
-  if (!gemTypeExists) {
-    var gemCircleType = {
-      id: 'gem',
-      name: 'Themes',
-      description: 'Themes & Values',
-      shape: 'gem',
-      color: '#4a6fc9',
-      position: 3
-    };
-    ChakraApp.Config.circleTypes.push(gemCircleType);
-    console.log("Added missing gem circle type configuration");
-  }
-  
-  // Check if we have a star type defined
-  var starTypeExists = ChakraApp.Config.circleTypes.some(function(type) {
-    return type.id === 'star' || (type.shape === 'star');
-  });
-  
-  if (!starTypeExists) {
-    var starCircleType = {
-      id: 'star',
-      name: 'Moves',
-      description: 'Actions & Strategies',
-      shape: 'star',
-      color: '#FF9933',
-      position: 4
-    };
-    ChakraApp.Config.circleTypes.push(starCircleType);
-    console.log("Added missing star circle type configuration");
-  }
-  
-  // Check if we have a hexagon type defined (ADD THIS)
-  var hexagonTypeExists = ChakraApp.Config.circleTypes.some(function(type) {
-    return type.id === 'hexagon' || (type.shape === 'hexagon');
-  });
-  
-  if (!hexagonTypeExists) {
-    var hexagonCircleType = {
-      id: 'hexagon',
-      name: 'Complexes',
-      description: 'Complex Systems & Patterns',
-      shape: 'hexagon',
-      color: '#9932CC',
-      position: 5
-    };
-    ChakraApp.Config.circleTypes.push(hexagonCircleType);
-    console.log("Added missing hexagon circle type configuration");
-  }
-};
+  ChakraApp.App.prototype.findAnyLeftZoomContainer = function() {
+    var selectors = [
+      '[id^="zoom-container-left-"]',
+      '.left-panel .zoom-container',
+      '#left-panel .zoom-container'
+    ];
+    
+    for (var i = 0; i < selectors.length; i++) {
+      var container = document.querySelector(selectors[i]);
+      if (container) {
+        return container;
+      }
+    }
+    
+    return null;
+  };
+
+  ChakraApp.App.prototype.fixCircleTypes = function() {
+    var fixApplied = false;
+    
+    this._ensureCircleTypesConfigured();
+    
+    ChakraApp.appState.circles.forEach(function(circle) {
+      var originalType = circle.circleType;
+      var newType = null;
+      
+      if (circle.circleType === 'gem' || circle.circleType === 'triangle' || 
+          circle.circleType === 'standard' || circle.circleType === 'hexagon') {
+        return;
+      }
+      
+      if (!circle.circleType || circle.circleType === 'standard') {
+        if (circle.color === '#4a6fc9') {
+          newType = 'gem';
+        } else if (circle.color === '#88B66d') {
+          newType = 'triangle';
+        } else if (circle.color === '#9932CC') {
+          newType = 'hexagon';
+        }
+      }
+      
+      if (newType && newType !== circle.circleType) {
+        circle.circleType = newType;
+        fixApplied = true;
+      }
+    });
+    
+    if (fixApplied) {
+      ChakraApp.appState.saveToStorageNow();
+    }
+    
+    return fixApplied;
+  };
+
+  ChakraApp.App.prototype._ensureCircleTypesConfigured = function() {
+    if (!ChakraApp.Config.circleTypes) {
+      ChakraApp.Config.circleTypes = [];
+    }
+    
+    var gemTypeExists = ChakraApp.Config.circleTypes.some(function(type) {
+      return type.id === 'gem' || (type.shape === 'gem');
+    });
+    
+    if (!gemTypeExists) {
+      var gemCircleType = {
+        id: 'gem',
+        name: 'Themes',
+        description: 'Themes & Values',
+        shape: 'gem',
+        color: '#4a6fc9',
+        position: 3
+      };
+      ChakraApp.Config.circleTypes.push(gemCircleType);
+    }
+    
+    var starTypeExists = ChakraApp.Config.circleTypes.some(function(type) {
+      return type.id === 'star' || (type.shape === 'star');
+    });
+    
+    if (!starTypeExists) {
+      var starCircleType = {
+        id: 'star',
+        name: 'Moves',
+        description: 'Actions & Strategies',
+        shape: 'star',
+        color: '#FF9933',
+        position: 4
+      };
+      ChakraApp.Config.circleTypes.push(starCircleType);
+    }
+    
+    var hexagonTypeExists = ChakraApp.Config.circleTypes.some(function(type) {
+      return type.id === 'hexagon' || (type.shape === 'hexagon');
+    });
+    
+    if (!hexagonTypeExists) {
+      var hexagonCircleType = {
+        id: 'hexagon',
+        name: 'Complexes',
+        description: 'Complex Systems & Patterns',
+        shape: 'hexagon',
+        color: '#9932CC',
+        position: 5
+      };
+      ChakraApp.Config.circleTypes.push(hexagonCircleType);
+    }
+  };
   
   ChakraApp.App.prototype.initializeOverlappingGroups = function() {
     ChakraApp.overlappingGroups = [];
@@ -169,14 +278,20 @@ ChakraApp.App.prototype._ensureCircleTypesConfigured = function() {
   ChakraApp.App.prototype.createControllers = function() {
     this.controllers = ChakraApp.ControllerFactory.createControllers();
     this.controllers.zoom = new ChakraApp.ZoomController();
-  this.controllers.zoom.init();
+    this.controllers.zoom.init();
     this.createKeyboardController();
-    
   };
   
   ChakraApp.App.prototype.createKeyboardController = function() {
     this.keyboardController = new ChakraApp.KeyboardController();
     this.keyboardController.init();
+  };
+
+  ChakraApp.App.prototype.createAttributeController = function() {
+    if (!ChakraApp.attributeController) {
+      ChakraApp.attributeController = new ChakraApp.AttributeController();
+      ChakraApp.attributeController.init();
+    }
   };
   
   ChakraApp.App.prototype.initializeViewManager = function() {
@@ -185,7 +300,6 @@ ChakraApp.App.prototype._ensureCircleTypesConfigured = function() {
   
   ChakraApp.App.prototype.createPanelToggleButtons = function() {
     this.createMainPanelToggleButtons();
-    // Commented out in original: this.createConceptPanelToggleButtons();
   };
   
   ChakraApp.App.prototype.createMainPanelToggleButtons = function() {
@@ -204,54 +318,30 @@ ChakraApp.App.prototype._ensureCircleTypesConfigured = function() {
     ChakraApp.OverlappingSquaresManager.init();
   };
   
-ChakraApp.App.prototype.loadOrCreateData = function() {
-  var dataLoaded = ChakraApp.appState.loadFromStorage();
+  ChakraApp.App.prototype.loadOrCreateData = function() {
+    var dataLoaded = ChakraApp.appState.loadFromStorage();
 
-  if (dataLoaded) {
-    // Clean up selectedDocumentIds to remove 'left' panel id and migrate to dual format
-    if (ChakraApp.appState.cleanupSelectedDocumentIds) {
-      ChakraApp.appState.cleanupSelectedDocumentIds();
+    if (dataLoaded) {
+      if (ChakraApp.appState.cleanupSelectedDocumentIds) {
+        ChakraApp.appState.cleanupSelectedDocumentIds();
+      }
+      
+      if (ChakraApp.appState._migrateSelectedDocumentIds) {
+        ChakraApp.appState._migrateSelectedDocumentIds();
+      }
+      
+      this.fixCircleTypes();
+      
+      if (ChakraApp.appState._migrateDocumentState) {
+        ChakraApp.appState._migrateDocumentState();
+      }
+      
+      if (ChakraApp.appState._migrateDocumentsToListType) {
+        ChakraApp.appState._migrateDocumentsToListType();
+      }
+    } else {
     }
-    
-    // NEW: Migrate selectedDocumentIds to dual-list format
-    if (ChakraApp.appState._migrateSelectedDocumentIds) {
-      ChakraApp.appState._migrateSelectedDocumentIds();
-    }
-    
-    // Fix any circles with incorrect types
-    this.fixCircleTypes();
-    
-    // Migrate document state
-    if (ChakraApp.appState._migrateDocumentState) {
-      ChakraApp.appState._migrateDocumentState();
-    }
-    
-    // NEW: Migrate documents to have listType
-    if (ChakraApp.appState._migrateDocumentsToListType) {
-      ChakraApp.appState._migrateDocumentsToListType();
-    }
-  } else {
-    this.createSampleData();
-  }
-};
-  
-
-  ChakraApp.App.prototype.createSampleData = function() {
-    var welcomeCircle = this.createWelcomeCircle();
-    this.saveSampleData();
   };
-  
-  
-// Fixed to ensure circles are created with appropriate types
-ChakraApp.App.prototype.createWelcomeCircle = function() {
-  return ChakraApp.appState.addCircle({
-    x: 200,
-    y: 200,
-    color: '#4B0082',
-    name: 'Welcome',
-    circleType: 'standard' // Explicitly set type
-  });
-};
   
   ChakraApp.App.prototype.saveSampleData = function() {
     ChakraApp.appState.saveToStorage();
@@ -263,13 +353,31 @@ ChakraApp.App.prototype.createWelcomeCircle = function() {
   
   ChakraApp.App.prototype.markAsInitialized = function() {
     this.initialized = true;
-    console.log('Application initialized');
+  };
+
+  ChakraApp.App.prototype.destroyRectangleSelection = function() {
+    if (ChakraApp.RectangleSelectionManager) {
+      ChakraApp.RectangleSelectionManager.destroy();
+    }
   };
   
   ChakraApp.App.prototype.destroy = function() {
+    if (this.leftPanelManager) {
+      this.leftPanelManager.destroy();
+      this.leftPanelManager = null;
+    }
+    
+    // NEW: Destroy ResizeController
+    if (this.resizeController) {
+      this.resizeController.destroy();
+      this.resizeController = null;
+    }
+    
     this.destroyControllers();
     this.destroyKeyboardController();
+    this.destroyAttributeController();
     this.destroyViewManager();
+    this.destroyRectangleSelection();
     this.cleanupEventBus();
     this.resetInitializationFlag();
   };
@@ -285,6 +393,13 @@ ChakraApp.App.prototype.createWelcomeCircle = function() {
     if (this.keyboardController) {
       this.keyboardController.destroy();
       this.keyboardController = null;
+    }
+  };
+
+  ChakraApp.App.prototype.destroyAttributeController = function() {
+    if (ChakraApp.attributeController) {
+      ChakraApp.attributeController.destroy();
+      ChakraApp.attributeController = null;
     }
   };
   
