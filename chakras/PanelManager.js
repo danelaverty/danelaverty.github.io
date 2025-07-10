@@ -385,7 +385,7 @@ ChakraApp.PanelController.prototype.initializeDocumentListVisibility = function(
   };
   
   ChakraApp.PanelController.prototype.addToggleButtonToDocument = function(button) {
-    document.body.appendChild(button);
+    //document.body.appendChild(button);
   };
   
   ChakraApp.PanelController.prototype.setupEventListeners = function() {

@@ -1,5 +1,5 @@
 // src/utils/DragHandler.js
-// Updated version with proper MultiSelectionManager integration
+// Updated version with Circle MultiSelectionManager integration
 
 (function(ChakraApp) {
   /**
@@ -151,9 +151,13 @@
       dragState.originalX = dragState.viewModel.x || 0;
       dragState.originalY = dragState.viewModel.y || 0;
       
-      // Check for group dragging (only for squares)
-      if (dragState.enableGroupDragging && dragState.viewModel.isSquare) {
-        dragState.isGroupDragging = this._shouldEnableGroupDragging(dragState);
+      // Check for group dragging
+      if (dragState.enableGroupDragging) {
+        if (dragState.viewModel.isSquare) {
+          dragState.isGroupDragging = this._shouldEnableSquareGroupDragging(dragState);
+        } else if (dragState.viewModel.isCircle) {
+          dragState.isGroupDragging = this._shouldEnableCircleGroupDragging(dragState);
+        }
       }
       
       // Call start callback
@@ -161,19 +165,33 @@
     },
     
     /**
-     * Determine if group dragging should be enabled
+     * Determine if group dragging should be enabled for squares
      * @private
      */
-    _shouldEnableGroupDragging: function(dragState) {
+    _shouldEnableSquareGroupDragging: function(dragState) {
       if (!ChakraApp.MultiSelectionManager || !ChakraApp.MultiSelectionManager.hasSelection()) {
         return false;
       }
       
       var squareId = dragState.viewModel.id;
       
-      // Check if this square is the primary selected square OR one of the multi-selected squares
-      return (squareId === ChakraApp.MultiSelectionManager.primarySquareId || 
-              ChakraApp.MultiSelectionManager.selectedSquareIds.includes(squareId));
+      // Check if this square is one of the multi-selected squares
+      return ChakraApp.MultiSelectionManager.isSquareSelected(squareId);
+    },
+    
+    /**
+     * Determine if group dragging should be enabled for circles
+     * @private
+     */
+    _shouldEnableCircleGroupDragging: function(dragState) {
+      if (!ChakraApp.CircleMultiSelectionManager || !ChakraApp.CircleMultiSelectionManager.hasSelection()) {
+        return false;
+      }
+      
+      var circleId = dragState.viewModel.id;
+      
+      // Check if this circle is one of the multi-selected circles
+      return ChakraApp.CircleMultiSelectionManager.isCircleSelected(circleId);
     },
     
     /**
@@ -225,68 +243,82 @@
      * @private
      */
     _performDrag: function(dragState, e) {
-      // Handle group dragging differently
-      if (dragState.isGroupDragging) {
-        this._handleGroupDrag(dragState, e);
-        return;
-      }
-      
-      // Calculate new position for individual dragging
-      var newPosition = this._calculateNewPosition(dragState, e);
-      
-      // Handle snapping if enabled
-      if (dragState.enableSnapping) {
-        newPosition = this._handleSnapping(dragState, newPosition);
-      }
-      
-      // Update position
-      dragState.updatePosition.call(dragState, newPosition.x, newPosition.y);
-      
-      // Handle special drag behaviors
-      if (dragState.enableAttributeDrop) {
-        this._handleAttributeBoxHover(dragState);
-      }
-      
-      // Handle real-time connection updates for circles
-      if (dragState.viewModel.isCircle) {
-        this._updateCircleConnectionsDuringDrag(dragState, newPosition.x, newPosition.y);
-      }
-      
-      // Call move callback
-      dragState.onDragMove(dragState, e, newPosition);
-    },
+  // Handle group dragging differently
+  if (dragState.isGroupDragging) {
+    this._handleGroupDrag(dragState, e);
+    return;
+  }
+  
+  // Calculate new position for individual dragging
+  var newPosition = this._calculateNewPosition(dragState, e);
+  
+  // Handle snapping if enabled
+  if (dragState.enableSnapping) {
+    newPosition = this._handleSnapping(dragState, newPosition);
+  }
+  
+  // Update position
+  dragState.updatePosition.call(dragState, newPosition.x, newPosition.y);
+  
+  // Handle special drag behaviors
+  if (dragState.enableAttributeDrop) {
+    this._handleAttributeBoxHover(dragState);
+  }
+  
+  // Handle real-time connection updates for circles
+  if (dragState.viewModel.isCircle) {
+    this._updateCircleConnectionsDuringDrag(dragState, newPosition.x, newPosition.y);
+  }
+  
+  // Call move callback
+  dragState.onDragMove(dragState, e, newPosition);
+},
     
     /**
      * Calculate new position within bounds
      * @private
      */
-    _calculateNewPosition: function(dragState, e) {
-      var containerRect = dragState.parentElement.getBoundingClientRect();
-      var elementWidth = dragState.element.clientWidth;
-      var elementHeight = dragState.element.clientHeight;
-      
-      // For circles and circle references, use mouse position relative to container
-      if (dragState.viewModel.isCircle || dragState.viewModel.isCircleReference) {
-        var x = Math.max(0, Math.min(containerRect.width, e.clientX - containerRect.left));
-        var y = Math.max(0, Math.min(containerRect.height, e.clientY - containerRect.top));
-        return { x: x, y: y };
-      }
-      
-      // For squares, calculate delta movement
-      var dx = e.clientX - dragState.startX;
-      var dy = e.clientY - dragState.startY;
-      
-      // Update start position for next calculation
-      dragState.startX = e.clientX;
-      dragState.startY = e.clientY;
-      
-      var newX = Math.max(0, Math.min(containerRect.width - elementWidth, 
-        dragState.viewModel.x + dx));
-      var newY = Math.max(0, Math.min(containerRect.height - elementHeight, 
-        dragState.viewModel.y + dy));
-      
-      return { x: newX, y: newY };
-    },
+	_calculateNewPosition: function(dragState, e) {
+  var containerRect = dragState.parentElement.getBoundingClientRect();
+  var elementWidth = dragState.element.clientWidth;
+  var elementHeight = dragState.element.clientHeight;
+  
+  // For circles and circle references, calculate delta movement like squares
+  if (dragState.viewModel.isCircle || dragState.viewModel.isCircleReference) {
+    // Calculate delta movement from last position
+    var dx = e.clientX - dragState.startX;
+    var dy = e.clientY - dragState.startY;
+    
+    // Update start position for next calculation
+    dragState.startX = e.clientX;
+    dragState.startY = e.clientY;
+    
+    // Get current position from element style
+    var currentX = parseFloat(dragState.element.style.left) || 0;
+    var currentY = parseFloat(dragState.element.style.top) || 0;
+    
+    // Calculate new position with bounds checking
+    var newX = Math.max(elementWidth/2, Math.min(containerRect.width - elementWidth/2, currentX + dx));
+    var newY = Math.max(elementHeight/2, Math.min(containerRect.height - elementHeight/2, currentY + dy));
+    
+    return { x: newX, y: newY };
+  }
+  
+  // For squares, calculate delta movement (original logic)
+  var dx = e.clientX - dragState.startX;
+  var dy = e.clientY - dragState.startY;
+  
+  // Update start position for next calculation
+  dragState.startX = e.clientX;
+  dragState.startY = e.clientY;
+  
+  var newX = Math.max(0, Math.min(containerRect.width - elementWidth, 
+    dragState.viewModel.x + dx));
+  var newY = Math.max(0, Math.min(containerRect.height - elementHeight, 
+    dragState.viewModel.y + dy));
+  
+  return { x: newX, y: newY };
+},
     
     /**
      * Handle snapping behavior
@@ -305,12 +337,10 @@
     },
     
     /**
-     * Handle group dragging for squares
+     * Handle group dragging for both squares and circles
      * @private
      */
     _handleGroupDrag: function(dragState, e) {
-      if (!ChakraApp.MultiSelectionManager) return;
-      
       // Calculate delta movement
       var dx = e.clientX - dragState.startX;
       var dy = e.clientY - dragState.startY;
@@ -319,13 +349,23 @@
       dragState.startX = e.clientX;
       dragState.startY = e.clientY;
       
-      // Use MultiSelectionManager to move all selected squares
-      ChakraApp.MultiSelectionManager.moveSelectedSquares(
-        dragState.viewModel,
-        dx,
-        dy,
-        dragState.parentElement
-      );
+      // Handle group dragging based on element type
+      if (dragState.viewModel.isSquare && ChakraApp.MultiSelectionManager) {
+        // Use MultiSelectionManager to move all selected squares
+        ChakraApp.MultiSelectionManager.moveSelectedSquares(
+          dragState.viewModel,
+          dx,
+          dy,
+          dragState.parentElement
+        );
+      } else if (dragState.viewModel.isCircle && ChakraApp.CircleMultiSelectionManager) {
+        // Use CircleMultiSelectionManager to move all selected circles
+        ChakraApp.CircleMultiSelectionManager.moveSelectedCircles(
+          dx,
+          dy,
+          dragState.parentElement
+        );
+      }
     },
     
     /**
@@ -489,7 +529,11 @@
       
       // Clean up group dragging
       if (dragState.isGroupDragging) {
-        ChakraApp.MultiSelectionManager.endGroupDragging();
+        if (dragState.viewModel.isSquare && ChakraApp.MultiSelectionManager) {
+          ChakraApp.MultiSelectionManager.endGroupDragging();
+        } else if (dragState.viewModel.isCircle && ChakraApp.CircleMultiSelectionManager) {
+          ChakraApp.CircleMultiSelectionManager.endGroupDragging();
+        }
         dragState.isGroupDragging = false;
       }
       

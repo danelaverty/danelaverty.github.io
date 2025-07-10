@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chakra Visualizer</title>
+    <title>Visualizer</title>
     <link rel="stylesheet" href="styles.css">
     
     <script src="config.js"></script>
@@ -15,15 +15,12 @@
     <script src="SimpleShapeRenderer.js"></script>
     <script src="StandardCircleRenderer.js"></script>
 
-    <!-- Load in dependency order -->
-    <!--script src="Observable.js"></script>
-    <script src="Base.js"></script-->
-    <!--script src="StateManager.js"></script-->
-
     <!-- Core configuration and utilities -->
     <script src="MultiSelectionManager.js"></script>
+    <script src="CircleMultiSelectionManager.js"></script>
     <script src="ClipboardManager.js"></script>
     <script src="OverlappingSquaresManager.js"></script>
+    <script src="RectangleSelectionManager.js"></script>
     
     <!-- Event system -->
     <script src="Events.js"></script>
@@ -57,6 +54,8 @@
     <script src="BaseController.js"></script>
     <script src="CircleReferencesController.js"></script>
     <script src="PanelManager.js"></script>
+    <script src="LeftPanelManager.js"></script>
+    <script src="ResizeController.js"></script> <!-- NEW: ResizeController -->
     <script src="ControllerFactory.js"></script>
     <script src="DialogController.js"></script>
     <script src="NotificationController.js"></script>
@@ -78,15 +77,12 @@
 <body>
     <!-- Main container for all panels -->
     <div id="main-container">
-        <!-- Left Panel -->
-        <div id="left-panel" class="circle-panel" data-panel-id="left">
-            <div id="zoom-container-left" class="zoom-container" data-panel-id="left">
-		    <object data="silhouette-filled-black.svg" class="silhouette-svg" id="silhouette-filled-black" type="image/svg+xml"></object>
-		    <object data="silhouette.svg" class="silhouette-svg" id="silhouette-outline" type="image/svg+xml"></object>
-		    <object data="silhouette-filled.svg" class="silhouette-svg" id="silhouette-filled" type="image/svg+xml"></object>
-                <!-- This will contain the background image and chakra circles for left panel -->
-            </div>
+        <!-- Left Container - will be populated by LeftPanelManager -->
+        <div id="left-container">
+            <!-- All left panels will be created dynamically -->
         </div>
+        
+        <!-- Resize divider will be created dynamically by ResizeController -->
         
         <!-- Center Container -->
         <div id="center-container">

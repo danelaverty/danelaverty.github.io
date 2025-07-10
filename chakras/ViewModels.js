@@ -26,6 +26,9 @@
 // src/viewmodels/CircleViewModel.js
 // View model for Circle
 
+// src/viewmodels/CircleViewModel.js
+// View model for Circle with text content support
+
 (function(ChakraApp) {
   /**
    * Circle view model
@@ -52,6 +55,8 @@
     this.circleType = circleModel.circleType || 'standard';
     this.disabled = circleModel.disabled || false;
     this.indicator = circleModel.indicator || null;
+    this.showTabNames = circleModel.showTabNames || false;
+    this.text = circleModel.text || null; // NEW: Add text property
     
     // Calculate chakra form based on square count
     this.chakraForm = ChakraApp.Utils.getChakraFormForCircle(
@@ -118,45 +123,61 @@
   
   // Update view model properties from model
   ChakraApp.CircleViewModel.prototype._updateFromModel = function() {
-  // Store previous name to detect changes from/to default
-  var previousName = this.name;
+    // Store previous values for comparison
+    var previousName = this.name;
+    var previousShowTabNames = this.showTabNames;
+    var previousText = this.text; // NEW: Track text changes
 
-  // Update properties from model
-  this.name = this.model.name;
-  this.x = this.model.x;
-  this.y = this.model.y;
-  this.color = this.model.color;
-  this.crystal = this.model.crystal;
-  this.characteristics = this.model.characteristics || {}; // Add this line
-  this.documentId = this.model.documentId; // Fixed: changed from circleModel to this.model
-  this.circleType = this.model.circleType || 'standard';
-  this.disabled = this.model.disabled || false;
-  this.indicator = this.model.indicator || null;
+    // Update properties from model
+    this.name = this.model.name;
+    this.x = this.model.x;
+    this.y = this.model.y;
+    this.color = this.model.color;
+    this.crystal = this.model.crystal;
+    this.characteristics = this.model.characteristics || {};
+    this.documentId = this.model.documentId;
+    this.circleType = this.model.circleType || 'standard';
+    this.disabled = this.model.disabled || false;
+    this.indicator = this.model.indicator || null;
+    this.showTabNames = this.model.showTabNames || false;
+    this.text = this.model.text || null; // NEW: Update text from model
 
-  // Check if square count has changed
-  var currentSquareCount = this.model.squareCount || 0;
-  this.squareCountChanged = currentSquareCount !== this._previousSquareCount;
+    // Check if square count has changed
+    var currentSquareCount = this.model.squareCount || 0;
+    this.squareCountChanged = currentSquareCount !== this._previousSquareCount;
 
-  // Check if name changed between default and non-default
-  var wasDefaultName = previousName === ChakraApp.Config.defaultName;
-  var isDefaultName = this.name === ChakraApp.Config.defaultName;
-  var nameStatusChanged = wasDefaultName !== isDefaultName;
+    // Check if name changed between default and non-default
+    var wasDefaultName = previousName === ChakraApp.Config.defaultName;
+    var isDefaultName = this.name === ChakraApp.Config.defaultName;
+    var nameStatusChanged = wasDefaultName !== isDefaultName;
 
-  // Update chakra form if square count changed OR name changed between default/non-default
-  if (this.squareCountChanged || nameStatusChanged) {
-    this.chakraForm = ChakraApp.Utils.getChakraFormForCircle(
-      this.model.id,
-      this.model.name,
-      currentSquareCount
-    );
-    this._previousSquareCount = currentSquareCount;
-  }
+    // Update chakra form if square count changed OR name changed between default/non-default
+    if (this.squareCountChanged || nameStatusChanged) {
+      this.chakraForm = ChakraApp.Utils.getChakraFormForCircle(
+        this.model.id,
+        this.model.name,
+        currentSquareCount
+      );
+      this._previousSquareCount = currentSquareCount;
+    }
 
-  // Notify observers
-  this.notify({ type: 'update' });
-};
+    // Notify observers - this is crucial for the view to update
+    this.notify({ type: 'update' });
+  };
 
-/**
+  ChakraApp.CircleViewModel.prototype.toggleShowTabNames = function() {
+    ChakraApp.appState.updateCircle(this.id, { showTabNames: !this.showTabNames });
+  };
+
+  /**
+   * Update text content for this circle
+   * @param {string|null} text - Text content or null to remove
+   */
+  ChakraApp.CircleViewModel.prototype.updateText = function(text) {
+    ChakraApp.appState.updateCircle(this.id, { text: text });
+  };
+
+  /**
    * Update indicator for this circle
    * @param {string|null} indicator - Indicator ID or null to remove
    */
@@ -195,28 +216,27 @@
     this.updateIndicator(null);
   };
 
-ChakraApp.CircleViewModel.prototype.updateCharacteristic = function(key, value) {
-  var update = {};
-  
-  // Handle legacy properties (color) and new characteristics
-  if (key === 'color') {
-    update.color = value;
-  } else {
-    // For new characteristics (including completion), update the characteristics object
-    var characteristics = Object.assign({}, this.characteristics || {});
-    if (value === null || value === '') {
-      // Remove the characteristic if null/empty value
-      delete characteristics[key];
+  ChakraApp.CircleViewModel.prototype.updateCharacteristic = function(key, value) {
+    var update = {};
+    
+    // Handle legacy properties (color) and new characteristics
+    if (key === 'color') {
+      update.color = value;
     } else {
-      // Otherwise set the new value
-      characteristics[key] = value;
+      // For new characteristics (including completion), update the characteristics object
+      var characteristics = Object.assign({}, this.characteristics || {});
+      if (value === null || value === '') {
+        // Remove the characteristic if null/empty value
+        delete characteristics[key];
+      } else {
+        // Otherwise set the new value
+        characteristics[key] = value;
+      }
+      update.characteristics = characteristics;
     }
-    update.characteristics = characteristics;
-  }
-  
-  ChakraApp.appState.updateCircle(this.id, update);
-};
-
+    
+    ChakraApp.appState.updateCircle(this.id, update);
+  };
   
   // UI actions
   
@@ -314,9 +334,10 @@ ChakraApp.CircleViewModel.prototype.updateCharacteristic = function(key, value) 
   
   // Get emoji based on attribute or if it's a Me square
   ChakraApp.SquareViewModel.prototype._getEmojiForAttribute = function() {
-    if (this.attribute && ChakraApp.Config.attributeInfo[this.attribute]) {
-      return ChakraApp.Config.attributeInfo[this.attribute].emoji;
-    }
+	  if (this.attribute) {
+		  var attrInfo = ChakraApp.getAttributeInfo(this.attribute);
+		  return attrInfo ? attrInfo.emoji : null;
+	  }
     
     return null;
   };
@@ -424,7 +445,7 @@ ChakraApp.SquareViewModel.prototype.removeIndicator = function() {
   // Apply attribute to the square
   ChakraApp.SquareViewModel.prototype.applyAttribute = function(attribute) {
     // Get attribute data
-    var attributeData = ChakraApp.Config.attributeInfo[attribute];
+	  var attributeData = ChakraApp.getAttributeInfo(attribute);
     if (!attributeData) return;
     
     // Update square with new attribute
