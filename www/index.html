@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whispered Wisdoms Wellness - Client Portal</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Navigation -->
+        <nav class="navigation">
+            <div class="nav-header">
+                <h1>Whispered Wisdoms Wellness</h1>
+                <div class="client-name" id="clientName">Jordan Smith</div>
+                <button class="hamburger-menu" id="hamburgerMenu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
+            <div class="nav-menu" id="navMenu">
+                <button class="nav-btn active" data-page="overview">Overview</button>
+                <button class="nav-btn" data-page="overall-health">Overall Health</button>
+                <button class="nav-btn" data-page="homeopathy">Homeopathy</button>
+                <button class="nav-btn" data-page="human-design">Human Design</button>
+                <button class="nav-btn" data-page="herbal-nutrition">Herbal & Nutrition</button>
+                <button class="nav-btn" data-page="self-care">Self-Care Practice</button>
+                <button class="nav-btn" data-page="home-detox">Home Detox</button>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Overview Page -->
+            <div class="page active" id="overview">
+                <div class="overview-grid">
+                    <div class="modality-card" data-page="overall-health">
+                        <h3>Overall Health</h3>
+                        <p>Comprehensive health overview and treatment summary</p>
+                    </div>
+                    <div class="modality-card" data-page="homeopathy">
+                        <h3>Homeopathy</h3>
+                        <p>Personalized homeopathic remedies and treatments</p>
+                    </div>
+                    <div class="modality-card" data-page="human-design">
+                        <h3>Human Design</h3>
+                        <p>Your unique human design chart and insights</p>
+                    </div>
+                    <div class="modality-card" data-page="herbal-nutrition">
+                        <h3>Herbal & Nutrition</h3>
+                        <p>Natural remedies and nutritional guidance</p>
+                    </div>
+                    <div class="modality-card" data-page="self-care">
+                        <h3>Self-Care Practice</h3>
+                        <p>Personalized self-care routines and practices</p>
+                    </div>
+                    <div class="modality-card" data-page="home-detox">
+                        <h3>Home Detox</h3>
+                        <p>Detoxification protocols and guidance</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Overall Health Page -->
+            <div class="page" id="overall-health">
+                <h2>Overall Health</h2>
+                <div class="health-summary">
+                    <div class="current-section">
+                        <h3>Current</h3>
+                        <div class="complaints-recommendations">
+                            <div class="complaints">
+                                <h4>Complaints</h4>
+                                <ul id="complaints-list">
+                                    <li>Cough at night</li>
+                                    <li>Headaches</li>
+                                    <li>Tired & unmotivated</li>
+                                </ul>
+                            </div>
+                            <div class="recommendations">
+                                <h4>Recommendations</h4>
+                                <ul id="overall-recommendations-list">
+                                    <li>Homeopathic Herbal</li>
+                                    <li>Homeopathic Herbal Massage</li>
+                                    <li>Human Design</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="history-section">
+                        <h3>History</h3>
+                        <div class="history-content">
+                            <a href="#" class="history-link">Click for details</a>
+                            <div class="history-details" style="display: none;">
+                                <p>Previous treatments and progress notes will appear here...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Homeopathy Page -->
+            <div class="page" id="homeopathy">
+                <h2>Homeopathy</h2>
+                <div class="modality-content">
+                    <div class="current-section">
+                        <h3>Current</h3>
+                        <div class="recommendations">
+                            <h4>Recommendations</h4>
+                            <ul id="homeopathy-recommendations">
+                                <li>Carbo Veg</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="history-section">
+                        <h3>History</h3>
+                        <div class="history-content">
+                            <a href="#" class="history-link">Click for details</a>
+                            <div class="history-details" style="display: none;">
+                                <p>Previous homeopathic treatments and outcomes...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Human Design Page -->
+            <div class="page" id="human-design">
+                <h2>Human Design</h2>
+                <div class="human-design-content">
+                    <div class="chart-section">
+                        <div class="human-design-chart">
+                            <svg viewBox="0 0 200 200" class="chart-svg">
+                                <!-- Human Design Chart Placeholder -->
+                                <circle cx="100" cy="100" r="80" fill="none" stroke="#ddd" stroke-width="2"/>
+                                <circle cx="100" cy="50" r="15" fill="none" stroke="#666" stroke-width="1"/>
+                                <circle cx="100" cy="150" r="15" fill="none" stroke="#666" stroke-width="1"/>
+                                <rect x="85" y="85" width="30" height="30" fill="none" stroke="#666" stroke-width="1"/>
+                                <polygon points="100,70 115,85 100,100 85,85" fill="none" stroke="#666" stroke-width="1"/>
+                                <polygon points="100,130 115,115 100,100 85,115" fill="none" stroke="#666" stroke-width="1"/>
+                                <line x1="100" y1="65" x2="100" y2="85" stroke="#666" stroke-width="1"/>
+                                <line x1="100" y1="115" x2="100" y2="135" stroke="#666" stroke-width="1"/>
+                                <text x="100" y="25" text-anchor="middle" font-size="10" fill="#666">Head</text>
+                                <text x="100" y="185" text-anchor="middle" font-size="10" fill="#666">Root</text>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="recommendations-section">
+                        <h3>Recommendations</h3>
+                        <ul id="human-design-recommendations">
+                            <li>Twice Monthly Massage</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Herbal & Nutrition Page -->
+            <div class="page" id="herbal-nutrition">
+                <h2>Herbal & Nutrition</h2>
+                <div class="modality-content">
+                    <div class="current-section">
+                        <h3>Current</h3>
+                        <div class="recommendations">
+                            <h4>Recommendations</h4>
+                            <ul id="herbal-recommendations">
+                                <li>Evening Primrose Oil</li>
+                                <li>Magnesium supplement</li>
+                                <li>Anti-inflammatory diet</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="history-section">
+                        <h3>History</h3>
+                        <div class="history-content">
+                            <a href="#" class="history-link">Click for details</a>
+                            <div class="history-details" style="display: none;">
+                                <p>Previous herbal treatments and nutritional guidance...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Self-Care Practice Page -->
+            <div class="page" id="self-care">
+                <h2>Self-Care Practice</h2>
+                <div class="modality-content">
+                    <div class="current-section">
+                        <h3>Current</h3>
+                        <div class="recommendations">
+                            <h4>Recommendations</h4>
+                            <ul id="self-care-recommendations">
+                                <li>Twice Monthly Massage</li>
+                                <li>Daily meditation (10 minutes)</li>
+                                <li>Evening breathing exercises</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="history-section">
+                        <h3>History</h3>
+                        <div class="history-content">
+                            <a href="#" class="history-link">Click for details</a>
+                            <div class="history-details" style="display: none;">
+                                <p>Previous self-care practices and progress...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Home Detox Page -->
+            <div class="page" id="home-detox">
+                <h2>Home Detox</h2>
+                <div class="modality-content">
+                    <div class="current-section">
+                        <h3>Current</h3>
+                        <div class="recommendations">
+                            <h4>Recommendations</h4>
+                            <ul id="detox-recommendations">
+                                <li>Lemon water morning routine</li>
+                                <li>Dry brushing before shower</li>
+                                <li>Liver support herbs</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="history-section">
+                        <h3>History</h3>
+                        <div class="history-content">
+                            <a href="#" class="history-link">Click for details</a>
+                            <div class="history-details" style="display: none;">
+                                <p>Previous detox protocols and results...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
