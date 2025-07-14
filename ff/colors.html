@@ -1,0 +1,410 @@
+import React, { useState } from 'react';
+import { Copy, Download, RotateCcw } from 'lucide-react';
+
+const ColorFamilyEditor = () => {
+  const initialColorFamilies = [
+    {
+      name: "Red",
+      light: { color: '#FFA0AB', crystal: 'Pink' },
+      solid: { color: '#FF0000', crystal: 'Red' },
+      dark: { color: '#900000', crystal: 'Maroon' }
+    },
+    {
+      name: "Crimson",
+      light: { color: '#FFB6A1', crystal: 'Light Pink' },
+      solid: { color: '#DC143C', crystal: 'Crimson' },
+      dark: { color: '#8B0000', crystal: 'Dark Red' }
+    },
+    {
+      name: "Rose",
+      light: { color: '#FFAAAB', crystal: 'Light Rose' },
+      solid: { color: '#FF007F', crystal: 'Rose' },
+      dark: { color: '#B22222', crystal: 'Fire Brick' }
+    },
+    {
+      name: "Ruby",
+      light: { color: '#FFE4E6', crystal: 'Blush' },
+      solid: { color: '#E0115F', crystal: 'Ruby' },
+      dark: { color: '#722F37', crystal: 'Dark Ruby' }
+    },
+    {
+      name: "Pink",
+      light: { color: '#FFA4A1', crystal: 'Misty Rose' },
+      solid: { color: '#FF69B4', crystal: 'Hot Pink' },
+      dark: { color: '#C71585', crystal: 'Deep Pink' }
+    },
+    {
+      name: "Fuchsia",
+      light: { color: '#FFA1FF', crystal: 'Pale Fuchsia' },
+      solid: { color: '#FF1493', crystal: 'Fuchsia' },
+      dark: { color: '#C41E3A', crystal: 'Cardinal' }
+    },
+    {
+      name: "Salmon",
+      light: { color: '#FFF5AA', crystal: 'Seashell' },
+      solid: { color: '#FA8072', crystal: 'Salmon' },
+      dark: { color: '#CD5C5C', crystal: 'Indian Red' }
+    },
+    {
+      name: "Coral",
+      light: { color: '#FFAFD5', crystal: 'Papaya Whip' },
+      solid: { color: '#FF7F50', crystal: 'Coral' },
+      dark: { color: '#A0522D', crystal: 'Sienna' }
+    },
+    {
+      name: "Orange", 
+      light: { color: '#FFAF90', crystal: 'Light Coral' },
+      solid: { color: '#FF4500', crystal: 'Vermilion' },
+      dark: { color: '#8B4000', crystal: 'Dark Orange' }
+    },
+    {
+      name: "Tangerine",
+      light: { color: '#FFA4B5', crystal: 'Moccasin' },
+      solid: { color: '#FF8C00', crystal: 'Tangerine' },
+      dark: { color: '#B8860B', crystal: 'Dark Goldenrod' }
+    },
+    {
+      name: "Amber",
+      light: { color: '#FFF8AA', crystal: 'Aornsilk' },
+      solid: { color: '#FFBF00', crystal: 'Amber' },
+      dark: { color: '#B8860B', crystal: 'Dark Goldenrod' }
+    },
+    {
+      name: "Brown",
+      light: { color: '#AAB887', crystal: 'Tan' },
+      solid: { color: '#CD853F', crystal: 'Bronze' },
+      dark: { color: '#8B4513', crystal: 'Brown' }
+    },
+    {
+      name: "Rust",
+      light: { color: '#AABF94', crystal: 'Wheat' },
+      solid: { color: '#B7410E', crystal: 'Rust' },
+      dark: { color: '#8B4513', crystal: 'Saddle Brown' }
+    },
+    {
+      name: "Copper",
+      light: { color: '#FFAAAA', crystal: 'Peach Puff' },
+      solid: { color: '#B87333', crystal: 'Copper' },
+      dark: { color: '#654321', crystal: 'Dark Brown' }
+    },
+    {
+      name: "Yellow",
+      light: { color: '#FFF0B6', crystal: 'Marigold' },
+      solid: { color: '#FFD700', crystal: 'Gold' },
+      dark: { color: '#D8A600', crystal: 'Sunset' }
+    },
+    {
+      name: "Lemon",
+      light: { color: '#FFFAAA', crystal: 'Lemon Ahiffon' },
+      solid: { color: '#FFF700', crystal: 'Lemon' },
+      dark: { color: '#DAA520', crystal: 'Goldenrod' }
+    },
+    {
+      name: "Khaki",
+      light: { color: '#F0D6AA', crystal: 'Light Khaki' },
+      solid: { color: '#C3B091', crystal: 'Khaki' },
+      dark: { color: '#BDB76B', crystal: 'Dark Khaki' }
+    },
+    {
+      name: "Olive",
+      light: { color: '#F5F5AA', crystal: 'Beige' },
+      solid: { color: '#808000', crystal: 'Olive' },
+      dark: { color: '#556B2F', crystal: 'Dark Olive Green' }
+    },
+    {
+      name: "Chartreuse",
+      light: { color: '#F0FFF0', crystal: 'Honeydew' },
+      solid: { color: '#7FFF00', crystal: 'Chartreuse' },
+      dark: { color: '#6B8E23', crystal: 'Olive Drab' }
+    },
+    {
+      name: "Lime",
+      light: { color: '#A5FFAA', crystal: 'Mint Cream' },
+      solid: { color: '#32CD32', crystal: 'Lime Green' },
+      dark: { color: '#228B22', crystal: 'Forest Green' }
+    },
+    {
+      name: "Green",
+      light: { color: '#A0FFA0', crystal: 'Light Green' },
+      solid: { color: '#00EE00', crystal: 'Green' },
+      dark: { color: '#2E8B57', crystal: 'Sea Green' }
+    },
+    {
+      name: "Emerald",
+      light: { color: '#AFAAAA', crystal: 'Pale Turquoise' },
+      solid: { color: '#50C878', crystal: 'Emerald' },
+      dark: { color: '#2E8B57', crystal: 'Sea Green' }
+    },
+    {
+      name: "Jade",
+      light: { color: '#A0FFFF', crystal: 'Light Ayan' },
+      solid: { color: '#00A86B', crystal: 'Jade' },
+      dark: { color: '#2F4F4F', crystal: 'Dark Slate Gray' }
+    },
+    {
+      name: "Mint",
+      light: { color: '#B5FFBA', crystal: 'Mint Cream' },
+      solid: { color: '#98FB98', crystal: 'Pale Green' },
+      dark: { color: '#3CB371', crystal: 'Medium Sea Green' }
+    },
+    {
+      name: "Turquoise",
+      light: { color: '#A0FFFF', crystal: 'Light Cyan' },
+      solid: { color: '#40E0D0', crystal: 'Turquoise' },
+      dark: { color: '#2E8B57', crystal: 'Sea Green' }
+    },
+    {
+      name: "Teal",
+      light: { color: '#A0FFFF', crystal: 'Light Cyan' },
+      solid: { color: '#008080', crystal: 'Teal' },
+      dark: { color: '#2F4F4F', crystal: 'Dark Slate Gray' }
+    },
+    {
+      name: "Cyan",
+      light: { color: '#A0FFFF', crystal: 'Light Cyan' },
+      solid: { color: '#00FFFF', crystal: 'Cyan' },
+      dark: { color: '#008B8B', crystal: 'Dark Cyan' }
+    },
+    {
+      name: "Aqua",
+      light: { color: '#A0AFFF', crystal: 'Azure' },
+      solid: { color: '#00FFFF', crystal: 'Aqua' },
+      dark: { color: '#5F9EA0', crystal: 'Cadet Blue' }
+    },
+    {
+      name: "Sky",
+      light: { color: '#A0A8FF', crystal: 'Alice Blue' },
+      solid: { color: '#87CEEB', crystal: 'Sky Blue' },
+      dark: { color: '#4682B4', crystal: 'Steel Blue' }
+    },
+    {
+      name: "Powder",
+      light: { color: '#A0A8FF', crystal: 'Alice Blue' },
+      solid: { color: '#B0E0E6', crystal: 'Powder Blue' },
+      dark: { color: '#4682B4', crystal: 'Steel Blue' }
+    },
+    {
+      name: "Blue",
+      light: { color: '#A6F3FF', crystal: 'Light Blue' },
+      solid: { color: '#0000FF', crystal: 'Blue' },
+      dark: { color: '#00008B', crystal: 'Dark Blue' }
+    },
+    {
+      name: "Cobalt",
+      light: { color: '#A6F2FF', crystal: 'Light Steel Blue' },
+      solid: { color: '#0047AB', crystal: 'Cobalt' },
+      dark: { color: '#191970', crystal: 'Midnight Blue' }
+    },
+    {
+      name: "Navy",
+      light: { color: '#F0F8FF', crystal: 'Alice Blue' },
+      solid: { color: '#000080', crystal: 'Navy' },
+      dark: { color: '#191970', crystal: 'Midnight Blue' }
+    },
+    {
+      name: "Royal",
+      light: { color: '#A6A6FA', crystal: 'Lavender' },
+      solid: { color: '#4169E1', crystal: 'Royal Blue' },
+      dark: { color: '#191970', crystal: 'Midnight Blue' }
+    },
+    {
+      name: "Periwinkle",
+      light: { color: '#F0F0FF', crystal: 'Lavender Blush' },
+      solid: { color: '#CCCCFF', crystal: 'Periwinkle' },
+      dark: { color: '#6495ED', crystal: 'Cornflower Blue' }
+    },
+    {
+      name: "Violet",
+      light: { color: '#C8C8FF', crystal: 'Ghost White' },
+      solid: { color: '#8A2BE2', crystal: 'Blue Violet' },
+      dark: { color: '#663399', crystal: 'Rebecca Purple' }
+    },
+    {
+      name: "Indigo",
+      light: { color: '#A6A6FA', crystal: 'Lavender' },
+      solid: { color: '#4B0082', crystal: 'Indigo' },
+      dark: { color: '#301934', crystal: 'Dark Purple' }
+    },
+    {
+      name: "Purple",
+      light: { color: '#A6A6FA', crystal: 'Lavender' },
+      solid: { color: '#C000C0', crystal: 'Purple' },
+      dark: { color: '#4B0082', crystal: 'Deep Purple' }
+    },
+    {
+      name: "Plum",
+      light: { color: '#AA70AA', crystal: 'Plum' },
+      solid: { color: '#8B008B', crystal: 'Dark Magenta' },
+      dark: { color: '#663399', crystal: 'Rebecca Purple' }
+    },
+    {
+      name: "Magenta",
+      light: { color: '#F5F0FF', crystal: 'Ghost White' },
+      solid: { color: '#FF00FF', crystal: 'Magenta' },
+      dark: { color: '#8B008B', crystal: 'Dark Magenta' }
+    },
+    {
+      name: "Gray",
+      light: { color: '#FFFFFF', crystal: 'White' },
+      solid: { color: '#808080', crystal: 'Gray' },
+      dark: { color: '#000000', crystal: 'Black' }
+    }
+  ];
+
+  const [colorFamilies, setColorFamilies] = useState(initialColorFamilies);
+  const [copiedMessage, setCopiedMessage] = useState('');
+
+  const updateColorFamily = (index, field, value) => {
+    const newFamilies = [...colorFamilies];
+    if (field === 'name') {
+      newFamilies[index].name = value;
+    } else {
+      const [variant, property] = field.split('.');
+      newFamilies[index][variant][property] = value;
+    }
+    setColorFamilies(newFamilies);
+  };
+
+  const resetToOriginal = () => {
+    setColorFamilies(initialColorFamilies);
+  };
+
+  const generateCode = () => {
+    return `ChakraApp.CharacteristicController.colorFamilies = [
+${colorFamilies.map(family => `  {
+    name: "${family.name}",
+    light: { color: '${family.light.color}', crystal: '${family.light.crystal}' },
+    solid: { color: '${family.solid.color}', crystal: '${family.solid.crystal}' },
+    dark: { color: '${family.dark.color}', crystal: '${family.dark.crystal}' }
+  }`).join(',\n')}
+];`;
+  };
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(generateCode());
+      setCopiedMessage('Code copied to clipboard!');
+      setTimeout(() => setCopiedMessage(''), 2000);
+    } catch (err) {
+      setCopiedMessage('Failed to copy');
+      setTimeout(() => setCopiedMessage(''), 2000);
+    }
+  };
+
+  const downloadCode = () => {
+    const code = generateCode();
+    const blob = new Blob([code], { type: 'text/javascript' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'colorFamilies.js';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">Color Family Editor</h1>
+          <div className="flex gap-4">
+            <button
+              onClick={resetToOriginal}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              <RotateCcw size={16} />
+              Reset to Original
+            </button>
+          </div>
+        </div>
+
+        <div className="grid lg:grid-cols-2 gap-8">
+          {/* Color Swatches Panel */}
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h2 className="text-xl font-semibold mb-4">Color Swatches</h2>
+            <div className="space-y-6 max-h-96 overflow-y-auto">
+              {colorFamilies.map((family, index) => (
+                <div key={index} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                  <div className="mb-3">
+                    <input
+                      type="text"
+                      value={family.name}
+                      onChange={(e) => updateColorFamily(index, 'name', e.target.value)}
+                      className="text-lg font-medium bg-transparent border-b border-gray-300 focus:border-blue-500 focus:outline-none w-full"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-3">
+                    {['light', 'solid', 'dark'].map((variant) => (
+                      <div key={variant} className="text-center">
+                        <div className="mb-2">
+                          <div
+                            className="w-16 h-16 mx-auto rounded-lg border-2 border-gray-300 cursor-pointer relative overflow-hidden"
+                            style={{ backgroundColor: family[variant].color }}
+                          >
+                            <input
+                              type="color"
+                              value={family[variant].color}
+                              onChange={(e) => updateColorFamily(index, `${variant}.color`, e.target.value)}
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            />
+                          </div>
+                        </div>
+                        <div className="text-xs text-gray-600 mb-1 capitalize">{variant}</div>
+                        <div className="text-xs font-mono text-gray-800">{family[variant].color}</div>
+                        <input
+                          type="text"
+                          value={family[variant].crystal}
+                          onChange={(e) => updateColorFamily(index, `${variant}.crystal`, e.target.value)}
+                          className="text-xs text-center w-full mt-1 bg-gray-50 border border-gray-200 rounded px-1 py-0.5"
+                          placeholder="Crystal name"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Code Output Panel */}
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">Generated Code</h2>
+              <div className="flex gap-2">
+                <button
+                  onClick={copyToClipboard}
+                  className="flex items-center gap-2 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
+                >
+                  <Copy size={14} />
+                  Copy
+                </button>
+                <button
+                  onClick={downloadCode}
+                  className="flex items-center gap-2 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-sm"
+                >
+                  <Download size={14} />
+                  Download
+                </button>
+              </div>
+            </div>
+            
+            {copiedMessage && (
+              <div className="mb-4 p-2 bg-green-100 text-green-800 rounded text-sm">
+                {copiedMessage}
+              </div>
+            )}
+            
+            <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-auto max-h-96 text-sm">
+              <code>{generateCode()}</code>
+            </pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ColorFamilyEditor;

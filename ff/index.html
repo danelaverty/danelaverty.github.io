@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizer</title>
+    <link rel="stylesheet" href="styles.css">
+    
+    <script src="config.js"></script>
+    <script src="helpers.js"></script>
+    <script src="ColorUtils.js"></script>
+    <script src="DragHandler.js"></script>
+    <script src="GemRenderer.js"></script>
+    <script src="TriangleRenderer.js"></script>
+    <script src="SimpleShapeRenderer.js"></script>
+    <script src="StandardCircleRenderer.js"></script>
+
+    <!-- Core configuration and utilities -->
+    <script src="MultiSelectionManager.js"></script>
+    <script src="CircleMultiSelectionManager.js"></script>
+    <script src="ClipboardManager.js"></script>
+    <script src="OverlappingSquaresManager.js"></script>
+    <script src="RectangleSelectionManager.js"></script>
+    
+    <!-- Event system -->
+    <script src="Events.js"></script>
+    
+    <!-- Data models -->
+    <script src="BaseModel.js"></script>
+    <script src="Document.js"></script>
+    <script src="Circle.js"></script>
+    <script src="CircleReference.js"></script>
+    <script src="Square.js"></script>
+    <script src="Tab.js"></script>
+    <script src="Connection.js"></script>
+
+    <!-- State management -->
+    <script src="AppState.js"></script>
+    <script src="AppStateEntities.js"></script>
+    
+    <!-- View models -->
+    <script src="ViewModels.js"></script>
+    <script src="CircleReferenceViewModel.js"></script>
+    
+    <!-- Views -->
+    <script src="BaseView.js"></script>
+    <script src="CircleView.js"></script>
+    <script src="CircleReferenceView.js"></script>
+    <script src="SquareView.js"></script>
+    <script src="ConnectionView.js"></script>
+    <script src="ViewManager.js"></script>
+    
+    <!-- Controllers -->
+    <script src="BaseController.js"></script>
+    <script src="CircleReferencesController.js"></script>
+    <script src="PanelManager.js"></script>
+    <script src="LeftPanelManager.js"></script>
+    <script src="ResizeController.js"></script> <!-- NEW: ResizeController -->
+    <script src="ControllerFactory.js"></script>
+    <script src="DialogController.js"></script>
+    <script src="NotificationController.js"></script>
+    <script src="DocumentController.js"></script>
+    <script src="TemplateController.js"></script>
+    <script src="TabController.js"></script>
+    <script src="CharacteristicController.js"></script>
+    <script src="AttributeController.js"></script>
+    <script src="UIController.js"></script>
+    <script src="KeyboardController.js"></script>
+    <script src="ImportExportController.js"></script>
+    <script src="ZoomController.js"></script>
+    
+    <script src="circle-dimming-fix.js"></script>
+
+    <!-- Main application -->
+    <script src="App.js"></script>
+</head>
+<body>
+    <!-- Main container for all panels -->
+    <div id="main-container">
+        <!-- Left Container - will be populated by LeftPanelManager -->
+        <div id="left-container">
+            <!-- All left panels will be created dynamically -->
+        </div>
+        
+        <!-- Resize divider will be created dynamically by ResizeController -->
+        
+        <!-- Center Container -->
+        <div id="center-container">
+            <!-- Top Panel for controls -->
+            <div id="top-panel">
+                <!-- This will hold the color picker button and other controls -->
+            </div>
+            
+            <!-- Center Panel for squares -->
+            <div id="center-panel" class="square-panel">
+                <!-- Attribute grid section -->
+                <div id="attribute-grid">
+                    <!-- Dynamic content will be inserted here -->
+                </div>
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <!-- Dialog overlay -->
+    <div id="dialog-overlay">
+        <div id="dialog-box">
+            <div id="dialog-message">Are you sure you want to delete this item?</div>
+            <div id="dialog-buttons">
+                <button id="dialog-confirm" class="dialog-button">Delete</button>
+                <button id="dialog-cancel" class="dialog-button">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- For testing and development -->
+    <div id="debug-panel" style="position: fixed; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 10px; border-radius: 5px; z-index: 9999; max-width: 300px; max-height: 200px; overflow: auto; font-family: monospace; font-size: 12px;">Debug info will appear here</div>
+</body>
+</html>
