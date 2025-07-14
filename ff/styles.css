@@ -1,0 +1,3957 @@
+/* Optimized CSS - Part 1: Core Variables and Base Layout */
+
+/* Base variables for consistent theming */
+:root {
+  /* Color palette */
+  --color-bg-dark: #000;
+  --color-bg-panel: #222;
+  --color-bg-dialog: #222;
+  --color-border: #444;
+  --color-text: white;
+  --color-text-dim: #aaa;
+  --color-btn: #555;
+  --color-btn-hover: #777;
+  --color-btn-danger: #f44336;
+  --color-highlight: rgba(255, 255, 255, 0.7);
+  --color-dim: rgba(0, 0, 0, 0.7);
+  
+  /* Shadows */
+  --shadow-standard: 0 2px 8px rgba(0, 0, 0, 0.5);
+  --shadow-emphasized: 0 4px 15px rgba(0, 0, 0, 0.5);
+  
+  /* Dimensions */
+  --circle-size: 20px;
+  --square-size: 30px;
+  --btn-size: 40px;
+  --radius-standard: 5px;
+  --panel-border: 2px solid var(--color-border);
+  
+  /* Animation speeds */
+  --transition-standard: 0.3s ease;
+  --transition-fast: 0.2s ease;
+}
+
+/* ---------- BASE LAYOUT ---------- */
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  background-color: var(--color-bg-dark);
+  font-family: Arial, sans-serif;
+}
+
+h3 {
+	color: #AAA;
+	position: absolute;
+	top: -12px;
+	left: 8px;
+	padding: 0px 6px;
+	white-space: nowrap;
+	font-size: 12px;
+}
+
+#main-container {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Panel Base Styles */
+.circle-panel {
+  background-color: var(--color-bg-dark);
+  position: relative;
+  user-select: none;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.4s ease, opacity 0.4s ease, width 0.4s ease, height 0.4s ease;
+}
+
+#left-panel {
+  width: 400px;
+  height: 100%;
+  border-right: var(--panel-border);
+}
+
+#right-panel {
+  height: 100%;
+  border-left: var(--panel-border);
+}
+
+#farRight-panel {
+  height: 100%;
+  border-left: var(--panel-border);
+}
+
+#bottom-panel {
+  width: 100%;
+  border-top: var(--panel-border);
+}
+
+/* Hidden Panel States */
+.circle-panel.hidden {
+  transform: translateX(-100%);
+  opacity: 0;
+  width: 0;
+}
+
+#right-panel.hidden {
+  transform: translateX(100%);
+}
+
+#farRight-panel.hidden {
+  transform: translateX(100%);
+}
+
+#bottom-panel.hidden {
+  transform: translateY(100%);
+  height: 0;
+}
+
+/* Center Container */
+#center-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+#top-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 10px 20px;
+  height: auto;
+  min-height: 40px;
+  background-color: var(--color-bg-dark);
+  border-bottom: none;
+  z-index: 100;
+}
+
+#center-panel {
+  flex: 1;
+  background-color: var(--color-bg-dark);
+  position: relative;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Zoom Containers */
+.zoom-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.silhouette-svg {
+  position: absolute;
+  top: 30px;
+  left: 50%;
+  transform-origin: top center;
+  transform: translate(-50%, 0%);
+    width: 290px;
+    height: 675px;
+  pointer-events: none;
+  z-index: 1;
+  user-select: none;
+}
+
+.silhouette-outline {
+    opacity: .3;
+}
+
+.silhouette-filled {
+    opacity: .1;
+}
+
+.silhouette-filled-black {
+    opacity: 1;
+}
+
+/* Optimized CSS - Part 2: Common UI Elements and Buttons */
+
+/* ---------- COMMON UI ELEMENTS ---------- */
+
+/* Button Base Style */
+.btn {
+  background-color: var(--color-btn);
+  color: var(--color-text);
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.btn:hover {
+  background-color: var(--color-btn-hover);
+}
+
+.btn:active {
+  transform: scale(0.95);
+}
+
+/* Round Button Style */
+.btn-round {
+  border-radius: 50%;
+  width: var(--btn-size);
+  height: var(--btn-size);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Add Buttons */
+.add-btn {
+  /*position: absolute;
+  top: 0px;
+  left: 4px;*/
+  font-size: 10px;
+  z-index: 100;
+}
+
+/* Document Toggle Button */
+.document-toggle-btn {
+  /*position: absolute;
+  top: 0px;
+  left: 3px;*/
+  z-index: 100;
+}
+
+#bottom-panel .document-toggle-btn {
+  top: 20px;
+  left: 80px;
+}
+
+/* Action Button Container */
+.action-btn-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-right: 0px;
+}
+
+.action-btn-title {
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--color-text-dim);
+  text-align: center;
+  margin-bottom: 5px;
+  user-select: none;
+  opacity: 0;
+  transform: translateY(5px);
+  transition: opacity var(--transition-standard), transform var(--transition-standard);
+  display: none;
+}
+
+.action-btn {
+  width: 35px;
+  height: 35px;
+  background-color: var(--color-btn);
+  transition: all var(--transition-fast);
+}
+
+.action-btn:hover {
+  background-color: var(--color-btn-hover);
+  transform: scale(1.05);
+}
+
+/* Show titles when buttons are visible */
+.action-btn-container:has(.action-btn[style*="display: flex"]) .action-btn-title {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Top Panel Controls */
+.top-panel-controls {
+  display: flex;
+  gap: 15px;
+  align-self: flex-start;
+  justify-content: flex-start;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+/* Current Value Display */
+.current-value {
+  font-size: 11px;
+  color: var(--color-text);
+  background: rgba(60, 60, 60, 0.8);
+  padding: 3px 6px;
+  border-radius: var(--radius-standard);
+  min-width: 50px;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all var(--transition-fast);
+}
+
+.current-value.clickable {
+  display: flex;
+  align-items: center;
+  min-width: 80px;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.current-value.clickable:hover {
+  background-color: rgba(80, 80, 80, 0.8);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Delete Value Button */
+.current-value.delete-value {
+  background-color: rgba(180, 60, 60, 0.8);
+}
+
+.current-value.delete-value:hover {
+  background-color: rgba(220, 80, 80, 0.8);
+}
+
+/* Color Value Display */
+.color-value {
+  position: relative;
+  padding-left: 18px;
+}
+
+.color-value-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  position: relative;
+  left: 0;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Optimized CSS - Part 3: Circle and Square Elements */
+
+/* ---------- CIRCLE AND SQUARE ELEMENTS ---------- */
+
+/* Common styles for interactive elements */
+.interactive-item {
+  position: absolute;
+  cursor: move;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+  transition: box-shadow var(--transition-standard);
+  transform: translate(-50%, -50%);
+  margin-bottom: 20px;
+}
+
+/* Circle and Square specifics */
+.circle, .square {
+  position: absolute;
+  cursor: move;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+  transition: box-shadow 0.2s ease;
+  transform: translate(-50%, -50%);
+  margin-bottom: 20px;
+}
+
+.circle {
+  border-radius: 50%;
+  background-color: transparent !important;
+}
+
+.square {
+  border-radius: 5px;
+  padding: 2px;
+}
+
+/* Selection state */
+.circle.selected, .square.selected {
+  box-shadow: 0 0 12px 4px white;
+  z-index: 15;
+}
+
+/* Item Name */
+.item-name {
+  position: absolute;
+  top: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  font-size: 11px;
+  background: rgba(0, 0, 0, 0.7);
+  border: none;
+  text-align: center;
+  outline: none;
+  padding: 3px 5px;
+  border-radius: 3px;
+  z-index: 25;
+  white-space: nowrap;
+  cursor: text;
+  user-select: text;
+  box-sizing: border-box;
+  max-height: none;
+  spellcheck: false;
+  -webkit-spellcheck: false;
+}
+
+.square .item-name {
+  white-space: normal;
+  max-width: 100px;
+  width: max-content;
+}
+
+.circle.selected .item-name,
+.square.selected .item-name {
+  z-index: 30;
+}
+
+.item-name:hover, .item-name:focus {
+  background-color: rgba(0, 0, 0, 0.8);
+  z-index: 100;
+}
+
+/* Circle Glow Effect */
+.circle-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  z-index: 1;
+  -webkit-animation: glow 3s linear 0s infinite alternate;
+  pointer-events: none;
+}
+
+@-webkit-keyframes glow {
+  0% { -webkit-filter: blur(5px); }
+  100% { -webkit-filter: blur(10px); }
+}
+
+/* Circle Element Symbol */
+.circle-element-symbol {
+  position: absolute;
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.9);
+  z-index: 10;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: "Arial Unicode MS", "Segoe UI Symbol", sans-serif;
+  pointer-events: none;
+  text-shadow: 0 0 5px rgba(0, 0, 0, 0.7);
+}
+
+/* Square Content (Attribute Emoji) */
+.square-content {
+  font-size: 24px;
+  position: absolute;
+  pointer-events: none;
+  z-index: 20;
+}
+
+/* Circle and Square Animation States */
+.circle.dimmed {
+  opacity: 0.35;
+}
+
+.circle.dimmed:hover {
+  opacity: 0.85;
+}
+
+.circle.selected {
+  //animation: selected-pulse 3s ease-in-out infinite;
+}
+
+@keyframes selected-pulse {
+  0% { box-shadow: 0 0 12px 4px rgba(255, 255, 255, 0.8); }
+  50% { box-shadow: 0 0 18px 6px rgba(255, 255, 255, 1); }
+  100% { box-shadow: 0 0 12px 4px rgba(255, 255, 255, 0.8); }
+}
+
+.no-transition {
+  transition: none !important;
+}
+
+/* Chakra Form (Polygon Shapes) */
+.outer-polygon-container {
+  position: absolute;
+  transform: scale(.5);
+}
+
+.inner-polygon-container {
+  position: absolute;
+  transform-origin: 50% 50%;
+  width: 0;
+  height: 0;
+}
+
+.shape {
+  width: 40px;
+  height: 40px;
+  background-color: #FFA;
+  transform: translate(-50%, -50%);
+}
+
+/* Transform origins */
+.circle .item-name {
+  transform-origin: top center;
+}
+
+.circle .particles,
+.circle .circle-glow {
+  transform-origin: center center;
+}
+
+.circle .shape {
+  transform-origin: center center;
+}
+
+/* Circle Particles Animation */
+.particles {
+  position: absolute;
+}
+.angle {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.position {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.pulse {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.particle {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  border: 1px solid white;
+}
+.pulse {
+  -webkit-animation: pulse 1.5s linear 0s infinite alternate;
+}
+@-webkit-keyframes angle {
+  0% { -webkit-transform: rotate(0deg); }
+  100% { -webkit-transform: rotate(360deg); }
+}
+@-webkit-keyframes anglerev {
+  0% { -webkit-transform: rotate(360deg); }
+  100% { -webkit-transform: rotate(0deg); }
+}
+@-webkit-keyframes position {
+  0% { -webkit-transform: translate(0,0); opacity: 1; }
+  100% { -webkit-transform: translate(5px,5px); opacity: 0; }
+}
+@-webkit-keyframes pulse {
+  0% { -webkit-transform: scale(1); }
+  100% { -webkit-transform: scale(.5); }
+}
+.particles .angle:nth-child(1) {
+  -webkit-animation: angle 10s steps(5) 0s infinite;
+}
+.particles .angle:nth-child(1) .position {
+  -webkit-animation: position 2s linear 0s infinite;
+}
+.particles .angle:nth-child(2) {
+  -webkit-animation: angle 4.95s steps(3) -1.65s infinite;
+}
+.particles .angle:nth-child(2) .position {
+  -webkit-animation: position 1.65s linear 0s infinite;
+}
+
+/* Meridian line styling */
+#meridian-line {
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+}
+
+/*.circle.snapping {
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+  animation: snap-pulse 1s infinite;
+}*/
+
+@keyframes snap-pulse {
+  0% { box-shadow: 0 0 12px rgba(255, 255, 255, 0.8); }
+  50% { box-shadow: 0 0 18px rgba(255, 255, 255, 0.9); }
+  100% { box-shadow: 0 0 12px rgba(255, 255, 255, 0.8); }
+}
+
+/* Optimized CSS - Part 4: Connections, Overlapping Squares, and Utility Components */
+
+/* ---------- CONNECTIONS ---------- */
+
+/* Connection lines container */
+#line-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.connection-line {
+  position: absolute;
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.8);
+  transform-origin: left center;
+  z-index: 1;
+  pointer-events: none;
+  box-shadow: 0 0 2px rgba(255, 255, 255, 0.2);
+  transition: opacity 0.6s ease;
+}
+
+/* Connection line with selected square */
+.square.selected ~ #line-container .connection-line {
+  background-color: rgba(255, 255, 255, 0.5);
+  height: 1.5px;
+  box-shadow: 0 0 3px rgba(255, 255, 255, 0.3);
+}
+
+/* Connection radius indicator */
+.connection-radius-indicator {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  background-color: rgba(255, 255, 255, 1);
+  z-index: 4;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.square.dragging .connection-radius-indicator {
+  opacity: 0.1;
+}
+
+/* ---------- OVERLAPPING SQUARES ---------- */
+
+/* Overlapping squares effect */
+.square.overlapping {
+  width: 45px !important;
+  height: 45px !important;
+  border-radius: 50% !important;
+  transition: width 0.3s ease, height 0.3s ease, border-radius 0.3s ease;
+  z-index: 12;
+}
+
+.square.overlapping .item-name {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.square.overlapping.selected {
+  z-index: 16;
+}
+
+/* Glowing effect for overlapping squares */
+.square.overlapping::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  right: -5px;
+  bottom: -5px;
+  border-radius: 50%;
+  z-index: -1;
+  pointer-events: none;
+}
+
+@keyframes pulse-overlap {
+  0% { opacity: 0.3; }
+  100% { opacity: 0.6; }
+}
+
+/* Special connection line for overlapping squares */
+.connection-line.overlap-connection {
+  display: none !important;
+}
+
+/* Connection indicator between overlapping squares */
+.overlap-indicator {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background-color: rgba(255, 255, 255, 0.7);
+  border-radius: 50%;
+  z-index: 13;
+  pointer-events: none;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+  animation: pulse-indicator 1.5s infinite alternate;
+}
+
+@keyframes pulse-indicator {
+  0% { transform: scale(0.8); opacity: 0.6; }
+  100% { transform: scale(1.2); opacity: 0.9; }
+}
+
+/* Combined names list for overlapping squares */
+.combined-names-list {
+  position: absolute;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  border-radius: 5px;
+  font-size: 10px;
+  z-index: 20;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  min-width: 100px;
+  max-width: 200px;
+  pointer-events: none;
+  transform: translateX(-50%);
+  transition: opacity 0.3s ease;
+}
+
+.combined-names-list ul {
+  margin: 0;
+  padding: 0 0 0 18px;
+  list-style-type: disc;
+  text-align: left;
+}
+
+.combined-names-list li {
+  margin: 3px 0;
+  line-height: 1.2;
+  white-space: normal;
+}
+
+/* ---------- MULTI-SELECTION ---------- */
+
+/* Style for squares that are multi-selected */
+.square.multi-selected {
+  box-shadow: 0 0 15px 3px rgba(64, 196, 255, 0.8) !important;
+  z-index: 15 !important;
+}
+
+/* Visual indicator for multi-selected squares */
+.square.multi-selected::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  border: 2px solid rgba(64, 196, 255, 0.8);
+  border-radius: 7px;
+  pointer-events: none;
+}
+
+/* Enhance the connection lines between multi-selected squares */
+.square.multi-selected ~ #line-container .connection-line {
+  background-color: rgba(64, 196, 255, 0.6) !important;
+  height: 2px !important;
+  box-shadow: 0 0 8px rgba(64, 196, 255, 0.5) !important;
+}
+
+/* Selection counter that shows how many squares are selected */
+.multi-selection-counter {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 3px 5px;
+  border-radius: 20px;
+  font-size: 14px;
+  pointer-events: none;
+  z-index: 1000;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(64, 196, 255, 0.5);
+  display: none;
+  animation: fade-in 0.3s ease-out;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Make sure connections between multi-selected squares are highly visible */
+.connecting-line-multi-selected {
+  background: linear-gradient(90deg, 
+    rgba(64, 196, 255, 0.4), 
+    rgba(64, 196, 255, 0.8), 
+    rgba(64, 196, 255, 0.4)) !important;
+  height: 2.5px !important;
+  box-shadow: 0 0 10px rgba(64, 196, 255, 0.6) !important;
+  z-index: 7 !important;
+}
+
+/* Make the primary selected square stand out */
+.square.selected.primary-selection {
+  box-shadow: 0 0 18px 5px rgba(255, 215, 0, 0.8) !important;
+}
+
+/* Style for squares being group-dragged */
+.square.group-dragging {
+  box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.7);
+  z-index: 18 !important;
+  transition: none !important;
+}
+
+/* Visual indicator for group-dragged squares */
+.square.group-dragging::after {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  right: -5px;
+  bottom: -5px;
+  border: 2px dashed rgba(255, 255, 255, 0.6);
+  border-radius: 7px;
+  animation: pulse-border 1s infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes pulse-border {
+  from { border-color: rgba(255, 255, 255, 0.4); }
+  to { border-color: rgba(255, 255, 255, 0.8); }
+}
+
+/* Enhance connection lines during group dragging */
+.square.group-dragging ~ #line-container .connection-line {
+  background-color: rgba(255, 255, 255, 0.7) !important;
+  height: 2px !important;
+  box-shadow: 0 0 5px rgba(255, 255, 255, 0.5) !important;
+}
+
+/* ---------- UTILITY COMPONENTS ---------- */
+
+/* Document list container */
+.document-list-container {
+  position: absolute;
+  left: 70px;
+  top: 140px;
+  width: 280px;
+  max-height: 300px;
+  overflow-y: auto;
+  background-color: rgba(40, 40, 40, 0.95);
+  border: 1px solid #555;
+  border-radius: 5px;
+  z-index: 100;
+  padding: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+  animation: fadeInList 0.3s ease-out forwards;
+}
+
+@keyframes fadeInList {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Document list items */
+.document-list-item {
+  display: flex;
+  align-items: center;
+  padding: 4px 6px;
+  margin-bottom: 5px;
+  background-color: rgba(60, 60, 60, 0.7);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.document-list-item:hover {
+  background-color: rgba(80, 80, 80, 0.9);
+}
+
+.document-list-item.selected {
+  background-color: rgba(100, 100, 100, 0.9);
+  border-left: 3px solid #0088ff;
+}
+
+.document-icon {
+  margin-right: 10px;
+  font-size: 18px;
+}
+
+.document-name-container {
+  display: inline-block;
+  align-items: baseline;
+  overflow: hidden;
+}
+
+.document-name {
+  flex: 1;
+  color: white;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.document-name.editable {
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.3);
+  outline: none;
+  padding-bottom: 2px;
+}
+
+.document-name.editable:focus {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.7);
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.document-name.editable:focus + .document-circle-count {
+  display: none;
+}
+
+.document-circle-count {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.9em;
+  margin-left: 3px;
+}
+
+.document-delete-btn {
+  background: none;
+  border: none;
+  color: #ff6b6b;
+  cursor: pointer;
+  font-size: 16px;
+  opacity: 0.7;
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.document-delete-btn:hover {
+  opacity: 1;
+  color: #ff4f4f;
+}
+
+/* New Document list item */
+.document-list-item.new-document-item {
+  background-color: rgba(0, 120, 215, 0.6);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  margin-bottom: 10px;
+  transition: all 0.2s ease;
+}
+
+.document-list-item.new-document-item:hover {
+  background-color: rgba(0, 120, 215, 0.8);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Current document display */
+.current-document-display {
+  position: absolute;
+  top: 54px;
+  left: -6px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  font-weight: bold;
+  padding: 5px 15px;
+  background-color: rgba(0, 0, 0, 0.4);
+  border-radius: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 90%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  z-index: 50;
+}
+
+/* Dialog and notifications */
+#dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: none;
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
+}
+
+#dialog-box {
+  background-color: var(--color-bg-dialog);
+  padding: 20px;
+  border-radius: 5px;
+  color: white;
+  text-align: center;
+}
+
+#dialog-buttons {
+  margin-top: 15px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.dialog-button {
+  padding: 5px 15px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+#dialog-confirm {
+  background-color: var(--color-btn-danger);
+  color: white;
+}
+
+#dialog-cancel {
+  background-color: var(--color-btn);
+  color: white;
+}
+
+/* Keyboard notification */
+.keyboard-notification {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100px);
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  z-index: 9999;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.keyboard-notification.visible {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+/* Clipboard status */
+.clipboard-status {
+  position: fixed;
+  bottom: 10px;
+  left: 10px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  user-select: none;
+  pointer-events: none;
+  z-index: 900;
+}
+
+.clipboard-status.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.clipboard-status .icon {
+  margin-right: 5px;
+  font-size: 14px;
+}
+
+.clipboard-status.copy .icon:before {
+  content: "📋";
+}
+
+.clipboard-status.cut .icon:before {
+  content: "✂️";
+}
+
+/* Tabs */
+.tabs-container {
+  display: flex;
+  width: 100%;
+  overflow-x: auto;
+  border-bottom: 1px solid #444;
+  margin-top: 15px;
+}
+
+.tab {
+  margin-right: 2px;
+  background-color: #333;
+  color: #aaa;
+  border-radius: 5px 5px 0 0;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  position: relative;
+  transition: all 0.2s ease;
+  padding: 0px 4px;
+}
+
+.tab:hover {
+  background-color: #444;
+}
+
+.tab.active {
+  background-color: #555;
+  color: white;
+}
+
+.tab-name {
+  display: inline-block;
+  min-width: 40px;
+  max-width: 150px;
+  text-overflow: ellipsis;
+  font-size: 11px;
+}
+
+.tab.add-tab {
+  width: 30px;
+  text-align: center;
+  flex-shrink: 0;
+  background-color: #2a2a2a;
+}
+
+.tab.add-tab:hover {
+  background-color: #444;
+}
+
+.tab-close {
+  margin-left: 8px;
+  font-size: 14px;
+  display: inline-block;
+  width: 16px;
+  text-align: center;
+  line-height: 14px;
+  border-radius: 50%;
+  font-size: 11px;
+}
+
+.tab-close:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.tab.active .tab-close:hover {
+  background-color: rgba(255, 0, 0, 0.3);
+}
+
+.tab-input {
+  background: transparent;
+  border: none;
+  color: white;
+  outline: none;
+  font-family: inherit;
+  font-size: inherit;
+  width: 100%;
+  min-width: 50px;
+}
+
+/* Story dropdown */
+.story-dropdown-container {
+  margin: 5px;
+  display: flex;
+}
+
+.story-dropdown {
+  background-color: #333;
+  color: white;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 2px;
+  font-size: 12px;
+  cursor: pointer;
+  min-width: 180px;
+  transition: all 0.2s ease;
+}
+
+.story-dropdown:hover {
+  background-color: #444;
+  border-color: #777;
+}
+
+.story-dropdown:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
+}
+
+/* Attribute grid */
+#attribute-grid {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  padding: 5px;
+  gap: 8px;
+  width: auto;
+  max-width: none;
+  margin: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.attribute-box {
+  width: 62px !important;
+  height: auto !important;
+  padding: 1px !important;
+  flex-grow: 0;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 62px !important;
+}
+
+.attribute-name {
+  font-size: 11px;
+  font-weight: bold;
+  margin-bottom: 2px;
+  text-align: center;
+}
+
+.attribute-box .emoji {
+  font-size: 22px;
+  margin: 2px 0;
+  text-align: center;
+}
+
+.attribute-desc {
+  font-size: 9px;
+  opacity: 0.85;
+  margin-top: 2px;
+  line-height: 1.1;
+  text-align: center;
+}
+
+/* Hide debug panel */
+#debug-panel {
+  display: none !important;
+}
+
+/* Animation for newly pasted squares */
+@keyframes paste-highlight {
+  0% { 
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 0.5;
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.8);
+  }
+  100% { 
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+    box-shadow: 0 0 0 rgba(0, 255, 0, 0);
+  }
+}
+
+.square.pasted {
+  animation: paste-highlight 0.4s ease-out forwards;
+}
+
+.circle-right {
+  /* Custom styling for right panel circles */
+}
+
+.triangle-shape {
+  transform-origin: center center;
+  transition: transform 0.3s ease;
+}
+
+@keyframes triangle-pulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.08); }
+}
+
+.circle-right.selected {
+  box-shadow: 0 0 12px 4px rgba(255, 255, 255, 0.8);
+}
+
+/* Circle shape styles for different panels */
+
+/* Base circle style for all panels */
+.circle {
+  position: absolute;
+  cursor: move;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+  transition: box-shadow 0.2s ease;
+  transform: translate(-50%, -50%);
+  margin-bottom: 20px;
+}
+
+/* Right panel - Triangle styles */
+.circle-right {
+  border-radius: 0; /* Override default circle style */
+}
+
+.triangle-shape {
+  transform-origin: center center;
+  transition: transform 0.3s ease;
+}
+
+.circle-right.selected .triangle-shape {
+  //animation: triangle-pulse 2s infinite alternate;
+}
+
+@keyframes triangle-pulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.08); }
+}
+
+.circle-right.selected {
+  box-shadow: 0 0 12px 4px rgba(255, 255, 255, 0.8);
+}
+
+/* Far Right panel - Star styles */
+.circle-farRight {
+  border-radius: 0; /* Override default circle style */
+}
+
+.star-shape {
+  transform-origin: center center;
+  transition: transform 0.3s ease;
+}
+
+.circle-farRight.selected .star-shape {
+  //animation: star-pulse 2s infinite alternate;
+}
+
+@keyframes star-pulse {
+  0% { transform: scale(1) rotate(0deg); }
+  100% { transform: scale(1.08) rotate(15deg); }
+}
+
+.circle.circle-right.selected, .circle.circle-farRight.selected {
+  box-shadow: none;
+}
+
+.circle-right.selected .shape-wrap, .circle-farRight.selected .shape-wrap {
+	filter: drop-shadow(0 0 3px #FFF) drop-shadow(0 0 5px #FFF);
+}
+
+/* Ensure element symbols are properly positioned in shapes */
+.circle-right .circle-element-symbol,
+.circle-farRight .circle-element-symbol {
+  position: absolute;
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.9);
+  z-index: 10;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: "Arial Unicode MS", "Segoe UI Symbol", sans-serif;
+  pointer-events: none;
+  text-shadow: 0 0 5px rgba(0, 0, 0, 0.7);
+}
+
+/* Dimmed state */
+.circle-right.dimmed,
+.circle-farRight.dimmed {
+  opacity: 0.35;
+}
+
+.circle-right.dimmed:hover,
+.circle-farRight.dimmed:hover {
+  opacity: 0.85;
+}
+
+/* Ensure name element is properly positioned for all circle types */
+.circle .item-name {
+  position: absolute;
+  top: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  font-size: 11px;
+  background: rgba(0, 0, 0, 0.7);
+  border: none;
+  text-align: center;
+  outline: none;
+  padding: 3px 5px;
+  border-radius: 3px;
+  z-index: 25;
+  white-space: nowrap;
+  cursor: text;
+  user-select: text;
+  box-sizing: border-box;
+  max-height: none;
+  spellcheck: false;
+  -webkit-spellcheck: false;
+}
+
+/* Attribute grid visibility styles */
+
+/* Default state - hidden */
+#attribute-grid {
+  display: none;
+}
+
+.story-dropdown-container {
+  display: none;
+}
+
+/* Visible state - when a circle is selected */
+#attribute-grid.visible {
+  display: flex;
+  animation: fade-in 0.3s ease;
+}
+
+/* Animation for smooth appearance */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Hide action-button-container by default */
+.action-btn-container {
+  display: none;
+}
+
+/* Only show action-button-container when a circle is selected */
+body.circle-selected .action-btn-container {
+  display: flex;
+}
+
+.chakra-title {
+	color: #AAA;
+}
+
+/* Panel Toggle Button Styles */
+
+.panel-toggle-btn {
+  position: fixed;
+  width: 10px;
+  height: 30px;
+  background-color: #444;
+  color: #999;
+  border: none;
+  font-size: 9px;
+  cursor: pointer;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 4px;
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.panel-toggle-btn.panel-hidden {
+	background-color: #222;
+}
+
+.panel-toggle-btn:hover {
+  background-color: var(--color-btn-hover);
+  transform: scale(1.05);
+}
+
+/* Position the toggle buttons along the edges of panels */
+#toggle-left-panel {
+  left: 400px; /* Width of left panel */
+  top: 50%;
+  transform: translateY(-50%) rotate(180deg);
+}
+
+#toggle-right-panel {
+  right: 512px; /* Width of right panel */
+  top: 40%;
+  transform: translateY(-50%) rotate(180deg);
+}
+
+#toggle-farRight-panel.panel-hidden ~ #toggle-right-panel:not(.panel-hidden) {
+  right: 302px; /* Width of right panel */
+}
+
+#toggle-farRight-panel {
+  right: 210px; /* Width of farRight panel */
+  top: 50%;
+  transform: translateY(-50%) rotate(180deg);
+}
+
+#toggle-bottom-panel {
+  bottom: 142px; /* Height of bottom panel */
+  left: 50%;
+  transform: translateX(-50%) rotate(90deg);
+}
+
+/* When panels are hidden, adjust button positions */
+#toggle-left-panel.panel-hidden {
+  left: 0;
+}
+
+#toggle-right-panel.panel-hidden {
+  right: 0;
+}
+
+#toggle-farRight-panel:not(.panel-hidden) ~ #toggle-right-panel.panel-hidden {
+  right: 210px; /* Width of far right panel */
+}
+
+#toggle-farRight-panel.panel-hidden {
+  right: 0;
+}
+
+#toggle-bottom-panel.panel-hidden {
+  bottom: 0;
+}
+
+/* Button arrow states for each panel */
+.panel-toggle-button::before {
+  content: "◀";
+}
+
+/* Reversed arrows when panels are hidden */
+.panel-toggle-button.panel-hidden::before {
+  content: "▶";
+}
+
+/* Smooth panel transitions */
+.circle-panel {
+  transition: transform 0.4s ease, opacity 0.4s ease, width 0.4s ease, height 0.4s ease;
+}
+
+/* Hidden panel states */
+.circle-panel.hidden {
+  transform: translateX(-100%);
+  opacity: 0;
+  width: 0;
+}
+
+#right-panel.hidden {
+  transform: translateX(100%);
+}
+
+#farRight-panel.hidden {
+  transform: translateX(100%);
+}
+
+#bottom-panel.hidden {
+  transform: translateY(100%);
+  height: 0;
+}
+
+.panel-toggle-btn.panel-hidden::before {
+  content: "▶";
+}
+
+.panel-toggle-btn:not(.panel-hidden)::before {
+  content: "◀";
+}
+
+.panel-toggle-btn-label {
+	position: absolute;
+	transform: rotate(90deg) translateY(-50%);
+	color: #AAA;
+	display: block;
+	margin-right: 33px;
+	font-size: 10px;
+}
+
+
+Add these styles to styles.css:
+
+/* Concept Panel Styles */
+.concept-panel {
+  transition: transform 0.4s ease, opacity 0.4s ease, width 0.4s ease, height 0.4s ease;
+}
+
+.concept-panel.hidden {
+  transform: translateX(100%);
+}
+
+/* Shape styles for different concept types */
+.hexagon-shape {
+  transform-origin: center center;
+  transition: transform 0.3s ease;
+}
+
+.circle-panel[data-concept-type="concepts"] .circle.selected .hexagon-shape {
+  //animation: hexagon-pulse 2s infinite alternate;
+}
+
+@keyframes hexagon-pulse {
+  0% { transform: scale(1) rotate(0deg); }
+  100% { transform: scale(1.08) rotate(30deg); }
+}
+
+.oval-shape {
+  transform-origin: center center;
+  transition: transform 0.3s ease;
+}
+
+.circle-panel[data-concept-type="people"] .circle.selected .oval-shape {
+  //animation: oval-pulse 2s infinite alternate;
+}
+
+@keyframes oval-pulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.1) scaleX(1.1); }
+}
+
+.diamond-shape {
+  transform-origin: center center;
+  transition: transform 0.3s ease;
+}
+
+.circle-panel[data-concept-type="events"] .circle.selected .diamond-shape {
+  //animation: diamond-pulse 2s infinite alternate;
+}
+
+@keyframes diamond-pulse {
+  0% { transform: scale(1) rotate(0deg); }
+  100% { transform: scale(1.1) rotate(45deg); }
+}
+
+/* Ensure all shape containers are properly styled when selected */
+.circle-panel[data-concept-type] .circle.selected .shape-wrap {
+  filter: drop-shadow(0 0 3px #FFF) drop-shadow(0 0 5px #FFF);
+}
+
+/* Completion level styles for triangles */
+.triangle-shape.level0 {
+  border: 2px dotted;
+  background-color: transparent !important;
+}
+
+.triangle-shape.level1 {
+  /* Filled bottom part (trapezoid shape) */
+  clip-path: polygon(20% 70%, 0% 100%, 100% 100%, 80% 70%);
+}
+
+.triangle-outline {
+  border: 2px dotted;
+  background-color: transparent !important;
+}
+
+/* When selected, add a glow effect to the borders for better visibility */
+.circle-right.selected .triangle-shape.level0,
+.circle-right.selected .triangle-outline {
+  border-color: #fff;
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.7));
+}
+
+/* Ensure trapezoid stands out when selected */
+.circle-right.selected .triangle-shape.level1 {
+  filter: brightness(1.2) drop-shadow(0 0 2px rgba(255, 255, 255, 0.5));
+}
+
+.concept-panel {
+  z-index: 20;
+  overflow: hidden !important;
+}
+
+.circle-panel {
+  position: relative;
+  z-index: 10;
+}
+
+.circle {
+  z-index: 5;
+}
+
+.circle.selected {
+  z-index: 8;
+}
+
+.square {
+  z-index: 5;
+}
+
+.square.selected {
+  z-index: 8;
+}
+
+#toggle-document-list-btn-things, #add-circle-btn-things {
+  background-color: #88B66d; 
+}
+
+#current-document-display-things {
+  top: 88px; 
+  left: 125px; 
+}
+
+.document-list-container[data-panel-id="things"] {
+  background-color: rgba(56, 118, 29, 0.1); 
+}
+
+.circle-left .triangle-shape {
+  filter: drop-shadow(0 0 2px rgba(56, 118, 29, 0.6));
+}
+
+.gem-wrap {
+	top: -5px;
+}
+
+.crystal-name {
+	font-size: 11px;
+	margin-left: 4px;
+}
+
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.zoom-controls .btn-round {
+  width: 18px;
+  height: 18px;
+  font-size: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  background-color: #444;
+  color: #999;
+  border: none;
+}
+
+.zoom-controls .btn-round:hover:not(:disabled) {
+  background-color: var(--color-btn-hover);
+  transform: scale(1.05);
+}
+
+.zoom-controls .btn-round:disabled {
+  cursor: not-allowed;
+}
+
+#zoom-level-display {
+  min-width: 50px;
+  text-align: center;
+  user-select: none;
+}
+
+.color-grid {
+	width: 370px;
+}
+
+.image-input-container {
+  display: flex;
+  flex-direction: column;
+  margin-left: 10px;
+}
+
+.circle-image-input {
+  padding: 4px 8px;
+  width: 200px;
+  border-radius: 4px;
+  background-color: rgba(60, 60, 60, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  transition: all 0.2s ease;
+  font-size: 11px;
+}
+
+.circle-image-input:focus {
+  outline: none;
+  background-color: rgba(80, 80, 80, 0.8);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.circle-image-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Add this to styles.css */
+.connection-line.bold-connection {
+  background-color: rgba(255, 255, 255, 0.9);
+  height: 1.5px;
+  box-shadow: 0 0 3px rgba(255, 255, 255, 0.4);
+}
+
+/*h3, #add-circle-btn-triangle, #add-circle-btn-gem, #toggle-document-list-btn-triangle, #toggle-document-list-btn-gem {
+	display: none;
+}*/
+
+
+.hexagon-shape {
+  transform-origin: center center;
+  transition: transform 0.3s ease;
+}
+
+/* Selection effects for hexagons */
+.circle[data-circle-type="hexagon"].selected .hexagon-shape {
+  filter: drop-shadow(0 0 3px #FFF) drop-shadow(0 0 5px #FFF);
+}
+
+/* Animation for selected hexagons */
+@keyframes hexagon-pulse {
+  0% { transform: scale(1) rotate(0deg); }
+  100% { transform: scale(1.08) rotate(30deg); }
+}
+
+/* Concept panel specific styling for hexagons */
+.circle-panel[data-concept-type="hexagon"] .circle.selected .hexagon-shape {
+  /* Uncomment if you want animation: */
+  /* animation: hexagon-pulse 2s infinite alternate; */
+}
+
+/* Ensure hexagon containers are properly styled when selected */
+.circle[data-circle-type="hexagon"].selected .shape-wrap {
+  filter: drop-shadow(0 0 3px #FFF) drop-shadow(0 0 5px #FFF);
+}
+
+/* Dimmed state for hexagons */
+.circle[data-circle-type="hexagon"].dimmed {
+  opacity: 0.35;
+}
+
+.circle[data-circle-type="hexagon"].dimmed:hover {
+  opacity: 0.85;
+}
+
+
+.square-indicator {
+  position: absolute;
+  top: -18px;
+  right: -18px;
+  font-size: 22px;
+  z-index: 10;
+  background-color: rgba(0, 0, 0, 0.7);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Indicator border styles */
+.square.indicator-important {
+  border: 4px solid #ECEC30 !important; /* Yellow border for important */
+}
+
+.square.indicator-done {
+  border: 4px solid #2C8F30 !important; /* Green border for 🌟 good */
+}
+
+.square.indicator-good {
+  border: 4px solid #2C8F30 !important; /* Green border for 🌟 good */
+}
+
+.square.indicator-bad {
+  border: 4px solid #c42316 !important; /* Red border for 😖 bad */
+}
+
+.square.indicator-start {
+  border: 4px solid #ffffff !important; /* White border for ▶️ start */
+}
+
+.square.indicator-finish {
+  border: 4px solid #ffffff !important; /* White border for 🏁 finish */
+}
+
+/* Ensure borders are visible against different backgrounds */
+.square.indicator-start,
+.square.indicator-finish {
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3); /* Add subtle shadow for white borders */
+}
+
+/* Make sure indicator borders take precedence over other border styles */
+.square.indicator-good,
+.square.indicator-bad,
+.square.indicator-start,
+.square.indicator-finish {
+  border-style: solid !important;
+  border-width: 4px !important;
+}
+
+/* Ensure selected state still shows but doesn't override indicator borders */
+.square.selected.indicator-good,
+.square.selected.indicator-bad,
+.square.selected.indicator-start,
+.square.selected.indicator-finish {
+  /* Keep the existing box-shadow for selection, but maintain the indicator border */
+  box-shadow: 0 0 10px 4px rgba(255, 255, 255, 0.8);
+}
+
+/* CSS Styles for Circle References */
+
+/* Base circle reference styles */
+.circle-reference {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  z-index: 10;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Icon within circle reference */
+.circle-reference-icon {
+  font-size: 16px;
+  color: white;
+  font-weight: bold;
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+/* Dragging state */
+.circle-reference.dragging {
+  opacity: 0.8;
+  transform: scale(1.1);
+  z-index: 20;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Invalid state (source circle deleted) */
+.circle-reference.invalid {
+  opacity: 0.5;
+  border-style: dashed;
+  background-color: #666 !important;
+}
+
+.circle-reference.invalid .circle-reference-icon {
+  color: #ccc;
+}
+
+/* Animation for newly created circle references */
+@keyframes circle-reference-appear {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.circle-reference.new {
+  animation: circle-reference-appear 0.4s ease-out;
+}
+
+/* Base circle reference styles */
+.circle-reference {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  z-index: 10;
+  transition: all 0.2s ease;
+}
+
+/* Field element for circle references */
+.circle-reference-field {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 1;
+  transition: all 0.3s ease;
+  opacity: 0.1;
+  -webkit-filter: blur(5px);
+}
+
+/* Field becomes more visible when circle reference is selected */
+.circle-reference.selected .circle-reference-field {
+  opacity: 0.2;
+  border-width: 3px;
+}
+
+/* Icon within circle reference */
+.circle-reference-icon {
+  font-size: 16px;
+  color: white;
+  font-weight: bold;
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+/* Dragging state */
+.circle-reference.dragging {
+  opacity: 0.8;
+  transform: scale(1.1);
+  z-index: 20;
+}
+
+/* Dragging state for field - make it more visible during drag */
+.circle-reference.dragging .circle-reference-field {
+  opacity: 0.5;
+  border-width: 3px;
+}
+
+/* Invalid state (source circle deleted) */
+.circle-reference.invalid {
+  opacity: 0.5;
+  border-style: dashed;
+  background-color: #666 !important;
+}
+
+.circle-reference.invalid .circle-reference-icon {
+  color: #ccc;
+}
+
+.circle-reference.invalid .circle-reference-field {
+  opacity: 0.05;
+  border-style: dashed;
+}
+
+/* Animation for newly created circle references */
+@keyframes circle-reference-appear {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.circle-reference.new {
+  animation: circle-reference-appear 0.4s ease-out;
+}
+
+/* Disable transitions during dragging to prevent lag */
+.circle-reference.no-transition,
+.circle-reference.no-transition .circle-reference-field {
+  transition: none !important;
+}
+
+/* Field hover effect when circle reference is hovered */
+.circle-reference:hover .circle-reference-field {
+  border-width: 2.5px;
+}
+
+/* Ensure field doesn't interfere with square interactions */
+.circle-reference-field {
+  pointer-events: none !important;
+}
+
+/* Make sure circle reference names are positioned correctly relative to the field */
+.circle-reference .item-name {
+  position: absolute;
+  top: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  font-size: 11px;
+  background: rgba(0, 0, 0, 0.7);
+  border: none;
+  text-align: center;
+  outline: none;
+  padding: 3px 5px;
+  border-radius: 3px;
+  z-index: 25;
+  white-space: nowrap;
+  cursor: default;
+  user-select: text;
+  box-sizing: border-box;
+  max-height: none;
+  spellcheck: false;
+  -webkit-spellcheck: false;
+}
+
+/* Selection state for circle references */
+.circle-reference.selected {
+  z-index: 15;
+  border: 1px solid white;
+}
+
+/* Ensure fields render behind squares but above other elements */
+.circle-reference-field {
+  z-index: 1;
+}
+
+.circle-reference {
+  z-index: 10;
+}
+
+.square {
+  z-index: 5;
+}
+
+.square.selected {
+  z-index: 8;
+}
+
+/* CSS Styles for Hexagon Cluster */
+
+/* Hexagon cluster container */
+.hexagon-cluster-container {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* Mini standard circle in cluster */
+.mini-standard-circle {
+  position: absolute;
+  border-radius: 50%;
+  z-index: 3;
+  pointer-events: none;
+  box-shadow: 0 0 3px rgba(255, 255, 255, 0.5);
+  transition: all 0.3s ease;
+}
+
+/* Mini triangle in cluster */
+.mini-triangle {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.5));
+  transition: all 0.3s ease;
+}
+
+/* Mini star in cluster */
+.mini-star {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.5));
+  transition: all 0.3s ease;
+}
+
+/* Enhanced glow effects when hexagon circle is selected */
+.circle[data-circle-type="hexagon"].selected .mini-standard-circle {
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.8), 0 0 8px rgba(255, 255, 255, 0.4);
+}
+
+.circle[data-circle-type="hexagon"].selected .mini-triangle,
+.circle[data-circle-type="hexagon"].selected .mini-star {
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.8)) drop-shadow(0 0 6px rgba(255, 255, 255, 0.4));
+}
+
+/* Animation for selected hexagon clusters */
+.circle[data-circle-type="hexagon"].selected .hexagon-cluster-container {
+  animation: cluster-pulse 3s ease-in-out infinite;
+}
+
+@keyframes cluster-pulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+}
+
+/* Ensure hexagon containers are properly styled when selected */
+.circle[data-circle-type="hexagon"].selected .shape-wrap {
+  filter: none; /* Remove the main shape filter so mini shapes can have their own */
+}
+
+/* Dimmed state for hexagon clusters */
+.circle[data-circle-type="hexagon"].dimmed .mini-standard-circle,
+.circle[data-circle-type="hexagon"].dimmed .mini-triangle,
+.circle[data-circle-type="hexagon"].dimmed .mini-star {
+  opacity: 0.35;
+}
+
+.circle[data-circle-type="hexagon"].dimmed:hover .mini-standard-circle,
+.circle[data-circle-type="hexagon"].dimmed:hover .mini-triangle,
+.circle[data-circle-type="hexagon"].dimmed:hover .mini-star {
+  opacity: 0.85;
+}
+
+/* Circle reference specific styles for hexagon clusters */
+.circle-reference .hexagon-cluster-container {
+  width: 24px;
+  height: 24px;
+}
+
+.circle-reference .mini-standard-circle,
+.circle-reference .mini-triangle,
+.circle-reference .mini-star {
+  width: 6px;
+  height: 6px;
+}
+
+/* Enhanced visibility for mini shapes in circle references */
+.circle-reference .mini-standard-circle {
+  box-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
+}
+
+.circle-reference .mini-triangle,
+.circle-reference .mini-star {
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.8));
+}
+
+/* Selected circle reference cluster effects */
+.circle-reference.selected .mini-standard-circle {
+  box-shadow: 0 0 3px rgba(255, 255, 255, 1);
+}
+
+.circle-reference.selected .mini-triangle,
+.circle-reference.selected .mini-star {
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 1));
+}
+
+/* Ensure cluster positioning works well in different contexts */
+.hexagon-wrap .hexagon-cluster-container {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Responsive scaling for different circle sizes */
+.circle[style*="width: 40px"] .hexagon-cluster-container {
+  width: 40px;
+  height: 40px;
+}
+
+.circle[style*="width: 40px"] .mini-standard-circle,
+.circle[style*="width: 40px"] .mini-triangle,
+.circle[style*="width: 40px"] .mini-star {
+  width: 10px;
+  height: 10px;
+}
+
+/* Ensure cluster elements don't interfere with interactions */
+.hexagon-cluster-container,
+.mini-standard-circle,
+.mini-triangle,
+.mini-star {
+  pointer-events: none !important;
+}
+
+/* Make sure the cluster is visible on different backgrounds */
+.mini-standard-circle,
+.mini-triangle,
+.mini-star {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+
+
+.circle.disabled {
+  filter: saturate(0.1) brightness(0.6);
+}
+
+.circle.disabled .item-name {
+  color: #999 !important;
+}
+
+/* Disabled square styles */
+.square.disabled {
+  filter: saturate(0.1) brightness(0.6);
+}
+
+.square.disabled .item-name {
+  color: #999 !important;
+}
+
+/* Additional styling to ensure disabled elements are visually distinct */
+.circle.disabled,
+.square.disabled {
+  transition: opacity 0.3s ease, filter 0.3s ease;
+}
+
+.connection-line.circle-connection {
+  background-color: rgba(100, 149, 237, 0.8) !important; /* Cornflower blue */
+  height: 2px !important;
+  box-shadow: 0 0 4px rgba(100, 149, 237, 0.6) !important;
+  z-index: 3 !important; /* Above square connections */
+}
+
+.connection-line.circle-connection.directional-connection {
+  background: linear-gradient(90deg, 
+    rgba(100, 149, 237, 0.4), 
+    rgba(100, 149, 237, 0.8), 
+    rgba(100, 149, 237, 1)) !important;
+}
+
+/* Arrow styling for directional connections */
+.connection-arrow {
+  filter: drop-shadow(0 0 2px rgba(100, 149, 237, 0.8));
+}
+
+/* Hover effects for circle connections */
+.connection-line.circle-connection:hover {
+  background-color: rgba(100, 149, 237, 1) !important;
+  height: 3px !important;
+  box-shadow: 0 0 6px rgba(100, 149, 237, 0.8) !important;
+}
+
+/* Different styling when a circle is selected */
+.circle.selected ~ .connection-line.circle-connection {
+  background-color: rgba(255, 215, 0, 0.8) !important; /* Gold */
+  box-shadow: 0 0 5px rgba(255, 215, 0, 0.6) !important;
+}
+
+.connection-line.circle-connection {
+  background-color: rgba(100, 149, 237, 0.8) !important; /* Cornflower blue */
+  height: 2px !important;
+  box-shadow: 0 0 4px rgba(100, 149, 237, 0.6) !important;
+  z-index: 3 !important; /* Above square connections but below circles */
+}
+
+/* Directional connection gradient */
+.connection-line.circle-connection.directional-connection {
+  background: linear-gradient(90deg, 
+    rgba(100, 149, 237, 0.6), 
+    rgba(100, 149, 237, 0.8), 
+    rgba(100, 149, 237, 1)) !important;
+  height: 2.5px !important;
+}
+
+/* Arrow styling for directional connections */
+.connection-arrow {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 8px solid rgba(100, 149, 237, 0.9);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  pointer-events: none;
+  filter: drop-shadow(0 0 2px rgba(100, 149, 237, 0.8));
+  z-index: 4;
+}
+
+/* Enhanced arrow for directional connections */
+.connection-line.directional-connection .connection-arrow {
+  border-left-color: rgba(100, 149, 237, 1);
+  filter: drop-shadow(0 0 3px rgba(100, 149, 237, 1));
+}
+
+/* Hover effects for circle connections */
+.connection-line.circle-connection:hover {
+  background-color: rgba(100, 149, 237, 1) !important;
+  height: 3px !important;
+  box-shadow: 0 0 8px rgba(100, 149, 237, 0.9) !important;
+  transform-origin: left center;
+}
+
+.connection-line.circle-connection:hover .connection-arrow {
+  border-left-color: rgba(100, 149, 237, 1);
+  filter: drop-shadow(0 0 4px rgba(100, 149, 237, 1));
+}
+
+/* Different styling when a circle is selected */
+.circle.selected ~ #circle-line-container .connection-line.circle-connection {
+  background-color: rgba(255, 215, 0, 0.8) !important; /* Gold */
+  box-shadow: 0 0 6px rgba(255, 215, 0, 0.7) !important;
+}
+
+.circle.selected ~ #circle-line-container .connection-line.circle-connection .connection-arrow {
+  border-left-color: rgba(255, 215, 0, 0.9);
+  filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.8));
+}
+
+/* Pulsing animation for active circle connections */
+.connection-line.circle-connection.active {
+  animation: circle-connection-pulse 2s ease-in-out infinite;
+}
+
+@keyframes circle-connection-pulse {
+  0%, 100% {
+    opacity: 0.8;
+    box-shadow: 0 0 4px rgba(100, 149, 237, 0.6);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 8px rgba(100, 149, 237, 0.9);
+  }
+}
+
+/* Circle connection container */
+#circle-line-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Special styling for bidirectional connections (if implemented later) */
+.connection-line.circle-connection.bidirectional {
+  background: linear-gradient(90deg, 
+    rgba(100, 149, 237, 1),
+    rgba(100, 149, 237, 0.6),
+    rgba(100, 149, 237, 1)) !important;
+}
+
+.connection-line.circle-connection.bidirectional::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-right: 8px solid rgba(100, 149, 237, 0.9);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  pointer-events: none;
+  filter: drop-shadow(0 0 2px rgba(100, 149, 237, 0.8));
+}
+
+/* Make sure circle connections don't interfere with circle interactions */
+.circle-connection {
+  pointer-events: none !important;
+}
+
+/* Enhanced visibility when both connected circles are visible */
+.connection-line.circle-connection.both-circles-visible {
+  opacity: 1;
+  background-color: rgba(100, 149, 237, 0.9) !important;
+}
+
+/* Subtle animation on connection creation */
+@keyframes connection-appear {
+  0% {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+.connection-line.circle-connection.new-connection {
+  animation: connection-appear 0.5s ease-out;
+}
+
+.circle-indicator {
+  position: absolute;
+  top: -18px;
+  right: -18px;
+  font-size: 22px;
+  z-index: 10;
+  background-color: rgba(0, 0, 0, 0.7);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Animation for indicator changes */
+.circle-indicator {
+  animation: indicatorPop 0.3s ease-out;
+}
+
+@keyframes indicatorPop {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Ensure circle indicators are visible on all circle types */
+.circle .circle-indicator {
+  z-index: 15; /* Higher than shape elements */
+}
+
+/* Special positioning for different circle types */
+.circle-right .circle-indicator,
+.circle-farRight .circle-indicator {
+  top: -15px;
+  right: -15px;
+  width: 24px;
+  height: 24px;
+  font-size: 18px;
+}
+
+/* Make sure indicators don't interfere with selection glow */
+.circle.selected .circle-indicator {
+  z-index: 20;
+}
+
+.document-toggle-btn.most-recent-selection {
+  border: 1px solid #444 !important;
+}
+
+
+.header-section h3 {
+  margin: 0;
+  white-space: nowrap;
+  transition: color 0.2s ease;
+  cursor: pointer;
+}
+
+.header-section h3:active {
+  color: #AAA !important;
+}
+
+.tab-name-display {
+  position: absolute;
+  color: #AAA;
+  font-size: 9px;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 1px 3px;
+  border-radius: 2px;
+  white-space: nowrap;
+  z-index: 24;
+  pointer-events: none;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: opacity 0.3s ease;
+}
+
+/* Make tab names more visible when circle is selected */
+.circle.selected .tab-name-display {
+  color: #DDD;
+  background: rgba(0, 0, 0, 0.8);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Slightly different styling for dimmed circles */
+.circle.dimmed .tab-name-display {
+  opacity: 0.5;
+}
+
+/* Ensure tab names don't interfere with circle selection */
+.tab-name-display {
+  user-select: none;
+  cursor: default;
+}
+
+.column-labels {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+  margin-left: 0px; /* Align with the buttons */
+}
+
+.column-label {
+  width: 20px;
+  height: 12px;
+  margin-right: 2px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 9px;
+  font-weight: bold;
+  color: #555;
+  user-select: none;
+}
+
+#selection-rectangle {
+  position: absolute;
+  border: 2px dashed #0078d4;
+  background-color: rgba(0, 120, 212, 0.1);
+  pointer-events: none;
+  z-index: 1000;
+  display: none;
+  box-sizing: border-box;
+  border-radius: 2px;
+}
+
+/* Animation for the dashed border */
+#selection-rectangle {
+  border-style: dashed;
+  animation: selection-dash 1s linear infinite;
+}
+
+@keyframes selection-dash {
+  0% {
+    border-color: #0078d4;
+  }
+  50% {
+    border-color: #106ebe;
+  }
+  100% {
+    border-color: #0078d4;
+  }
+}
+
+/* Ensure the center panel allows rectangle selection */
+#center-panel {
+  position: relative;
+  user-select: none; /* Prevent text selection during drag */
+}
+
+/* Make sure squares don't interfere with rectangle selection when dragging */
+.square {
+  pointer-events: auto;
+}
+
+/* Visual feedback during rectangle selection */
+.square.selection-candidate {
+  box-shadow: 0 0 5px rgba(0, 120, 212, 0.7);
+  transition: box-shadow 0.1s ease;
+}
+
+/* Ensure multi-selected squares are visually distinct during rectangle selection */
+.square.multi-selected {
+  border: 2px solid #0078d4;
+  box-shadow: 0 0 8px rgba(0, 120, 212, 0.5);
+}
+
+/* Story box with attribute previews */
+.story-box {
+  flex-shrink: 0 !important;
+    padding: 2px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 10px;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.story-name {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+    text-align: center;
+    margin-bottom: 4px;
+    line-height: 1.1;
+    flex-shrink: 0;
+    height: auto;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    font-size: 14px;
+}
+
+.emoji-span {
+      font-size: 18px;
+      line-height: 1;
+}
+
+.attributes-preview {
+  min-height: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    justify-content: center;
+    align-items: flex-start;
+    flex: 1;
+    padding: 2px 0;
+}
+
+.mini-attribute-box {
+      width: 32px;
+      height: 32px;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      border: 1px solid rgba(0,0,0,0.1);
+      flex-shrink: 0;
+  transition: transform 0.1s ease;
+}
+
+.story-box:hover .mini-attribute-box {
+  transform: scale(1.05);
+}
+
+/* Fixed-size story boxes with previews */
+.stories-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, 120px);
+	grid-template-rows: repeat(auto-fill, 120px);
+	gap: 2px;
+	justify-content: start;
+}
+
+.left-container {
+    display: flex;
+    height: 100%;
+    border-right: var(--panel-border);
+    background-color: var(--color-bg);
+    transition: width 0.3s ease;
+}
+
+.left-panel {
+    width: 400px;
+    height: 100%;
+    position: relative;
+    background-color: var(--color-bg);
+    flex-shrink: 0;
+}
+
+.left-panel:not(:last-child) {
+    border-right: 1px solid #444;
+}
+
+.left-panel .zoom-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+#center-container {
+    transition: margin-left 0.3s ease;
+}
+
+#left-panel-controls {
+    position: fixed;
+    left: 10px;
+    z-index: 1000;
+    display: flex;
+    gap: 5px;
+}
+
+.left-panel-remove-btn {
+	position: absolute;
+    top: 2px;
+    right: 1px;
+    background-color: transparent;
+    color: #AAA;
+    border: none;
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    z-index: 1001;
+}
+
+.left-panel-remove-btn:hover {
+    background-color: #AA4444;
+}
+
+.left-panel-title {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  right: 0px;
+  z-index: 100;
+  background-color: rgba(40, 40, 40, 0.9);
+  border-bottom: 1px solid #555;
+  padding: 4px 6px;
+  color: #CCC;
+  font-size: 10px;
+  font-weight: bold;
+  text-align: left;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(5px);
+  user-select: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-height: 32px;
+  line-height: 16px;
+  transition: all 0.3s ease;
+}
+
+.left-panel-title:hover {
+  background-color: rgba(50, 50, 50, 0.95);
+  border-color: #666;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.left-panel-title.untitled {
+  color: #888;
+  font-style: italic;
+}
+
+.left-panel-title .document-part {
+  display: inline-block;
+  margin-right: 8px;
+}
+
+.left-panel-title .document-part:last-child {
+  margin-right: 0;
+}
+
+.left-panel-title .circle-type-prefix {
+  color: #4CAF50;
+  font-weight: bold;
+}
+
+.left-panel-title .document-name {
+  color: #DDD;
+}
+
+.left-panel-title .separator {
+  color: #777;
+  margin: 0 6px;
+}
+
+
+.left-panel-minimize-btn {
+    position: absolute;
+    top: 2px;
+    right: 22px; /* Position to the left of the remove button */
+    background-color: transparent;
+    color: #AAA;
+    border: none;
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    z-index: 1001;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.left-panel-minimize-btn:hover {
+    background-color: #555;
+    color: #FFF;
+}
+
+/* Minimized panels tray */
+.minimized-panels-tray {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    display: none; /* Hidden by default */
+    z-index: 2000;
+    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(5px);
+    transition: all 0.3s ease;
+}
+
+.minimized-panels-tray.visible {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    animation: tray-slide-up 0.3s ease-out;
+}
+
+@keyframes tray-slide-up {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+/* Minimized panel icon */
+.minimized-panel-icon {
+    width: 48px;
+    height: 24px;
+    background-color: #666;
+    border: 1px solid #888;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: left;
+    font-size: 10px;
+    font-weight: bold;
+    color: #CCC;
+    transition: all 0.2s ease;
+    position: relative;
+    user-select: none;
+    padding-left: 3px;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.minimized-panel-icon:hover {
+    background-color: #777;
+    border-color: #AAA;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.minimized-panel-icon:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Tooltip for minimized panels */
+.minimized-panel-tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    white-space: nowrap;
+    margin-bottom: 8px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 2001;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.minimized-panel-icon:hover .minimized-panel-tooltip {
+    opacity: 1;
+}
+
+/* Tray label */
+.minimized-panels-label {
+    font-size: 10px;
+    color: #AAA;
+    margin-right: 8px;
+    user-select: none;
+}
+
+/* Animation for panel minimization */
+.left-panel.minimizing {
+    animation: panel-minimize 0.4s ease-out forwards;
+    transform-origin: bottom center;
+}
+
+@keyframes panel-minimize {
+    0% {
+        transform: scaleY(1);
+        opacity: 1;
+        height: 100%;
+    }
+    100% {
+        transform: scaleY(0);
+        opacity: 0;
+        height: 0;
+    }
+}
+
+/* Animation for panel restoration */
+.left-panel.restoring {
+    animation: panel-restore 0.4s ease-out forwards;
+    transform-origin: bottom center;
+}
+
+@keyframes panel-restore {
+    0% {
+        transform: scaleY(0);
+        opacity: 0;
+        height: 0;
+    }
+    100% {
+        transform: scaleY(1);
+        opacity: 1;
+        height: 100%;
+    }
+}
+
+/* Ensure minimized panels don't interfere with layout */
+.left-panel.minimized {
+    display: none !important;
+    height: 0 !important;
+    opacity: 0;
+    transform: scaleY(0);
+    pointer-events: none;
+    overflow: hidden;
+}
+
+/* Adjust main container when panels are minimized */
+#left-container.has-minimized-panels {
+    transition: width 0.4s ease;
+}
+
+/* Make sure the tray appears above everything else */
+.minimized-panels-tray {
+    z-index: 10000;
+}
+
+/* Dynamic Panel Width Styles - Add these to styles.css */
+
+/* Update the main container to use flexbox properly */
+#main-container {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: relative; /* For absolute positioned divider */
+}
+
+/* Left container with dynamic width */
+.left-container {
+  display: flex;
+  height: 100%;
+  background-color: var(--color-bg-dark);
+  flex-shrink: 0; /* Prevent shrinking */
+  min-width: 200px; /* Minimum width */
+  max-width: 80vw; /* Maximum 80% of viewport */
+  /* Transition removed - will be added after initial load */
+}
+
+/* Transition class added after initialization */
+.left-container.transitions-enabled {
+  transition: width 0.3s ease;
+}
+
+/* Left panels with dynamic width */
+.left-panel {
+  height: 100%;
+  position: relative;
+  background-color: var(--color-bg-dark);
+  flex-shrink: 0;
+  min-width: 200px; /* Minimum panel width */
+  /* Remove hard-coded width - will be set dynamically */
+  /* Transition removed - will be added after initial load */
+}
+
+/* Transition class added after initialization */
+.left-panel.transitions-enabled {
+  transition: width 0.3s ease;
+}
+
+.left-panel:not(:last-child) {
+  border-right: 1px solid #444;
+}
+
+/* Center container adjusts to remaining space */
+#center-container {
+  flex: 1; /* Take remaining space */
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  min-width: 300px; /* Ensure minimum space for center panel */
+}
+
+/* Resize divider styles */
+.resize-divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background-color: transparent;
+  cursor: ew-resize;
+  z-index: 1001;
+  border-left: 1px solid #444;
+  border-right: 1px solid #444;
+  transition: background-color 0.2s ease;
+}
+
+.resize-divider:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.resize-divider.dragging {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Update panel controls positioning */
+#left-panel-controls {
+  position: fixed;
+  left: 4px;
+  z-index: 1000;
+  display: flex;
+  gap: 5px;
+}
+
+/* Panel titles should respect dynamic widths */
+.left-panel-title {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  right: 0px;
+  z-index: 100;
+  background-color: rgba(40, 40, 40, 0.9);
+  border-bottom: 1px solid #555;
+  padding: 4px 6px;
+  color: #CCC;
+  font-size: 10px;
+  font-weight: bold;
+  text-align: left;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(5px);
+  user-select: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-height: 32px;
+  line-height: 16px;
+  transition: all 0.3s ease;
+}
+
+/* Ensure zoom containers fill their dynamic parent width */
+.left-panel .zoom-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Headers container positioning updates */
+.headers-container {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-width: calc(100% - 40px); /* Respect panel boundaries */
+}
+
+/* Responsive adjustments for smaller panel widths */
+@media (max-width: 1200px) {
+  .left-panel {
+    min-width: 180px;
+  }
+  
+  .left-container {
+    min-width: 180px;
+  }
+}
+
+@media (max-width: 900px) {
+  .left-panel {
+    min-width: 160px;
+  }
+  
+  .left-container {
+    min-width: 160px;
+  }
+  
+  .headers-container {
+    bottom: 5px;
+    left: 5px;
+    max-width: calc(100% - 20px);
+  }
+}
+
+/* Ensure meridian lines respect dynamic positioning */
+.meridian-line {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+}
+
+/* Current document display positioning update */
+.current-document-display {
+  position: absolute;
+  top: 54px;
+  left: -6px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  font-weight: bold;
+  padding: 5px 15px;
+  background-color: rgba(0, 0, 0, 0.4);
+  border-radius: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: calc(100% - 40px); /* Respect dynamic panel width */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  z-index: 50;
+}
+
+/* Panel toggle buttons positioning updates */
+.panel-toggle-btn {
+  position: fixed;
+  width: 10px;
+  height: 30px;
+  background-color: #444;
+  color: #999;
+  border: none;
+  font-size: 9px;
+  cursor: pointer;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 4px;
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
+}
+
+/* Update positioning to use dynamic left container width */
+#toggle-left-panel {
+  /* Left position will be updated dynamically by ResizeController */
+  top: 50%;
+  transform: translateY(-50%) rotate(180deg);
+}
+
+/* Ensure proper layering */
+#main-container {
+  position: relative;
+}
+
+.resize-divider {
+  z-index: 1001;
+}
+
+.left-panel {
+  z-index: 10;
+}
+
+.circle-panel {
+  z-index: 10;
+}
+
+/* Animation for panel width changes */
+.left-panel.width-transition {
+  transition: width 0.3s ease;
+}
+
+.left-container.width-transition {
+  transition: width 0.3s ease;
+}
+
+.no-transition,
+.no-transition * {
+  transition: none !important;
+  -webkit-transition: none !important;
+  -moz-transition: none !important;
+  -o-transition: none !important;
+}
+
+/* Ensure center container doesn't have conflicting transitions during drag */
+#center-container.no-transition {
+  transition: none !important;
+}
+
+.circle-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 16px;
+  font-weight: bold;
+  color: white;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  z-index: 25;
+  user-select: none;
+  text-align: center;
+  line-height: 1;
+  font-family: Arial, sans-serif;
+  transition: all 0.3s ease;
+}
+
+/* Adjustments for different circle types */
+.circle.circle-gem .circle-text {
+  font-size: 18px;
+  text-shadow: 
+    1px 1px 2px rgba(0, 0, 0, 0.9),
+    0 0 4px rgba(255, 255, 255, 0.3);
+  color: white;
+  font-weight: 900;
+}
+
+.circle.circle-triangle .circle-text {
+  font-size: 14px;
+  color: white;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+  top: 45%; /* Adjust for triangle shape */
+}
+
+.circle.circle-star .circle-text {
+  font-size: 14px;
+  color: white;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+.circle.circle-hexagon .circle-text {
+  font-size: 12px;
+  color: white;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  top: 45%; /* Adjust for hexagon cluster */
+}
+
+/* Ensure text is visible on standard circles */
+.circle.circle-standard .circle-text {
+  font-size: 16px;
+  color: white;
+  text-shadow: 
+    1px 1px 2px rgba(0, 0, 0, 0.8),
+    0 0 3px rgba(0, 0, 0, 0.5);
+}
+
+/* Selected state text adjustments */
+.circle.selected .circle-text {
+  color: #FFE082;
+  text-shadow: 
+    1px 1px 2px rgba(0, 0, 0, 0.9),
+    0 0 4px rgba(255, 224, 130, 0.4);
+}
+
+/* Dimmed state text adjustments */
+.circle.dimmed .circle-text {
+  opacity: 0.6;
+}
+
+/* Disabled state text adjustments */
+.circle.disabled .circle-text {
+  opacity: 0.4;
+  color: #888;
+}
+
+/* Special handling for Hebrew text (Tree of Life) */
+.circle-text[data-text-type="hebrew"] {
+  font-family: "Times New Roman", serif;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+/* Special handling for zodiac symbols */
+.circle-text[data-text-type="zodiac"] {
+  font-family: "Times New Roman", serif;
+  font-size: 18px;
+}
+
+/* Special handling for emoji text */
+.circle-text[data-text-type="emoji"] {
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  font-size: 16px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+/* Numbers (Enneagram) */
+.circle-text[data-text-type="number"] {
+  font-family: "Arial Black", Arial, sans-serif;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+/* Panel Drag and Drop Styles */
+
+/* Panel title draggable styling */
+.left-panel-title {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.8);
+    color: #ccc;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: bold;
+    z-index: 15;
+    user-select: none;
+    cursor: grab;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.left-panel-title:hover {
+    background: rgba(0, 0, 0, 0.9);
+    color: #fff;
+    border-color: #555;
+    transform: translateY(-1px);
+}
+
+.left-panel-title:active {
+    cursor: grabbing;
+    transform: translateY(0);
+}
+
+/* Panel during drag */
+.left-panel.dragging {
+    opacity: 0.6;
+    transform: scale(0.98);
+    z-index: 1000;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Other panels during drag (drop targets) */
+.left-panel.drop-target {
+    transition: all 0.2s ease;
+}
+
+.left-panel.drop-target:hover {
+    background-color: rgba(100, 150, 255, 0.1);
+    border-color: #4a90e2;
+}
+
+/* Drop zones */
+.panel-drop-zone {
+    width: 4px;
+    height: 100%;
+    background: transparent;
+    transition: all 0.2s ease;
+    position: relative;
+    flex-shrink: 0;
+}
+
+.panel-drop-zone.drop-zone-active {
+    width: 8px;
+    background: linear-gradient(180deg, 
+        rgba(74, 144, 226, 0.8) 0%, 
+        rgba(74, 144, 226, 0.4) 50%, 
+        rgba(74, 144, 226, 0.8) 100%);
+    box-shadow: 0 0 8px rgba(74, 144, 226, 0.5);
+}
+
+/* Drop zone indicators */
+.panel-drop-zone.drop-zone-active::before {
+    content: '';
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-bottom: 6px solid #4a90e2;
+}
+
+.panel-drop-zone.drop-zone-active::after {
+    content: '';
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 6px solid #4a90e2;
+}
+
+/* Drop zone at the end */
+.drop-zone-after.drop-zone-active {
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(74, 144, 226, 0.6) 50%, 
+        transparent 100%);
+}
+
+.drop-zone-after.drop-zone-active::before {
+    border-left: 6px solid #4a90e2;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    border-right: none;
+    top: 50%;
+    left: 2px;
+    transform: translateY(-50%);
+}
+
+.drop-zone-after.drop-zone-active::after {
+    display: none;
+}
+
+/* Improved panel transitions */
+.left-panel.transitions-enabled {
+    transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                opacity 0.3s ease,
+                box-shadow 0.3s ease;
+}
+
+/* Drag feedback animations */
+@keyframes dragStart {
+    0% {
+        transform: scale(1) rotate(0deg);
+    }
+    50% {
+        transform: scale(1.02) rotate(1deg);
+    }
+    100% {
+        transform: scale(0.98) rotate(-0.5deg);
+    }
+}
+
+@keyframes dragEnd {
+    0% {
+        transform: scale(0.98) rotate(-0.5deg);
+    }
+    100% {
+        transform: scale(1) rotate(0deg);
+    }
+}
+
+.left-panel.dragging .left-panel-title {
+    animation: dragStart 0.3s ease-out;
+    background: rgba(74, 144, 226, 0.9);
+    color: white;
+    border-color: #4a90e2;
+}
+
+/* Visual feedback for successful drop */
+@keyframes dropSuccess {
+    0% {
+        transform: scale(0.98);
+        background-color: rgba(76, 175, 80, 0.2);
+    }
+    50% {
+        transform: scale(1.02);
+        background-color: rgba(76, 175, 80, 0.1);
+    }
+    100% {
+        transform: scale(1);
+        background-color: transparent;
+    }
+}
+
+.left-panel.drop-success {
+    animation: dropSuccess 0.5s ease-out;
+}
+
+/* Ensure drag doesn't interfere with other interactions */
+.left-panel-title[draggable="true"] {
+    -webkit-user-drag: element;
+}
+
+/* Accessibility improvements */
+.left-panel-title:focus {
+    outline: 2px solid #4a90e2;
+    outline-offset: 2px;
+}
+
+/* Prevent text selection during drag */
+.left-container.dragging-active {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+/* Smooth reordering animation */
+.left-panel:not(.dragging) {
+    transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Visual indicator for drag capability */
+.left-panel-title::before {
+    content: '⋮⋮';
+    position: absolute;
+    left: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    font-size: 8px;
+    color: #888;
+    line-height: 1;
+    letter-spacing: -1px;
+}
+
+.left-panel-title:hover::before {
+    opacity: 0.7;
+}
+
+.left-panel-title:active::before {
+    opacity: 1;
+    color: #4a90e2;
+}
+
+.left-panel-title {
+    /* Keep existing styles and add these enhancements */
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.left-panel-title:hover {
+    /* Enhance existing hover styles */
+    background-color: rgba(50, 50, 50, 0.95);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Enhanced untitled state */
+.left-panel-title.untitled {
+    color: #888;
+    font-style: italic;
+    opacity: 0.8;
+}
+
+/* Input field for editing panel titles */
+.left-panel-title-input {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    right: 45px; /* Make room for minimize and close buttons */
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid #4a9eff !important;
+    color: #fff !important;
+    font-size: 10px !important;
+    font-weight: bold !important;
+    padding: 4px 6px !important;
+    border-radius: 0 !important;
+    outline: none !important;
+    z-index: 150;
+    font-family: inherit;
+    line-height: 16px !important;
+    height: 24px !important;
+    box-sizing: border-box !important;
+}
+
+.left-panel-title-input:focus {
+    background: rgba(255, 255, 255, 0.15) !important;
+    border-color: #4a9eff !important;
+    box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.3) !important;
+}
+
+.left-panel-title-input::placeholder {
+    color: rgba(255, 255, 255, 0.5) !important;
+    font-style: italic;
+}
+
+/* Enhanced drag styling when not editing */
+.left-panel-title[draggable="true"]:not(.editing) {
+    cursor: grab;
+}
+
+.left-panel-title[draggable="true"]:not(.editing):active {
+    cursor: grabbing;
+}
+
+/* Disable dragging when editing */
+.left-panel-title.editing {
+    cursor: text !important;
+    draggable: false;
+}
+
+/* Enhanced minimized panel icon styling for custom names */
+.minimized-panel-icon {
+    /* Keep existing styles and enhance */
+    transition: all 0.2s ease, background-color 0.2s ease;
+}
+
+/* Enhanced tooltip for custom names */
+.minimized-panel-tooltip {
+    /* Keep existing styles and enhance */
+    max-width: 250px;
+    word-wrap: break-word;
+}
+
+/* Visual feedback for editing state */
+.left-panel-title.editing-mode {
+    background-color: rgba(74, 158, 255, 0.2);
+    border-color: #4a9eff;
+    box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.3);
+}
+
+/* Ensure buttons don't overlap with input */
+.left-panel-remove-btn,
+.left-panel-minimize-btn {
+    /* Keep existing positioning but ensure they're above input */
+    z-index: 1002;
+}
+
+/* Prevent interference with drag operations */
+.left-panel-title-input {
+    pointer-events: auto;
+}
+
+.left-panel-title.editing {
+    pointer-events: none;
+}
+
+.left-panel-title.editing .left-panel-title-input {
+    pointer-events: auto;
+}
+
+/* Enhanced accessibility */
+.left-panel-title:focus-visible {
+    outline: 2px solid #4a9eff;
+    outline-offset: 1px;
+}
+
+.left-panel-title-input:focus-visible {
+    outline: none; /* Input has its own focus styling */
+}
+
+/* Animation for smooth editing transition */
+@keyframes editingModeEnter {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.left-panel-title-input {
+    animation: editingModeEnter 0.2s ease-out;
+}
+
+/* Hide indicators when editing */
+.left-panel-title.editing::before {
+    display: none;
+}
+
+/* Ensure proper layering during editing */
+.left-panel.editing-title .left-panel-title {
+    z-index: 150;
+}
+
+.left-panel.editing-title .left-panel-title-input {
+    z-index: 151;
+}
+
+/* Visual feedback for save/cancel actions */
+.left-panel-title-input.saving {
+    border-color: #4CAF50 !important;
+    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.3) !important;
+}
+
+.left-panel-title-input.cancelling {
+    border-color: #f44336 !important;
+    box-shadow: 0 0 0 2px rgba(244, 67, 54, 0.3) !important;
+}
+
+/* Ensure click area is optimal for editing */
+.left-panel-title {
+    padding-right: 50px; /* Ensure text doesn't overlap with buttons */
+}
+
+/* Enhanced visual feedback for interaction */
+.left-panel-title:not(.editing):hover {
+    cursor: pointer;
+}
+
+.left-panel-title:not(.editing):hover::after {
+    content: 'Click to edit';
+    position: absolute;
+    bottom: -20px;
+    left: 0;
+    font-size: 8px;
+    color: rgba(255, 255, 255, 0.6);
+    background: rgba(0, 0, 0, 0.7);
+    padding: 2px 4px;
+    border-radius: 2px;
+    white-space: nowrap;
+    opacity: 0;
+    animation: fadeInTooltip 0.3s ease-out 0.5s forwards;
+    pointer-events: none;
+    z-index: 200;
+}
+
+@keyframes fadeInTooltip {
+    to {
+        opacity: 1;
+    }
+}
+
+/* Hide tooltip when editing */
+.left-panel-title.editing:hover::after {
+    display: none;
+}
+
+/* Enhanced drag and drop integration with editing */
+.left-panel-title.dragging {
+    /* Disable editing hints during drag */
+}
+
+.left-panel-title.dragging:hover::after {
+    display: none;
+}
+
+/* Prevent text selection during drag operations */
+.left-container.dragging-panels .left-panel-title {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+/* Allow text selection only during editing */
+.left-panel-title-input {
+    user-select: text;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+}
+
+.circle.multi-selected::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  border: 2px solid rgba(64, 196, 255, 0.8);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* Special handling for different circle types */
+.circle.multi-selected.circle-right::after,
+.circle.multi-selected.circle-farRight::after {
+  border-radius: 0; /* Remove border-radius for non-standard circles */
+}
+
+/* Style for circles being group-dragged */
+.circle.group-dragging {
+  box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.7);
+  z-index: 18 !important;
+  transition: none !important;
+}
+
+/* Visual indicator for group-dragged circles */
+.circle.group-dragging::after {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  right: -5px;
+  bottom: -5px;
+  border: 2px dashed rgba(255, 255, 255, 0.6);
+  border-radius: 50%;
+  animation: pulse-border 1s infinite alternate;
+  pointer-events: none;
+}
+
+/* Special handling for different circle types during dragging */
+.circle.group-dragging.circle-right::after,
+.circle.group-dragging.circle-farRight::after {
+  border-radius: 0; /* Remove border-radius for non-standard circles */
+}
+
+/* Selection counter that shows how many circles are selected */
+.circle-multi-selection-counter {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 3px 5px;
+  border-radius: 20px;
+  font-size: 14px;
+  pointer-events: none;
+  z-index: 1000;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(64, 196, 255, 0.5);
+  display: none;
+  animation: fade-in 0.3s ease-out;
+}
+
+/* Make sure the primary selected circle stands out */
+.circle.selected.primary-selection {
+  box-shadow: 0 0 18px 5px rgba(255, 215, 0, 0.8) !important;
+}
+
+/* Enhance connection lines during group dragging */
+.circle.group-dragging ~ #circle-line-container .connection-line {
+  background-color: rgba(255, 255, 255, 0.7) !important;
+  height: 2px !important;
+  box-shadow: 0 0 5px rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Make sure circle multi-selection doesn't interfere with circle interactions */
+.circle.multi-selected {
+  pointer-events: auto;
+}
+
+/* Enhanced visibility when both connected circles are visible */
+.connection-line.circle-connection.both-circles-visible {
+  opacity: 1;
+  background-color: rgba(100, 149, 237, 0.9) !important;
+}
+
+/* Panel Selection Styles - Add to styles.css */
+
+/* Selected panel visual indicator */
+.left-panel.selected-panel {
+    border-top: 3px solid #EEA;
+    transition: all 0.2s ease;
+}
+
+.left-panel.selected-panel::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    border-radius: 4px;
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* Subtle glow effect for selected panel */
+.left-panel.selected-panel {
+    background-color: rgba(74, 158, 255, 0.02);
+}
+
+/* Selected panel title enhancement */
+.left-panel.selected-panel .left-panel-title {
+    background-color: rgba(74, 158, 255, 0.1);
+}
+
+/* Hover effect for non-selected panels */
+.left-panel:not(.selected-panel):hover {
+    transition: border-color 0.2s ease;
+}
+
+/* Ensure the selection indicator doesn't interfere with buttons */
+.left-panel-remove-btn,
+.left-panel-minimize-btn {
+    z-index: 1004;
+}
+
+/* Ensure panel selection works with minimized panels */
+.minimized-panel-icon.selected-panel-icon {
+    border: 2px solid #4a9eff;
+    background-color: rgba(74, 158, 255, 0.2);
+}
+
+/* Panel cursor indication */
+.left-panel {
+    cursor: pointer;
+}
+
+.left-panel .left-panel-title,
+.left-panel .zoom-container {
+    pointer-events: auto;
+}
+
+/* Don't show pointer cursor on interactive elements */
+.left-panel-remove-btn,
+.left-panel-minimize-btn,
+.left-panel-title-input,
+button {
+    cursor: default;
+}
+
+.left-panel-title {
+    cursor: pointer;
+}
