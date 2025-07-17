@@ -102,7 +102,7 @@
   {
     name: "Light Grays",
     light: { color: '#FFFFFF', crystal: 'White' },
-    solid: { color: '#CCCCCC', crystal: 'Platinum' },
+    solid: { color: '#C0C0C0', crystal: 'Light Gray' },
     dark: { color: '#AAAAAA', crystal: 'Silver' }
   },
   {

@@ -173,7 +173,7 @@ ChakraApp.UIController.prototype._initializeDomElements = function() {
   
   // Create UI elements
   this._createChakraTitle();
-  this._createMeridianLines();
+  //this._createMeridianLines();
   
 };
 

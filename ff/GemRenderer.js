@@ -135,7 +135,53 @@ if (circleView._gemRendered) {
       gradients[i].offsetHeight;
     }
   }
+      this.createChakraForm(circleView);
 },
+
+    createChakraForm: function(circleView) {
+      var chakraForm = circleView.viewModel.chakraForm;
+      var outerContainer = circleView._createElement('div', { className: 'outer-polygon-container' });
+      
+      for (var i = 0; i < chakraForm.length; i++) {
+        this.createChakraFormShape(circleView, outerContainer, chakraForm[i]);
+      }
+      
+      circleView.element.appendChild(outerContainer);
+    },
+
+    createChakraFormShape: function(circleView, outerContainer, form) {
+      var innerContainer = circleView._createElement('div', {
+        className: 'inner-polygon-container',
+        style: { 
+          transform: 'rotate(' + (form.rotate || 0) + 'deg) scale(' + (form.scale || 1) + ')'
+        }
+      });
+      
+      var innermostContainer = circleView._createElement('div', {
+        className: 'inner-polygon-container',
+        style: {
+          filter: 'drop-shadow(0 0 3px #AAA)',
+          mixBlendMode: 'screen',
+          animation: (form.reverse ? 'anglerev' : 'angle') + ' ' + 
+                    (form.spinTime || 16) + 's linear infinite'
+        }
+      });
+      
+      var shapeElement = circleView._createElement('div', {
+        className: 'shape',
+        style: {
+          clipPath: ChakraApp.Utils.getPolyPoints(
+            form.sides, 
+            form.starFactor, 
+            form.borderPercent
+          )
+        }
+      });
+      
+      innermostContainer.appendChild(shapeElement);
+      innerContainer.appendChild(innermostContainer);
+      outerContainer.appendChild(innerContainer);
+    },
 
     /**
      * NEW: Start color cycling animation for multi-color gem circles
