@@ -882,7 +882,7 @@ ChakraApp.AppState.prototype.addCircle = function(circleData) {
     circleData : new ChakraApp.Circle(circleData || {});
 
   if (circle.x === 0 && circle.y === 0) {
-    circle.x = Math.floor(Math.random() * 81) + 100;
+    circle.x = Math.floor(Math.random() * 81) + 20;
     circle.y = Math.floor(Math.random() * 81) + 100;
   }
   

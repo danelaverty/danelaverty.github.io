@@ -32,7 +32,8 @@
             "stories": {
                   "Factors": {
                         "attributes": [
-                              "cause"
+                              "cause",
+                              "activity",
                         ],
                         "color": "#B3D9FF" // Medium blue
                   },

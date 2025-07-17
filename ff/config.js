@@ -45,7 +45,7 @@
     
     // Compressed crystal data - format: [category name, bg color, [[value, display], ...]]
     crystalCategories: [
-      ["Warm Crystals", "#FFF5F5", [
+      ["Warm Colors", "#FFF5F5", [
         ["#FF0050", "Ruby"],
         ["#FF0000", "Garnet"],
         ["#FFAAAA", "Rose Quartz"],
@@ -59,7 +59,7 @@
         ["#FFFFFF", "Clear Quartz"],
         ["#FFC0CB", "Rhodochrosite"]
       ]],
-      ["Cool Crystals", "#F5F5FF", [
+      ["Cool Colors", "#F5F5FF", [
         ["#D0FF00", "Peridot"],
         ["#00FF00", "Emerald"],
         ["#00FFD0", "Aquamarine"],
@@ -195,10 +195,10 @@
     characteristics: {
       color: {
         key: 'color',
-        displayName: 'Crystal',
+        displayName: 'Color',
         buttonEmoji: '🎨',
-        buttonTitle: 'Change Crystal Color',
-        modalTitle: 'Select Crystal',
+        buttonTitle: 'Change Color',
+        modalTitle: 'Select Color',
         categories: expandCrystalCategories(CompressedConfig.crystalCategories),
         visualStyle: {
           type: 'background',

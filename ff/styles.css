@@ -460,6 +460,7 @@ h3 {
   position: absolute;
   pointer-events: none;
   z-index: 20;
+  text-shadow: 0px 0px 2px black, 0px 0px 2px black, 0px 0px 1px black;
 }
 
 /* Circle and Square Animation States */
@@ -1221,6 +1222,7 @@ h3 {
   font-size: 22px;
   margin: 2px 0;
   text-align: center;
+  text-shadow: 0px 0px 2px black, 0px 0px 2px black, 0px 0px 1px black;
 }
 
 .attribute-desc {
@@ -2665,6 +2667,7 @@ Add these styles to styles.css:
 .emoji-span {
       font-size: 18px;
       line-height: 1;
+      text-shadow: 0px 0px 2px black, 0px 0px 2px black, 0px 0px 1px black;
 }
 
 .attributes-preview {
