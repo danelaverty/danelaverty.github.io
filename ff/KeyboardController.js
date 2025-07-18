@@ -648,8 +648,10 @@ this.keyHandlers['='] = function(e) {
   }
 };
 
-    // Ctrl+- - For squares: remove indicator emoji; For circle references: decrease field radius
-this.keyHandlers['-'] = function(e) {
+this.keyHandlers['1'] = this.keyHandlers['2'] = 
+this.keyHandlers['3'] = this.keyHandlers['4'] = this.keyHandlers['5'] = 
+this.keyHandlers['6'] = this.keyHandlers['7'] = this.keyHandlers['8'] = 
+this.keyHandlers['9'] = function(e) {
   // Must be ctrl/cmd key
   if (!(e.ctrlKey || e.metaKey)) return;
 
@@ -658,38 +660,82 @@ this.keyHandlers['-'] = function(e) {
 
   e.preventDefault();
 
-  // Check if a circle reference is selected
-  if (ChakraApp.appState.selectedCircleReferenceId) {
-    var circleReferenceViewData = self._getCircleReferenceViewData(ChakraApp.appState.selectedCircleReferenceId);
-    if (circleReferenceViewData && circleReferenceViewData.viewModel) {
-      var oldRadius = circleReferenceViewData.viewModel.fieldRadius;
-      circleReferenceViewData.viewModel.decreaseFieldRadius();
-      self._showNotification('Field radius: ' + circleReferenceViewData.viewModel.fieldRadius + 'px (was ' + oldRadius + 'px)');
-    }
+  // Get the digit that was pressed
+  var digitPressed = parseInt(e.key);
+  
+  // Convert to 0-based index (CTRL+1 = index 0, CTRL+2 = index 1, etc.)
+  // CTRL+0 cycles back to the last emoji in the array
+  var emojiIndex;
+  if (digitPressed === 0) {
+    emojiIndex = ChakraApp.Config.indicatorEmojis.length - 1;
+  } else {
+    emojiIndex = digitPressed - 1;
+  }
+  
+  // Check if the index is valid
+  if (emojiIndex < 0 || emojiIndex >= ChakraApp.Config.indicatorEmojis.length) {
+    self._showNotification('⚠️ No emoji assigned to CTRL+' + digitPressed);
     return;
   }
+  
+  var selectedEmoji = ChakraApp.Config.indicatorEmojis[emojiIndex];
 
+  // Handle squares using multi-selection system
+  if (ChakraApp.MultiSelectionManager.hasSelection()) {
+    var selectedIds = ChakraApp.MultiSelectionManager.getAllSelectedIds();
+    var count = 0;
+    
+    selectedIds.forEach(function(squareId) {
+      var square = ChakraApp.appState.getSquare(squareId);
+      if (square) {
+        ChakraApp.appState.updateSquare(squareId, { indicator: selectedEmoji.id });
+        count++;
+      }
+    });
+    
+    self._showNotification('Set ' + selectedEmoji.emoji + ' ' + selectedEmoji.name + ' on ' + count + ' squares');
+  }
   // Handle circles using multi-selection system
-  if (ChakraApp.CircleMultiSelectionManager && ChakraApp.CircleMultiSelectionManager.hasSelection()) {
+  else if (ChakraApp.CircleMultiSelectionManager && ChakraApp.CircleMultiSelectionManager.hasSelection()) {
     var selectedIds = ChakraApp.CircleMultiSelectionManager.getAllSelectedIds();
     var count = 0;
     
     selectedIds.forEach(function(circleId) {
       var circle = ChakraApp.appState.getCircle(circleId);
-      if (circle && circle.indicator) {
-        ChakraApp.appState.updateCircle(circleId, { indicator: null });
+      if (circle) {
+        ChakraApp.appState.updateCircle(circleId, { indicator: selectedEmoji.id });
         count++;
       }
     });
     
-    if (count > 0) {
-      self._showNotification('Removed indicators from ' + count + ' circles');
-    } else {
-      self._showNotification('No indicators to remove');
-    }
+    self._showNotification('Set ' + selectedEmoji.emoji + ' ' + selectedEmoji.name + ' on ' + count + ' circles');
   }
+  // Fall back to single circle
+  else if (ChakraApp.appState.selectedCircleId) {
+    var circleId = ChakraApp.appState.selectedCircleId;
+    var circle = ChakraApp.appState.getCircle(circleId);
+
+    if (circle) {
+      ChakraApp.appState.updateCircle(circleId, { indicator: selectedEmoji.id });
+      self._showNotification('Set circle indicator: ' + selectedEmoji.emoji + ' ' + selectedEmoji.name);
+    }
+  } else {
+    self._showNotification('⚠️ Please select a circle or square first');
+  }
+};
+
+    // Ctrl+- - For squares: remove indicator emoji; For circle references: decrease field radius
+this.keyHandlers['0'] = this.keyHandlers['-'] = function(e) {
+  // Must be ctrl/cmd key
+  if (!(e.ctrlKey || e.metaKey)) return;
+
+  // Don't handle if we're editing text
+  if (self._isEditingText()) return;
+
+  e.preventDefault();
+
   // Handle squares using multi-selection system
-  else if (ChakraApp.MultiSelectionManager.hasSelection()) {
+  if (ChakraApp.MultiSelectionManager.hasSelection()) {
     var selectedIds = ChakraApp.MultiSelectionManager.getAllSelectedIds();
     var count = 0;
     
@@ -703,6 +749,36 @@ this.keyHandlers['-'] = function(e) {
     
     if (count > 0) {
       self._showNotification('Removed indicators from ' + count + ' squares');
+    } else {
+      self._showNotification('No indicators to remove');
+    }
+  }
+  // Check if a circle reference is selected
+  else if (ChakraApp.appState.selectedCircleReferenceId) {
+    var circleReferenceViewData = self._getCircleReferenceViewData(ChakraApp.appState.selectedCircleReferenceId);
+    if (circleReferenceViewData && circleReferenceViewData.viewModel) {
+      var oldRadius = circleReferenceViewData.viewModel.fieldRadius;
+      circleReferenceViewData.viewModel.decreaseFieldRadius();
+      self._showNotification('Field radius: ' + circleReferenceViewData.viewModel.fieldRadius + 'px (was ' + oldRadius + 'px)');
+    }
+    return;
+  }
+
+  // Handle circles using multi-selection system
+  else if (ChakraApp.CircleMultiSelectionManager && ChakraApp.CircleMultiSelectionManager.hasSelection()) {
+    var selectedIds = ChakraApp.CircleMultiSelectionManager.getAllSelectedIds();
+    var count = 0;
+    
+    selectedIds.forEach(function(circleId) {
+      var circle = ChakraApp.appState.getCircle(circleId);
+      if (circle && circle.indicator) {
+        ChakraApp.appState.updateCircle(circleId, { indicator: null });
+        count++;
+      }
+    });
+    
+    if (count > 0) {
+      self._showNotification('Removed indicators from ' + count + ' circles');
     } else {
       self._showNotification('No indicators to remove');
     }
@@ -1057,22 +1133,21 @@ this.keyHandlers['c'] = function(e) {
 
   e.preventDefault();
 
-  // Priority: circles first, then squares
-  if (ChakraApp.CircleMultiSelectionManager && ChakraApp.CircleMultiSelectionManager.hasSelection()) {
-    // Copy the selected circles
-    var success = ChakraApp.ClipboardManager.copySelectedCircles();
-
-    // Provide visual feedback
-    if (success) {
-      self._showNotification('✓ Copied ' + ChakraApp.CircleMultiSelectionManager.getSelectionCount() + ' circles');
-    }
-  } else if (ChakraApp.MultiSelectionManager.hasSelection()) {
+  if (ChakraApp.MultiSelectionManager.hasSelection()) {
     // Copy the selected squares
     var success = ChakraApp.ClipboardManager.copySelectedSquares();
 
     // Provide visual feedback
     if (success) {
       self._showNotification('✓ Copied ' + ChakraApp.ClipboardManager.getSquareCount() + ' squares');
+    }
+  } else if (ChakraApp.CircleMultiSelectionManager && ChakraApp.CircleMultiSelectionManager.hasSelection()) {
+    // Copy the selected circles
+    var success = ChakraApp.ClipboardManager.copySelectedCircles();
+
+    // Provide visual feedback
+    if (success) {
+      self._showNotification('✓ Copied ' + ChakraApp.CircleMultiSelectionManager.getSelectionCount() + ' circles');
     }
   } else if (ChakraApp.appState.selectedCircleId) {
     // Copy the selected circle
@@ -1100,21 +1175,21 @@ this.keyHandlers['x'] = function(e) {
   e.preventDefault();
 
   // Priority: circles first, then squares
-  if (ChakraApp.CircleMultiSelectionManager && ChakraApp.CircleMultiSelectionManager.hasSelection()) {
-    // Cut the selected circles
-    var success = ChakraApp.ClipboardManager.cutSelectedCircles();
-
-    // Provide visual feedback
-    if (success) {
-      self._showNotification('✂️ Cut ' + ChakraApp.CircleMultiSelectionManager.getSelectionCount() + ' circles');
-    }
-  } else if (ChakraApp.MultiSelectionManager.hasSelection()) {
+  if (ChakraApp.MultiSelectionManager.hasSelection()) {
     // Cut the selected squares
     var success = ChakraApp.ClipboardManager.cutSelectedSquares();
 
     // Provide visual feedback
     if (success) {
       self._showNotification('✂️ Cut ' + ChakraApp.ClipboardManager.getSquareCount() + ' squares');
+    }
+  } else if (ChakraApp.CircleMultiSelectionManager && ChakraApp.CircleMultiSelectionManager.hasSelection()) {
+    // Cut the selected circles
+    var success = ChakraApp.ClipboardManager.cutSelectedCircles();
+
+    // Provide visual feedback
+    if (success) {
+      self._showNotification('✂️ Cut ' + ChakraApp.CircleMultiSelectionManager.getSelectionCount() + ' circles');
     }
   } else if (ChakraApp.appState.selectedCircleId) {
     // Cut the selected circle
