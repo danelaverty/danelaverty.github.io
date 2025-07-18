@@ -82,6 +82,7 @@
         if (props.textContent !== undefined) el.textContent = props.textContent;
         if (props.innerHTML !== undefined) el.innerHTML = props.innerHTML;
         if (props.contentEditable !== undefined) el.contentEditable = props.contentEditable;
+        el.spellcheck = false;
         
         // Apply event handlers
         if (props.events) {
