@@ -1133,22 +1133,21 @@ this.keyHandlers['c'] = function(e) {
 
   e.preventDefault();
 
-  // Priority: circles first, then squares
-  if (ChakraApp.CircleMultiSelectionManager && ChakraApp.CircleMultiSelectionManager.hasSelection()) {
-    // Copy the selected circles
-    var success = ChakraApp.ClipboardManager.copySelectedCircles();
-
-    // Provide visual feedback
-    if (success) {
-      self._showNotification('✓ Copied ' + ChakraApp.CircleMultiSelectionManager.getSelectionCount() + ' circles');
-    }
-  } else if (ChakraApp.MultiSelectionManager.hasSelection()) {
+  if (ChakraApp.MultiSelectionManager.hasSelection()) {
     // Copy the selected squares
     var success = ChakraApp.ClipboardManager.copySelectedSquares();
 
     // Provide visual feedback
     if (success) {
       self._showNotification('✓ Copied ' + ChakraApp.ClipboardManager.getSquareCount() + ' squares');
+    }
+  } else if (ChakraApp.CircleMultiSelectionManager && ChakraApp.CircleMultiSelectionManager.hasSelection()) {
+    // Copy the selected circles
+    var success = ChakraApp.ClipboardManager.copySelectedCircles();
+
+    // Provide visual feedback
+    if (success) {
+      self._showNotification('✓ Copied ' + ChakraApp.CircleMultiSelectionManager.getSelectionCount() + ' circles');
     }
   } else if (ChakraApp.appState.selectedCircleId) {
     // Copy the selected circle
@@ -1176,21 +1175,21 @@ this.keyHandlers['x'] = function(e) {
   e.preventDefault();
 
   // Priority: circles first, then squares
-  if (ChakraApp.CircleMultiSelectionManager && ChakraApp.CircleMultiSelectionManager.hasSelection()) {
-    // Cut the selected circles
-    var success = ChakraApp.ClipboardManager.cutSelectedCircles();
-
-    // Provide visual feedback
-    if (success) {
-      self._showNotification('✂️ Cut ' + ChakraApp.CircleMultiSelectionManager.getSelectionCount() + ' circles');
-    }
-  } else if (ChakraApp.MultiSelectionManager.hasSelection()) {
+  if (ChakraApp.MultiSelectionManager.hasSelection()) {
     // Cut the selected squares
     var success = ChakraApp.ClipboardManager.cutSelectedSquares();
 
     // Provide visual feedback
     if (success) {
       self._showNotification('✂️ Cut ' + ChakraApp.ClipboardManager.getSquareCount() + ' squares');
+    }
+  } else if (ChakraApp.CircleMultiSelectionManager && ChakraApp.CircleMultiSelectionManager.hasSelection()) {
+    // Cut the selected circles
+    var success = ChakraApp.ClipboardManager.cutSelectedCircles();
+
+    // Provide visual feedback
+    if (success) {
+      self._showNotification('✂️ Cut ' + ChakraApp.CircleMultiSelectionManager.getSelectionCount() + ' circles');
     }
   } else if (ChakraApp.appState.selectedCircleId) {
     // Cut the selected circle
