@@ -1,11 +1,11 @@
 // Enhanced App.js - ResizeController Integration
 (function(ChakraApp) {
-  ChakraApp.App = function() {
+	ChakraApp.App = function() {
     this.controllers = null;
     this.keyboardController = null;
     this.viewManager = null;
     this.leftPanelManager = null;
-    this.resizeController = null; // NEW: ResizeController
+    this.resizeController = null;
     this.initialized = false;
   };
 
@@ -38,8 +38,6 @@
             setTimeout(setupDebugging, 100);
             return;
         }
-        
-        console.log('🔍 Setting up square display debugging...');
         
         // 1. Monitor Square.show() method
         if (ChakraApp.Square && ChakraApp.Square.prototype.show) {
@@ -133,8 +131,6 @@
             debugLog('EVENT: TAB_SELECTED', [tab.id], 'EventBus');
         });
         
-        console.log('🔍 Square display debugging setup complete!');
-        console.log('🔍 Now select a circle and watch the console for the flow...');
     }
     
     // Start debugging setup
@@ -169,16 +165,10 @@
             return;
         }
         
-        console.log('🔍 Setting up enhanced _showSquaresForCircle debugging...');
-        
         // Hook _showSquaresForCircle with full stack trace
         if (ChakraApp.appState._showSquaresForCircle) {
             var original = ChakraApp.appState._showSquaresForCircle;
             ChakraApp.appState._showSquaresForCircle = function(circleId) {
-                console.log('🚨 _showSquaresForCircle called with circleId:', circleId);
-                console.log('🚨 FULL STACK TRACE:');
-                console.log(new Error().stack);
-                console.log('🚨 END STACK TRACE');
                 return original.apply(this, arguments);
             };
         }
@@ -187,15 +177,10 @@
         if (ChakraApp.appState._filterSquaresByTab) {
             var originalFilter = ChakraApp.appState._filterSquaresByTab;
             ChakraApp.appState._filterSquaresByTab = function(tabId) {
-                console.log('🟦 _filterSquaresByTab called with tabId:', tabId);
-                console.log('🟦 FULL STACK TRACE:');
-                console.log(new Error().stack);
-                console.log('🟦 END STACK TRACE');
                 return originalFilter.apply(this, arguments);
             };
         }
         
-        console.log('🔍 Enhanced debugging setup complete!');
     }
     
     // Start enhanced debugging
@@ -232,8 +217,7 @@
   };
   
   // FIXED: Added ResizeController initialization
-  ChakraApp.App.prototype.initializeAppComponents = function() {
-    
+ChakraApp.App.prototype.initializeAppComponents = function() {
     this.initializeOverlappingGroups();
     this.loadPanelState();
     this.initializeConceptPanels();
@@ -241,7 +225,7 @@
     this.loadOrCreateData();
     
     this.initializeLeftPanelManager();
-    this.initializeResizeController(); // NEW: Initialize resize controller after left panel manager
+    this.initializeResizeController();
     
     this.createAttributeController();
     this.createControllers();
@@ -254,6 +238,8 @@
     this.initializeOverlappingSquares();
     this.initializeRectangleSelection();
     
+    this._ensureCorrectCirclePositions();
+    
     this.renderViews();
     
     if (ChakraApp.app.viewManager && ChakraApp.app.viewManager._updateCircleConnectionViews) {
@@ -261,43 +247,120 @@
     }
     
     this.markAsInitialized();
-  };
+};
 
-  ChakraApp.App.prototype.initializeLeftPanelManager = function() {
+ChakraApp.App.prototype._ensureCorrectCirclePositions = function() {
+    console.log('App: Ensuring correct circle positions for DISPLAYED circles only');
+    
+    if (!ChakraApp.appState || !ChakraApp.appState.circles) {
+        console.log('No circles to position');
+        return;
+    }
+    
+    var positionsVerified = 0;
+    var self = this;
+    
+    // Only check circles that should actually be visible
+    ChakraApp.appState.circles.forEach(function(circle, circleId) {
+        // Check if this circle should be visible
+        if (ChakraApp.appState.shouldCircleBeVisible(circle)) {
+            var panelId = self._determineCirclePanelId(circle);
+            
+            if (panelId !== null) {
+                var panelWidth = self._getPanelWidthForCircle(panelId);
+                
+                console.log('Visible circle', circleId, 'panel', panelId, 
+                           'stored x:', circle.x, 
+                           'panel width:', panelWidth, 
+                           'center:', panelWidth / 2, 
+                           'absolute x:', circle.x + (panelWidth / 2));
+                
+                positionsVerified++;
+            } else {
+                console.warn('Could not determine panel for VISIBLE circle', circleId);
+            }
+        }
+    });
+    
+    console.log('Verified positions for', positionsVerified, 'visible circles');
+};
+
+ChakraApp.App.prototype._determineCirclePanelId = function(circle) {
+    if (!circle || !circle.documentId) {
+        return null;
+    }
+    
+    // Get the document this circle belongs to
+    var doc = ChakraApp.appState.getDocument(circle.documentId);
+    if (!doc) {
+        return null;
+    }
+    
+    // Check all panels to see which one has this circle's document selected
+    var foundPanelId = null;
+    if (ChakraApp.appState.leftPanels) {
+        ChakraApp.appState.leftPanels.forEach(function(panel, panelId) {
+            var panelSelections = ChakraApp.appState.getLeftPanelSelections(panelId);
+            if (panelSelections && panelSelections[circle.circleType]) {
+                var typeSelections = panelSelections[circle.circleType];
+                if (typeSelections.list1 === circle.documentId || typeSelections.list2 === circle.documentId) {
+                    foundPanelId = panelId;
+                }
+            }
+        });
+    }
+    
+    return foundPanelId;
+};
+
+ChakraApp.App.prototype._getPanelWidthForCircle = function(panelId) {
+    // Try to get from LeftPanelManager
+    if (this.leftPanelManager) {
+        return this.leftPanelManager.getPanelWidth(panelId);
+    }
+    
+    // Fallback to DOM measurement
+    var panelElement = document.getElementById('left-panel-' + panelId);
+    if (panelElement) {
+        var computedStyle = window.getComputedStyle(panelElement);
+        var width = parseInt(computedStyle.width);
+        if (!isNaN(width) && width > 0) {
+            return width;
+        }
+    }
+    
+    // Final fallback
+    return 400;
+};
+
+ChakraApp.App.prototype.initializeLeftPanelManager = function() {
     this.leftPanelManager = new ChakraApp.LeftPanelManager();
     this.leftPanelManager.init();
     
     var anyLeftPanel = this.findAnyLeftPanel();
     var anyZoomContainer = this.findAnyLeftZoomContainer();
-    
   };
 
-  // NEW: Initialize ResizeController
-  ChakraApp.App.prototype.initializeResizeController = function() {
+ChakraApp.App.prototype.initializeResizeController = function() {
     this.resizeController = new ChakraApp.ResizeController();
     this.resizeController.init();
     
-    // Connect ResizeController with LeftPanelManager
+    // Simplified connection - no longer need to coordinate panel widths
     this._connectResizeControllers();
   };
 
   // NEW: Connect resize and panel controllers
-  ChakraApp.App.prototype._connectResizeControllers = function() {
+ChakraApp.App.prototype._connectResizeControllers = function() {
     var self = this;
     
-    // Subscribe to resize events to update panel widths
-    ChakraApp.EventBus.subscribe('PANEL_WIDTH_CHANGED', function(data) {
-      if (self.leftPanelManager && data.newWidth) {
-        self.leftPanelManager.updatePanelWidths(data.newWidth);
-      }
-    });
+    // The ResizeController now mainly handles window resize events and layout coordination
+    // Individual panel resizing is handled by LeftPanelManager
     
-    // When panels are added/removed, update the resize controller
+    // When panels are added/removed, update the layout
     ChakraApp.EventBus.subscribe('LEFT_PANEL_ADDED', function() {
       if (self.resizeController) {
-        // Small delay to ensure DOM is updated
         setTimeout(function() {
-          self.resizeController._updateContainerForPanelChange('add');
+          self.resizeController._updateLayout();
         }, 50);
       }
     });
@@ -305,7 +368,7 @@
     ChakraApp.EventBus.subscribe('LEFT_PANEL_REMOVED', function() {
       if (self.resizeController) {
         setTimeout(function() {
-          self.resizeController._updateContainerForPanelChange('remove');
+          self.resizeController._updateLayout();
         }, 50);
       }
     });
@@ -313,7 +376,7 @@
     ChakraApp.EventBus.subscribe('LEFT_PANEL_MINIMIZED', function() {
       if (self.resizeController) {
         setTimeout(function() {
-          self.resizeController._updateContainerForPanelChange('minimize');
+          self.resizeController._updateLayout();
         }, 50);
       }
     });
@@ -321,8 +384,15 @@
     ChakraApp.EventBus.subscribe('LEFT_PANEL_RESTORED', function() {
       if (self.resizeController) {
         setTimeout(function() {
-          self.resizeController._updateContainerForPanelChange('restore');
+          self.resizeController._updateLayout();
         }, 50);
+      }
+    });
+    
+    // Listen for individual panel width changes to update circle positions
+    ChakraApp.EventBus.subscribe('PANEL_WIDTH_CHANGED', function(data) {
+      if (self.resizeController) {
+        self.resizeController._onPanelWidthChanged(data);
       }
     });
   };
@@ -558,13 +628,13 @@
     }
   };
   
-  ChakraApp.App.prototype.destroy = function() {
+ChakraApp.App.prototype.destroy = function() {
     if (this.leftPanelManager) {
       this.leftPanelManager.destroy();
       this.leftPanelManager = null;
     }
     
-    // NEW: Destroy ResizeController
+    // Destroy ResizeController
     if (this.resizeController) {
       this.resizeController.destroy();
       this.resizeController = null;

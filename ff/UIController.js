@@ -802,6 +802,7 @@ ChakraApp.UIController.prototype._setupPanelClickHandlers = function() {
    * @param {Object|null} circle - The selected circle or null if no circle is selected
    */
   ChakraApp.UIController.prototype._updateSilhouetteVisibility = function(circle) {
+	  return;
     // FIXED: Check for the new silhouette element IDs
     var silhouetteOutline = this.silhouetteOutline;
     var silhouetteFilled = this.silhouetteFilled;

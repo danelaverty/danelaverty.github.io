@@ -802,7 +802,6 @@ ChakraApp.TemplateController.prototype._setupInitializationStrategy = function()
     // Panels already exist, initialize immediately
     this._completeInitialization();
   } else {
-    console.log('TemplateController: No panels found - will initialize when first panel is created');
     // Wait for panels to be created
     this._waitForPanelsToBeCreated();
   }
@@ -813,7 +812,6 @@ ChakraApp.TemplateController.prototype._waitForPanelsToBeCreated = function() {
   var self = this;
   
   this.eventSubscriptions.leftPanelAdded = ChakraApp.EventBus.subscribe('LEFT_PANEL_ADDED', function(data) {
-    console.log('TemplateController received LEFT_PANEL_ADDED event for panel:', data.panelId);
     
     // Initialize when the first panel is created (any panel, not just panel 0)
     self._completeInitialization();
@@ -1584,7 +1582,6 @@ ChakraApp.TemplateController.prototype._createVisualTemplateSelector = function(
   
   if (parentContainer) {
     parentContainer.appendChild(selectorContainer);
-    console.log('Template selector container appended to:', parentContainer.id || parentContainer.tagName);
   } else {
     console.error('No suitable parent container found for template selector');
   }
@@ -2340,7 +2337,6 @@ ChakraApp.TemplateController.prototype._setupButtonHandlersEnhanced = function()
       // Add the click event listener
       newToggleBtn.addEventListener('click', function(e) {
         e.stopPropagation();
-        console.log('Template button clicked for type:', typeId, 'panel:', panelId);
         
         // Set the current panel ID for template selection
         self.currentPanelId = panelId;
@@ -2362,16 +2358,11 @@ ChakraApp.TemplateController.prototype._setupButtonHandlersEnhanced = function()
 
 
 ChakraApp.TemplateController.prototype._showVisualTemplateSelector = function(circleTypeId) {
-  console.log('=== SHOWING VISUAL TEMPLATE SELECTOR ===');
-  console.log('Circle Type ID:', circleTypeId);
   
   // Create visual selector if it doesn't exist
   if (!this.templateSelectorContainer) {
-    console.log('Creating visual template selector...');
     this._createVisualTemplateSelector();
-    console.log('Template selector container created:', this.templateSelectorContainer);
   } else {
-    console.log('Template selector container already exists:', this.templateSelectorContainer);
   }
   
   // Calculate positioning relative to the current left panel
@@ -2389,28 +2380,17 @@ ChakraApp.TemplateController.prototype._showVisualTemplateSelector = function(ci
     this.templateSelectorContainer.style.width = '800px';
     this.templateSelectorContainer.style.maxWidth = '800px';
     
-    console.log('Positioned template selector at:', {
-      top: this.templateSelectorContainer.style.top,
-      left: this.templateSelectorContainer.style.left,
-      width: this.templateSelectorContainer.style.width
-    });
   }
   
   // Show the template selector
-  console.log('Setting display styles...');
   this.templateSelectorContainer.style.display = 'block';
   this.isTemplateGridExpanded = true;
   this.templateSelector.style.display = 'block';
   
   // Log current styles
-  console.log('Container display:', this.templateSelectorContainer.style.display);
-  console.log('Container computed display:', window.getComputedStyle(this.templateSelectorContainer).display);
-  console.log('Selector display:', this.templateSelector.style.display);
-  console.log('Selector computed display:', window.getComputedStyle(this.templateSelector).display);
   
   // Check dimensions
   var rect = this.templateSelectorContainer.getBoundingClientRect();
-  console.log('Container dimensions:', rect);
   
   this._updateTemplateToggleButtonText();
   
@@ -2420,12 +2400,8 @@ ChakraApp.TemplateController.prototype._showVisualTemplateSelector = function(ci
   // Final check
   setTimeout(function() {
     var finalRect = this.templateSelectorContainer.getBoundingClientRect();
-    console.log('Final container dimensions:', finalRect);
-    console.log('Final container visibility:', window.getComputedStyle(this.templateSelectorContainer).visibility);
-    console.log('Final container opacity:', window.getComputedStyle(this.templateSelectorContainer).opacity);
   }.bind(this), 100);
   
-  console.log('=== END VISUAL TEMPLATE SELECTOR DEBUG ===');
 };
 
 /**
@@ -2433,8 +2409,6 @@ ChakraApp.TemplateController.prototype._showVisualTemplateSelector = function(ci
  * @private
  */
 ChakraApp.TemplateController.prototype._filterTemplatesByType = function(circleTypeId) {
-  console.log('=== FILTERING TEMPLATES BY TYPE ===');
-  console.log('Circle Type ID:', circleTypeId);
   
   if (!this.templateSelector) {
     console.error('No template selector to filter');
@@ -2442,34 +2416,27 @@ ChakraApp.TemplateController.prototype._filterTemplatesByType = function(circleT
   }
   
   var templateBoxes = this.templateSelector.querySelectorAll('.template-box');
-  console.log('Found template boxes:', templateBoxes.length);
   
   var visibleCount = 0;
   templateBoxes.forEach(function(box) {
     var templateId = box.dataset.template;
     var template = this._findTemplateById(templateId);
     
-    console.log('Checking template:', templateId, 'type:', template ? template.type : 'not found');
     
     if (template && template.type === circleTypeId) {
       box.style.display = 'flex';
       visibleCount++;
-      console.log('Showing template:', template.name);
     } else {
       box.style.display = 'none';
-      console.log('Hiding template:', templateId);
     }
   }.bind(this));
   
-  console.log('Visible templates after filtering:', visibleCount);
   
   // Hide categories that have no visible templates
   var categorySections = this.templateSelector.querySelectorAll('.template-category-section');
-  console.log('Found category sections:', categorySections.length);
   
   categorySections.forEach(function(section) {
     var visibleTemplates = section.querySelectorAll('.template-box[style*="display: flex"]');
-    console.log('Category section visible templates:', visibleTemplates.length);
     
     if (visibleTemplates.length > 0) {
       section.style.display = 'block';
@@ -2478,7 +2445,6 @@ ChakraApp.TemplateController.prototype._filterTemplatesByType = function(circleT
     }
   });
   
-  console.log('=== END FILTERING TEMPLATES ===');
 };
 
 /**
