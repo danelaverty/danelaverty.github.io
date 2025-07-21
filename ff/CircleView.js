@@ -450,38 +450,85 @@ ChakraApp.CircleView.prototype._renderStandardCircle = function() {
 };
 
 ChakraApp.CircleView.prototype._getPanelIdFromCircleView = function() {
-  // First check if panelId is stored on the view
-  if (this.panelId !== undefined) {
-    return this.panelId;
-  }
-  
-  // Try to determine from the parent container
-  var element = this.element;
-  while (element && element.parentElement) {
-    // Look for left-panel-X pattern
-    if (element.id && element.id.match(/^left-panel-(\d+)$/)) {
-      var match = element.id.match(/^left-panel-(\d+)$/);
-      return parseInt(match[1]);
+    // First check if panelId is cached and valid
+    if (this.panelId !== undefined && this.panelId !== null && !isNaN(this.panelId)) {
+        return parseInt(this.panelId);
     }
     
-    // Look for data-panel-index attribute
-    if (element.dataset && element.dataset.panelIndex !== undefined) {
-      return parseInt(element.dataset.panelIndex);
+    // ENHANCED: Check the parent element's data-panel-id first (most reliable)
+    if (this.parentElement && this.parentElement.dataset && this.parentElement.dataset.panelId) {
+        var panelIdStr = this.parentElement.dataset.panelId;
+        console.log('Found panelId in parentElement dataset:', panelIdStr);
+        
+        // Handle "left-N" format
+        if (panelIdStr.startsWith('left-')) {
+            var panelId = parseInt(panelIdStr.substring(5));
+            if (!isNaN(panelId)) {
+                this.panelId = panelId; // Cache it
+                return panelId;
+            }
+        } else {
+            var panelId = parseInt(panelIdStr);
+            if (!isNaN(panelId)) {
+                this.panelId = panelId; // Cache it
+                return panelId;
+            }
+        }
     }
     
-    // Check class patterns
-    if (element.classList.contains('left-panel')) {
-      // Try to extract from ID or data attributes
-      if (element.dataset.panelIndex !== undefined) {
-        return parseInt(element.dataset.panelIndex);
-      }
+    // ENHANCED: DOM traversal looking for panel container
+    var element = this.element;
+    while (element) {
+        if (element.id && element.id.match(/^left-panel-(\d+)$/)) {
+            var match = element.id.match(/^left-panel-(\d+)$/);
+            var panelId = parseInt(match[1]);
+            console.log('Found panel ID from DOM traversal:', panelId);
+            this.panelId = panelId; // Cache it
+            return panelId;
+        }
+        element = element.parentElement;
     }
     
-    element = element.parentElement;
-  }
-  
-  // Fallback to panel 0 if we can't determine
-  return 0;
+    // Try parentElement traversal as backup
+    element = this.parentElement;
+    while (element) {
+        if (element.id && element.id.match(/^left-panel-(\d+)$/)) {
+            var match = element.id.match(/^left-panel-(\d+)$/);
+            var panelId = parseInt(match[1]);
+            console.log('Found panel ID from parent traversal:', panelId);
+            this.panelId = panelId; // Cache it
+            return panelId;
+        }
+        element = element.parentElement;
+    }
+    
+    // ENHANCED: Use the more sophisticated app-level logic as final fallback
+    var circleType = this.viewModel.circleType;
+    var documentId = this.viewModel.documentId;
+    
+    if (ChakraApp.appState && ChakraApp.appState.leftPanels) {
+        var foundPanelId = null;
+        
+        ChakraApp.appState.leftPanels.forEach(function(panel, panelId) {
+            var panelSelections = ChakraApp.appState.getLeftPanelSelections(panelId);
+            if (panelSelections && panelSelections[circleType]) {
+                var typeSelections = panelSelections[circleType];
+                if (typeSelections.list1 === documentId || typeSelections.list2 === documentId) {
+                    foundPanelId = panelId;
+                    console.log('Found panel ID from app state mapping:', panelId);
+                }
+            }
+        });
+        
+        if (foundPanelId !== null) {
+            this.panelId = foundPanelId; // Cache it
+            return foundPanelId;
+        }
+    }
+    
+    console.warn('Could not determine panel ID for circle', this.viewModel.id, 'using fallback 0');
+    this.panelId = 0;
+    return 0;
 };
 
   /**
@@ -568,23 +615,72 @@ ChakraApp.CircleView.prototype.update = function() {
 };
   
 ChakraApp.CircleView.prototype.updatePosition = function() {
-  // Get current panel width
-  var panelWidth = this._getCurrentPanelWidth();
-  var panelCenterX = panelWidth / 2;
-  
-  // Interpret circle's X coordinate as relative to panel center
-  var absoluteX = this.viewModel.x + panelCenterX;
-  
-  this.element.style.left = absoluteX + 'px';
-  this.element.style.top = this.viewModel.y + 'px'; // Y remains unchanged
+    // Get current panel width with enhanced error handling
+    var panelWidth = this._getCurrentPanelWidth();
+    var panelCenterX = panelWidth / 2;
+    
+    // Interpret circle's X coordinate as relative to panel center
+    var absoluteX = this.viewModel.x + panelCenterX;
+    
+    console.log('updatePosition for circle', this.viewModel.id, 
+               'stored x:', this.viewModel.x, 
+               'panel width:', panelWidth, 
+               'center:', panelCenterX, 
+               'calculated absolute x:', absoluteX);
+    
+    // Apply position with validation
+    if (isNaN(absoluteX) || isNaN(this.viewModel.y)) {
+        console.error('Invalid position calculated for circle', this.viewModel.id, 
+                     'absoluteX:', absoluteX, 'y:', this.viewModel.y);
+        return;
+    }
+    
+    this.element.style.left = absoluteX + 'px';
+    this.element.style.top = this.viewModel.y + 'px';
+    
+    // Verify the position was set correctly
+    var actualLeft = parseFloat(this.element.style.left);
+    if (Math.abs(actualLeft - absoluteX) > 0.1) {
+        console.warn('Position mismatch! Expected:', absoluteX, 'Actual:', actualLeft);
+        // Try to fix it
+        this.element.style.left = absoluteX + 'px';
+    }
 };
 
 ChakraApp.CircleView.prototype._getCurrentPanelWidth = function() {
-  if (ChakraApp.app && ChakraApp.app.resizeController) {
-    return ChakraApp.app.resizeController.getCurrentPanelWidth();
-  }
-  return 400; // Fallback to default width
+    // CRITICAL FIX: Ensure we get the panel ID as an integer consistently
+    var panelId = this._getPanelIdFromCircleView();
+    
+    console.log('_getCurrentPanelWidth for circle', this.viewModel.id, 'in panel', panelId, '(type:', typeof panelId, ')');
+    
+    // FIXED: Ensure panelId is an integer before using it
+    if (panelId !== null && panelId !== undefined && !isNaN(panelId)) {
+        panelId = parseInt(panelId);
+        
+        if (ChakraApp.app && ChakraApp.app.leftPanelManager) {
+            var width = ChakraApp.app.leftPanelManager.getPanelWidth(panelId);
+            console.log('Got width from LeftPanelManager for panel', panelId, ':', width);
+            if (width > 0) {
+                return width;
+            }
+        }
+        
+        // ENHANCED: Direct DOM check with the exact panel ID
+        var panelElement = document.getElementById('left-panel-' + panelId);
+        if (panelElement) {
+            var computedStyle = window.getComputedStyle(panelElement);
+            var width = parseInt(computedStyle.width);
+            if (!isNaN(width) && width > 0) {
+                console.log('Got width from DOM for panel', panelId, ':', width);
+                return width;
+            }
+        }
+    }
+    
+    console.warn('Could not get panel width for panel', panelId, 'using fallback 400');
+    return 400;
 };
+
 
 
 ChakraApp.CircleView.prototype.updateDisabledState = function() {
@@ -747,48 +843,58 @@ ChakraApp.CircleView.prototype._addDragFunctionality = function() {
     dragTargets: dragTargets,
     dragClasses: dragClasses,
     enableSnapping: enableSnapping,
-    enableGroupDragging: true, // FIX: Enable group dragging for circles
+    enableGroupDragging: true,
     
     // Custom drag target checker for circles (includes SVG elements for gems)
     isDragTarget: function(dragState, event) {
-      var target = event.target;
-      
-      // Check standard targets
-      if (dragTargets.includes(target)) return true;
-      
-      // Check drag classes
-      if (dragClasses.some(function(cls) { return target.classList.contains(cls); })) {
-        return true;
-      }
-      
-      // Special handling for gem SVG elements
-      var svgTags = ['svg', 'polygon', 'path'];
-      if (svgTags.includes(target.tagName) || target.closest('svg')) {
-        return true;
-      }
-      
-      return false;
+        var target = event.target;
+        
+        // Check standard targets
+        if (dragTargets.includes(target)) return true;
+        
+        // Check drag classes
+        if (dragClasses.some(function(cls) { return target.classList.contains(cls); })) {
+            return true;
+        }
+        
+        // Special handling for gem SVG elements
+        var svgTags = ['svg', 'polygon', 'path'];
+        if (svgTags.includes(target.tagName) || target.closest('svg')) {
+            return true;
+        }
+        
+        return false;
     },
     
     updatePosition: function(x, y) {
-      // Update visual position immediately for smooth dragging
-      self.element.style.left = x + 'px';
-      self.element.style.top = y + 'px';
+        // Update visual position immediately for smooth dragging
+        self.element.style.left = x + 'px';
+        self.element.style.top = y + 'px';
     },
     
     onDragEnd: function(dragState) {
-      // Convert absolute position back to center-relative for storage
-      var finalAbsoluteX = parseFloat(self.element.style.left);
-      var finalY = parseFloat(self.element.style.top);
-      
-      var panelWidth = self._getCurrentPanelWidth();
-      var panelCenterX = panelWidth / 2;
-      var centerRelativeX = finalAbsoluteX - panelCenterX;
-      
-      // Update the model with center-relative coordinates
-      self.viewModel.updatePosition(centerRelativeX, finalY);
+        // FIXED: More robust coordinate calculation
+        var finalAbsoluteX = parseFloat(self.element.style.left);
+        var finalY = parseFloat(self.element.style.top);
+        
+        // Get the current panel width at the time of drag end
+        var currentPanelWidth = self._getCurrentPanelWidth();
+        var panelCenterX = currentPanelWidth / 2;
+        
+        // Convert absolute position to center-relative for storage
+        var centerRelativeX = finalAbsoluteX - panelCenterX;
+        
+        console.log('CircleView drag end: absolute X:', finalAbsoluteX, 
+                   'panel width:', currentPanelWidth, 'center:', panelCenterX, 
+                   'storing relative X:', centerRelativeX);
+        
+        // Update the model with center-relative coordinates
+        self.viewModel.updatePosition(centerRelativeX, finalY);
+        
+        // Ensure we save the state after drag
+        ChakraApp.appState.saveToStorageNow();
     }
-  };
+};
   
   // Add drag functionality using the unified system
   this.dragState = ChakraApp.DragHandler.addDragFunctionality(this.element, dragConfig);
@@ -797,6 +903,30 @@ ChakraApp.CircleView.prototype._addDragFunctionality = function() {
   this._addHandler(function() {
     ChakraApp.DragHandler.removeDragFunctionality(self.dragState);
   });
+};
+
+ChakraApp.CircleView.prototype._shouldUpdateForPanel = function(panelId) {
+  // Method 1: Check the extracted panel ID
+  var circlePanelId = this._getPanelIdFromCircleView();
+  if (circlePanelId === panelId) {
+    return true;
+  }
+  
+  // Method 2: Check if this circle's document belongs to a panel with the given ID
+  var doc = ChakraApp.appState.getDocument(this.viewModel.documentId);
+  if (doc) {
+    // Check if this document is selected in the specified panel
+    var panelSelections = ChakraApp.appState.getLeftPanelSelections(panelId);
+    if (panelSelections && panelSelections[this.viewModel.circleType]) {
+      var typeSelections = panelSelections[this.viewModel.circleType];
+      if (typeSelections.list1 === this.viewModel.documentId || 
+          typeSelections.list2 === this.viewModel.documentId) {
+        return true;
+      }
+    }
+  }
+  
+  return false;
 };
 
 ChakraApp.CircleView.prototype._createIndicatorElement = function() {

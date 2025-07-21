@@ -2746,9 +2746,27 @@ Add these styles to styles.css:
     gap: 5px;
 }
 
-.left-panel-remove-btn {
+.left-panel-silhouette-btn {
 	position: absolute;
     top: 2px;
+    right: 30px;
+    background-color: transparent;
+    color: #AAA;
+    border: none;
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    z-index: 1001;
+}
+
+.left-panel-silhouette-btn:hover {
+    background-color: #AA4444;
+}
+
+.left-panel-remove-btn {
+	position: absolute;
+    top: 3px;
     right: 1px;
     background-color: transparent;
     color: #AAA;
@@ -2827,7 +2845,7 @@ Add these styles to styles.css:
 .left-panel-minimize-btn {
     position: absolute;
     top: 2px;
-    right: 22px; /* Position to the left of the remove button */
+    right: 16px; /* Position to the left of the remove button */
     background-color: transparent;
     color: #AAA;
     border: none;
@@ -3957,4 +3975,277 @@ button {
 
 .left-panel-title {
     cursor: pointer;
+}
+
+#left-container {
+    display: flex;
+    flex-direction: row;
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+#left-container.no-transition {
+    transition: none !important;
+}
+
+.left-panel {
+    position: relative;
+    height: 100%;
+    flex-shrink: 0;
+    transition: width 0.3s ease;
+    overflow: hidden;
+}
+
+.left-panel.no-transition {
+    transition: none !important;
+}
+
+.left-panel.transitions-enabled {
+    transition: width 0.3s ease;
+}
+
+/* Panel resize handle */
+.panel-resize-handle {
+    position: absolute;
+    top: 0;
+    right: -2px;
+    bottom: 0;
+    width: 6px;
+    background-color: rgba(255, 255, 255, 0.1);
+    cursor: ew-resize;
+    z-index: 999;
+    border-right: 1px solid #444;
+    transition: background-color 0.2s ease;
+}
+
+.panel-resize-handle:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.panel-resize-handle:active {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Hide resize handle on the last panel */
+.left-panel:last-child .panel-resize-handle {
+    right: 0px;
+}
+
+/* Ensure panels don't grow/shrink during flex layout */
+.left-panel {
+    flex-grow: 0;
+    flex-shrink: 0;
+}
+
+/* Panel selection styles */
+.left-panel.selected-panel {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+/* Drag and drop styles for panels */
+.left-panel.dragging {
+    opacity: 0.7;
+    z-index: 1000;
+}
+
+.left-panel.drop-target {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Drop zones for panel reordering */
+.panel-drop-zone {
+    width: 20px;
+    height: 100%;
+    background-color: rgba(0, 255, 0, 0.3);
+    border: 2px dashed #0f0;
+    box-sizing: border-box;
+    flex-shrink: 0;
+    display: block;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.panel-drop-zone.drop-zone-active {
+    opacity: 1;
+}
+
+/* Minimized panel styles */
+.left-panel.minimized {
+    display: none;
+}
+
+.left-panel.minimizing {
+    transform: scale(0.8);
+    opacity: 0.5;
+    transition: transform 0.4s ease, opacity 0.4s ease;
+}
+
+.left-panel.restoring {
+    transform: scale(1.1);
+    opacity: 0.8;
+    transition: transform 0.4s ease, opacity 0.4s ease;
+}
+
+/* Minimized panels tray */
+.minimized-panels-tray {
+    position: fixed;
+    bottom: 50px;
+    left: 10px;
+    background-color: rgba(0, 0, 0, 0.8);
+    border-radius: 5px;
+    padding: 5px;
+    display: none;
+    flex-direction: row;
+    gap: 5px;
+    z-index: 1000;
+}
+
+.minimized-panels-tray.visible {
+    display: flex;
+}
+
+.minimized-panel-icon {
+    position: relative;
+    background-color: #444;
+    color: #ccc;
+    padding: 5px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+    white-space: nowrap;
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background-color 0.2s ease;
+}
+
+.minimized-panel-icon:hover {
+    background-color: #555;
+}
+
+.minimized-panel-tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #333;
+    color: #fff;
+    padding: 5px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 1001;
+}
+
+.minimized-panel-icon:hover .minimized-panel-tooltip {
+    opacity: 1;
+}
+
+/* Panel controls */
+.left-panel-remove-btn,
+.left-panel-minimize-btn,
+.left-panel-silhouette-btn {
+    position: absolute;
+    top: 5px;
+    width: 16px;
+    height: 16px;
+    border: none;
+    border-radius: 2px;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #ccc;
+    font-size: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.7;
+    transition: opacity 0.2s ease, background-color 0.2s ease;
+}
+
+.left-panel-remove-btn {
+    right: 5px;
+}
+
+.left-panel-minimize-btn {
+    right: 25px;
+}
+
+.left-panel-silhouette-btn {
+    right: 45px;
+}
+
+.left-panel-remove-btn:hover {
+    background-color: #ff4444;
+    opacity: 1;
+}
+
+.left-panel-minimize-btn:hover {
+    background-color: #4444ff;
+    opacity: 1;
+}
+
+.left-panel-silhouette-btn:hover {
+    background-color: #44ff44;
+    opacity: 1;
+}
+
+.left-panel-silhouette-btn.silhouettes-hidden {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: #888;
+}
+
+/* Panel titles */
+.left-panel-title {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    right: 70px;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: #ccc;
+    padding: 2px 5px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 99;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    user-select: none;
+    transition: background-color 0.2s ease;
+}
+
+.left-panel-title:hover {
+    background-color: rgba(0, 0, 0, 0.9);
+    color: #fff;
+}
+
+.left-panel-title.untitled {
+    color: #888;
+    font-style: italic;
+}
+
+.left-panel-title.custom-name {
+    color: #fff;
+    font-style: normal;
+}
+
+.left-panel-title-input {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    right: 70px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid #666;
+    color: #fff;
+    font-size: 11px;
+    padding: 2px 5px;
+    border-radius: 3px;
+    outline: none;
+    z-index: 100;
 }

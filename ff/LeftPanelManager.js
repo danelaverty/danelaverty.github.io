@@ -1,6 +1,6 @@
-// Enhanced LeftPanelManager.js - With Editable Panel Titles
+// Enhanced LeftPanelManager.js - With Silhouette Toggle Button
 (function(ChakraApp) {
-    ChakraApp.LeftPanelManager = function() {
+	ChakraApp.LeftPanelManager = function() {
         this.leftContainer = null;
         this.leftPanels = new Map();
         this.eventSubscriptions = {};
@@ -9,11 +9,15 @@
         this.minimizedPanels = new Map();
         this.minimizedPanelsTray = null;
         
-        // Dynamic width management
-        this.dynamicPanelWidth = 400; // Default width
-        this._transitionsEnabled = false; // Track whether transitions should be enabled
+        // Individual panel width management
+        this.defaultPanelWidth = 400;
+        this.minPanelWidth = 200;
+        this.maxPanelWidth = 800;
+        this.panelWidths = new Map(); // Store individual panel widths
         
-        // NEW: Drag and drop state
+        this._transitionsEnabled = false;
+        
+        // Drag and drop state
         this.dragState = {
             isDragging: false,
             draggedPanel: null,
@@ -24,92 +28,355 @@
             originalOrder: null
         };
         
-        // NEW: Track editing state for panel titles
+        // Resize state
+        this.resizeState = {
+            isResizing: false,
+            resizingPanelId: null,
+            startX: 0,
+            startWidth: 0,
+            resizeHandle: null
+        };
+        
+        // Track editing state for panel titles
         this.editingTitleState = {
             panelId: null,
             originalTitle: null,
             inputElement: null
         };
-	this.leftPanelControls = null;
+        
+        // Track silhouette visibility per panel
+        this.silhouetteVisibility = new Map();
+        
+        this.leftPanelControls = null;
     };
     
-    ChakraApp.LeftPanelManager.prototype.init = function() {
-        this._createLeftContainer();
-        this._setupEventListeners();
-        this._createMinimizedPanelsTray();
-        this._restoreSavedPanelState();
-        this._createLeftPanelControls();
-        this._updateLeftContainerWidth();
-
-        const self = this;
-        this.leftPanels.forEach(function(panel, panelId) {
-            self._createPanelTitle(panelId);
-        });
-        
-        this._setupEventListeners();
-	this._initializePanelSelection();
-        
-        // Enable transitions after a delay to prevent initial flash
-        setTimeout(function() {
-            self._enableTransitions();
-        }, 150);
-    };
-
-    ChakraApp.LeftPanelManager.prototype._initializePanelSelection = function() {
-    // Ensure a panel is selected (will select leftmost by default)
-    ChakraApp.appState.ensureLeftPanelSelected();
+	ChakraApp.LeftPanelManager.prototype.init = function() {
+    this._createLeftContainer();
+    this._setupEventListeners();
+    this._createMinimizedPanelsTray();
     
-    // Set up click handlers for panel selection
-    this._setupPanelSelectionHandlers();
-};
+    // CRITICAL: Load panel widths BEFORE restoring panel state
+    this._loadSavedPanelWidths();
+    console.log('Loaded panel widths:', Array.from(this.panelWidths.entries()));
+    
+    // CRITICAL: Restore panels BEFORE creating titles and other elements
+    this._restoreSavedPanelState();
+    
+    this._createLeftPanelControls();
+    this._updateLeftContainerWidth();
 
-// NEW: Set up click handlers for panel selection
-ChakraApp.LeftPanelManager.prototype._setupPanelSelectionHandlers = function() {
+    // Create panel titles after panels are created and widths are set
     var self = this;
-    
-    // Add click handlers to existing panels
-    this.leftPanels.forEach(function(panelData, panelId) {
-        self._addPanelClickHandler(panelData.element, panelId);
+    this.leftPanels.forEach(function(panel, panelId) {
+        self._createPanelTitle(panelId);
     });
     
-    // Listen for new panels being added
-    ChakraApp.EventBus.subscribe('LEFT_PANEL_ADDED', function(data) {
-        if (data && data.panelId !== undefined) {
-            setTimeout(function() {
-                var panelElement = document.getElementById('left-panel-' + data.panelId);
-                if (panelElement) {
-                    self._addPanelClickHandler(panelElement, data.panelId);
-                }
-            }, 100);
-        }
-    });
+    this._setupEventListeners();
+    this._initializePanelSelection();
+    
+    // Enable transitions after a delay to prevent initial flash
+    setTimeout(function() {
+        self._enableTransitions();
+        
+        // REMOVED: No longer need force update here since App.js handles positioning correctly
+    }, 150);
 };
 
-// NEW: Add click handler to a panel for selection
-ChakraApp.LeftPanelManager.prototype._addPanelClickHandler = function(panelElement, panelId) {
-    if (!panelElement || panelElement.dataset.selectionHandlerAdded) {
+	 ChakraApp.LeftPanelManager.prototype._loadSavedPanelWidths = function() {
+        try {
+            var savedWidths = localStorage.getItem(this._getStorageKey('panelWidths'));
+            if (savedWidths) {
+                var widthsData = JSON.parse(savedWidths);
+                for (var panelId in widthsData) {
+                    this.panelWidths.set(parseInt(panelId), widthsData[panelId]);
+                }
+            }
+        } catch (e) {
+            console.error('Error loading panel widths:', e);
+        }
+    };
+
+    // Save panel widths to localStorage
+    ChakraApp.LeftPanelManager.prototype._savePanelWidths = function() {
+        try {
+            var widthsData = {};
+            this.panelWidths.forEach(function(width, panelId) {
+                widthsData[panelId] = width;
+            });
+            localStorage.setItem(this._getStorageKey('panelWidths'), JSON.stringify(widthsData));
+        } catch (e) {
+            console.error('Error saving panel widths:', e);
+        }
+    };
+
+    // Get storage key for panel widths
+    ChakraApp.LeftPanelManager.prototype._getStorageKey = function(keyName) {
+        const instanceId = this._getInstanceId();
+        return `${instanceId}.${keyName}`;
+    };
+
+    ChakraApp.LeftPanelManager.prototype._getInstanceId = function() {
+        // Try to get from URL parameter first (?instance=myapp1)
+        const params = new URLSearchParams(window.location.search);
+        const urlInstance = params.get('instance');
+        if (urlInstance) {
+            return urlInstance;
+        }
+        
+        // For file:// URLs, use the directory path
+        if (window.location.protocol === 'file:') {
+            const path = window.location.pathname;
+            const pathParts = path.split('/');
+            const dirName = pathParts[pathParts.length - 2];
+            return dirName || 'default';
+        }
+        
+        // Fall back to port-based instance ID for http/https
+        const port = window.location.port || '3000';
+        return `instance${port}`;
+    };
+
+    // Get width for a specific panel
+ChakraApp.LeftPanelManager.prototype.getPanelWidth = function(panelId) {
+    // CRITICAL: Ensure panelId is treated as integer consistently
+    panelId = parseInt(panelId);
+    
+    console.log('LeftPanelManager.getPanelWidth called for panel', panelId, '(type:', typeof panelId, ')');
+    
+    var width = this.panelWidths.get(panelId);
+    
+    if (width && width > 0) {
+        console.log('Found cached width for panel', panelId, ':', width);
+        return width;
+    }
+    
+    // If no cached width, check DOM immediately
+    var panelElement = document.getElementById('left-panel-' + panelId);
+    if (panelElement) {
+        var computedStyle = window.getComputedStyle(panelElement);
+        var domWidth = parseInt(computedStyle.width);
+        if (!isNaN(domWidth) && domWidth > 0) {
+            console.log('Measured DOM width for panel', panelId, ':', domWidth, '- caching it');
+            // Cache this width
+            this.panelWidths.set(panelId, domWidth);
+            return domWidth;
+        }
+    }
+    
+    // Return default and cache it
+    var defaultWidth = this.defaultPanelWidth;
+    console.log('Using default width for panel', panelId, ':', defaultWidth, '- caching it');
+    this.panelWidths.set(panelId, defaultWidth);
+    return defaultWidth;
+};
+
+    // Set width for a specific panel
+    ChakraApp.LeftPanelManager.prototype.setPanelWidth = function(panelId, width) {
+    var oldWidth = this.getPanelWidth(panelId);
+    width = Math.max(this.minPanelWidth, Math.min(this.maxPanelWidth, width));
+    this.panelWidths.set(panelId, width);
+    
+    console.log('LeftPanelManager: Setting panel', panelId, 'width from', oldWidth, 'to', width);
+    
+    // Update the panel element
+    var panelData = this.leftPanels.get(panelId);
+    if (panelData && panelData.element) {
+        panelData.element.style.width = width + 'px';
+    }
+    
+    // CRITICAL FIX: Only update stored circle coordinates if the width actually changed
+    // and only if we're not in the middle of a drag operation
+    if (oldWidth !== width && !this._isDragging()) {
+        this._updateCircleCoordinatesForPanelResize(panelId, oldWidth, width);
+    }
+    
+    // Update container width
+    this._updateLeftContainerWidth();
+    
+    // Save to localStorage
+    this._savePanelWidths();
+    
+    // Update circle positions for this panel (visual update only)
+    this._updateCirclePositionsForPanel(panelId);
+    
+    // Publish event (this will also trigger ResizeController)
+    ChakraApp.EventBus.publish('PANEL_WIDTH_CHANGED', {
+        panelId: panelId,
+        newWidth: width,
+        oldWidth: oldWidth
+    });
+    
+    return width;
+};
+
+ChakraApp.LeftPanelManager.prototype._isDragging = function() {
+    // Check if window.wasDragged is set (used by drag system)
+    if (window.wasDragged) {
+        return true;
+    }
+    
+    // Check if any drag state indicates dragging
+    if (window.dragState && window.dragState.isDragging) {
+        return true;
+    }
+    
+    // Check if panel resize is happening
+    if (this.resizeState && this.resizeState.isResizing) {
+        return true;
+    }
+    
+    return false;
+};
+
+ChakraApp.LeftPanelManager.prototype._updateCircleCoordinatesForPanelResize = function(panelId, oldWidth, newWidth) {
+    console.log('LeftPanelManager: Updating stored circle coordinates for panel', panelId, 'width change:', oldWidth, '->', newWidth);
+    
+    if (!ChakraApp.appState || !ChakraApp.appState.circles) {
         return;
     }
     
-    var self = this;
+    // Calculate the change in panel center position
+    var oldCenterX = oldWidth / 2;
+    var newCenterX = newWidth / 2;
+    var centerDelta = newCenterX - oldCenterX;
     
-    // Add click handler to the panel (but not to buttons or other interactive elements)
-    panelElement.addEventListener('click', function(e) {
-        // Don't trigger selection if clicking on buttons or interactive elements
-        if (e.target.closest('button') || 
-            e.target.closest('.left-panel-title-input') ||
-            e.target.classList.contains('left-panel-remove-btn') ||
-            e.target.classList.contains('left-panel-minimize-btn')) {
+    console.log('Panel center moved by:', centerDelta, 'pixels');
+    
+    // Find all circles that belong to this panel
+    var circlesUpdated = 0;
+    ChakraApp.appState.circles.forEach(function(circle, circleId) {
+        // Determine if this circle belongs to the resized panel
+        var circlePanelId = this._getCirclePanelId(circle);
+        
+        if (circlePanelId === panelId) {
+            // IMPORTANT: Circle coordinates are stored relative to panel center
+            // When panel width changes, we need to adjust stored coordinates
+            // to maintain the same ABSOLUTE position
+            
+            var currentStoredX = circle.x; // This is relative to old center
+            var absoluteX = currentStoredX + oldCenterX; // Convert to absolute
+            var newStoredX = absoluteX - newCenterX; // Convert to new center-relative
+            
+            console.log('Circle', circleId, 'stored x:', currentStoredX, '->', newStoredX, 
+                       '(absolute:', absoluteX, ', old center:', oldCenterX, ', new center:', newCenterX, ')');
+            
+            // Update the stored coordinate
+            circle.x = newStoredX;
+            circlesUpdated++;
+        }
+    }, this);
+    
+    console.log('Updated stored coordinates for', circlesUpdated, 'circles in panel', panelId);
+    
+    // Save the updated coordinates immediately
+    if (circlesUpdated > 0) {
+        ChakraApp.appState.saveToStorageNow();
+    }
+};
+
+ChakraApp.LeftPanelManager.prototype._getCirclePanelId = function(circle) {
+    if (!circle || !circle.documentId) {
+        return null;
+    }
+    
+    // Get the document this circle belongs to
+    var doc = ChakraApp.appState.getDocument(circle.documentId);
+    if (!doc) {
+        return null;
+    }
+    
+    // Check all panels to see which one has this circle's document selected
+    var foundPanelId = null;
+    ChakraApp.appState.leftPanels.forEach(function(panel, panelId) {
+        var panelSelections = ChakraApp.appState.getLeftPanelSelections(panelId);
+        if (panelSelections && panelSelections[circle.circleType]) {
+            var typeSelections = panelSelections[circle.circleType];
+            if (typeSelections.list1 === circle.documentId || typeSelections.list2 === circle.documentId) {
+                foundPanelId = panelId;
+            }
+        }
+    });
+    
+    return foundPanelId;
+};
+
+ChakraApp.LeftPanelManager.prototype._updateCirclePositionsForPanel = function(panelId) {
+    console.log('LeftPanelManager: Updating circle positions for panel', panelId);
+    
+    if (ChakraApp.app && ChakraApp.app.viewManager && ChakraApp.app.viewManager.circleViews) {
+        var updatedCount = 0;
+        ChakraApp.app.viewManager.circleViews.forEach(function(circleView, key) {
+            // Check if this circle belongs to the specified panel
+            var circlePanelId = circleView._getPanelIdFromCircleView();
+            console.log('Circle', circleView.viewModel.id, 'panel ID:', circlePanelId, 'target panel:', panelId);
+            
+            if (circlePanelId === panelId) {
+                console.log('Updating circle', circleView.viewModel.id, 'position for panel resize');
+                circleView.updatePosition();
+                updatedCount++;
+            }
+        });
+        console.log('Updated', updatedCount, 'circles for panel', panelId);
+    }
+};
+    
+
+    ChakraApp.LeftPanelManager.prototype._initializePanelSelection = function() {
+        // Ensure a panel is selected (will select leftmost by default)
+        ChakraApp.appState.ensureLeftPanelSelected();
+        
+        // Set up click handlers for panel selection
+        this._setupPanelSelectionHandlers();
+    };
+
+    // NEW: Set up click handlers for panel selection
+    ChakraApp.LeftPanelManager.prototype._setupPanelSelectionHandlers = function() {
+        var self = this;
+        
+        // Add click handlers to existing panels
+        this.leftPanels.forEach(function(panelData, panelId) {
+            self._addPanelClickHandler(panelData.element, panelId);
+        });
+        
+        // Listen for new panels being added
+        ChakraApp.EventBus.subscribe('LEFT_PANEL_ADDED', function(data) {
+            if (data && data.panelId !== undefined) {
+                setTimeout(function() {
+                    var panelElement = document.getElementById('left-panel-' + data.panelId);
+                    if (panelElement) {
+                        self._addPanelClickHandler(panelElement, data.panelId);
+                    }
+                }, 100);
+            }
+        });
+    };
+
+    // NEW: Add click handler to a panel for selection
+    ChakraApp.LeftPanelManager.prototype._addPanelClickHandler = function(panelElement, panelId) {
+        if (!panelElement || panelElement.dataset.selectionHandlerAdded) {
             return;
         }
         
-        // Select this panel
-        ChakraApp.appState.setSelectedLeftPanel(panelId);
-    });
-    
-    // Mark that we've added the selection handler
-    panelElement.dataset.selectionHandlerAdded = 'true';
-};
+        var self = this;
+        
+        // Add click handler to the panel (but not to buttons or other interactive elements)
+        panelElement.addEventListener('click', function(e) {
+            // Don't trigger selection if clicking on buttons or interactive elements
+            if (e.target.closest('button') || 
+                e.target.closest('.left-panel-title-input') ||
+                e.target.classList.contains('left-panel-remove-btn') ||
+                e.target.classList.contains('left-panel-minimize-btn') ||
+                e.target.classList.contains('left-panel-silhouette-btn')) {
+                return;
+            }
+            
+            // Select this panel
+            ChakraApp.appState.setSelectedLeftPanel(panelId);
+        });
+        
+        // Mark that we've added the selection handler
+        panelElement.dataset.selectionHandlerAdded = 'true';
+    };
 
     // Enable transitions for smooth animations after initial load
     ChakraApp.LeftPanelManager.prototype._enableTransitions = function() {
@@ -144,7 +411,6 @@ ChakraApp.LeftPanelManager.prototype._addPanelClickHandler = function(panelEleme
         var self = this;
         var panelsToCreate = [];
         
-        
         ChakraApp.appState.leftPanels.forEach(function(panel, panelId) {
             panelsToCreate.push({
                 id: panelId,
@@ -156,7 +422,6 @@ ChakraApp.LeftPanelManager.prototype._addPanelClickHandler = function(panelEleme
         panelsToCreate.sort(function(a, b) { 
             return a.order - b.order; 
         });
-        
         
         // Create panels in the correct order
         panelsToCreate.forEach(function(panelInfo) {
@@ -171,8 +436,37 @@ ChakraApp.LeftPanelManager.prototype._addPanelClickHandler = function(panelEleme
         }
         
         this._restoreMinimizedState();
-        
+        this._restoreSilhouetteVisibility(); // NEW: Restore silhouette visibility
     };
+    
+    // NEW: Restore silhouette visibility from saved state
+    ChakraApp.LeftPanelManager.prototype._restoreSilhouetteVisibility = function() {
+    var self = this;
+
+    // FIXED: Ensure AppState map exists before accessing it
+    if (!ChakraApp.appState.leftPanelSilhouetteVisibility) {
+        ChakraApp.appState.leftPanelSilhouetteVisibility = new Map();
+    }
+
+    var silhouetteData = ChakraApp.appState.leftPanelSilhouetteVisibility;
+    var hasExistingData = silhouetteData && silhouetteData.size > 0;
+    
+    if (hasExistingData) {
+        silhouetteData.forEach(function(isVisible, panelId) {
+            self.silhouetteVisibility.set(panelId, isVisible);
+            // Defer the visual updates until the panels are fully created
+            setTimeout(function() {
+                self._updateSilhouetteVisibility(panelId, isVisible);
+                self._updateSilhouetteButton(panelId, isVisible);
+            }, 100);
+        });
+    } else {
+        // DON'T initialize defaults here - let createLeftPanel handle it
+        // This prevents conflicting with the restoration process
+    }
+    
+    // REMOVED: No automatic save here since we're just restoring, not changing state
+};
     
     ChakraApp.LeftPanelManager.prototype._createMinimizedPanelsTray = function() {
         if (this.minimizedPanelsTray) {
@@ -318,7 +612,6 @@ ChakraApp.LeftPanelManager.prototype._addPanelClickHandler = function(panelEleme
     ChakraApp.LeftPanelManager.prototype._restoreMinimizedState = function() {
         var self = this;
         
-        
         if (!this.minimizedPanelsTray) {
             console.warn('Minimized panels tray not found, creating it now');
             this._createMinimizedPanelsTray();
@@ -326,11 +619,9 @@ ChakraApp.LeftPanelManager.prototype._addPanelClickHandler = function(panelEleme
         
         if (ChakraApp.appState.leftPanels) {
             ChakraApp.appState.leftPanels.forEach(function(panelState, panelId) {
-                
                 if (panelState.minimized === true) {
                     var panelData = self.leftPanels.get(panelId);
                     if (panelData && panelData.element) {
-                        
                         panelData.element.classList.add('minimized');
                         self.minimizedPanels.set(panelId, panelData);
                         self.leftPanels.delete(panelId);
@@ -348,7 +639,6 @@ ChakraApp.LeftPanelManager.prototype._addPanelClickHandler = function(panelEleme
         
         this._updateLeftContainerWidth();
         this._updateTrayVisibility();
-        
     };
     
     ChakraApp.LeftPanelManager.prototype._createLeftContainer = function() {
@@ -367,115 +657,268 @@ ChakraApp.LeftPanelManager.prototype._addPanelClickHandler = function(panelEleme
         console.error('Could not find left-container element');
     };
     
-    ChakraApp.LeftPanelManager.prototype.createLeftPanel = function(panelId) {
-    var panel = document.createElement('div');
-    panel.id = 'left-panel-' + panelId;
-    panel.className = 'left-panel';
-    panel.dataset.panelIndex = panelId;
-    panel.style.height = '100%';
-    panel.style.flexShrink = '0';
-    panel.style.position = 'relative';
-    
-    // Use dynamic width instead of hard-coded 400px
-    var dynamicWidth = this._getDynamicPanelWidth();
-    panel.style.width = dynamicWidth + 'px';
-    
-    // Check if transitions should be enabled (after initial load)
-    if (this._transitionsEnabled) {
-      panel.classList.add('transitions-enabled');
-    }
-    
-    // Border logic - panels have border-right except the last one
-    var isFirstPanel = this.leftPanels.size === 0;
-    if (!isFirstPanel) {
-        panel.style.borderLeft = '1px solid #444';
-    }
-    
-    // Create zoom container
-    var zoomContainer = document.createElement('div');
-    zoomContainer.id = 'zoom-container-left-' + panelId;
-    zoomContainer.className = 'zoom-container';
-    zoomContainer.dataset.panelId = 'left-' + panelId;
-    zoomContainer.style.position = 'relative';
-    zoomContainer.style.width = '100%';
-    zoomContainer.style.height = '100%';
-    zoomContainer.style.overflow = 'hidden';
-    
-    panel.appendChild(zoomContainer);
-    
-    if (this.leftContainer) {
-        this.leftContainer.appendChild(panel);
-    } else {
-        console.error('leftContainer is null, cannot append panel');
-        return null;
-    }
-    
-    // Register the panel in LeftPanelManager
-    this.leftPanels.set(panelId, {
-        element: panel,
-        zoomContainer: zoomContainer,
-        panelId: panelId
-    });
-    
-    // Ensure the panel exists in AppState
-    if (!ChakraApp.appState.leftPanels.has(panelId)) {
-        ChakraApp.appState.leftPanels.set(panelId, {
-            id: panelId,
-            visible: true,
-            zoomLevel: null,
-            minimized: false,
-            order: this._getNextPanelOrder()
-        });
-    }
-    
-    // NEW: Initialize header type for new panels (default to 'standard')
-    // FIXED: Check if leftPanelHeaderTypes exists before accessing it
-    if (ChakraApp.appState.leftPanelHeaderTypes && !ChakraApp.appState.leftPanelHeaderTypes.has(panelId)) {
-        ChakraApp.appState.setLeftPanelHeaderType(panelId, 'standard');
-    }
-    
-    // Ensure panel selections exist
-    if (!ChakraApp.appState.leftPanelSelections.has(panelId)) {
-        ChakraApp.appState.leftPanelSelections.set(panelId, ChakraApp.appState._createEmptySelections());
-    }
-    
-    // Apply all enhancements
-    this._enhancePanelElement(panel, zoomContainer, panelId);
-    
-    // Update container width with dynamic sizing
-    this._updateLeftContainerWidth();
-    
-    this._createPanelTitle(panelId);
-
-    if (panel) {
-        this._addPanelClickHandler(panel, panelId);
+ChakraApp.LeftPanelManager.prototype.createLeftPanel = function(panelId) {
+        var panel = document.createElement('div');
+        panel.id = 'left-panel-' + panelId;
+        panel.className = 'left-panel';
+        panel.dataset.panelIndex = panelId;
+        panel.style.height = '100%';
+        panel.style.flexShrink = '0';
+        panel.style.position = 'relative';
         
-        // If this is the first panel or no panel is selected, select it
-        if (this.leftPanels.size === 1 || ChakraApp.appState.getSelectedLeftPanelId() === null) {
-            ChakraApp.appState.setSelectedLeftPanel(panelId);
+        // Set individual panel width
+        var panelWidth = this.getPanelWidth(panelId);
+        panel.style.width = panelWidth + 'px';
+        
+        // Check if transitions should be enabled (after initial load)
+        if (this._transitionsEnabled) {
+            panel.classList.add('transitions-enabled');
         }
-    }
-    
-    return panel;
-};
-
-ChakraApp.LeftPanelManager.prototype._setupHeaderToggleEvents = function() {
-    var self = this;
-    
-    this.eventSubscriptions.headerTypeChanged = ChakraApp.EventBus.subscribe(
-        'LEFT_PANEL_HEADER_TYPE_CHANGED',
-        function(data) {
-            if (data && data.panelId !== undefined) {
-                // Update panel title when header type changes (only if no custom name)
-                var customName = ChakraApp.appState.getLeftPanelCustomName(data.panelId);
-                if (!customName) {
-                    self._updatePanelTitle(data.panelId);
+        
+        // Border logic - panels have border-right except the last one
+        var isFirstPanel = this.leftPanels.size === 0;
+        if (!isFirstPanel) {
+            panel.style.borderLeft = '1px solid #444';
+        }
+        
+        // Create zoom container
+        var zoomContainer = document.createElement('div');
+        zoomContainer.id = 'zoom-container-left-' + panelId;
+        zoomContainer.className = 'zoom-container';
+        zoomContainer.dataset.panelId = 'left-' + panelId;
+        zoomContainer.style.position = 'relative';
+        zoomContainer.style.width = '100%';
+        zoomContainer.style.height = '100%';
+        zoomContainer.style.overflow = 'hidden';
+        
+        panel.appendChild(zoomContainer);
+        
+        if (this.leftContainer) {
+            this.leftContainer.appendChild(panel);
+        } else {
+            console.error('leftContainer is null, cannot append panel');
+            return null;
+        }
+        
+        // Add resize handle (except for the last panel)
+        this._addResizeHandle(panel, panelId);
+        
+        // Register the panel in LeftPanelManager
+        this.leftPanels.set(panelId, {
+            element: panel,
+            zoomContainer: zoomContainer,
+            panelId: panelId
+        });
+        
+        // Ensure the panel exists in AppState
+        if (!ChakraApp.appState.leftPanels.has(panelId)) {
+            ChakraApp.appState.leftPanels.set(panelId, {
+                id: panelId,
+                visible: true,
+                zoomLevel: null,
+                minimized: false,
+                order: this._getNextPanelOrder()
+            });
+        }
+        
+        // Initialize header type for new panels (default to 'standard')
+        if (ChakraApp.appState.leftPanelHeaderTypes && !ChakraApp.appState.leftPanelHeaderTypes.has(panelId)) {
+            ChakraApp.appState.setLeftPanelHeaderType(panelId, 'standard');
+        }
+        
+        // Ensure panel selections exist
+        if (!ChakraApp.appState.leftPanelSelections.has(panelId)) {
+            ChakraApp.appState.leftPanelSelections.set(panelId, ChakraApp.appState._createEmptySelections());
+        }
+        
+        // Initialize silhouette visibility (default to visible)
+        if (!this.silhouetteVisibility.has(panelId)) {
+            var savedVisibility = null;
+            if (ChakraApp.appState.leftPanelSilhouetteVisibility && 
+                ChakraApp.appState.leftPanelSilhouetteVisibility.has(panelId)) {
+                savedVisibility = ChakraApp.appState.leftPanelSilhouetteVisibility.get(panelId);
+            }
+            
+            var initialVisibility = savedVisibility !== null ? savedVisibility : true;
+            this.silhouetteVisibility.set(panelId, initialVisibility);
+            
+            if (savedVisibility === null) {
+                if (!ChakraApp.appState.leftPanelSilhouetteVisibility) {
+                    ChakraApp.appState.leftPanelSilhouetteVisibility = new Map();
                 }
-                
+                ChakraApp.appState.leftPanelSilhouetteVisibility.set(panelId, initialVisibility);
+                ChakraApp.appState.saveToStorageNow();
             }
         }
-    );
-};
+        
+        // Apply all enhancements
+        this._enhancePanelElement(panel, zoomContainer, panelId);
+        
+        // Update container width
+        this._updateLeftContainerWidth();
+        
+        this._createPanelTitle(panelId);
+
+        if (panel) {
+            this._addPanelClickHandler(panel, panelId);
+            
+            // If this is the first panel or no panel is selected, select it
+            if (this.leftPanels.size === 1 || ChakraApp.appState.getSelectedLeftPanelId() === null) {
+                ChakraApp.appState.setSelectedLeftPanel(panelId);
+            }
+        }
+        
+        return panel;
+    };
+
+    // Add resize handle to a panel
+    ChakraApp.LeftPanelManager.prototype._addResizeHandle = function(panelElement, panelId) {
+        var resizeHandle = document.createElement('div');
+        resizeHandle.className = 'panel-resize-handle';
+        resizeHandle.dataset.panelId = panelId;
+        
+        // Style the resize handle
+        Object.assign(resizeHandle.style, {
+            position: 'absolute',
+            top: '0',
+            bottom: '0',
+            cursor: 'ew-resize',
+            zIndex: '999',
+            borderRight: '1px solid #444'
+        });
+
+        // Add hover effect
+        resizeHandle.addEventListener('mouseenter', () => {
+            resizeHandle.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+        });
+
+        resizeHandle.addEventListener('mouseleave', () => {
+            if (!this.resizeState.isResizing) {
+            resizeHandle.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+            }
+        });
+
+        // Add resize event listeners
+        this._addResizeEventListeners(resizeHandle, panelId);
+        
+        panelElement.appendChild(resizeHandle);
+    };
+
+    // Add resize event listeners to a handle
+    ChakraApp.LeftPanelManager.prototype._addResizeEventListeners = function(resizeHandle, panelId) {
+        var self = this;
+
+        resizeHandle.addEventListener('mousedown', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            self._startResize(e, panelId, resizeHandle);
+        });
+
+        // Global mouse events (added to document)
+        document.addEventListener('mousemove', function(e) {
+            self._handleResize(e);
+        });
+
+        document.addEventListener('mouseup', function(e) {
+            self._endResize(e);
+        });
+    };
+
+    // Start resizing a panel
+    ChakraApp.LeftPanelManager.prototype._startResize = function(e, panelId, resizeHandle) {
+        this.resizeState.isResizing = true;
+        this.resizeState.resizingPanelId = panelId;
+        this.resizeState.startX = e.clientX;
+        this.resizeState.startWidth = this.getPanelWidth(panelId);
+        this.resizeState.resizeHandle = resizeHandle;
+        
+        resizeHandle.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+        document.body.style.cursor = 'ew-resize';
+        document.body.style.userSelect = 'none';
+        
+        // Disable transitions during resizing
+        this._disableTransitionsDuringResize();
+    };
+
+    // Handle panel resize
+    ChakraApp.LeftPanelManager.prototype._handleResize = function(e) {
+        if (!this.resizeState.isResizing) return;
+
+        e.preventDefault();
+        var deltaX = e.clientX - this.resizeState.startX;
+        var newWidth = this.resizeState.startWidth + deltaX;
+
+        // Apply constraints
+        newWidth = Math.max(this.minPanelWidth, newWidth);
+        newWidth = Math.min(this.maxPanelWidth, newWidth);
+
+        // Update the panel width
+        this.setPanelWidth(this.resizeState.resizingPanelId, newWidth);
+    };
+
+    // End panel resize
+    ChakraApp.LeftPanelManager.prototype._endResize = function(e) {
+        if (!this.resizeState.isResizing) return;
+
+        this.resizeState.isResizing = false;
+        
+        if (this.resizeState.resizeHandle) {
+            this.resizeState.resizeHandle.style.backgroundColor = 'transparent';
+        }
+        
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+
+        // Re-enable transitions
+        this._enableTransitionsAfterResize();
+
+        // Reset resize state
+        this.resizeState.resizingPanelId = null;
+        this.resizeState.resizeHandle = null;
+    };
+
+    // Disable transitions during resize
+    ChakraApp.LeftPanelManager.prototype._disableTransitionsDuringResize = function() {
+        if (this.leftContainer) {
+            this.leftContainer.classList.add('no-transition');
+        }
+        
+        document.querySelectorAll('.left-panel').forEach(function(panel) {
+            panel.classList.add('no-transition');
+        });
+    };
+
+    // Re-enable transitions after resize
+    ChakraApp.LeftPanelManager.prototype._enableTransitionsAfterResize = function() {
+        var self = this;
+        
+        setTimeout(function() {
+            if (self.leftContainer) {
+                self.leftContainer.classList.remove('no-transition');
+            }
+            
+            document.querySelectorAll('.left-panel').forEach(function(panel) {
+                panel.classList.remove('no-transition');
+            });
+        }, 50);
+    };
+
+    ChakraApp.LeftPanelManager.prototype._setupHeaderToggleEvents = function() {
+        var self = this;
+        
+        this.eventSubscriptions.headerTypeChanged = ChakraApp.EventBus.subscribe(
+            'LEFT_PANEL_HEADER_TYPE_CHANGED',
+            function(data) {
+                if (data && data.panelId !== undefined) {
+                    // Update panel title when header type changes (only if no custom name)
+                    var customName = ChakraApp.appState.getLeftPanelCustomName(data.panelId);
+                    if (!customName) {
+                        self._updatePanelTitle(data.panelId);
+                    }
+                }
+            }
+        );
+    };
 
     // NEW: Get next panel order for proper sequencing
     ChakraApp.LeftPanelManager.prototype._getNextPanelOrder = function() {
@@ -499,6 +942,11 @@ ChakraApp.LeftPanelManager.prototype._setupHeaderToggleEvents = function() {
             this._addMinimizeButton(panelElement, panelId);
         }
         
+        // NEW: Add silhouette toggle button
+        if (!panelElement.querySelector('.left-panel-silhouette-btn')) {
+            this._addSilhouetteToggleButton(panelElement, panelId);
+        }
+        
         if (zoomContainer && !zoomContainer.querySelector('.silhouette-svg')) {
             this._createSilhouetteElements(zoomContainer, panelId);
         }
@@ -513,8 +961,17 @@ ChakraApp.LeftPanelManager.prototype._setupHeaderToggleEvents = function() {
         removeBtn.title = 'Remove this panel';
         
         var self = this;
-        removeBtn.addEventListener('click', function() {
-            self.removeLeftPanel(panelId);
+        removeBtn.addEventListener('click', function(e) {
+            e.stopPropagation(); // Prevent panel selection when clicking remove button
+            
+            // Get panel title for confirmation message
+            var panelTitle = self._getPanelTitle(panelId);
+            var confirmMessage = 'Are you sure you want to remove "' + panelTitle + '"?';
+            
+            // Show confirmation dialog
+            if (confirm(confirmMessage)) {
+                self.removeLeftPanel(panelId);
+            }
         });
         
         panelElement.appendChild(removeBtn);
@@ -527,11 +984,109 @@ ChakraApp.LeftPanelManager.prototype._setupHeaderToggleEvents = function() {
         minimizeBtn.title = 'Minimize this panel';
         
         var self = this;
-        minimizeBtn.addEventListener('click', function() {
+        minimizeBtn.addEventListener('click', function(e) {
+            e.stopPropagation(); // Prevent panel selection when clicking minimize button
             self.minimizePanel(panelId);
         });
         
         panelElement.appendChild(minimizeBtn);
+    };
+
+    ChakraApp.LeftPanelManager.prototype._addSilhouetteToggleButton = function(panelElement, panelId) {
+        var silhouetteBtn = document.createElement('button');
+        silhouetteBtn.className = 'left-panel-silhouette-btn';
+        silhouetteBtn.innerHTML = '∘';
+        silhouetteBtn.title = 'Toggle background silhouettes';
+        
+        // Set initial state based on current visibility
+        var isVisible = this.silhouetteVisibility.get(panelId);
+        if (isVisible === false) {
+            silhouetteBtn.classList.add('silhouettes-hidden');
+            silhouetteBtn.innerHTML = '∘';
+            silhouetteBtn.title = 'Show background silhouettes';
+        }
+        
+        var self = this;
+        silhouetteBtn.addEventListener('click', function(e) {
+            e.stopPropagation(); // Prevent panel selection when clicking silhouette button
+            self.toggleSilhouetteVisibility(panelId);
+        });
+        
+        panelElement.appendChild(silhouetteBtn);
+    };
+
+ChakraApp.LeftPanelManager.prototype.toggleSilhouetteVisibility = function(panelId) {
+    var currentVisibility = this.silhouetteVisibility.get(panelId);
+    var newVisibility = currentVisibility !== false ? false : true; // Default to true if undefined
+    
+    
+    this.silhouetteVisibility.set(panelId, newVisibility);
+    
+    // FIXED: Always ensure AppState map exists
+    if (!ChakraApp.appState.leftPanelSilhouetteVisibility) {
+        ChakraApp.appState.leftPanelSilhouetteVisibility = new Map();
+    }
+    ChakraApp.appState.leftPanelSilhouetteVisibility.set(panelId, newVisibility);
+    
+    
+    // IMPORTANT: Use immediate save to ensure persistence
+    var saved = ChakraApp.appState.saveToStorageNow();
+    
+    // Update the visual state
+    this._updateSilhouetteVisibility(panelId, newVisibility);
+    
+    // Update button appearance
+    this._updateSilhouetteButton(panelId, newVisibility);
+    
+    // Publish event for other components that might need to know
+    ChakraApp.EventBus.publish('LEFT_PANEL_SILHOUETTE_TOGGLED', {
+        panelId: panelId,
+        visible: newVisibility
+    });
+};
+
+    // NEW: Update the visual visibility of silhouettes
+    ChakraApp.LeftPanelManager.prototype._updateSilhouetteVisibility = function(panelId, isVisible) {
+        // Find the panel (could be in regular panels or minimized panels)
+        var panelData = this.leftPanels.get(panelId) || this.minimizedPanels.get(panelId);
+        if (!panelData || !panelData.zoomContainer) {
+            return;
+        }
+        
+        // Find all silhouette elements in this panel
+        var silhouettes = panelData.zoomContainer.querySelectorAll('.silhouette-svg');
+        
+        silhouettes.forEach(function(silhouette) {
+            if (isVisible) {
+                silhouette.style.display = '';
+                silhouette.style.opacity = '';
+            } else {
+                silhouette.style.display = 'none';
+            }
+        });
+    };
+
+    // NEW: Update the silhouette toggle button appearance
+    ChakraApp.LeftPanelManager.prototype._updateSilhouetteButton = function(panelId, isVisible) {
+        var panelData = this.leftPanels.get(panelId) || this.minimizedPanels.get(panelId);
+        if (!panelData || !panelData.element) {
+            return;
+        }
+        
+        var button = panelData.element.querySelector('.left-panel-silhouette-btn');
+        if (!button) {
+            return;
+        }
+        
+        if (isVisible) {
+            button.classList.remove('silhouettes-hidden');
+            button.innerHTML = '∘';
+            button.title = 'Hide background silhouettes';
+        } else {
+            button.classList.add('silhouettes-hidden');
+            button.innerHTML = '∘';
+            button.title = 'Show background silhouettes';
+        }
     };
 
     // UPDATED: Create editable panel title
@@ -775,7 +1330,6 @@ ChakraApp.LeftPanelManager.prototype._setupHeaderToggleEvents = function() {
 
     // NEW: Handle drag start
     ChakraApp.LeftPanelManager.prototype._handleDragStart = function(e, panelId) {
-        
         var panel = this.leftPanels.get(panelId);
         if (!panel) return;
         
@@ -803,12 +1357,10 @@ ChakraApp.LeftPanelManager.prototype._setupHeaderToggleEvents = function() {
                 otherPanel.element.classList.add('drop-target');
             }
         });
-        
     };
 
     // NEW: Handle drag end
     ChakraApp.LeftPanelManager.prototype._handleDragEnd = function(e, panelId) {
-        
         var panel = this.leftPanels.get(panelId);
         if (panel) {
             panel.element.classList.remove('dragging');
@@ -827,86 +1379,73 @@ ChakraApp.LeftPanelManager.prototype._setupHeaderToggleEvents = function() {
         this.dragState.draggedPanel = null;
         this.dragState.draggedPanelId = null;
         this.dragState.originalOrder = null;
-        
     };
 
-ChakraApp.LeftPanelManager.prototype._createDropZones = function() {
-    var self = this;
-    var allPanels = Array.from(this.leftPanels.values());
-    
-    console.log('=== Creating drop zones ===');
-    console.log('Total panels:', allPanels.length);
-    console.log('Dragged panel ID:', self.dragState.draggedPanelId);
-    
-    // FIXED: Store the ACTUAL current container width before we modify it
-    var currentStyle = window.getComputedStyle(self.leftContainer);
-    var originalWidth = parseInt(currentStyle.width);
-    self.dragState.originalContainerWidth = originalWidth;
-    
-    console.log('Original container width:', originalWidth);
-    
-    // Temporarily expand the container to make room for drop zones
-    var expandedWidth = originalWidth + 40;
-    self.leftContainer.style.width = expandedWidth + 'px';
-    self.leftContainer.style.minWidth = expandedWidth + 'px';
-    
-    console.log('Expanded container width from', originalWidth, 'to', expandedWidth);
-    
-    // Create drop zones before each panel (except the dragged one)
-    allPanels.forEach(function(panel, index) {
-        // Skip the dragged panel
-        if (panel.panelId === self.dragState.draggedPanelId) {
-            console.log('Skipping dragged panel:', panel.panelId);
-            return;
-        }
+    ChakraApp.LeftPanelManager.prototype._createDropZones = function() {
+        var self = this;
+        var allPanels = Array.from(this.leftPanels.values());
         
-        // Create drop zone before this panel
-        var dropZoneBefore = document.createElement('div');
-        dropZoneBefore.className = 'panel-drop-zone drop-zone-before';
-        dropZoneBefore.dataset.insertBefore = panel.panelId;
+        // FIXED: Store the ACTUAL current container width before we modify it
+        var currentStyle = window.getComputedStyle(self.leftContainer);
+        var originalWidth = parseInt(currentStyle.width);
+        self.dragState.originalContainerWidth = originalWidth;
         
-        // Add visible styling so you can see the drop zone
-        dropZoneBefore.style.width = '20px';
-        dropZoneBefore.style.height = '100%';
-        dropZoneBefore.style.backgroundColor = 'rgba(0, 255, 0, 0.3)';
-        dropZoneBefore.style.border = '2px dashed #0f0';
-        dropZoneBefore.style.boxSizing = 'border-box';
-        dropZoneBefore.style.flexShrink = '0';
-        dropZoneBefore.style.display = 'block';
         
-        self._addDropZoneListeners(dropZoneBefore);
+        // Temporarily expand the container to make room for drop zones
+        var expandedWidth = originalWidth + 40;
+        self.leftContainer.style.width = expandedWidth + 'px';
+        self.leftContainer.style.minWidth = expandedWidth + 'px';
         
-        // Insert before the panel
-        self.leftContainer.insertBefore(dropZoneBefore, panel.element);
-        console.log('Created drop zone before panel:', panel.panelId);
-    });
-    
-    // ALWAYS create drop zone at the end - make it look identical to the others
-    console.log('Creating end drop zone...');
-    var dropZoneAfter = document.createElement('div');
-    dropZoneAfter.className = 'panel-drop-zone drop-zone-after';
-    dropZoneAfter.dataset.insertAfter = 'last';
-    dropZoneAfter.id = 'end-drop-zone';
-    
-    // Make it look identical to the other drop zones
-    dropZoneAfter.style.width = '20px';
-    dropZoneAfter.style.height = '100%';
-    dropZoneAfter.style.backgroundColor = 'rgba(0, 255, 0, 0.3)';
-    dropZoneAfter.style.border = '2px dashed #0f0';
-    dropZoneAfter.style.boxSizing = 'border-box';
-    dropZoneAfter.style.flexShrink = '0';
-    dropZoneAfter.style.display = 'block';
-    dropZoneAfter.style.position = 'relative';
-    
-    self._addDropZoneListeners(dropZoneAfter);
-    
-    // Append to the very end of the container
-    self.leftContainer.appendChild(dropZoneAfter);
-    
-    console.log('End drop zone created and appended');
-};
-
-    
+        
+        // Create drop zones before each panel (except the dragged one)
+        allPanels.forEach(function(panel, index) {
+            // Skip the dragged panel
+            if (panel.panelId === self.dragState.draggedPanelId) {
+                return;
+            }
+            
+            // Create drop zone before this panel
+            var dropZoneBefore = document.createElement('div');
+            dropZoneBefore.className = 'panel-drop-zone drop-zone-before';
+            dropZoneBefore.dataset.insertBefore = panel.panelId;
+            
+            // Add visible styling so you can see the drop zone
+            dropZoneBefore.style.width = '20px';
+            dropZoneBefore.style.height = '100%';
+            dropZoneBefore.style.backgroundColor = 'rgba(0, 255, 0, 0.3)';
+            dropZoneBefore.style.border = '2px dashed #0f0';
+            dropZoneBefore.style.boxSizing = 'border-box';
+            dropZoneBefore.style.flexShrink = '0';
+            dropZoneBefore.style.display = 'block';
+            
+            self._addDropZoneListeners(dropZoneBefore);
+            
+            // Insert before the panel
+            self.leftContainer.insertBefore(dropZoneBefore, panel.element);
+        });
+        
+        // ALWAYS create drop zone at the end - make it look identical to the others
+        var dropZoneAfter = document.createElement('div');
+        dropZoneAfter.className = 'panel-drop-zone drop-zone-after';
+        dropZoneAfter.dataset.insertAfter = 'last';
+        dropZoneAfter.id = 'end-drop-zone';
+        
+        // Make it look identical to the other drop zones
+        dropZoneAfter.style.width = '20px';
+        dropZoneAfter.style.height = '100%';
+        dropZoneAfter.style.backgroundColor = 'rgba(0, 255, 0, 0.3)';
+        dropZoneAfter.style.border = '2px dashed #0f0';
+        dropZoneAfter.style.boxSizing = 'border-box';
+        dropZoneAfter.style.flexShrink = '0';
+        dropZoneAfter.style.display = 'block';
+        dropZoneAfter.style.position = 'relative';
+        
+        self._addDropZoneListeners(dropZoneAfter);
+        
+        // Append to the very end of the container
+        self.leftContainer.appendChild(dropZoneAfter);
+        
+    };
 
     // NEW: Add event listeners to drop zones
     ChakraApp.LeftPanelManager.prototype._addDropZoneListeners = function(dropZone) {
@@ -939,34 +1478,32 @@ ChakraApp.LeftPanelManager.prototype._createDropZones = function() {
     };
 
     // NEW: Remove all drop zones
-ChakraApp.LeftPanelManager.prototype._removeDropZones = function() {
-    
-    // Remove all drop zones from the DOM
-    var dropZones = this.leftContainer.querySelectorAll('.panel-drop-zone');
-    dropZones.forEach(function(zone) {
-        zone.remove();
-    });
-    
-    // CRITICAL: Restore the exact original width we stored during drag start
-    if (this.dragState.originalContainerWidth !== null && this.dragState.originalContainerWidth !== undefined) {
-        this.leftContainer.style.width = this.dragState.originalContainerWidth + 'px';
-        this.leftContainer.style.minWidth = this.dragState.originalContainerWidth + 'px';
+    ChakraApp.LeftPanelManager.prototype._removeDropZones = function() {
+        // Remove all drop zones from the DOM
+        var dropZones = this.leftContainer.querySelectorAll('.panel-drop-zone');
+        dropZones.forEach(function(zone) {
+            zone.remove();
+        });
         
-        // Verify restoration worked
-        var restoredWidth = window.getComputedStyle(this.leftContainer).width;
-    } else {
-        console.warn('No original width stored! Using fallback calculation...');
-        this._updateLeftContainerWidth();
+        // CRITICAL: Restore the exact original width we stored during drag start
+        if (this.dragState.originalContainerWidth !== null && this.dragState.originalContainerWidth !== undefined) {
+            this.leftContainer.style.width = this.dragState.originalContainerWidth + 'px';
+            this.leftContainer.style.minWidth = this.dragState.originalContainerWidth + 'px';
+            
+            // Verify restoration worked
+            var restoredWidth = window.getComputedStyle(this.leftContainer).width;
+        } else {
+            console.warn('No original width stored! Using fallback calculation...');
+            this._updateLeftContainerWidth();
+            
+            var fallbackWidth = window.getComputedStyle(this.leftContainer).width;
+        }
         
-        var fallbackWidth = window.getComputedStyle(this.leftContainer).width;
-    }
-    
-    // Update the resize controller to reposition the divider
-    if (ChakraApp.app && ChakraApp.app.resizeController) {
-        ChakraApp.app.resizeController._updateDividerPosition();
-    }
-    
-};
+        // Update the resize controller to reposition the divider
+        if (ChakraApp.app && ChakraApp.app.resizeController) {
+            ChakraApp.app.resizeController._updateDividerPosition();
+        }
+    };
 
     // NEW: Get current panel order
     ChakraApp.LeftPanelManager.prototype._getCurrentPanelOrder = function() {
@@ -985,7 +1522,6 @@ ChakraApp.LeftPanelManager.prototype._removeDropZones = function() {
 
     // NEW: Reorder panel in DOM and state
     ChakraApp.LeftPanelManager.prototype._reorderPanel = function(draggedPanelId, position, targetPanelId) {
-        
         var draggedPanel = this.leftPanels.get(draggedPanelId);
         if (!draggedPanel) {
             console.error('Dragged panel not found:', draggedPanelId);
@@ -1009,13 +1545,11 @@ ChakraApp.LeftPanelManager.prototype._removeDropZones = function() {
         
         // FIXED: Save the new order immediately to localStorage
         ChakraApp.appState.saveToStorageNow();
-        
     };
 
     // NEW: Update panel order in AppState
     ChakraApp.LeftPanelManager.prototype._updatePanelOrderInState = function() {
         var currentOrder = this._getCurrentPanelOrder();
-        
         
         currentOrder.forEach(function(panelId, index) {
             if (ChakraApp.appState.leftPanels.has(panelId)) {
@@ -1023,10 +1557,8 @@ ChakraApp.LeftPanelManager.prototype._removeDropZones = function() {
                 var oldOrder = panelState.order;
                 panelState.order = index;
                 ChakraApp.appState.leftPanels.set(panelId, panelState);
-                
             }
         });
-        
         
         // Publish event to notify other components
         ChakraApp.EventBus.publish('LEFT_PANELS_REORDERED', { 
@@ -1151,6 +1683,12 @@ ChakraApp.LeftPanelManager.prototype._removeDropZones = function() {
             obj.type = 'image/svg+xml';
             container.appendChild(obj);
         });
+        
+        // Apply initial visibility state
+        var isVisible = this.silhouetteVisibility.get(panelId);
+        if (isVisible === false) {
+            this._updateSilhouetteVisibility(panelId, false);
+        }
     };
     
     ChakraApp.LeftPanelManager.prototype._initializePanelControls = function(panelId) {
@@ -1161,50 +1699,50 @@ ChakraApp.LeftPanelManager.prototype._removeDropZones = function() {
         }, 100);
     };
     
-ChakraApp.LeftPanelManager.prototype._createLeftPanelControls = function() {
-    var controlsContainer = document.createElement('div');
-    controlsContainer.id = 'left-panel-controls';
-    controlsContainer.style.position = 'fixed';
-    controlsContainer.style.bottom = '10px';
-    controlsContainer.style.zIndex = '1000';
-    controlsContainer.style.display = 'flex';
-    controlsContainer.style.gap = '5px';
-    
-    var addButton = document.createElement('button');
-    addButton.textContent = '+';
-    addButton.title = 'Add Left Panel';
-    addButton.className = 'btn-round';
-    addButton.style.fontSize = '14px';
-    addButton.style.width = '20px';
-    addButton.style.height = '20px';
-    addButton.style.border = 'none';
-    addButton.style.backgroundColor = '#444';
-    addButton.style.color = '#AAA';
-    
-    var self = this;
-    addButton.addEventListener('click', function() {
-        self.addLeftPanel();
-    });
-    
-    controlsContainer.appendChild(addButton);
-    document.body.appendChild(controlsContainer);
-    
-    // NEW: Store reference and set initial position
-    this.leftPanelControls = controlsContainer;
-    this._updateControlsPosition();
-};
+    ChakraApp.LeftPanelManager.prototype._createLeftPanelControls = function() {
+        var controlsContainer = document.createElement('div');
+        controlsContainer.id = 'left-panel-controls';
+        controlsContainer.style.position = 'fixed';
+        controlsContainer.style.bottom = '10px';
+        controlsContainer.style.zIndex = '1000';
+        controlsContainer.style.display = 'flex';
+        controlsContainer.style.gap = '5px';
+        
+        var addButton = document.createElement('button');
+        addButton.textContent = '+';
+        addButton.title = 'Add Left Panel';
+        addButton.className = 'btn-round';
+        addButton.style.fontSize = '14px';
+        addButton.style.width = '20px';
+        addButton.style.height = '20px';
+        addButton.style.border = 'none';
+        addButton.style.backgroundColor = '#444';
+        addButton.style.color = '#AAA';
+        
+        var self = this;
+        addButton.addEventListener('click', function() {
+            self.addLeftPanel();
+        });
+        
+        controlsContainer.appendChild(addButton);
+        document.body.appendChild(controlsContainer);
+        
+        // NEW: Store reference and set initial position
+        this.leftPanelControls = controlsContainer;
+        this._updateControlsPosition();
+    };
 
-ChakraApp.LeftPanelManager.prototype._updateControlsPosition = function() {
-    if (!this.leftPanelControls || !this.leftContainer) {
-        return;
-    }
-    
-    var computedStyle = window.getComputedStyle(this.leftContainer);
-    var totalWidth = parseInt(computedStyle.width) || 0;
-    var leftPosition = totalWidth + 10; // 10px gap
-    
-    this.leftPanelControls.style.left = leftPosition + 'px';
-};
+    ChakraApp.LeftPanelManager.prototype._updateControlsPosition = function() {
+        if (!this.leftPanelControls || !this.leftContainer) {
+            return;
+        }
+        
+        var computedStyle = window.getComputedStyle(this.leftContainer);
+        var totalWidth = parseInt(computedStyle.width) || 0;
+        var leftPosition = totalWidth + 10; // 10px gap
+        
+        this.leftPanelControls.style.left = leftPosition + 'px';
+    };
     
     ChakraApp.LeftPanelManager.prototype.addLeftPanel = function() {
         var panelId = ChakraApp.appState.addLeftPanel();
@@ -1221,7 +1759,7 @@ ChakraApp.LeftPanelManager.prototype._updateControlsPosition = function() {
         return panelId;
     };
 
-    ChakraApp.LeftPanelManager.prototype.removeLeftPanel = function(panelId) {
+ChakraApp.LeftPanelManager.prototype.removeLeftPanel = function(panelId) {
         var panelData = this.minimizedPanels.get(panelId);
         var isMinimized = false;
         
@@ -1247,86 +1785,87 @@ ChakraApp.LeftPanelManager.prototype._updateControlsPosition = function() {
                 this.leftPanels.delete(panelId);
             }
             
+            // Clean up panel width
+            this.panelWidths.delete(panelId);
+            
+            // Clean up silhouette visibility tracking
+            this.silhouetteVisibility.delete(panelId);
+        
+            // Clean up from AppState
+            if (ChakraApp.appState.leftPanelSilhouetteVisibility) {
+                ChakraApp.appState.leftPanelSilhouetteVisibility.delete(panelId);
+            }
+            
             ChakraApp.appState.removeLeftPanel(panelId);
             
-            // IMPORTANT: Update panel order after removal and save immediately
+            // Save panel widths after removal
+            this._savePanelWidths();
+            
+            // Update panel order after removal and save immediately
             setTimeout(() => {
                 this._updatePanelOrderInState();
                 ChakraApp.appState.saveToStorageNow();
             }, 50);
             
             this._updateLeftContainerWidth();
-	    ChakraApp.appState.ensureLeftPanelSelected();
+            ChakraApp.appState.ensureLeftPanelSelected();
             return true;
         }
         return false;
     };
     
     // Updated to use dynamic panel widths
-ChakraApp.LeftPanelManager.prototype._updateLeftContainerWidth = function() {
-    var panelCount = this.leftPanels.size;
-    var dynamicWidth = this._getDynamicPanelWidth();
-    var totalWidth = panelCount * dynamicWidth;
-    
-    if (this.leftContainer) {
-        this.leftContainer.style.width = totalWidth + 'px';
-        this.leftContainer.style.minWidth = totalWidth + 'px';
+ ChakraApp.LeftPanelManager.prototype._updateLeftContainerWidth = function() {
+        var totalWidth = 0;
         
-        if (this.minimizedPanels.size > 0) {
-            this.leftContainer.classList.add('has-minimized-panels');
-        } else {
-            this.leftContainer.classList.remove('has-minimized-panels');
+        this.leftPanels.forEach(function(panelData, panelId) {
+            var panelWidth = this.getPanelWidth(panelId);
+            totalWidth += panelWidth;
+        }, this);
+        
+        if (this.leftContainer) {
+            this.leftContainer.style.width = totalWidth + 'px';
+            this.leftContainer.style.minWidth = totalWidth + 'px';
+            
+            if (this.minimizedPanels.size > 0) {
+                this.leftContainer.classList.add('has-minimized-panels');
+            } else {
+                this.leftContainer.classList.remove('has-minimized-panels');
+            }
         }
-    }
-    
-    // Update individual panel widths
-    this.leftPanels.forEach(function(panelData) {
-        if (panelData.element) {
-            panelData.element.style.width = dynamicWidth + 'px';
+        
+        var centerContainer = document.getElementById('center-container');
+        if (centerContainer) {
+            centerContainer.style.marginLeft = '0px';
         }
-    });
-    
-    // Update ResizeController's divider position if it exists
-    if (ChakraApp.app && ChakraApp.app.resizeController) {
-        ChakraApp.app.resizeController._updateDividerPosition();
-    }
-    
-    var centerContainer = document.getElementById('center-container');
-    if (centerContainer) {
-        centerContainer.style.marginLeft = '0px';
-    }
-    
-    var mainContainer = document.getElementById('main-container');
-    if (mainContainer) {
-        mainContainer.style.display = 'flex';
-        mainContainer.style.width = '100%';
-        mainContainer.style.height = '100%';
-    }
-    
-    // NEW: Wait for transition to complete before updating controls position
-    var self = this;
-    if (this.leftContainer && this._transitionsEnabled) {
-        // Listen for the transition to complete
-        var onTransitionEnd = function(e) {
-            // Make sure it's the width transition we care about
-            if (e.target === self.leftContainer && e.propertyName === 'width') {
+        
+        var mainContainer = document.getElementById('main-container');
+        if (mainContainer) {
+            mainContainer.style.display = 'flex';
+            mainContainer.style.width = '100%';
+            mainContainer.style.height = '100%';
+        }
+        
+        // Update controls position
+        var self = this;
+        if (this.leftContainer && this._transitionsEnabled) {
+            var onTransitionEnd = function(e) {
+                if (e.target === self.leftContainer && e.propertyName === 'width') {
+                    self.leftContainer.removeEventListener('transitionend', onTransitionEnd);
+                    self._updateControlsPosition();
+                }
+            };
+            
+            this.leftContainer.addEventListener('transitionend', onTransitionEnd);
+            
+            setTimeout(function() {
                 self.leftContainer.removeEventListener('transitionend', onTransitionEnd);
                 self._updateControlsPosition();
-            }
-        };
-        
-        this.leftContainer.addEventListener('transitionend', onTransitionEnd);
-        
-        // Fallback timeout in case transition doesn't fire
-        setTimeout(function() {
-            self.leftContainer.removeEventListener('transitionend', onTransitionEnd);
-            self._updateControlsPosition();
-        }, 400); // Match the CSS transition duration
-    } else {
-        // No transitions enabled, update immediately
-        this._updateControlsPosition();
-    }
-};
+            }, 400);
+        } else {
+            this._updateControlsPosition();
+        }
+    };
     
     // Method to update all panel widths when ResizeController changes the width
     ChakraApp.LeftPanelManager.prototype.updatePanelWidths = function(newWidth) {
@@ -1344,74 +1883,73 @@ ChakraApp.LeftPanelManager.prototype._updateLeftContainerWidth = function() {
         this._updateLeftContainerWidth();
     };
     
-ChakraApp.LeftPanelManager.prototype._setupEventListeners = function() {
-    const self = this;
+    ChakraApp.LeftPanelManager.prototype._setupEventListeners = function() {
+        const self = this;
 
-    if (!this.eventSubscriptions) {
-        this.eventSubscriptions = {};
-    }
+        if (!this.eventSubscriptions) {
+            this.eventSubscriptions = {};
+        }
 
-    this.eventSubscriptions.documentSelected = ChakraApp.EventBus.subscribe(
-        'LEFT_PANEL_DOCUMENT_SELECTED',
-        function(data) {
-            if (data && data.panelId !== undefined) {
-                // Only update if no custom name exists
-                var customName = ChakraApp.appState.getLeftPanelCustomName(data.panelId);
-                if (!customName) {
-                    self._updatePanelTitle(data.panelId);
+        this.eventSubscriptions.documentSelected = ChakraApp.EventBus.subscribe(
+            'LEFT_PANEL_DOCUMENT_SELECTED',
+            function(data) {
+                if (data && data.panelId !== undefined) {
+                    // Only update if no custom name exists
+                    var customName = ChakraApp.appState.getLeftPanelCustomName(data.panelId);
+                    if (!customName) {
+                        self._updatePanelTitle(data.panelId);
+                    }
                 }
             }
-        }
-    );
+        );
 
-    this.eventSubscriptions.documentDeselected = ChakraApp.EventBus.subscribe(
-        ChakraApp.EventTypes.DOCUMENT_DESELECTED,
-        function(doc) {
-            self._updateAllPanelTitles();
-        }
-    );
-
-    this.eventSubscriptions.documentUpdated = ChakraApp.EventBus.subscribe(
-        ChakraApp.EventTypes.DOCUMENT_UPDATED,
-        function(doc) {
-            self._updateAllPanelTitles();
-        }
-    );
-
-    this.eventSubscriptions.documentDeleted = ChakraApp.EventBus.subscribe(
-        ChakraApp.EventTypes.DOCUMENT_DELETED,
-        function(doc) {
-            self._updateAllPanelTitles();
-        }
-    );
-
-    this.eventSubscriptions.stateLoaded = ChakraApp.EventBus.subscribe(
-        ChakraApp.EventTypes.STATE_LOADED,
-        function() {
-            setTimeout(function() {
+        this.eventSubscriptions.documentDeselected = ChakraApp.EventBus.subscribe(
+            ChakraApp.EventTypes.DOCUMENT_DESELECTED,
+            function(doc) {
                 self._updateAllPanelTitles();
-            }, 100);
-        }
-    );
+            }
+        );
 
-    ChakraApp.LeftPanelManager.prototype._onPanelSelectionChanged = function(newPanelId, oldPanelId) {
-	    // Update any visual indicators or UI elements that depend on panel selection
+        this.eventSubscriptions.documentUpdated = ChakraApp.EventBus.subscribe(
+            ChakraApp.EventTypes.DOCUMENT_UPDATED,
+            function(doc) {
+                self._updateAllPanelTitles();
+            }
+        );
 
-	    // You can add additional visual feedback here if needed
-	    // For example, highlighting the selected panel border, etc.
+        this.eventSubscriptions.documentDeleted = ChakraApp.EventBus.subscribe(
+            ChakraApp.EventTypes.DOCUMENT_DELETED,
+            function(doc) {
+                self._updateAllPanelTitles();
+            }
+        );
+
+        this.eventSubscriptions.stateLoaded = ChakraApp.EventBus.subscribe(
+            ChakraApp.EventTypes.STATE_LOADED,
+            function() {
+                setTimeout(function() {
+                    self._updateAllPanelTitles();
+                }, 100);
+            }
+        );
+
+        ChakraApp.LeftPanelManager.prototype._onPanelSelectionChanged = function(newPanelId, oldPanelId) {
+            // Update any visual indicators or UI elements that depend on panel selection
+            // You can add additional visual feedback here if needed
+            // For example, highlighting the selected panel border, etc.
+        };
+
+        this.eventSubscriptions.panelSelected = ChakraApp.EventBus.subscribe(
+            'LEFT_PANEL_SELECTED',
+            function(data) {
+                // Update any panel-specific UI elements if needed
+                self._onPanelSelectionChanged(data.panelId, data.previousPanelId);
+            }
+        );
+        
+        // NEW: Add header toggle event listener
+        this._setupHeaderToggleEvents();
     };
-
-    this.eventSubscriptions.panelSelected = ChakraApp.EventBus.subscribe(
-        'LEFT_PANEL_SELECTED',
-        function(data) {
-            // Update any panel-specific UI elements if needed
-            self._onPanelSelectionChanged(data.panelId, data.previousPanelId);
-        }
-    );
-    
-    // NEW: Add header toggle event listener
-    this._setupHeaderToggleEvents();
-};
     
     ChakraApp.LeftPanelManager.prototype.destroy = function() {
         Object.values(this.eventSubscriptions).forEach(function(unsubscribe) {
@@ -1423,9 +1961,14 @@ ChakraApp.LeftPanelManager.prototype._setupEventListeners = function() {
         this.eventSubscriptions = {};
         this.leftPanels.clear();
         this.minimizedPanels.clear();
+        this.silhouetteVisibility.clear(); // NEW: Clean up silhouette visibility tracking
         
         if (this.minimizedPanelsTray && this.minimizedPanelsTray.parentNode) {
             this.minimizedPanelsTray.parentNode.removeChild(this.minimizedPanelsTray);
+        }
+        
+        if (this.leftPanelControls && this.leftPanelControls.parentNode) {
+            this.leftPanelControls.parentNode.removeChild(this.leftPanelControls);
         }
     };
     

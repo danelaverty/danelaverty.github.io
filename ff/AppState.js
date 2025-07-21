@@ -38,8 +38,11 @@
     // Track custom names for panels
     this.leftPanelCustomNames = new Map();
     
-    // NEW: Track header toggle state for each panel
+    // Track header toggle state for each panel
     this.leftPanelHeaderTypes = new Map();
+
+    // NEW: Track silhouette visibility for each panel
+    this.leftPanelSilhouetteVisibility = new Map();
 
     this.selectedLeftPanelId = null; 
 };
@@ -196,9 +199,10 @@ ChakraApp.AppState.prototype.removeLeftPanel = function(panelId) {
         this.leftPanels.delete(panelId);
         this.leftPanelSelections.delete(panelId);
         
-        // NEW: Also remove custom name and header type
+        // Clean up custom name, header type, and silhouette visibility
         this.leftPanelCustomNames.delete(panelId);
         this.leftPanelHeaderTypes.delete(panelId);
+        this.leftPanelSilhouetteVisibility.delete(panelId); // NEW: Clean up silhouette visibility
         
         ChakraApp.EventBus.publish('LEFT_PANEL_REMOVED', { panelId: panelId });
         this.saveToStorage();
@@ -1301,7 +1305,8 @@ ChakraApp.AppState.prototype._serializeLeftPanels = function() {
         nextId: this.nextLeftPanelId,
         selections: {},
         customNames: {},
-        headerTypes: {} // NEW: Include header types
+        headerTypes: {},
+        silhouetteVisibility: {},
     };
     
     var self = this;
@@ -1338,10 +1343,19 @@ ChakraApp.AppState.prototype._serializeLeftPanels = function() {
         serialized.customNames[panelId] = customName;
     });
     
-    // NEW: Include header types
+    // Include header types
     this.leftPanelHeaderTypes.forEach(function(headerType, panelId) {
         serialized.headerTypes[panelId] = headerType;
     });
+
+    // NEW: Include silhouette visibility with debugging
+    
+    if (this.leftPanelSilhouetteVisibility) {
+        this.leftPanelSilhouetteVisibility.forEach(function(isVisible, panelId) {
+            serialized.silhouetteVisibility[panelId] = isVisible;
+        });
+    }
+    
     
     return serialized;
 };
@@ -1388,7 +1402,8 @@ ChakraApp.AppState.prototype._serializeLeftPanelsWithHeaders = function() {
         nextId: this.nextLeftPanelId,
         selections: {},
         customNames: {},
-        headerTypes: {} // NEW: Include header types
+        headerTypes: {},
+	silhouetteVisibility: {},
     };
     
     var self = this;
@@ -1429,6 +1444,10 @@ ChakraApp.AppState.prototype._serializeLeftPanelsWithHeaders = function() {
     this.leftPanelHeaderTypes.forEach(function(headerType, panelId) {
         serialized.headerTypes[panelId] = headerType;
     });
+
+    this.leftPanelSilhouetteVisibility.forEach(function(isVisible, panelId) {
+        serialized.silhouetteVisibility[panelId] = isVisible;
+    });
     
     return serialized;
 };
@@ -1445,7 +1464,8 @@ ChakraApp.AppState.prototype._deserializeLeftPanelsWithHeaders = function(data) 
     this.leftPanels.clear();
     this.leftPanelSelections.clear();
     this.leftPanelCustomNames.clear();
-    this.leftPanelHeaderTypes.clear(); // NEW: Clear header types
+    this.leftPanelHeaderTypes.clear();
+    this.leftPanelSilhouetteVisibility.clear();
     
     // Restore panels from saved data with proper ordering
     if (data.panels) {
@@ -1515,10 +1535,22 @@ ChakraApp.AppState.prototype._deserializeLeftPanelsWithHeaders = function(data) 
             }
         });
     }
+
+    if (data.silhouetteVisibility) {
+        var self = this;
+        Object.keys(data.silhouetteVisibility).forEach(function(panelIdStr) {
+            var panelId = parseInt(panelIdStr);
+            var isVisible = data.silhouetteVisibility[panelIdStr];
+            self.leftPanelSilhouetteVisibility.set(panelId, isVisible);
+        });
+    }
 };
 
 ChakraApp.AppState.prototype._deserializeLeftPanels = function(data) {
     if (!data) return;
+    
+    if (data.silhouetteVisibility) {
+    }
     
     // Restore nextLeftPanelId
     if (data.nextId !== undefined) {
@@ -1529,7 +1561,8 @@ ChakraApp.AppState.prototype._deserializeLeftPanels = function(data) {
     this.leftPanels.clear();
     this.leftPanelSelections.clear();
     this.leftPanelCustomNames.clear();
-    this.leftPanelHeaderTypes.clear(); // NEW: Clear header types
+    this.leftPanelHeaderTypes.clear();
+    this.leftPanelSilhouetteVisibility.clear();
     
     // Restore panels from saved data with proper ordering
     if (data.panels) {
@@ -1588,7 +1621,7 @@ ChakraApp.AppState.prototype._deserializeLeftPanels = function(data) {
         });
     }
     
-    // NEW: Restore header types
+    // Restore header types
     if (data.headerTypes) {
         var self = this;
         Object.keys(data.headerTypes).forEach(function(panelIdStr) {
@@ -1600,8 +1633,19 @@ ChakraApp.AppState.prototype._deserializeLeftPanels = function(data) {
         });
     }
 
+    // NEW: Restore silhouette visibility with debugging
+    if (data.silhouetteVisibility) {
+        var self = this;
+        Object.keys(data.silhouetteVisibility).forEach(function(panelIdStr) {
+            var panelId = parseInt(panelIdStr);
+            var isVisible = data.silhouetteVisibility[panelIdStr];
+            self.leftPanelSilhouetteVisibility.set(panelId, isVisible);
+        });
+    } else {
+    }
+
     if (data.selectedPanelId !== undefined) {
-	    this.selectedLeftPanelId = data.selectedPanelId;
+        this.selectedLeftPanelId = data.selectedPanelId;
     }
 };
 
