@@ -1419,7 +1419,7 @@ ChakraApp.UIController.prototype._createHeaderSectionForPanel = function(contain
   // Create buttons with panel-specific IDs
   var toggleBtn = this._createDocumentToggleButton(circleType.id, 'list1', panelId);
   var addBtn = this._createAddCircleButton(circleType, panelId);
-  var header = this._createToggleableCircleTypeHeader(circleType, panelId); // NEW: Use toggleable header
+  var header = this._createToggleableCircleTypeHeader(circleType, panelId); 
   
   // Create template toggle button (only for 'gem' circle type)
   var templateToggleBtn = null;
@@ -1579,16 +1579,21 @@ ChakraApp.UIController.prototype._refreshHeadersContainerForPanel = function(pan
 };
   
 ChakraApp.UIController.prototype._handleAddCircleClick = function(circleType, panelId) {
+  console.log('Add circle clicked for type', circleType.id, 'in panel', panelId);
+  
   // FIXED: Ensure document for circle type in this specific panel
   this._ensureDocumentForCircleTypeInPanel(circleType.id, panelId);
   
-  // Create a new circle
+  // Create a new circle with targetPanelId specified
   var circleData = {
     circleType: circleType.id,
     color: circleType.color
   };
   
-  var circle = ChakraApp.appState.addCircle(circleData);
+  // FIXED: Pass the panelId as the second parameter
+  var circle = ChakraApp.appState.addCircle(circleData, panelId);
+  
+  console.log('Created circle', circle.id, 'for panel', panelId, 'with document', circle.documentId);
 };
   
 ChakraApp.UIController.prototype._ensureDocumentForCircleTypeInPanel = function(circleTypeId, panelId) {

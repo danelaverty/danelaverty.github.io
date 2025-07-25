@@ -458,7 +458,6 @@ ChakraApp.CircleView.prototype._getPanelIdFromCircleView = function() {
     // ENHANCED: Check the parent element's data-panel-id first (most reliable)
     if (this.parentElement && this.parentElement.dataset && this.parentElement.dataset.panelId) {
         var panelIdStr = this.parentElement.dataset.panelId;
-        console.log('Found panelId in parentElement dataset:', panelIdStr);
         
         // Handle "left-N" format
         if (panelIdStr.startsWith('left-')) {
@@ -482,7 +481,6 @@ ChakraApp.CircleView.prototype._getPanelIdFromCircleView = function() {
         if (element.id && element.id.match(/^left-panel-(\d+)$/)) {
             var match = element.id.match(/^left-panel-(\d+)$/);
             var panelId = parseInt(match[1]);
-            console.log('Found panel ID from DOM traversal:', panelId);
             this.panelId = panelId; // Cache it
             return panelId;
         }
@@ -495,7 +493,6 @@ ChakraApp.CircleView.prototype._getPanelIdFromCircleView = function() {
         if (element.id && element.id.match(/^left-panel-(\d+)$/)) {
             var match = element.id.match(/^left-panel-(\d+)$/);
             var panelId = parseInt(match[1]);
-            console.log('Found panel ID from parent traversal:', panelId);
             this.panelId = panelId; // Cache it
             return panelId;
         }
@@ -515,7 +512,6 @@ ChakraApp.CircleView.prototype._getPanelIdFromCircleView = function() {
                 var typeSelections = panelSelections[circleType];
                 if (typeSelections.list1 === documentId || typeSelections.list2 === documentId) {
                     foundPanelId = panelId;
-                    console.log('Found panel ID from app state mapping:', panelId);
                 }
             }
         });
@@ -622,12 +618,6 @@ ChakraApp.CircleView.prototype.updatePosition = function() {
     // Interpret circle's X coordinate as relative to panel center
     var absoluteX = this.viewModel.x + panelCenterX;
     
-    console.log('updatePosition for circle', this.viewModel.id, 
-               'stored x:', this.viewModel.x, 
-               'panel width:', panelWidth, 
-               'center:', panelCenterX, 
-               'calculated absolute x:', absoluteX);
-    
     // Apply position with validation
     if (isNaN(absoluteX) || isNaN(this.viewModel.y)) {
         console.error('Invalid position calculated for circle', this.viewModel.id, 
@@ -651,7 +641,6 @@ ChakraApp.CircleView.prototype._getCurrentPanelWidth = function() {
     // CRITICAL FIX: Ensure we get the panel ID as an integer consistently
     var panelId = this._getPanelIdFromCircleView();
     
-    console.log('_getCurrentPanelWidth for circle', this.viewModel.id, 'in panel', panelId, '(type:', typeof panelId, ')');
     
     // FIXED: Ensure panelId is an integer before using it
     if (panelId !== null && panelId !== undefined && !isNaN(panelId)) {
@@ -659,7 +648,6 @@ ChakraApp.CircleView.prototype._getCurrentPanelWidth = function() {
         
         if (ChakraApp.app && ChakraApp.app.leftPanelManager) {
             var width = ChakraApp.app.leftPanelManager.getPanelWidth(panelId);
-            console.log('Got width from LeftPanelManager for panel', panelId, ':', width);
             if (width > 0) {
                 return width;
             }
@@ -671,7 +659,6 @@ ChakraApp.CircleView.prototype._getCurrentPanelWidth = function() {
             var computedStyle = window.getComputedStyle(panelElement);
             var width = parseInt(computedStyle.width);
             if (!isNaN(width) && width > 0) {
-                console.log('Got width from DOM for panel', panelId, ':', width);
                 return width;
             }
         }
@@ -883,10 +870,6 @@ ChakraApp.CircleView.prototype._addDragFunctionality = function() {
         
         // Convert absolute position to center-relative for storage
         var centerRelativeX = finalAbsoluteX - panelCenterX;
-        
-        console.log('CircleView drag end: absolute X:', finalAbsoluteX, 
-                   'panel width:', currentPanelWidth, 'center:', panelCenterX, 
-                   'storing relative X:', centerRelativeX);
         
         // Update the model with center-relative coordinates
         self.viewModel.updatePosition(centerRelativeX, finalY);

@@ -41,104 +41,114 @@
    * @private
    */
   ChakraApp.TabController.prototype._createTabsContainer = function() {
-    // Create tabs container if it doesn't exist
-    if (!document.getElementById('tabs-container')) {
-      var topPanel = document.getElementById('top-panel');
+  // Create tabs container if it doesn't exist
+  if (!document.getElementById('tabs-container')) {
+    var topPanel = document.getElementById('top-panel');
+    
+    this.tabsContainer = document.createElement('div');
+    this.tabsContainer.id = 'tabs-container';
+    this.tabsContainer.className = 'tabs-container';
+    
+    // Add to top panel
+    topPanel.appendChild(this.tabsContainer);
+    
+    // Add CSS to style the tabs
+    var style = document.createElement('style');
+    style.textContent = `
+      #top-panel {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
       
-      this.tabsContainer = document.createElement('div');
-      this.tabsContainer.id = 'tabs-container';
-      this.tabsContainer.className = 'tabs-container';
+      .top-panel-controls {
+        flex-shrink: 0;
+      }
       
-      // Add to top panel
-      topPanel.appendChild(this.tabsContainer);
+      .tabs-container {
+        display: none;
+        flex: 1;
+        overflow-x: auto;
+        border-bottom: 1px solid #444;
+        margin-top: 0;
+      }
       
-      // Add CSS to style the tabs
-      var style = document.createElement('style');
-      style.textContent = `
-        .tabs-container {
-          display: none;
-          width: 100%;
-          overflow-x: auto;
-          border-bottom: 1px solid #444;
-	  margin-top: 15px;
-        }
-        
-        .tab {
-          margin-right: 2px;
-          background-color: #333;
-          color: #aaa;
-          border-radius: 5px 5px 0 0;
-          cursor: pointer;
-          user-select: none;
-          white-space: nowrap;
-          position: relative;
-          transition: all 0.2s ease;
-		      padding: 0px 4px;
-        }
-        
-        .tab:hover {
-          background-color: #444;
-        }
-        
-        .tab.active {
-          background-color: #555;
-          color: white;
-        }
-        
-        .tab-name {
-          display: inline-block;
-          min-width: 40px;
-          max-width: 150px;
-          text-overflow: ellipsis;
+      .tab {
+        margin-right: 2px;
+        background-color: #333;
+        color: #aaa;
+        border-radius: 5px 5px 0 0;
+        cursor: pointer;
+        user-select: none;
+        white-space: nowrap;
+        position: relative;
+        transition: all 0.2s ease;
+		    padding: 0px 4px;
+      }
+      
+      .tab:hover {
+        background-color: #444;
+      }
+      
+      .tab.active {
+        background-color: #555;
+        color: white;
+      }
+      
+      .tab-name {
+        display: inline-block;
+        min-width: 40px;
+        max-width: 150px;
+        text-overflow: ellipsis;
 	  font-size: 11px;
-        }
-        
-        .tab.add-tab {
-          width: 30px;
-          text-align: center;
-          flex-shrink: 0;
-          background-color: #2a2a2a;
-        }
-        
-        .tab.add-tab:hover {
-          background-color: #444;
-        }
-        
-        .tab-close {
-          margin-left: 8px;
-          font-size: 14px;
-          display: inline-block;
-          width: 16px;
-          text-align: center;
-          line-height: 14px;
-          border-radius: 50%;
+      }
+      
+      .tab.add-tab {
+        width: 30px;
+        text-align: center;
+        flex-shrink: 0;
+        background-color: #2a2a2a;
+      }
+      
+      .tab.add-tab:hover {
+        background-color: #444;
+      }
+      
+      .tab-close {
+        margin-left: 8px;
+        font-size: 14px;
+        display: inline-block;
+        width: 16px;
+        text-align: center;
+        line-height: 14px;
+        border-radius: 50%;
 	  font-size: 11px;
-        }
-        
-        .tab-close:hover {
-          background-color: rgba(255, 255, 255, 0.2);
-        }
-        
-        .tab.active .tab-close:hover {
-          background-color: rgba(255, 0, 0, 0.3);
-        }
-        
-        .tab-input {
-          background: transparent;
-          border: none;
-          color: white;
-          outline: none;
-          font-family: inherit;
-          font-size: inherit;
-          width: 100%;
-          min-width: 50px;
-        }
-      `;
-      document.head.appendChild(style);
-    } else {
-      this.tabsContainer = document.getElementById('tabs-container');
-    }
-  };
+      }
+      
+      .tab-close:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+      }
+      
+      .tab.active .tab-close:hover {
+        background-color: rgba(255, 0, 0, 0.3);
+      }
+      
+      .tab-input {
+        background: transparent;
+        border: none;
+        color: white;
+        outline: none;
+        font-family: inherit;
+        font-size: inherit;
+        width: 100%;
+        min-width: 50px;
+      }
+    `;
+    document.head.appendChild(style);
+  } else {
+    this.tabsContainer = document.getElementById('tabs-container');
+  }
+};
   
   /**
    * Set up event subscriptions

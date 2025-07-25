@@ -1369,28 +1369,19 @@ ChakraApp.AppState.prototype._initializeHeaderToggleState = function() {
     return this.leftPanelHeaderTypes.get(panelId) || 'standard';
   };
 
-  ChakraApp.AppState.prototype.setLeftPanelHeaderType = function(panelId, headerType) {
-    if (headerType !== 'standard' && headerType !== 'gem') {
-        console.warn('Invalid header type:', headerType);
-        return false;
-    }
-    
-    this.leftPanelHeaderTypes.set(panelId, headerType);
-    this.saveToStorage();
-    
-    // Publish event for UI updates
-    ChakraApp.EventBus.publish('LEFT_PANEL_HEADER_TYPE_CHANGED', {
-        panelId: panelId,
-        headerType: headerType
-    });
-    
-    return true;
-  };
-
 // NEW: Toggle header type for a panel
  ChakraApp.AppState.prototype.toggleLeftPanelHeaderType = function(panelId) {
     var currentType = this.getLeftPanelHeaderType(panelId);
-    var newType = currentType === 'standard' ? 'gem' : 'standard';
+    var circleTypeIds = [];
+    ChakraApp.Config.circleTypes.forEach(function(circleType) { circleTypeIds.push(circleType.id); });
+    var currentCircleTypeIndex = circleTypeIds.indexOf(currentType);
+    var newCircleTypeIndex = 0;
+    if (currentCircleTypeIndex <= circleTypeIds.length - 3) {
+	    newCircleTypeIndex = currentCircleTypeIndex + 1;
+    }
+
+    var newType = circleTypeIds[newCircleTypeIndex];
+
     
     this.setLeftPanelHeaderType(panelId, newType);
     return newType;
@@ -1674,11 +1665,6 @@ ChakraApp.AppState.prototype.getLeftPanelHeaderType = function(panelId) {
 
 // Set header type for a panel
 ChakraApp.AppState.prototype.setLeftPanelHeaderType = function(panelId, headerType) {
-    if (headerType !== 'standard' && headerType !== 'gem') {
-        console.warn('Invalid header type:', headerType);
-        return false;
-    }
-    
     this.leftPanelHeaderTypes.set(panelId, headerType);
     this.saveToStorage();
     

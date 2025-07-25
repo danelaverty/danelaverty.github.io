@@ -256,9 +256,6 @@ ChakraApp.CharacteristicController.prototype._saveImageValue = function(value) {
 	    if (key == 'image') { return; }
       self._createActionButton(key, characteristics[key], buttonContainer);
     });
-    
-    this._createImageInput(buttonContainer);
-    //this._createDeleteButton(buttonContainer);
   };
   
   ChakraApp.CharacteristicController.prototype._createActionButton = function(key, charDef, parent) {
@@ -1138,15 +1135,20 @@ ChakraApp.CharacteristicController.prototype._updateColorValueDisplay = function
   var colors = circle.colors || [circle.color];
   
   if (colors.length === 1) {
-    // Single color - use existing logic
+    // Single color - always show a swatch
     var colorInfo = this._findColorInfo(colors[0]);
+    var template = ChakraApp.Config.characteristics.color.valueDisplayStyle.template;
+    
     if (colorInfo) {
-      var template = ChakraApp.Config.characteristics.color.valueDisplayStyle.template;
+      // Use the crystal name for defined colors
       displayEl.innerHTML = template
         .replace('{VALUE}', colors[0])
         .replace('{DISPLAY}', colorInfo.crystal);
     } else {
-      displayEl.textContent = colors[0];
+      // For undefined colors, show just the swatch without a crystal name
+      displayEl.innerHTML = template
+        .replace('{VALUE}', colors[0])
+        .replace('{DISPLAY}', ''); // Empty display name for custom colors
     }
   } else {
     // Multiple colors - show count and create color swatches
@@ -1161,6 +1163,7 @@ ChakraApp.CharacteristicController.prototype._updateColorValueDisplay = function
     countSpan.textContent = colors.length + ' colors';
     countSpan.style.fontSize = '10px';
     countSpan.style.marginRight = '4px';
+    countSpan.style.color = 'white';
     displayEl.appendChild(countSpan);
     
     // Add mini swatches for each color

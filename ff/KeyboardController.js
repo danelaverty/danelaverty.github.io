@@ -414,7 +414,6 @@ ChakraApp.KeyboardController.prototype._scaleCircleGroupDistances = function(cir
 };
 
 this.keyHandlers['?'] = function(e) {
-  console.log('?');
   // Must be ctrl/cmd key
   if (!(e.ctrlKey || e.metaKey)) return;
 
@@ -432,7 +431,6 @@ this.keyHandlers['?'] = function(e) {
 }
 
 this.keyHandlers['/'] = function(e) {
-  console.log('/');
   // Must be ctrl/cmd key
   if (!(e.ctrlKey || e.metaKey)) return;
 
@@ -1227,8 +1225,8 @@ this.keyHandlers['v'] = function(e) {
       self._showNotification('📋 Pasted ' + ChakraApp.ClipboardManager.getSquareCount() + ' squares');
     }
   } else if (hasCircles) {
-    // Paste circles (doesn't require a selection)
-    var success = ChakraApp.ClipboardManager.pasteCircles();
+    // FIXED: Paste circles considering the currently selected left panel
+    var success = self._pasteCirclesToSelectedPanel();
 
     // Provide visual feedback
     if (success) {
@@ -1240,6 +1238,107 @@ this.keyHandlers['v'] = function(e) {
   } else {
     self._showNotification('⚠️ Clipboard is empty');
   }
+};
+
+ChakraApp.KeyboardController.prototype._pasteCirclesToSelectedPanel = function() {
+  // Get the currently selected left panel
+  var selectedPanelId = ChakraApp.appState.getSelectedLeftPanelId();
+  
+  if (selectedPanelId === null) {
+    this._showNotification('⚠️ No panel selected');
+    return false;
+  }
+
+  // Get circles from clipboard
+  var circleClipboard = ChakraApp.ClipboardManager.circleClipboard;
+  if (!circleClipboard || circleClipboard.length === 0) {
+    return false;
+  }
+
+  var pastedCount = 0;
+  var self = this;
+
+  // For each circle in clipboard
+  circleClipboard.forEach(function(circleData) {
+    var circleInfo = circleData.circle || circleData;
+    if (!circleInfo || !circleInfo.circleType) {
+      console.warn('Invalid circle data in clipboard:', circleData);
+      return; // Skip this item
+    }
+    
+    var originalCircleType = circleInfo.circleType;
+    
+    // Get the panel's current selections for this circle type
+    var panelSelections = ChakraApp.appState.getLeftPanelSelections(selectedPanelId);
+    var typeSelections = panelSelections[originalCircleType];
+    
+    var targetDocumentId = null;
+    
+    // Try to use an existing selected document in the target panel
+    if (typeSelections && typeSelections.list1) {
+      targetDocumentId = typeSelections.list1;
+    } else if (typeSelections && typeSelections.list2) {
+      targetDocumentId = typeSelections.list2;
+    }
+    
+    // If no document is selected in the target panel for this circle type, create one
+    if (!targetDocumentId) {
+      var newDocName = ChakraApp.appState.generateDateBasedDocumentName(originalCircleType, 'list1');
+      
+      var newDoc = ChakraApp.appState.addDocument({
+        name: newDocName,
+        circleType: originalCircleType,
+        listType: 'list1'
+      });
+      
+      targetDocumentId = newDoc.id;
+      
+      // Select this new document in the target panel
+      ChakraApp.appState.selectDocumentForPanel(targetDocumentId, originalCircleType, 'list1', selectedPanelId);
+    }
+    
+    // Create the new circle with the target document
+    var newCircleData = Object.assign({}, circleInfo);
+    newCircleData.documentId = targetDocumentId;
+    
+    // Generate new ID to avoid conflicts
+    delete newCircleData.id;
+    
+    // Offset position slightly so it doesn't overlap exactly
+    newCircleData.x = (newCircleData.x || 0) + 20;
+    newCircleData.y = (newCircleData.y || 0) + 20;
+    
+    // Create the circle in the target panel
+    var newCircle = ChakraApp.appState.addCircle(newCircleData, selectedPanelId);
+    
+    if (newCircle && circleData.squares && circleData.squares.length > 0) {
+      // Also paste the squares if they exist
+      circleData.squares.forEach(function(squareData) {
+        var newSquareData = Object.assign({}, squareData);
+        newSquareData.circleId = newCircle.id;
+        
+        // Generate new ID to avoid conflicts
+        delete newSquareData.id;
+        
+        // Offset square position slightly
+        newSquareData.x = (newSquareData.x || 0) + 20;
+        newSquareData.y = (newSquareData.y || 0) + 20;
+        
+        ChakraApp.appState.addSquare(newSquareData);
+      });
+    }
+    
+    pastedCount++;
+  });
+
+  // Update the view for the target panel
+  if (ChakraApp.app && ChakraApp.app.viewManager) {
+    setTimeout(function() {
+      ChakraApp.app.viewManager.renderCirclesForLeftPanel(selectedPanelId);
+    }, 50);
+  }
+
+  return pastedCount > 0;
 };
 
     // Ctrl+B - Toggle bold for selected squares

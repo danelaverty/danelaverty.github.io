@@ -11,7 +11,7 @@
         
         // Individual panel width management
         this.defaultPanelWidth = 400;
-        this.minPanelWidth = 200;
+        this.minPanelWidth = 100;
         this.maxPanelWidth = 800;
         this.panelWidths = new Map(); // Store individual panel widths
         
@@ -57,7 +57,6 @@
     
     // CRITICAL: Load panel widths BEFORE restoring panel state
     this._loadSavedPanelWidths();
-    console.log('Loaded panel widths:', Array.from(this.panelWidths.entries()));
     
     // CRITICAL: Restore panels BEFORE creating titles and other elements
     this._restoreSavedPanelState();
@@ -141,12 +140,10 @@ ChakraApp.LeftPanelManager.prototype.getPanelWidth = function(panelId) {
     // CRITICAL: Ensure panelId is treated as integer consistently
     panelId = parseInt(panelId);
     
-    console.log('LeftPanelManager.getPanelWidth called for panel', panelId, '(type:', typeof panelId, ')');
     
     var width = this.panelWidths.get(panelId);
     
     if (width && width > 0) {
-        console.log('Found cached width for panel', panelId, ':', width);
         return width;
     }
     
@@ -156,7 +153,6 @@ ChakraApp.LeftPanelManager.prototype.getPanelWidth = function(panelId) {
         var computedStyle = window.getComputedStyle(panelElement);
         var domWidth = parseInt(computedStyle.width);
         if (!isNaN(domWidth) && domWidth > 0) {
-            console.log('Measured DOM width for panel', panelId, ':', domWidth, '- caching it');
             // Cache this width
             this.panelWidths.set(panelId, domWidth);
             return domWidth;
@@ -165,7 +161,6 @@ ChakraApp.LeftPanelManager.prototype.getPanelWidth = function(panelId) {
     
     // Return default and cache it
     var defaultWidth = this.defaultPanelWidth;
-    console.log('Using default width for panel', panelId, ':', defaultWidth, '- caching it');
     this.panelWidths.set(panelId, defaultWidth);
     return defaultWidth;
 };
@@ -176,7 +171,6 @@ ChakraApp.LeftPanelManager.prototype.getPanelWidth = function(panelId) {
     width = Math.max(this.minPanelWidth, Math.min(this.maxPanelWidth, width));
     this.panelWidths.set(panelId, width);
     
-    console.log('LeftPanelManager: Setting panel', panelId, 'width from', oldWidth, 'to', width);
     
     // Update the panel element
     var panelData = this.leftPanels.get(panelId);
@@ -229,7 +223,6 @@ ChakraApp.LeftPanelManager.prototype._isDragging = function() {
 };
 
 ChakraApp.LeftPanelManager.prototype._updateCircleCoordinatesForPanelResize = function(panelId, oldWidth, newWidth) {
-    console.log('LeftPanelManager: Updating stored circle coordinates for panel', panelId, 'width change:', oldWidth, '->', newWidth);
     
     if (!ChakraApp.appState || !ChakraApp.appState.circles) {
         return;
@@ -240,7 +233,6 @@ ChakraApp.LeftPanelManager.prototype._updateCircleCoordinatesForPanelResize = fu
     var newCenterX = newWidth / 2;
     var centerDelta = newCenterX - oldCenterX;
     
-    console.log('Panel center moved by:', centerDelta, 'pixels');
     
     // Find all circles that belong to this panel
     var circlesUpdated = 0;
@@ -257,8 +249,6 @@ ChakraApp.LeftPanelManager.prototype._updateCircleCoordinatesForPanelResize = fu
             var absoluteX = currentStoredX + oldCenterX; // Convert to absolute
             var newStoredX = absoluteX - newCenterX; // Convert to new center-relative
             
-            console.log('Circle', circleId, 'stored x:', currentStoredX, '->', newStoredX, 
-                       '(absolute:', absoluteX, ', old center:', oldCenterX, ', new center:', newCenterX, ')');
             
             // Update the stored coordinate
             circle.x = newStoredX;
@@ -266,7 +256,6 @@ ChakraApp.LeftPanelManager.prototype._updateCircleCoordinatesForPanelResize = fu
         }
     }, this);
     
-    console.log('Updated stored coordinates for', circlesUpdated, 'circles in panel', panelId);
     
     // Save the updated coordinates immediately
     if (circlesUpdated > 0) {
@@ -301,22 +290,18 @@ ChakraApp.LeftPanelManager.prototype._getCirclePanelId = function(circle) {
 };
 
 ChakraApp.LeftPanelManager.prototype._updateCirclePositionsForPanel = function(panelId) {
-    console.log('LeftPanelManager: Updating circle positions for panel', panelId);
     
     if (ChakraApp.app && ChakraApp.app.viewManager && ChakraApp.app.viewManager.circleViews) {
         var updatedCount = 0;
         ChakraApp.app.viewManager.circleViews.forEach(function(circleView, key) {
             // Check if this circle belongs to the specified panel
             var circlePanelId = circleView._getPanelIdFromCircleView();
-            console.log('Circle', circleView.viewModel.id, 'panel ID:', circlePanelId, 'target panel:', panelId);
             
             if (circlePanelId === panelId) {
-                console.log('Updating circle', circleView.viewModel.id, 'position for panel resize');
                 circleView.updatePosition();
                 updatedCount++;
             }
         });
-        console.log('Updated', updatedCount, 'circles for panel', panelId);
     }
 };
     
@@ -479,7 +464,7 @@ ChakraApp.LeftPanelManager.prototype._updateCirclePositionsForPanel = function(p
         
         var label = document.createElement('span');
         label.className = 'minimized-panels-label';
-        this.minimizedPanelsTray.appendChild(label);
+        //this.minimizedPanelsTray.appendChild(label);
         
         document.body.appendChild(this.minimizedPanelsTray);
     };
