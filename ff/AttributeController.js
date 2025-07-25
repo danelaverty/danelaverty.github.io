@@ -33,11 +33,25 @@
                   "Factors": {
                         "attributes": [
                               "cause",
-                              "activity",
                         ],
                         "color": "#B3D9FF" // Medium blue
                   },
-                  "Interpretations": {
+                  "Directions": {
+                        "attributes": [
+			      "star",
+                              "activity",
+			      "example",
+                        ],
+                        "color": "#C3E9FF" // Medium blue
+                  },
+                  "Forces": {
+                        "attributes": [
+                              "magnet",
+                              "departure",
+                        ],
+                        "color": "#D3F9FF" // Medium blue
+                  },
+                  /*"Interpretations": {
                         "attributes": [
                               "evidence",
                               "push",
@@ -46,14 +60,14 @@
                               "bulbOff"
                         ],
                         "color": "#99CCFF" // Lighter blue
-                  },
+                  },*/
                   "Characters": {
                         "attributes": [
                               "me",
                               "ally",
                               "group"
                         ],
-                        "color": "#80BFFF" // Darker blue
+                        "color": "#E3FFFF" // Lighter blue
                   }
             }
       },
@@ -195,15 +209,14 @@
                         ],
                         "color": "#BA68C8" // Medium purple
                   },
-                  /*"weightlifting": {
+                  "get strong": {
                         "attributes": [
-                              "weightlifter",
                               "me",
-                              "point",
-                              "fail"
+                              "exercise",
+                              "strength",
                         ],
                         "color": "#9C27B0" // Purple
-                  }*/
+                  },
             }
       },
       "😖 Predicament": {
@@ -590,7 +603,7 @@
       "machine": {
             "emoji": "🏗️",
             "color": "#666633",
-            "displayName": "The Machine"
+            "displayName": "Machine"
       },
       "site": {
             "emoji": "🏞️",
@@ -671,6 +684,11 @@
             "emoji": "🏃",
             "color": "#9CC",
             "displayName": "Activity"
+      },
+      "example": {
+            "emoji": "🧭",
+            "color": "#CCC",
+            "displayName": "Example"
       },
       "conceptualThing": {
             "emoji": "💭",
@@ -792,6 +810,21 @@
             "color": "#BDE",
             "displayName": "Spit"
       },
+      "star": {
+            "emoji": "✨",
+            "color": "#FE9",
+            "displayName": "Goal"
+      },
+      "departure": {
+            "emoji": "🛫",
+            "color": "#AAE",
+            "displayName": "Departure"
+      },
+      "magnet": {
+            "emoji": "🧲",
+            "color": "#EAA",
+            "displayName": "Attractor"
+      },
       "bulbOn": {
             "emoji": "💡",
             "color": "#EEA",
@@ -848,11 +881,11 @@
             "color": "#ff6666",
             "displayName": "Move"
       },
-      "weightlifter": {
+      "exercise": {
             "emoji": "🏋️",
             "color": "#f9eea9",
-            "displayName": "Weightlifter"
-      }
+            "displayName": "Exercise"
+      },
 };
   };
 
@@ -966,7 +999,7 @@
 
   // Updated approach: Change actual dimensions instead of using CSS scale
 
-  ChakraApp.AttributeController.prototype._buildStorySelectorGrid = function() {
+ChakraApp.AttributeController.prototype._buildStorySelectorGrid = function() {
   var self = this;
   this.storySelector.innerHTML = '';
   
@@ -979,21 +1012,52 @@
       position: relative;
     }
     
-    /* Main story selector container - 2 column layout with overlay positioning */
+    /* Toggle button wrapper - now contains both button and attribute grid */
+    .story-toggle-wrapper {
+      background-color: transparent;
+      border-radius: 8px;
+      min-height: 40px;
+    }
+    
+    /* Attribute grid when inside toggle wrapper */
+    .story-toggle-wrapper #attribute-grid {
+      max-height: 60px;
+      overflow-y: auto;
+    }
+    
+    .story-toggle-wrapper #attribute-grid.visible {
+      display: flex !important;
+    }
+    
+    /* Adjust attribute box sizes when in horizontal layout */
+    .story-toggle-wrapper .attribute-box {
+      width: 55px !important;
+      height: 42px !important;
+      font-size: 8px !important;
+      margin: 1px !important;
+    }
+    
+    .story-toggle-wrapper .attribute-box .emoji {
+      font-size: 20px !important;
+      margin: 2px 0 !important;
+    }
+    
+    .story-toggle-wrapper .attribute-box .attribute-name {
+      line-height: 1 !important;
+      margin-bottom: 1px !important;
+      white-space: nowrap;
+    }
+    
+    .story-toggle-wrapper .attribute-box .attribute-desc {
+      display: none; /* Hide descriptions in compact layout */
+    }
+    
+    /* Main story selector container - 2 column layout */
     .story-selector {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
       align-items: flex-start;
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      z-index: 1000;
-      background-color: #AAA;
-      border-radius: 8px;
-      padding: 8px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     }
     
     /* Override inline display styles when hidden */
@@ -1008,8 +1072,6 @@
     
     /* Category sections - each takes up roughly half the width */
     .story-category-section {
-      //flex: 1 1 calc(50% - 4px);
-      //min-width: 200px;
       width: 220px;
       margin-bottom: 2px;
     }
@@ -1039,14 +1101,6 @@
     }
     
     /* Full size story boxes - normal spacing */
-    /*.story-box.full-size {
-      width: 100px;
-      height: 100px;
-      font-size: 10px;
-      margin-right: 8px;
-      margin-bottom: 8px;
-    }*/
-
     .story-box.full-size {
       width: 100px;
       height: 100px;
@@ -1056,17 +1110,11 @@
     }
     
     .story-box.full-size .story-name {
-      //font-size: 15px;
       font-size: 15px;
       line-height: 1.1;
       margin-bottom: 2px;
       transition: all 0.3s ease;
     }
-    
-    /*.story-box.full-size .mini-attribute-box {
-      width: 24px;
-      height: 24px;
-    }*/
     
     .story-box.full-size .mini-attribute-box {
       width: 24px;
@@ -1152,6 +1200,11 @@
       .story-category-section {
         flex: 1 1 100%;
       }
+      
+      .story-toggle-button {
+        width: 100px !important;
+        font-size: 11px !important;
+      }
     }
   `;
   
@@ -1162,6 +1215,7 @@
   }
   document.head.appendChild(style);
   
+  // Build category sections (same as before)
   Object.keys(this.storyCategories).forEach(function(categoryName) {
     var categoryData = self.storyCategories[categoryName];
     
@@ -1369,47 +1423,72 @@ ChakraApp.AttributeController.prototype._createStorySelector = function() {
     return;
   }
   
-  // Create selector container
+  // Create main container
   var selectorContainer = document.createElement('div');
   selectorContainer.className = 'story-selector-container';
   selectorContainer.style.cssText = `
     margin: 3px 10px;
     display: none;
     max-width: 730px;
-    background-color: #AAA;
     border-radius: 8px;
     margin-bottom: 10px;
+    position: relative;
   `;
   
   this.storySelectorContainer = selectorContainer;
   
-  // Create toggle button to show current story and allow expanding
+  // Create wrapper for toggle button and attribute grid
+  var toggleWrapper = document.createElement('div');
+  toggleWrapper.className = 'story-toggle-wrapper';
+  toggleWrapper.style.cssText = `
+    display: flex;
+    justify-content: flex-start;
+    align-items: flex-start;
+    padding: 4px;
+    gap: 8px;
+    flex-wrap: wrap;
+    flex-direction: column;
+  `;
+  
+  // Create toggle button with fixed width
   this.storyToggleButton = document.createElement('div');
   this.storyToggleButton.className = 'story-toggle-button';
   this.storyToggleButton.style.cssText = `
-    padding: 4px;
+    width: 120px;
+    padding: 4px 8px;
     background-color: #666;
     color: white;
     border-radius: 6px;
     cursor: pointer;
-    font-size: 12px;
+    font-size: 10px;
     font-weight: 500;
     display: flex;
     align-items: center;
     justify-content: space-between;
     transition: background-color 0.2s ease;
+    flex-shrink: 0;
   `;
   
   // Add toggle button content
   this._updateToggleButtonText();
   
-  // Create the main selector element (initially hidden via CSS)
+  // Create the main selector element (initially hidden, positioned absolutely to not affect container width)
   this.storySelector = document.createElement('div');
   this.storySelector.className = 'story-selector';
   this.storySelector.style.cssText = `
     max-height: 720px;
     overflow-y: auto;
     display: none;
+    position: absolute;
+    top: 20px;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background-color: #AAA;
+    border-radius: 8px;
+    padding: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    margin-top: 4px;
   `;
   
   // Track if grid is expanded
@@ -1425,13 +1504,36 @@ ChakraApp.AttributeController.prototype._createStorySelector = function() {
   // Build the grid structure
   this._buildStorySelectorGrid();
   
-  selectorContainer.appendChild(this.storyToggleButton);
+  // Assemble the structure
+  toggleWrapper.appendChild(this.storyToggleButton);
+  
+  // Move the attribute grid into the toggle wrapper if it exists
+  if (this.attributeGrid) {
+    // Remove from its current parent if it has one
+    if (this.attributeGrid.parentNode) {
+      this.attributeGrid.parentNode.removeChild(this.attributeGrid);
+    }
+    
+    // Update attribute grid styles to work in the horizontal layout
+    this.attributeGrid.style.cssText = `
+      display: none;
+      flex-wrap: wrap;
+      gap: 4px;
+      align-items: center;
+      flex-grow: 1;
+      max-height: 60px;
+      overflow-y: auto;
+    `;
+    
+    toggleWrapper.appendChild(this.attributeGrid);
+  }
+  
+  selectorContainer.appendChild(toggleWrapper);
   selectorContainer.appendChild(this.storySelector);
   
-  // Add container above attribute grid
-  if (this.attributeGrid && this.attributeGrid.parentNode) {
-    this.attributeGrid.parentNode.insertBefore(selectorContainer, this.attributeGrid);
-  }
+  // Add container to the DOM (but don't insert before attribute grid since it's now inside)
+  var targetContainer = document.querySelector('#center-panel') || document.body;
+  targetContainer.appendChild(selectorContainer);
   
   // Set up click-outside listener
   this._setupClickOutsideListener();

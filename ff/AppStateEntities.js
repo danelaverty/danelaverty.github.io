@@ -877,13 +877,14 @@ ChakraApp.AppState.prototype._updateCircleConnections = function() {
 };
 
   // Circle methods - explicitly defined and not generated
-ChakraApp.AppState.prototype.addCircle = function(circleData) {
+// In AppStateEntities.js - Updated addCircle method
+ChakraApp.AppState.prototype.addCircle = function(circleData, targetPanelId) {
   var circle = circleData instanceof ChakraApp.Circle ? 
     circleData : new ChakraApp.Circle(circleData || {});
 
   if (circle.x === 0 && circle.y === 0) {
-    circle.x = Math.floor(Math.random() * 81) + 20;
-    circle.y = Math.floor(Math.random() * 81) + 100;
+    circle.x = Math.floor(Math.random() * 20) - 40;
+    circle.y = Math.floor(Math.random() * 60) + 30;
   }
   
   // Determine the circle type explicitly
@@ -893,31 +894,52 @@ ChakraApp.AppState.prototype.addCircle = function(circleData) {
   if (!circle.documentId) {
     var selectedDocId = null;
     
-    // Use the most recently selected document for this circle type
-    var recentSelection = this.mostRecentDocumentSelection[circleType];
-    
-    if (recentSelection && recentSelection.docId) {
-      // Verify the document still exists and is still selected
-      var recentDoc = this.getDocument(recentSelection.docId);
+    // FIXED: If targetPanelId is specified, use that panel's selection
+    if (targetPanelId !== undefined && targetPanelId !== null) {
+      var panelSelections = this.getLeftPanelSelections(targetPanelId);
+      var typeSelections = panelSelections[circleType];
       
-      // Check selection in the specific panel where it was selected
-      var panelId = recentSelection.panelId || 0;
-      var panelSelections = this.getLeftPanelSelections(panelId);
-      var currentSelection = panelSelections[circleType] && 
-                           panelSelections[circleType][recentSelection.listType];
-      
-      if (recentDoc && currentSelection === recentSelection.docId) {
-        selectedDocId = recentSelection.docId;
-        circle.documentId = selectedDocId;
-        
-        // Track that this circle's document came from the specific panel
-        recentDoc._selectedFromPanel = panelId;
+      if (typeSelections && typeSelections.list1) {
+        var targetDoc = this.getDocument(typeSelections.list1);
+        if (targetDoc) {
+          selectedDocId = typeSelections.list1;
+          circle.documentId = selectedDocId;
+          console.log('Using document from target panel', targetPanelId, ':', selectedDocId);
+        }
       }
     }
     
-    // Only create a new document if no valid recent selection was found
+    // If no targetPanelId or no selection in target panel, use most recent selection
+    if (!selectedDocId) {
+      var recentSelection = this.mostRecentDocumentSelection[circleType];
+      
+      if (recentSelection && recentSelection.docId) {
+        // Verify the document still exists and is still selected
+        var recentDoc = this.getDocument(recentSelection.docId);
+        
+        // Check selection in the specific panel where it was selected
+        var panelId = recentSelection.panelId || 0;
+        var panelSelections = this.getLeftPanelSelections(panelId);
+        var currentSelection = panelSelections[circleType] && 
+                             panelSelections[circleType][recentSelection.listType];
+        
+        if (recentDoc && currentSelection === recentSelection.docId) {
+          selectedDocId = recentSelection.docId;
+          circle.documentId = selectedDocId;
+          
+          // Track that this circle's document came from the specific panel
+          recentDoc._selectedFromPanel = panelId;
+          console.log('Using document from recent selection in panel', panelId, ':', selectedDocId);
+        }
+      }
+    }
+    
+    // Only create a new document if no valid selection was found
     if (!circle.documentId) {
-      var targetPanelId = (recentSelection && recentSelection.panelId !== undefined) ? recentSelection.panelId : 0;
+      var actualTargetPanelId = targetPanelId !== undefined ? targetPanelId : 
+                               (recentSelection && recentSelection.panelId !== undefined) ? recentSelection.panelId : 0;
+      
+      console.log('Creating new document for panel', actualTargetPanelId);
       
       // Always create a new document instead of using existing ones
       var circleTypeConfig = null;
@@ -939,7 +961,7 @@ ChakraApp.AppState.prototype.addCircle = function(circleData) {
       selectedDocId = newDoc.id;
       
       // Select this new document in the target panel
-      this.selectDocumentForPanel(selectedDocId, circleType, 'list1', targetPanelId);
+      this.selectDocumentForPanel(selectedDocId, circleType, 'list1', actualTargetPanelId);
       circle.documentId = selectedDocId;
     }
   }

@@ -122,11 +122,10 @@ h3 {
 
 #top-panel {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: flex-start;
-  padding: 10px 20px;
+  padding: 10px;
   height: auto;
-  min-height: 40px;
   background-color: var(--color-bg-dark);
   border-bottom: none;
   z-index: 100;
@@ -272,32 +271,19 @@ h3 {
   gap: 15px;
   align-self: flex-start;
   justify-content: flex-start;
-  width: 100%;
   flex-wrap: wrap;
 }
 
 /* Current Value Display */
 .current-value {
-  font-size: 11px;
-  color: var(--color-text);
-  background: rgba(60, 60, 60, 0.8);
-  padding: 3px 6px;
-  border-radius: var(--radius-standard);
-  min-width: 50px;
-  white-space: nowrap;
   display: flex;
-  align-items: center;
-  max-width: 80px;
   overflow: hidden;
   text-overflow: ellipsis;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  transition: all var(--transition-fast);
 }
 
 .current-value.clickable {
   display: flex;
   align-items: center;
-  min-width: 80px;
   justify-content: center;
   cursor: pointer;
 }
@@ -328,8 +314,6 @@ h3 {
   border-radius: 2px;
   position: relative;
   left: 0;
-  top: 50%;
-  transform: translate(-50%, -50%);
 }
 
 /* Optimized CSS - Part 3: Circle and Square Elements */
@@ -397,7 +381,7 @@ h3 {
   z-index: 25;
   white-space: nowrap;
   cursor: text;
-  user-select: text;
+  user-select: none;
   box-sizing: border-box;
   max-height: none;
   spellcheck: false;
@@ -1189,7 +1173,6 @@ h3 {
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
-  padding: 5px;
   gap: 8px;
   width: auto;
   max-width: none;
@@ -1200,7 +1183,6 @@ h3 {
 }
 
 .attribute-box {
-  width: 62px !important;
   height: auto !important;
   padding: 1px !important;
   flex-grow: 0;
@@ -1208,11 +1190,10 @@ h3 {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  min-width: 62px !important;
 }
 
 .attribute-name {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: bold;
   margin-bottom: 2px;
   text-align: center;
@@ -2468,6 +2449,7 @@ Add these styles to styles.css:
   justify-content: center;
   pointer-events: none;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  user-select: none;
 }
 
 /* Animation for indicator changes */
@@ -2867,7 +2849,6 @@ Add these styles to styles.css:
     position: fixed;
     bottom: 0;
     left: 50%;
-    transform: translateX(-50%);
     border-bottom: none;
     border-radius: 8px 8px 0 0;
     display: none; /* Hidden by default */
@@ -2901,7 +2882,9 @@ Add these styles to styles.css:
     height: 24px;
     background-color: #666;
     border: 1px solid #888;
-    border-radius: 4px;
+    border-left: none;
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -3038,7 +3021,6 @@ Add these styles to styles.css:
   height: 100%;
   background-color: var(--color-bg-dark);
   flex-shrink: 0; /* Prevent shrinking */
-  min-width: 200px; /* Minimum width */
   max-width: 80vw; /* Maximum 80% of viewport */
   /* Transition removed - will be added after initial load */
 }
@@ -3054,7 +3036,6 @@ Add these styles to styles.css:
   position: relative;
   background-color: var(--color-bg-dark);
   flex-shrink: 0;
-  min-width: 200px; /* Minimum panel width */
   /* Remove hard-coded width - will be set dynamically */
   /* Transition removed - will be added after initial load */
 }
@@ -3154,26 +3135,7 @@ Add these styles to styles.css:
   max-width: calc(100% - 40px); /* Respect panel boundaries */
 }
 
-/* Responsive adjustments for smaller panel widths */
-@media (max-width: 1200px) {
-  .left-panel {
-    min-width: 180px;
-  }
-  
-  .left-container {
-    min-width: 180px;
-  }
-}
-
 @media (max-width: 900px) {
-  .left-panel {
-    min-width: 160px;
-  }
-  
-  .left-container {
-    min-width: 160px;
-  }
-  
   .headers-container {
     bottom: 5px;
     left: 5px;
@@ -4088,14 +4050,13 @@ button {
 
 /* Minimized panels tray */
 .minimized-panels-tray {
-    position: fixed;
+    position: absolute;
     bottom: 50px;
-    left: 10px;
+    left: 0px;
     background-color: rgba(0, 0, 0, 0.8);
     border-radius: 5px;
-    padding: 5px;
     display: none;
-    flex-direction: row;
+    flex-direction: column-reverse;
     gap: 5px;
     z-index: 1000;
 }
@@ -4108,12 +4069,9 @@ button {
     position: relative;
     background-color: #444;
     color: #ccc;
-    padding: 5px 10px;
-    border-radius: 3px;
     cursor: pointer;
-    font-size: 12px;
     white-space: nowrap;
-    max-width: 100px;
+    width: 80px;
     overflow: hidden;
     text-overflow: ellipsis;
     transition: background-color 0.2s ease;

@@ -25,11 +25,6 @@
     
     // Debug logging function
     function debugLog(method, args, context) {
-        console.log('🔍 [SQUARE-DEBUG]', method, {
-            args: args,
-            context: context,
-            stack: new Error().stack.split('\n').slice(1, 6) // Show first 5 stack frames
-        });
     }
     
     // Wait for app to initialize
@@ -250,10 +245,8 @@ ChakraApp.App.prototype.initializeAppComponents = function() {
 };
 
 ChakraApp.App.prototype._ensureCorrectCirclePositions = function() {
-    console.log('App: Ensuring correct circle positions for DISPLAYED circles only');
     
     if (!ChakraApp.appState || !ChakraApp.appState.circles) {
-        console.log('No circles to position');
         return;
     }
     
@@ -269,12 +262,6 @@ ChakraApp.App.prototype._ensureCorrectCirclePositions = function() {
             if (panelId !== null) {
                 var panelWidth = self._getPanelWidthForCircle(panelId);
                 
-                console.log('Visible circle', circleId, 'panel', panelId, 
-                           'stored x:', circle.x, 
-                           'panel width:', panelWidth, 
-                           'center:', panelWidth / 2, 
-                           'absolute x:', circle.x + (panelWidth / 2));
-                
                 positionsVerified++;
             } else {
                 console.warn('Could not determine panel for VISIBLE circle', circleId);
@@ -282,7 +269,6 @@ ChakraApp.App.prototype._ensureCorrectCirclePositions = function() {
         }
     });
     
-    console.log('Verified positions for', positionsVerified, 'visible circles');
 };
 
 ChakraApp.App.prototype._determineCirclePanelId = function(circle) {

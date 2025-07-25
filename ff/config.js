@@ -206,7 +206,7 @@
         },
         valueDisplayStyle: {
           type: 'swatch',
-          template: '<span class="color-value-swatch" style="background-color: {VALUE}"></span><span>{DISPLAY}</span>'
+          template: '<span class="color-value-swatch" style="background-color: {VALUE}"></span>'
         }
       },
       image: {
