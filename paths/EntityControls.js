@@ -1,30 +1,21 @@
-// DocumentDropdown.js - Document management dropdown component
+// EntityControls.js - Unified controls component for both circles and squares
 import { ref, computed, onMounted, onUnmounted } from './vue-composition-api.js';
 import { useDataStore } from './useDataStore.js';
 import { injectComponentStyles } from './styleUtils.js';
 
 // Inject component styles
 const componentStyles = `
-    .document-selector {
-        position: fixed;
+    .entity-controls {
+        position: absolute;
         bottom: 20px;
-        z-index: 1001;
+        left: 20px;
         display: flex;
         align-items: center;
         gap: 10px;
+        z-index: 1000;
     }
 
-    .document-selector.left {
-        left: 80px;
-        flex-direction: row;
-    }
-
-    .document-selector.right {
-        right: 80px;
-        flex-direction: row-reverse;
-    }
-
-    .document-button {
+    .control-button {
         width: 50px;
         height: 50px;
         border-radius: 50%;
@@ -37,17 +28,26 @@ const componentStyles = `
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
+        transition: background-color 0.2s ease;
     }
 
-    .document-button:hover {
+    .control-button:hover {
         background-color: #555;
     }
 
-    .document-button:disabled {
+    .control-button:disabled {
         background-color: #222;
         border-color: #444;
         color: #666;
         cursor: not-allowed;
+    }
+
+    .add-button {
+        font-size: 24px;
+    }
+
+    .document-button {
+        font-size: 20px;
     }
 
     .document-label {
@@ -61,15 +61,19 @@ const componentStyles = `
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
     }
 
-    .document-label.hidden {
-        display: none;
+    .document-label:hover {
+        background-color: rgba(52, 52, 52, 0.9);
+        border-color: #888;
     }
 
     .document-dropdown {
         position: absolute;
         bottom: 60px;
+        left: 60px;
         min-width: 200px;
         background-color: #2a2a2a;
         border: 1px solid #666;
@@ -77,14 +81,6 @@ const componentStyles = `
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
         max-height: 300px;
         overflow-y: auto;
-    }
-
-    .document-dropdown.left {
-        left: 0;
-    }
-
-    .document-dropdown.right {
-        right: 0;
     }
 
     .dropdown-item {
@@ -191,23 +187,29 @@ const componentStyles = `
     }
 `;
 
-injectComponentStyles('document-dropdown', componentStyles);
+injectComponentStyles('entity-controls', componentStyles);
 
-export const DocumentDropdown = {
+export const EntityControls = {
     props: {
-        entityType: String,
-        isEnabled: {
-            type: Boolean,
-            default: true
+        entityType: {
+            type: String,
+            required: true,
+            validator: value => ['circle', 'square'].includes(value)
+        },
+        viewerId: {
+            type: String,
+            default: null // Only needed for circle controls
         }
     },
-    emits: ['document-change'],
+    emits: ['add-entity', 'document-change'],
     setup(props, { emit }) {
         const dataStore = useDataStore();
-        const isOpen = ref(false);
+        const isDropdownOpen = ref(false);
         const editingDocId = ref(null);
 
-        const position = props.entityType === 'circle' ? 'left' : 'right';
+        const shouldShowControls = computed(() => {
+            return props.entityType === 'circle' || dataStore.data.selectedCircleId !== null;
+        });
 
         const documents = computed(() => {
             if (props.entityType === 'circle') {
@@ -219,30 +221,43 @@ export const DocumentDropdown = {
         });
 
         const currentDocument = computed(() => {
-            return props.entityType === 'circle' 
-                ? dataStore.getCurrentCircleDocument()
-                : dataStore.getCurrentSquareDocument();
+            if (props.entityType === 'circle' && props.viewerId) {
+                return dataStore.getCircleDocumentForViewer(props.viewerId);
+            } else if (props.entityType === 'square') {
+                return dataStore.getCurrentSquareDocument();
+            }
+            return null;
         });
 
-        // Check if we should show the "select circle first" message
+        const hasDocument = computed(() => {
+            return currentDocument.value !== null;
+        });
+
         const shouldShowSelectCircleMessage = computed(() => {
-            return props.entityType === 'square' && (!props.isEnabled || dataStore.data.selectedCircleId === null);
+            return props.entityType === 'square' && dataStore.data.selectedCircleId === null;
         });
 
-        const buttonIcon = props.entityType === 'circle' ? '📁' : '📄';
-
-        const toggleDropdown = () => {
-            if (!props.isEnabled) return;
-            isOpen.value = !isOpen.value;
+        // Button handlers
+        const handleAddClick = () => {
+            emit('add-entity');
         };
 
+        const toggleDropdown = () => {
+            isDropdownOpen.value = !isDropdownOpen.value;
+        };
+
+        const handleDocumentClick = () => {
+            toggleDropdown();
+        };
+
+        // Document management
         const selectDocument = (id) => {
-            if (props.entityType === 'circle') {
-                dataStore.setCurrentCircleDocument(id);
-            } else {
+            if (props.entityType === 'circle' && props.viewerId) {
+                dataStore.setCircleDocumentForViewer(props.viewerId, id);
+            } else if (props.entityType === 'square') {
                 dataStore.setCurrentSquareDocument(id);
             }
-            isOpen.value = false;
+            isDropdownOpen.value = false;
             emit('document-change', id);
         };
 
@@ -284,8 +299,8 @@ export const DocumentDropdown = {
                 }
                 
                 if (success) {
-                    const currentDocId = props.entityType === 'circle'
-                        ? dataStore.data.currentCircleDocumentId
+                    const currentDocId = props.entityType === 'circle' && props.viewerId
+                        ? dataStore.getCircleDocumentForViewer(props.viewerId)?.id
                         : dataStore.data.currentSquareDocumentId;
                     emit('document-change', currentDocId);
                 }
@@ -294,8 +309,8 @@ export const DocumentDropdown = {
 
         // Close dropdown when clicking outside
         const handleGlobalClick = (e) => {
-            if (!e.target.closest('.document-selector')) {
-                isOpen.value = false;
+            if (!e.target.closest('.entity-controls')) {
+                isDropdownOpen.value = false;
             }
         };
 
@@ -308,14 +323,15 @@ export const DocumentDropdown = {
         });
 
         return {
-            isOpen,
+            shouldShowControls,
+            hasDocument,
+            isDropdownOpen,
             editingDocId,
-            position,
             documents,
             currentDocument,
             shouldShowSelectCircleMessage,
-            buttonIcon,
-            toggleDropdown,
+            handleAddClick,
+            handleDocumentClick,
             selectDocument,
             createNewDocument,
             startEdit,
@@ -324,18 +340,34 @@ export const DocumentDropdown = {
         };
     },
     template: `
-        <div :class="['document-selector', position]">
+        <div 
+            v-if="shouldShowControls"
+            class="entity-controls"
+        >
+            <!-- Add Button -->
+            <button 
+                class="control-button add-button"
+                @click="handleAddClick"
+            >+</button>
+            
+            <!-- Document Button (shown when no document selected) -->
+            <button 
+                v-if="!hasDocument"
+                class="control-button document-button"
+                @click="handleDocumentClick"
+            >📁</button>
+            
+            <!-- Document Label (shown when document selected, clickable) -->
             <div 
-                class="document-button"
-                :disabled="!isEnabled"
-                @click="toggleDropdown"
-            >{{ buttonIcon }}</div>
+                v-if="hasDocument"
+                class="document-label"
+                @click="handleDocumentClick"
+            >{{ currentDocument.name }}</div>
+            
+            <!-- Document Dropdown -->
             <div 
-                :class="['document-label', { hidden: !currentDocument }]"
-            >{{ currentDocument?.name || 'No document' }}</div>
-            <div 
-                v-if="isOpen"
-                :class="['document-dropdown', position]"
+                v-if="isDropdownOpen"
+                class="document-dropdown"
             >
                 <div v-if="shouldShowSelectCircleMessage" class="no-circle-message">
                     Select a circle first

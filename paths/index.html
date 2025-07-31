@@ -3,47 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visualizer</title>
+    <title>Vue Visualizer - Modular</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
 </head>
 <body>
-    <div id="app">
-        <button id="addButton" class="add-button">+</button>
-    </div>
-
-    <!-- Core utilities -->
-    <script src="StyleManager.js"></script>
-    <script src="EventEmitter.js"></script>
-    
-    <!-- Unified data management -->
-    <script src="DataStore.js"></script>
-    
-    <!-- Circle architecture -->
-    <script src="CircleModel.js"></script>
-    <script src="CircleView.js"></script>
-    
-    <!-- Square architecture -->
-    <script src="SquareModel.js"></script>
-    <script src="SquareView.js"></script>
-    
-    <!-- UI components -->
-    <script src="DocumentDropdown.js"></script>
-    <script src="SquareDocumentDropdown.js"></script>
-    <script src="Draggable.js"></script>
-    
-    <!-- Input handling -->
-    <script src="KeyboardManager.js"></script>
-    
-    <!-- Application architecture -->
-    <script src="CircleManager.js"></script>
-    <script src="SquareManager.js"></script>
-    <script src="UIManager.js"></script>
-    <script src="AppController.js"></script>
-
-    <script>
-        // Initialize the app when DOM is loaded
-        document.addEventListener('DOMContentLoaded', () => {
-            window.appController = new AppController();
-        });
-    </script>
+    <div id="app"></div>
+    <script type="module" src="main.js"></script>
 </body>
 </html>
