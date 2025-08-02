@@ -1,4 +1,4 @@
-// EntityControls.js - Unified controls component for both circles and squares
+// EntityControls.js - Unified controls component for both circles and squares (Updated)
 import { ref, computed, onMounted, onUnmounted } from './vue-composition-api.js';
 import { useDataStore } from './useDataStore.js';
 import { injectComponentStyles } from './styleUtils.js';
@@ -208,20 +208,24 @@ export const EntityControls = {
         const editingDocId = ref(null);
 
         const shouldShowControls = computed(() => {
-            return props.entityType === 'circle' || dataStore.data.selectedCircleId !== null;
+            return props.entityType === 'circle' || dataStore.getSelectedCircles().length === 1;
         });
 
         const documents = computed(() => {
             if (props.entityType === 'circle') {
                 return dataStore.getAllCircleDocuments();
             } else {
-                const selectedCircleId = dataStore.data.selectedCircleId;
-                return selectedCircleId ? dataStore.getSquareDocumentsForCircle(selectedCircleId) : [];
+                const selectedCircles = dataStore.getSelectedCircles();
+                if (selectedCircles.length === 1) {
+                    return dataStore.getSquareDocumentsForCircle(selectedCircles[0]);
+                }
+                return [];
             }
         });
 
         const currentDocument = computed(() => {
             if (props.entityType === 'circle' && props.viewerId) {
+                // Get the actual document object, not just the ID
                 return dataStore.getCircleDocumentForViewer(props.viewerId);
             } else if (props.entityType === 'square') {
                 return dataStore.getCurrentSquareDocument();
@@ -234,7 +238,7 @@ export const EntityControls = {
         });
 
         const shouldShowSelectCircleMessage = computed(() => {
-            return props.entityType === 'square' && dataStore.data.selectedCircleId === null;
+            return props.entityType === 'square' && dataStore.getSelectedCircles().length !== 1;
         });
 
         // Button handlers
@@ -266,9 +270,9 @@ export const EntityControls = {
             if (props.entityType === 'circle') {
                 doc = dataStore.createCircleDocument();
             } else {
-                const selectedCircleId = dataStore.data.selectedCircleId;
-                if (!selectedCircleId) return;
-                doc = dataStore.createSquareDocument(selectedCircleId);
+                const selectedCircles = dataStore.getSelectedCircles();
+                if (selectedCircles.length !== 1) return;
+                doc = dataStore.createSquareDocument(selectedCircles[0]);
             }
             selectDocument(doc.id);
         };
@@ -370,7 +374,7 @@ export const EntityControls = {
                 class="document-dropdown"
             >
                 <div v-if="shouldShowSelectCircleMessage" class="no-circle-message">
-                    Select a circle first
+                    Select exactly one circle first
                 </div>
                 <template v-else>
                     <div 

@@ -17,6 +17,13 @@ const componentStyles = `
         align-items: center;
         z-index: 1002;
         user-select: none;
+        transition: background-color 0.2s ease; /* NEW: Smooth transition */
+    }
+
+    /* NEW: Lighter background when viewer is selected */
+    .viewer-controls.selected {
+        background-color: #333;
+        border-bottom-color: #555;
     }
 
     .reorder-handle {
@@ -31,6 +38,7 @@ const componentStyles = `
         color: #888;
         font-size: 12px;
         flex-shrink: 0;
+        transition: background-color 0.2s ease; /* NEW: Smooth transition */
     }
 
     .reorder-handle:hover {
@@ -40,6 +48,12 @@ const componentStyles = `
 
     .reorder-handle:active {
         cursor: grabbing;
+    }
+
+    /* NEW: Lighter handle when viewer is selected */
+    .viewer-controls.selected .reorder-handle {
+        background-color: #3a3a3a;
+        border-right-color: #555;
     }
 
     .viewer-title {
@@ -109,6 +123,18 @@ const componentStyles = `
     .viewer-button.close:hover {
         background-color: #f44336;
     }
+
+    .viewer-button.background-toggle.active {
+        background-color: rgba(255, 255, 255, .08);
+    }
+
+    .viewer-button.background-toggle:hover {
+        background-color: #666;
+    }
+
+    .viewer-button.background-toggle.active:hover {
+        background-color: rgba(255, 255, 255, .15);
+    }
 `;
 
 injectComponentStyles('viewer-controls', componentStyles);
@@ -128,6 +154,9 @@ export const ViewerControls = {
 
         const viewer = computed(() => dataStore.data.circleViewers.get(props.viewerId));
         const viewerTitle = computed(() => dataStore.getViewerTitle(props.viewerId));
+        
+        // NEW: Check if this viewer is selected
+        const isSelected = computed(() => dataStore.isViewerSelected(props.viewerId));
 
         const startTitleEdit = () => {
             isEditingTitle.value = true;
@@ -174,21 +203,30 @@ export const ViewerControls = {
             emit('close');
         };
 
+        const handleBackgroundToggle = () => {
+            const currentState = viewer.value?.showBackground !== false; // Default to true
+            dataStore.updateCircleViewer(props.viewerId, { 
+                showBackground: !currentState 
+            });
+        };
+
         return {
             viewer,
             viewerTitle,
             isEditingTitle,
             titleInputRef,
+            isSelected,
             startTitleEdit,
             finishTitleEdit,
             handleTitleKeydown,
             handleReorderMouseDown,
             handleMinimize,
-            handleClose
+            handleClose,
+            handleBackgroundToggle
         };
     },
     template: `
-        <div class="viewer-controls">
+        <div :class="['viewer-controls', { selected: isSelected }]">
             <div 
                 class="reorder-handle"
                 @mousedown="handleReorderMouseDown"
@@ -209,6 +247,12 @@ export const ViewerControls = {
             />
             
             <div class="viewer-buttons">
+                <button 
+                    class="viewer-button background-toggle"
+                    :class="{ active: viewer?.showBackground !== false }"
+                    @click="handleBackgroundToggle"
+                    title="Toggle background image"
+                >∘</button>
                 <button 
                     class="viewer-button minimize"
                     @click="handleMinimize"
