@@ -6,6 +6,7 @@ export const {
     computed, 
     onMounted, 
     onUnmounted, 
+    onUpdated,
     watch, 
     nextTick 
 } = Vue;
