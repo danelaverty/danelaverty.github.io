@@ -21,6 +21,6 @@ export const circleTypes = [
     id: 'gem',
     name: 'Gem',
     description: 'Crystalline gem with faceted surface',
-    icon: '💎'
+    icon: '⬢'
   },
 ];
