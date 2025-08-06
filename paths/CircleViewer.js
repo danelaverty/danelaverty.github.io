@@ -1,6 +1,6 @@
-// CircleViewer.js - Individual circle viewer component with rectangle selection
+// CircleViewer.js - Individual circle viewer component with rectangle selection (Updated for SharedDropdown)
 import { ref, computed, onMounted, onUnmounted } from './vue-composition-api.js';
-import { useDataStore } from './useDataStore.js';
+import { useDataStore } from './dataCoordinator.js';
 import { useRectangleSelection } from './useRectangleSelection.js';
 import { EntityComponent } from './EntityComponent.js';
 import { EntityControls } from './EntityControls.js';
@@ -18,7 +18,7 @@ const componentStyles = `
         overflow: hidden;
         display: flex;
         flex-direction: column;
-        cursor: pointer; /* NEW: Indicate clickable */
+        cursor: pointer;
     }
 
     .circle-viewer::before {
@@ -41,7 +41,6 @@ const componentStyles = `
         opacity: 0;
     }
 
-    /* NEW: Visual indication when viewer is selected */
     .circle-viewer.selected {
         background-color: #131313;
         border-right-color: #444;
@@ -50,8 +49,15 @@ const componentStyles = `
     .viewer-content {
         flex: 1;
         position: relative;
-        margin-top: 40px; /* Account for viewer controls */
+        margin-top: 40px;
         overflow: hidden;
+        transition: margin-top 0.2s ease;
+    }
+
+    /* No need for compact-controls class since height is now dynamic */
+    .circle-viewer::before {
+        background-position: center 45px;
+        transition: background-position 0.2s ease;
     }
 
     .resize-handle {
@@ -61,36 +67,13 @@ const componentStyles = `
         width: 4px;
         height: 100%;
         cursor: ew-resize;
-        z-index: 1003;
+        z-index: 1001;
         background-color: transparent;
         transition: background-color 0.2s ease;
     }
 
     .resize-handle:hover {
         background-color: #4CAF50;
-    }
-
-    .add-viewer-button {
-        position: absolute;
-        bottom: 20px;
-        right: 10px;
-        width: 30px;
-        height: 30px;
-        border-radius: 50%;
-        background-color: #444;
-        color: white;
-        border: 1px solid #666;
-        font-size: 16px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 1001;
-        transition: background-color 0.2s ease;
-    }
-
-    .add-viewer-button:hover {
-        background-color: #666;
     }
 
     /* Rectangle selection styles */
@@ -110,60 +93,61 @@ export const CircleViewer = {
         viewerId: {
             type: String,
             required: true
-        },
-        showAddButton: {
-            type: Boolean,
-            default: false
         }
     },
     emits: [
-        'add-viewer',
         'start-reorder',
         'minimize-viewer',
         'close-viewer',
         'resize',
-        'viewer-click' // NEW: Emit when the viewer container is clicked
+        'viewer-click',
+        'show-dropdown'
     ],
     setup(props, { emit }) {
         const dataStore = useDataStore();
         const isResizing = ref(false);
         const resizeStart = ref({ x: 0, width: 0 });
-        const viewerContentRef = ref(null); // NEW: Ref for the viewer content
-	const viewerWidth = computed(() => viewer.value?.width || 400);
+        const viewerContentRef = ref(null);
+        const viewerWidth = computed(() => viewer.value?.width || 400);
+        
+        // Width threshold for compact mode (should match ViewerControls)
+        const COMPACT_THRESHOLD = 200;
 
         const viewer = computed(() => dataStore.data.circleViewers.get(props.viewerId));
         const currentCircles = computed(() => dataStore.getCirclesForViewer(props.viewerId));
         
-        // NEW: Check if this viewer is selected
         const isSelected = computed(() => dataStore.isViewerSelected(props.viewerId));
+        
+        // Check if controls should be in compact mode
+        const isCompactMode = computed(() => {
+            return viewer.value && viewer.value.width < COMPACT_THRESHOLD;
+        });
 
         // Store initial selection state for Ctrl+drag operations
         let initialSelectedIds = new Set();
-        let hasRectangleSelected = false; // NEW: Track if we just completed a rectangle selection
+        let hasRectangleSelected = false;
         
         // Helper function to check if a circle intersects with a rectangle
-	const isCircleIntersecting = (circle, rect) => {
-    const circleSize = 60;
-    // Convert center-relative position to absolute position for intersection test
-    const centerX = viewerWidth.value / 2;
-    const absoluteX = circle.x + centerX;
-    
-    const circleLeft = absoluteX;
-    const circleTop = circle.y;
-    const circleRight = absoluteX + circleSize;
-    const circleBottom = circle.y + circleSize;
-    
-    return !(circleRight < rect.left || 
-            circleLeft > rect.right || 
-            circleBottom < rect.top || 
-            circleTop > rect.bottom);
-};
-
-        // NEW: Real-time selection during drag
-        const handleSelectionUpdate = (rect, isCtrlClick) => {
-            if (!rect || rect.width < 5 || rect.height < 5) return; // Ignore very small selections
+        const isCircleIntersecting = (circle, rect) => {
+            const circleSize = 60;
+            const centerX = viewerWidth.value / 2;
+            const absoluteX = circle.x + centerX;
             
-            // Find circles that intersect with the current selection rectangle
+            const circleLeft = absoluteX;
+            const circleTop = circle.y;
+            const circleRight = absoluteX + circleSize;
+            const circleBottom = circle.y + circleSize;
+            
+            return !(circleRight < rect.left || 
+                    circleLeft > rect.right || 
+                    circleBottom < rect.top || 
+                    circleTop > rect.bottom);
+        };
+
+        // Real-time selection during drag
+        const handleSelectionUpdate = (rect, isCtrlClick) => {
+            if (!rect || rect.width < 5 || rect.height < 5) return;
+            
             const intersectingIds = [];
             currentCircles.value.forEach(circle => {
                 if (isCircleIntersecting(circle, rect)) {
@@ -171,64 +155,50 @@ export const CircleViewer = {
                 }
             });
 
-            // Determine final selection
             let finalSelection;
             if (isCtrlClick) {
-                // For Ctrl+drag: combine initial selection with intersecting circles
                 finalSelection = [...new Set([...initialSelectedIds, ...intersectingIds])];
             } else {
-                // For normal drag: only intersecting circles
                 finalSelection = intersectingIds;
             }
 
-            // Apply selection properly using the dataStore method
             if (finalSelection.length > 0) {
-                // Clear current selection first
                 dataStore.selectCircle(null, props.viewerId, false);
                 
-                // Select each circle in sequence
                 finalSelection.forEach((id, index) => {
                     dataStore.selectCircle(id, props.viewerId, index > 0);
                 });
             } else if (!isCtrlClick) {
-                // Clear selection if nothing intersecting and not Ctrl+drag
                 dataStore.selectCircle(null, props.viewerId, false);
             }
         };
 
-        // NEW: Initialize selection state when drag starts
+        // Initialize selection state when drag starts
         const handleSelectionStart = (isCtrlClick) => {
-            // Store current selection for Ctrl+drag operations
             initialSelectedIds = new Set(dataStore.getSelectedCircles());
-            hasRectangleSelected = false; // Reset the flag
+            hasRectangleSelected = false;
             
             if (!isCtrlClick) {
-                // For normal selection, clear everything immediately
                 dataStore.selectCircle(null, props.viewerId, false);
             }
         };
 
-        // NEW: Finalize selection when drag ends
+        // Finalize selection when drag ends
         const handleSelectionComplete = (rect, isCtrlClick) => {
-            // Check if this was a meaningful rectangle selection
             const wasRectangleSelection = rect.width >= 5 && rect.height >= 5;
             
             if (!wasRectangleSelection) {
-                // This was a click, not a drag - handle it as a click to clear
                 if (!isCtrlClick) {
                     dataStore.selectCircle(null, props.viewerId, false);
                 }
             } else {
-                // This was a real rectangle selection
                 hasRectangleSelected = true;
                 
-                // Clear the flag after a short delay to prevent click interference
                 setTimeout(() => {
                     hasRectangleSelected = false;
                 }, 100);
             }
             
-            // Selection was already handled in real-time, just save to storage
             dataStore.saveToStorage();
         };
 
@@ -279,33 +249,30 @@ export const CircleViewer = {
             dataStore.data.currentSquareDocumentId = null;
         };
 
+        // Handle show dropdown requests from EntityControls
+        const handleShowDropdown = (config) => {
+            emit('show-dropdown', config);
+        };
+
         // Container click handler
         const handleViewerClick = (e) => {
-            // NEW: Don't handle clicks if we just completed a rectangle selection
             if (hasRectangleSelected) return;
             
-            // Handle clicks on the viewer-content area
             if (e.target.classList.contains('viewer-content')) {
                 dataStore.selectCircle(null, props.viewerId, false);
             }
         };
 
-        // NEW: Handle clicks on the entire viewer container
+        // Handle clicks on the entire viewer container
         const handleViewerContainerClick = (e) => {
-            // NEW: Don't handle entity clearing if we just completed a rectangle selection,
-            // but still allow viewer selection
             const shouldClearEntities = !hasRectangleSelected;
             
-            // Only handle clicks on the viewer container itself or viewer-content, 
-            // not on child elements like controls or entities
             if (e.target.classList.contains('circle-viewer') || 
                 e.target.classList.contains('viewer-content')) {
                 
-                // Always set this viewer as selected
                 dataStore.setSelectedViewer(props.viewerId);
                 emit('viewer-click', props.viewerId);
                 
-                // Only clear entity selections if we didn't just do a rectangle selection
                 if (shouldClearEntities && e.target.classList.contains('viewer-content')) {
                     dataStore.selectCircle(null, props.viewerId, false);
                 }
@@ -325,10 +292,6 @@ export const CircleViewer = {
             emit('close-viewer', props.viewerId);
         };
 
-        const handleAddViewer = () => {
-            emit('add-viewer');
-        };
-
         // Resize functionality
         const startResize = (e) => {
             isResizing.value = true;
@@ -343,7 +306,7 @@ export const CircleViewer = {
             if (!isResizing.value) return;
             
             const deltaX = e.clientX - resizeStart.value.x;
-            const newWidth = Math.max(200, Math.min(3600, resizeStart.value.width + deltaX));
+            const newWidth = Math.max(100, Math.min(3600, resizeStart.value.width + deltaX));
             
             dataStore.updateCircleViewer(props.viewerId, { width: newWidth });
             emit('resize', { viewerId: props.viewerId, width: newWidth });
@@ -366,25 +329,25 @@ export const CircleViewer = {
         return {
             dataStore,
             viewer,
-	    viewerWidth, 
+            viewerWidth, 
             currentCircles,
-            isSelected, // NEW: Expose selected state
-            viewerContentRef, // NEW: Expose ref for rectangle selection
-            isSelecting, // NEW: Rectangle selection state
-            selectionRect, // NEW: Rectangle selection data
-            getSelectionRectStyle, // NEW: Rectangle styling function
+            isSelected,
+            viewerContentRef,
+            isSelecting,
+            selectionRect,
+            getSelectionRectStyle,
             handleCircleSelect,
             handleCirclePositionUpdate,
             handleCircleNameUpdate,
             handleMoveMultiple,
             handleAddCircle,
             handleCircleDocumentChange,
+            handleShowDropdown,
             handleViewerClick,
-            handleViewerContainerClick, // NEW: Handle container clicks
+            handleViewerContainerClick,
             handleStartReorder,
             handleMinimizeViewer,
             handleCloseViewer,
-            handleAddViewer,
             startResize
         };
     },
@@ -393,13 +356,13 @@ export const CircleViewer = {
         EntityControls,
         ViewerControls
     },
-	    template: `
+    template: `
     <div 
         :class="[
             'circle-viewer', 
             { 
                 selected: isSelected,
-                'hide-background': viewer?.showBackground === false 
+                'hide-background': viewer?.showBackground === false
             }
         ]"
         :style="{ width: viewer?.width + 'px' }"
@@ -435,14 +398,8 @@ export const CircleViewer = {
                 :viewer-id="viewerId"
                 @add-entity="handleAddCircle"
                 @document-change="handleCircleDocumentChange"
+                @show-dropdown="handleShowDropdown"
             />
-            
-            <button 
-                v-if="showAddButton"
-                class="add-viewer-button"
-                @click="handleAddViewer"
-                title="Add new viewer"
-            >+</button>
             
             <div 
                 v-if="selectionRect.visible"

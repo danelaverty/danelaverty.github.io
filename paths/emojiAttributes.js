@@ -156,6 +156,11 @@ export const attributeInfo = {
     "color": "#975",
     "displayName": "Fire"
   },
+  "fireOut": {
+    "emoji": ["🔥", "❌"],
+    "color": "#777",
+    "displayName": "Fire Out"
+  },
   "trophy": {
     "emoji": "🏆",
     "color": "#975",
@@ -326,10 +331,20 @@ export const attributeInfo = {
     "color": "#7AA",
     "displayName": "Bug"
   },
+  "seedling": {
+    "emoji": "🌱",
+    "color": "#8C8",
+    "displayName": "Seedling"
+  },
   "flower": {
     "emoji": "🌷",
     "color": "#7AA",
     "displayName": "Flower"
+  },
+  "wiltedFlower": {
+    "emoji": "🥀",
+    "color": "#688",
+    "displayName": "Wilted"
   },
   "storm": {
     "emoji": "🌩️",
@@ -471,5 +486,61 @@ export const attributeInfo = {
     "emoji": "🏋️",
     "color": "#f9eea9",
     "displayName": "Exercise"
-  }
+  },
+  "house": {
+    "emoji": "🏠",
+    "color": "#f0f0d0",
+    "displayName": "House"
+  },
+  "distress": {
+    "emoji": "😨",
+    "color": "#d0d0f0",
+    "displayName": "Distress"
+  },
+  "swallow": {
+    "emoji": "🤤",
+    "color": "#f0e0d0",
+    "displayName": "Swallow"
+  },
+  "relief": {
+    "emoji": "😌",
+    "color": "#f0f0d0",
+    "displayName": "Relief"
+  },
+};
+
+// Story categories that group related emojis by narrative theme
+export const storyCategories = {
+  "exploring": {
+    "name": "Exploring",
+    "emojis": ["me", "milestone", "door", "lock", "key", "treasure"]
+  },
+  "competing": {
+    "name": "Competing", 
+    "emojis": ["me", "competitor", "myPiece", "theirPiece", "goal", "trophy"]
+  },
+  "copying": {
+    "name": "Copying", 
+    "emojis": ["picture", "roleModel", "technique", "trophy"]
+  },
+  "firefighting": {
+    "name": "Firefighting", 
+    "emojis": ["fire", "tree", "water", "house", "fireOut"]
+  },
+  "tooBigBite": {
+    "name": "Too Big Bite", 
+    "emojis": ["distress", "chunk", "cut", "spit", "swallow", "relief"]
+  },
+  "solving": {
+    "name": "Solving",
+    "emojis": ["mystery", "hypothesis", "clue", "piece", "picture"]
+  },
+  "speaking": {
+    "name": "Speaking",
+    "emojis": ["conceptualThing", "words", "audience", "trophy"]
+  },
+  "gardening": {
+    "name": "Gardening",
+    "emojis": ["seedling", "wiltedFlower", "water", "bug", "flower"]
+  },
 };

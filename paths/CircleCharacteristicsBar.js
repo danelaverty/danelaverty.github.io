@@ -1,18 +1,14 @@
-// Handle clear recent emojis with persistence
-    const handleClearRecentEmojis = () => {
-      clearRecentEmojis();
-      // Trigger persistence after clearing recent emojis
-      if (dataStore && dataStore.saveToStorage) {
-        dataStore.saveToStorage();
-      }
-    };// CircleCharacteristicsBar.js (Enhanced with Recent Emojis)
+// CircleCharacteristicsBar.js - Updated to use centralized EmojiRenderer consistently
+import { computed } from './vue-composition-api.js';
 import { injectComponentStyles } from './styleUtils.js';
 import { componentStyles } from './characteristicsBarStyles.js';
 import { useCharacteristicsBarData } from './useCharacteristicsBarData.js';
 import { useCharacteristicsBarActions } from './useCharacteristicsBarActions.js';
 import { useCharacteristicsBarPickers } from './useCharacteristicsBarPickers.js';
 import { useRecentEmojis } from './useRecentEmojis.js';
-import { useDataStore } from './useDataStore.js';
+import { useDataStore } from './dataCoordinator.js';
+import { EmojiRenderer } from './EmojiRenderer.js';
+import { EmojiService } from './emojiService.js';
 
 // Inject component styles
 injectComponentStyles('circle-characteristics-bar', componentStyles);
@@ -20,6 +16,10 @@ injectComponentStyles('circle-characteristics-bar', componentStyles);
 export const CircleCharacteristicsBar = {
   setup() {
     const dataStore = useDataStore();
+
+    const causeEmoji = computed(() => {
+	    return emojiAttributes.value.find(attr => attr.key === 'cause') || emojiAttributes.value[0];
+    });
     
     // Get data and computed values
     const {
@@ -29,6 +29,7 @@ export const CircleCharacteristicsBar = {
       circleType,
       currentTypeInfo,
       emojiAttributes,
+      emojisByCategory,
       colorFamilies,
       circleTypes,
       isColorSelected,
@@ -64,11 +65,33 @@ export const CircleCharacteristicsBar = {
     const {
       recentEmojis,
       addRecentEmoji,
-      clearRecentEmojis
+      clearRecentEmojis,
+      loadCategoryToRecent
     } = useRecentEmojis();
 
+    // Handle clear recent emojis with persistence
+    const handleClearRecentEmojis = () => {
+      clearRecentEmojis();
+      if (dataStore && dataStore.saveToStorage) {
+        dataStore.saveToStorage();
+      }
+    };
+
+    // Handle category name click to load all emojis from that category
+    const handleCategorySelect = (categoryGroup) => {
+      loadCategoryToRecent(categoryGroup.emojis);
+      
+      if (dataStore && dataStore.saveToStorage) {
+        dataStore.saveToStorage();
+      }
+      
+      console.log(`Loaded ${categoryGroup.emojis.length} emojis from "${categoryGroup.category.name}" category to recent palette`);
+    };
+
     // Wrapper functions to pass required data to actions
-    const handleColorSelect = (colorInfo, isCtrlClick) => {
+    const handleColorSelect = (colorValue, isCtrlClick) => {
+      // Create a color info object for the new structure
+      const colorInfo = { color: colorValue };
       selectColor(colorInfo, isCtrlClick, selectedCircle.value, circleColors.value);
       if (!isCtrlClick) {
         closePickerAction('color');
@@ -82,8 +105,7 @@ export const CircleCharacteristicsBar = {
 
     const handleEmojiSelect = (attribute) => {
       selectEmoji(attribute);
-      addRecentEmoji(attribute); // Add to recent emojis
-      // Trigger persistence after updating recent emojis
+      addRecentEmoji(attribute);
       if (dataStore && dataStore.saveToStorage) {
         dataStore.saveToStorage();
       }
@@ -92,22 +114,29 @@ export const CircleCharacteristicsBar = {
 
     // Handle quick emoji selection from recent palette
     const handleQuickEmojiSelect = (attribute) => {
-      selectEmoji(attribute);
-      // Move to front of recent list since it was used again
-      addRecentEmoji(attribute);
-      // Trigger persistence after updating recent emojis
-      if (dataStore && dataStore.saveToStorage) {
-        dataStore.saveToStorage();
-      }
+  selectEmoji(attribute);
+  // Only add to recent emojis if it's not the cause emoji
+  if (attribute.key !== 'cause') {
+    addRecentEmoji(attribute);
+  }
+  if (dataStore && dataStore.saveToStorage) {
+    dataStore.saveToStorage();
+  }
+};
+
+    const getEmojiDisplayTitle = (emojiData, context) => {
+      return EmojiService.getDisplayTitle(emojiData, context);
     };
 
     return {
+	    causeEmoji,
       isVisible,
       selectedCircle,
       circleColors,
       circleType,
       currentTypeInfo,
       emojiAttributes,
+      emojisByCategory,
       recentEmojis,
       isColorPickerOpen,
       isTypePickerOpen,
@@ -127,12 +156,17 @@ export const CircleCharacteristicsBar = {
       selectType: handleTypeSelect,
       selectEmoji: handleEmojiSelect,
       selectQuickEmoji: handleQuickEmojiSelect,
+      handleCategorySelect,
       isColorSelected,
       isTypeSelected,
       findColorInfo,
       closePickerAction,
-      clearRecentEmojis: handleClearRecentEmojis
+      clearRecentEmojis: handleClearRecentEmojis,
+      getEmojiDisplayTitle
     };
+  },
+  components: {
+    EmojiRenderer // Use the centralized emoji renderer
   },
   template: `
     <div :class="['circle-characteristics-bar', { hidden: !isVisible }]">
@@ -142,6 +176,7 @@ export const CircleCharacteristicsBar = {
                 ref="typeDisplayRef"
                 :class="['type-display', { 'picker-open': isTypePickerOpen }]"
                 @click="toggleTypePicker"
+		style="background-color: transparent; border: none;"
             >
                 <div class="type-icon">{{ currentTypeInfo.icon }}</div>
             </div>
@@ -153,6 +188,7 @@ export const CircleCharacteristicsBar = {
                 ref="colorDisplayRef"
                 :class="['color-display', { 'picker-open': isColorPickerOpen }]"
                 @click="toggleColorPicker"
+		style="background-color: transparent; border: none;"
             >
                 <!-- Single color display -->
                 <template v-if="circleColors.length === 1">
@@ -171,27 +207,43 @@ export const CircleCharacteristicsBar = {
                         :style="{ backgroundColor: color }"
                     ></div>
                 </template>
-                
-                <!-- No color -->
-                <template v-else>
-                </template>
             </div>
         </div>
 
-        <!-- Emoji Control -->
+        <!-- Cause Emoji Control -->
         <div class="characteristic-control">
+            <div class="recent-emojis-separator"></div>
+	    <div
+                :class="['emoji-display', 'recent-emoji-item', { 'picker-open': isEmojiPickerOpen }]"
+                @click="selectQuickEmoji(causeEmoji)"
+                :title="getEmojiDisplayTitle(causeEmoji, 'cause')"
+    :style="{ 
+        backgroundColor: causeEmoji ? causeEmoji.color : 'transparent', 
+        border: 'none' 
+    }"
+            >
+                <!-- UPDATED: Use centralized EmojiRenderer for cause emoji -->
+                <EmojiRenderer 
+                    v-if="causeEmoji"
+                    :emoji="causeEmoji"
+                    context="cause"
+                    :interactive="true"
+                />
+            </div>
+            
+            <!-- Emoji Picker Trigger -->
             <div 
                 ref="emojiDisplayRef"
                 :class="['emoji-display', { 'picker-open': isEmojiPickerOpen }]"
                 @click="toggleEmojiPicker"
+                style="background-color: transparent; border: none;"
             >
-                <div class="emoji-icon">😀</div>
+                <div class="emoji-icon" style="color: white;">...</div>
             </div>
         </div>
 
         <!-- Recent Emojis Palette -->
         <div v-if="recentEmojis.length > 0" class="recent-emojis-container">
-            <div class="recent-emojis-separator"></div>
             <div class="recent-emojis-palette">
                 <div 
                     v-for="attribute in recentEmojis.slice(0, 8)"
@@ -199,12 +251,14 @@ export const CircleCharacteristicsBar = {
                     class="recent-emoji-item"
                     :style="{ backgroundColor: attribute.color }"
                     @click="selectQuickEmoji(attribute)"
-                    :title="attribute.displayName + ' (Recent)'"
+                    :title="getEmojiDisplayTitle(attribute, 'recent')"
                 >
-                    <div 
-                        class="recent-emoji-icon"
-                        :style="attribute.emojiCss ? { filter: attribute.emojiCss } : {}"
-                    >{{ attribute.emoji }}</div>
+                    <!-- UPDATED: Use centralized EmojiRenderer for recent emojis -->
+                    <EmojiRenderer 
+                        :emoji="attribute"
+                        context="recent"
+                        :interactive="true"
+                    />
                 </div>
                 <!-- Clear recent emojis button -->
                 <div 
@@ -216,7 +270,7 @@ export const CircleCharacteristicsBar = {
                 </div>
             </div>
         </div>
-        
+
         <!-- Type Picker Modal -->
         <div 
             v-if="isTypePickerOpen"
@@ -242,7 +296,6 @@ export const CircleCharacteristicsBar = {
                     <div class="type-item-icon">{{ type.icon }}</div>
                     <div class="type-item-content">
                         <div class="type-item-name">{{ type.name }}</div>
-                        <div class="type-item-description">{{ type.description }}</div>
                     </div>
                 </div>
             </div>
@@ -275,41 +328,16 @@ export const CircleCharacteristicsBar = {
                 >
                     <div class="color-swatches">
                         <div 
-                            v-if="family.light"
-                            :class="['color-swatch', { selected: isColorSelected(family.light.color) }]"
-                            :style="{ backgroundColor: family.light.color }"
-                            :title="family.light.crystal + ': ' + family.light.color"
-                            @click="selectColor(family.light, $event.ctrlKey || $event.metaKey)"
+                            v-for="(color, colorIndex) in family.colors"
+                            :key="colorIndex"
+                            :class="['color-swatch', { selected: isColorSelected(color) }]"
+                            :style="{ backgroundColor: color }"
+                            :title="family.name + ' (' + color + ')'"
+                            @click="selectColor(color, $event.ctrlKey || $event.metaKey)"
                         >
                             <div 
-                                v-if="isColorSelected(family.light.color)"
-                                class="selection-indicator"
-                                style="display: block;"
-                            >✓</div>
-                        </div>
-                        <div 
-                            v-if="family.solid"
-                            :class="['color-swatch', { selected: isColorSelected(family.solid.color) }]"
-                            :style="{ backgroundColor: family.solid.color }"
-                            :title="family.solid.crystal + ': ' + family.solid.color"
-                            @click="selectColor(family.solid, $event.ctrlKey || $event.metaKey)"
-                        >
-                            <div 
-                                v-if="isColorSelected(family.solid.color)"
-                                class="selection-indicator"
-                                style="display: block;"
-                            >✓</div>
-                        </div>
-                        <div 
-                            v-if="family.dark"
-                            :class="['color-swatch', { selected: isColorSelected(family.dark.color) }]"
-                            :style="{ backgroundColor: family.dark.color }"
-                            :title="family.dark.crystal + ': ' + family.dark.color"
-                            @click="selectColor(family.dark, $event.ctrlKey || $event.metaKey)"
-                        >
-                            <div 
-                                v-if="isColorSelected(family.dark.color)"
-                                class="selection-indicator"
+                                v-if="isColorSelected(color)"
+                                class="characteristics-selection-indicator"
                                 style="display: block;"
                             >✓</div>
                         </div>
@@ -318,7 +346,7 @@ export const CircleCharacteristicsBar = {
                 </div>
             </div>
         </div>
-
+        
         <!-- Emoji Picker Modal -->
         <div 
             v-if="isEmojiPickerOpen"
@@ -326,33 +354,34 @@ export const CircleCharacteristicsBar = {
             class="emoji-picker-modal"
             style="display: block;"
         >
-            <div class="emoji-picker-header">
-                <span>Select Emoji for Square</span>
-                <button 
-                    class="picker-close"
-                    @click="closePickerAction('emoji')"
-                >×</button>
-            </div>
-            
-            <div class="emoji-instructions">
-                Click an emoji to create a new square or update selected squares.
-            </div>
-            
             <div class="emoji-grid">
-                <div 
-                    v-for="attribute in emojiAttributes"
-                    :key="attribute.key"
-                    class="emoji-item"
-                    :style="{ backgroundColor: attribute.color }"
-                    @click="selectEmoji(attribute)"
-                    :title="attribute.displayName"
-                >
+                <template v-for="categoryGroup in emojisByCategory" :key="categoryGroup.category.key">
+                    <!-- Category Separator -->
+                    <div class="emoji-category-separator emoji-category-clickable" 
+                         @click="handleCategorySelect(categoryGroup)"
+                         :title="'Click to load all ' + categoryGroup.category.name + ' emojis to recent palette'">
+                        <div class="emoji-category-name">{{ categoryGroup.category.name }}</div>
+                        <div class="emoji-category-line"></div>
+                    </div>
+                    
+                    <!-- Emojis in this category -->
                     <div 
-                        class="emoji-item-icon"
-                        :style="attribute.emojiCss ? { filter: attribute.emojiCss } : {}"
-                    >{{ attribute.emoji }}</div>
-                    <div class="emoji-item-name">{{ attribute.displayName }}</div>
-                </div>
+                        v-for="attribute in categoryGroup.emojis"
+                        :key="attribute.key"
+                        class="emoji-item"
+                        :style="{ backgroundColor: attribute.color }"
+                        @click="selectEmoji(attribute)"
+                        :title="getEmojiDisplayTitle(attribute, 'picker')"
+                    >
+                        <!-- UPDATED: Use centralized EmojiRenderer for picker emojis -->
+                        <EmojiRenderer 
+                            :emoji="attribute"
+                            context="picker"
+                            :interactive="true"
+                        />
+                        <div class="emoji-item-name">{{ attribute.displayName }}</div>
+                    </div>
+                </template>
             </div>
         </div>
     </div>

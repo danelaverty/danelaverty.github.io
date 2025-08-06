@@ -1,4 +1,4 @@
-// documentStore.js - Document management for circles and squares
+// documentStore.js - Document management for circles and squares (Updated with mostRecentlySetCircleType)
 import { reactive } from './vue-composition-api.js';
 
 let documentStoreInstance = null;
@@ -14,7 +14,14 @@ function createDocumentStore() {
 
     // Utility for generating unique names
     const generateUniqueName = (entityType, baseName, contextId = null) => {
-        const base = baseName || (entityType === 'circle' ? new Date().toISOString().split('T')[0] : 'Square Document');
+        let base;
+        
+        if (baseName) {
+            base = baseName;
+        } else {
+            // Default names based on entity type
+            base = entityType === 'circle' ? new Date().toISOString().split('T')[0] : 'Tab';
+        }
         
         let existingNames;
         if (entityType === 'circle') {
@@ -27,6 +34,18 @@ function createDocumentStore() {
             );
         }
         
+        // For square documents with default "Tab" name, use numbered format
+        if (entityType === 'square' && !baseName) {
+            let counter = 1;
+            let uniqueName;
+            do {
+                uniqueName = `Tab ${counter}`;
+                counter++;
+            } while (existingNames.has(uniqueName));
+            return uniqueName;
+        }
+        
+        // For other cases, use the original logic
         if (!existingNames.has(base)) return base;
         
         let counter = 1;
@@ -52,6 +71,8 @@ function createDocumentStore() {
         
         if (entityType === 'square') {
             document.circleId = circleId;
+        } else if (entityType === 'circle') {
+            document.mostRecentlySetCircleType = 'glow';
         }
         
         const store = entityType === 'circle' ? data.circleDocuments : data.squareDocuments;
@@ -95,6 +116,59 @@ function createDocumentStore() {
         return store.delete(id);
     };
 
+    // NEW: Method to update the most recently set circle type for a document
+    const setMostRecentlySetCircleType = (documentId, circleType) => {
+        const document = data.circleDocuments.get(documentId);
+        if (document) {
+            document.mostRecentlySetCircleType = circleType;
+            return true;
+        }
+        return false;
+    };
+
+    // NEW: Method to get the most recently set circle type for a document
+    const getMostRecentlySetCircleType = (documentId) => {
+        const document = data.circleDocuments.get(documentId);
+        return document?.mostRecentlySetCircleType || null;
+    };
+
+    // Smart deletion for square documents that handles selection automatically
+    const deleteSquareDocumentWithSelection = (id) => {
+        const doc = data.squareDocuments.get(id);
+        if (!doc) return false;
+        
+        const siblingDocs = getSquareDocumentsForCircle(doc.circleId);
+        if (siblingDocs.length <= 1) return false; // Prevent deletion of last document
+        
+        const wasCurrentlySelected = data.currentSquareDocumentId === id;
+        const currentIndex = siblingDocs.findIndex(d => d.id === id);
+        
+        // Delete the document
+        const deleted = data.squareDocuments.delete(id);
+        
+        if (deleted && wasCurrentlySelected) {
+            // Get updated sibling docs after deletion
+            const updatedSiblings = getSquareDocumentsForCircle(doc.circleId);
+            
+            if (updatedSiblings.length > 0) {
+                // Select adjacent document - prefer the one that's now at the same index (shifted left)
+                // or the new last document if we deleted the last one
+                let newSelectedDoc;
+                if (currentIndex < updatedSiblings.length) {
+                    newSelectedDoc = updatedSiblings[currentIndex];
+                } else {
+                    newSelectedDoc = updatedSiblings[updatedSiblings.length - 1];
+                }
+                
+                data.currentSquareDocumentId = newSelectedDoc.id;
+            } else {
+                data.currentSquareDocumentId = null;
+            }
+        }
+        
+        return deleted;
+    };
+
     // Specific methods (for compatibility and convenience)
     const createCircleDocument = (name) => createDocument('circle', name);
     const createSquareDocument = (circleId, name) => createDocument('square', name, circleId);
@@ -106,7 +180,7 @@ function createDocumentStore() {
     
     const getSquareDocument = (id) => getDocument('square', id);
     const updateSquareDocumentName = (id, name) => updateDocumentName('square', id, name);
-    const deleteSquareDocument = (id) => deleteDocument('square', id);
+    const deleteSquareDocument = (id) => deleteSquareDocumentWithSelection(id);
 
     const getSquareDocumentsForCircle = (circleId) => {
         return Array.from(data.squareDocuments.values()).filter(doc => doc.circleId === circleId);
@@ -128,9 +202,44 @@ function createDocumentStore() {
     const ensureSquareDocumentForCircle = (circleId) => {
         const existingDocs = getSquareDocumentsForCircle(circleId);
         if (existingDocs.length === 0) {
-            return createSquareDocument(circleId, 'Default');
+            const newDoc = createSquareDocument(circleId); // Will use "Tab 1" as default name
+            // Automatically select the new document if no document is currently selected
+            if (!data.currentSquareDocumentId) {
+                data.currentSquareDocumentId = newDoc.id;
+            }
+            return newDoc;
         }
+        
+        // If there are existing documents but none is selected, select the first one
+        if (!data.currentSquareDocumentId || !data.squareDocuments.has(data.currentSquareDocumentId)) {
+            data.currentSquareDocumentId = existingDocs[0].id;
+        }
+        
         return existingDocs[0];
+    };
+
+    // Ensure a square document is selected for the given circle
+    const ensureSelectedSquareDocumentForCircle = (circleId) => {
+        const docsForCircle = getSquareDocumentsForCircle(circleId);
+        
+        if (docsForCircle.length === 0) {
+            // No documents exist, create one
+            const newDoc = createSquareDocument(circleId);
+            data.currentSquareDocumentId = newDoc.id;
+            return newDoc;
+        }
+        
+        // Check if current selection is valid for this circle
+        const currentDoc = getCurrentSquareDocument();
+        const isCurrentDocForThisCircle = currentDoc && currentDoc.circleId === circleId;
+        
+        if (!isCurrentDocForThisCircle) {
+            // Select the first document for this circle
+            data.currentSquareDocumentId = docsForCircle[0].id;
+            return docsForCircle[0];
+        }
+        
+        return currentDoc;
     };
 
     const deleteSquareDocumentsForCircle = (circleId) => {
@@ -160,6 +269,13 @@ function createDocumentStore() {
     const deserialize = (savedData) => {
         if (savedData.circleDocuments) {
             data.circleDocuments = new Map(savedData.circleDocuments);
+            
+            // NEW: Ensure all circle documents have the mostRecentlySetCircleType property
+            data.circleDocuments.forEach((doc, id) => {
+                if (doc.mostRecentlySetCircleType === undefined) {
+                    doc.mostRecentlySetCircleType = null;
+                }
+            });
         }
         if (savedData.squareDocuments) {
             data.squareDocuments = new Map(savedData.squareDocuments);
@@ -187,6 +303,9 @@ function createDocumentStore() {
         getCircleDocument,
         updateCircleDocumentName,
         deleteCircleDocument,
+        // NEW: Circle type tracking methods
+        setMostRecentlySetCircleType,
+        getMostRecentlySetCircleType,
         // Square documents
         createSquareDocument,
         getSquareDocumentsForCircle,
@@ -195,8 +314,10 @@ function createDocumentStore() {
         getSquareDocument,
         updateSquareDocumentName,
         deleteSquareDocument,
+        deleteSquareDocumentWithSelection,
         // Helpers
         ensureSquareDocumentForCircle,
+        ensureSelectedSquareDocumentForCircle,
         deleteSquareDocumentsForCircle,
         // Serialization
         serialize,

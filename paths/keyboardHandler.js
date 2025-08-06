@@ -1,5 +1,37 @@
-// keyboardHandler.js - Centralized keyboard event handling
+// keyboardHandler.js - Centralized keyboard event handling with circle deletion confirmation
 import { alignEntities } from './alignmentUtils.js';
+
+/**
+ * Check if user is currently editing text
+ * @returns {boolean} True if text editing is active
+ */
+function isTextEditingActive() {
+    // Check if any element is contentEditable and focused
+    const activeElement = document.activeElement;
+    if (activeElement && activeElement.contentEditable === 'true') {
+        return true;
+    }
+    
+    // Check if focus is in an input or textarea
+    if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+        return true;
+    }
+    
+    return false;
+}
+
+/**
+ * Show confirmation dialog for circle deletion
+ * @param {number} circleCount - Number of circles to be deleted
+ * @returns {boolean} True if user confirms deletion
+ */
+function confirmCircleDeletion(circleCount) {
+    const message = circleCount === 1 
+        ? 'Are you sure you want to delete this circle?' 
+        : `Are you sure you want to delete these ${circleCount} circles?`;
+    
+    return window.confirm(message);
+}
 
 /**
  * Create a keyboard handler with data store context
@@ -36,7 +68,12 @@ export function createKeyboardHandler(dataStore) {
         
         // Handle CTRL+A for selecting all entities
         if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
-            e.preventDefault(); // Prevent browser's select all
+            // Don't interfere with text editing - let browser handle CTRL+A normally
+            if (isTextEditingActive()) {
+                return; // Let the browser's default CTRL+A behavior work
+            }
+            
+            e.preventDefault(); // Prevent browser's select all only when not editing text
             
             // Priority: if a square document is selected, select all squares in it
             if (dataStore.data.currentSquareDocumentId) {
@@ -52,13 +89,27 @@ export function createKeyboardHandler(dataStore) {
         
         // Handle Delete key
         if (e.key === 'Delete') {
+            // Don't delete entities while editing text
+            if (isTextEditingActive()) {
+                return; // Let the browser's default Delete behavior work
+            }
+            
             // Priority: Squares first, then Circles
-            if (dataStore.getSelectedSquares().length > 0) {
+            const selectedSquares = dataStore.getSelectedSquares();
+            const selectedCircles = dataStore.getSelectedCircles();
+            
+            if (selectedSquares.length > 0) {
+                // Squares: delete immediately without confirmation
                 dataStore.deleteSelectedSquares();
                 return;
             }
-            if (dataStore.getSelectedCircles().length > 0) {
-                dataStore.deleteSelectedCircles();
+            
+            if (selectedCircles.length > 0) {
+                // Circles: show confirmation dialog first
+                if (confirmCircleDeletion(selectedCircles.length)) {
+                    dataStore.deleteSelectedCircles();
+                }
+                // If user cancels, do nothing
             }
         }
     };

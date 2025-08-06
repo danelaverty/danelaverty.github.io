@@ -1,4 +1,4 @@
-// characteristicsBarStyles.js (Enhanced with Recent Emojis styles)
+// characteristicsBarStyles.js - Updated to remove redundant emoji styling (now handled by EmojiRenderer)
 export const componentStyles = `
     .circle-characteristics-bar {
         position: absolute;
@@ -6,13 +6,11 @@ export const componentStyles = `
         left: 0;
         right: 0;
         height: 50px;
-        background-color: #1a1a1a;
-        border-bottom: 2px solid #333;
         display: flex;
         align-items: center;
         padding: 0 20px;
-        gap: 15px;
-        z-index: 1001;
+        gap: 2px;
+        z-index: 1002;
         transition: transform 0.3s ease;
     }
 
@@ -104,19 +102,7 @@ export const componentStyles = `
         border-color: rgba(255, 255, 255, 0.4);
     }
 
-    .emoji-icon {
-        font-size: 16px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 20px;
-    }
-
-    .emoji-name {
-        color: white;
-        font-size: 12px;
-        font-weight: 500;
-    }
+    /* REMOVED: emoji-icon, emoji-name styles - now handled by EmojiRenderer */
 
     /* Recent Emojis Palette Styles */
     .recent-emojis-container {
@@ -163,13 +149,7 @@ export const componentStyles = `
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     }
 
-    .recent-emoji-icon {
-        font-size: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-shadow: 0px 0px 1px black;
-    }
+    /* REMOVED: recent-emoji-icon styles - now handled by EmojiRenderer */
 
     .clear-recent-button {
         display: flex;
@@ -234,7 +214,7 @@ export const componentStyles = `
     .color-picker-modal, .type-picker-modal, .emoji-picker-modal {
         position: fixed;
         background-color: #222;
-        padding: 20px;
+        padding: 10px;
         border-radius: 8px;
         box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
         z-index: 1002;
@@ -246,8 +226,15 @@ export const componentStyles = `
 
     /* Emoji picker specific styles */
     .emoji-picker-modal {
-        max-width: 700px;
-        max-height: 600px;
+        position: fixed;
+        background-color: #222;
+        padding: 0; /* Remove padding here */
+        border-radius: 8px;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+        z-index: 1002;
+        max-height: 670px;
+        overflow-y: auto; /* Enable scrolling on the modal */
+        display: none;
     }
 
     .emoji-picker-header {
@@ -258,26 +245,32 @@ export const componentStyles = `
         display: flex;
         justify-content: space-between;
         align-items: center;
+        padding: 10px 10px 0 10px; /* Add padding here */
+        position: sticky; /* Make header sticky */
+        top: 0;
+        background-color: #222;
+        z-index: 1;
     }
 
     .emoji-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
         gap: 8px;
-        max-height: 400px;
-        overflow-y: auto;
+        max-height: none; /* Remove height restriction */
+        overflow-y: visible; /* Remove scrolling from grid */
+        width: 470px;
+        padding: 0 10px 10px 10px; /* Add padding here */
     }
 
     .emoji-item {
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding: 8px;
         border-radius: 6px;
         cursor: pointer;
         transition: all 0.2s ease;
         border: 2px solid transparent;
-        min-height: 60px;
+        height: 46px;
         justify-content: center;
     }
 
@@ -286,17 +279,11 @@ export const componentStyles = `
         transform: scale(1.05);
     }
 
-    .emoji-item-icon {
-        font-size: 24px;
-        margin-bottom: 4px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 28px;
-    }
+    /* REMOVED: emoji-item-icon styles - now handled by EmojiRenderer */
 
     .emoji-item-name {
         color: white;
+        text-shadow: 1px 1px 0px black;
         font-size: 10px;
         text-align: center;
         line-height: 1.2;
@@ -309,6 +296,38 @@ export const componentStyles = `
         font-size: 11px;
         margin-bottom: 15px;
         font-style: italic;
+        line-height: 1.4;
+        padding: 0 10px; /* Add padding here */
+    }
+
+    /* Category separator styles */
+    .emoji-category-separator {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: left;
+        gap: 12px;
+        padding: 0;
+    }
+
+    .emoji-category-separator:first-child {
+        margin-top: 4px;
+    }
+
+    .emoji-category-line {
+        flex: 1;
+        height: 1px;
+		margin-top: 10px;
+        background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.3), transparent);
+    }
+
+    .emoji-category-name {
+        color: #fff;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        padding: 3px;
+        white-space: nowrap;
     }
 
     /* Type picker modal styles */
@@ -336,7 +355,7 @@ export const componentStyles = `
     .type-item {
         display: flex;
         align-items: center;
-        padding: 12px;
+        padding: 6px;
         border-radius: 6px;
         background-color: rgba(255, 255, 255, 0.05);
         cursor: pointer;
@@ -441,7 +460,6 @@ export const componentStyles = `
         width: 20px;
         height: 20px;
         border-radius: 3px;
-        border: 2px solid rgba(255, 255, 255, 0.2);
         cursor: pointer;
         transition: all 0.2s ease;
         position: relative;
@@ -464,16 +482,19 @@ export const componentStyles = `
         font-weight: 500;
     }
 
-    .selection-indicator {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        color: white;
-        font-size: 14px;
-        font-weight: bold;
-        text-shadow: 0 0 2px rgba(0,0,0,0.8);
-        display: none;
+    /* NAMESPACED: Characteristics bar selection indicator (different from entity selection) */
+    .characteristics-selection-indicator {
+        position: absolute !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        color: white !important;
+        font-size: 14px !important;
+        font-weight: bold !important;
+        text-shadow: 0 0 2px rgba(0,0,0,0.8) !important;
+        display: none !important;
+        z-index: 10 !important;
+        pointer-events: none !important;
     }
 
     .multi-color-instructions {
@@ -481,5 +502,54 @@ export const componentStyles = `
         font-size: 11px;
         margin-bottom: 10px;
         font-style: italic;
+    }
+
+    /* Make category separators clickable and interactive */
+    .emoji-category-clickable {
+        cursor: pointer;
+        transition: all 0.2s ease;
+        padding: 4px 0;
+        border-radius: 6px;
+    }
+
+    .emoji-category-clickable:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+        transform: scale(1.02);
+    }
+
+    .emoji-category-clickable:hover .emoji-category-name {
+        background: rgba(255, 255, 255, 0.15);
+        border-color: rgba(255, 255, 255, 0.3);
+        color: #fff;
+        text-shadow: 0 0 2px rgba(255, 255, 255, 0.5);
+    }
+
+    .emoji-category-clickable:hover .emoji-category-line {
+        background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.5), transparent);
+    }
+
+    /* Active state when clicking */
+    .emoji-category-clickable:active {
+        transform: scale(0.98);
+    }
+
+    .emoji-category-clickable:active .emoji-category-name {
+        background: rgba(76, 175, 80, 0.3);
+        border-color: rgba(76, 175, 80, 0.6);
+        color: #4CAF50;
+    }
+
+    /* Enhanced instructions styling */
+    .emoji-instructions {
+        color: #aaa;
+        font-size: 11px;
+        margin-bottom: 15px;
+        font-style: italic;
+        line-height: 1.4;
+    }
+
+    .emoji-instructions strong {
+        color: #4CAF50;
+        font-weight: 600;
     }
 `;

@@ -1,104 +1,79 @@
-export const colorFamilies = [
+// Updated colorFamilies.js - Dynamic color generation based on hues and transformations
+
+export const colorHues = [
+  { name: "Red", hue: 0 },
+  { name: "Vermilion", hue: 15 },
+  { name: "Orange", hue: 25 },
+  { name: "Gold", hue: 40 },
+  { name: "Yellow", hue: 55 },
+  { name: "Chartreuse", hue: 75 },
+  { name: "Green", hue: 110 },
+  { name: "Jade", hue: 150 },
+  { name: "Teal", hue: 165 },
+  { name: "Cyan", hue: 180 },
+  { name: "Sky", hue: 200 },
+  { name: "Blue", hue: 225 },
+  { name: "Indigo", hue: 265 },
+  { name: "Violet", hue: 280 },
+  { name: "Purple", hue: 300 },
+  { name: "Magenta", hue: 320 },
+  { name: "Pink", hue: 340 },
+];
+
+export const colorTransformations = [
+  { s: "100%", l: "75%" }, // Light
+  { s: "100%", l: "50%" }, // Solid
+  { s: "100%", l: "30%" }, // Dark
+  { s: "40%", l: "50%" },
+];
+
+// Special color families that don't follow the hue pattern
+export const specialColorFamilies = [
   {
-    name: "Red",
-    light: { color: '#FFA0AB', crystal: 'Pink' },
-    solid: { color: '#FF0000', crystal: 'Red' },
-    dark: { color: '#900000', crystal: 'Maroon' }
+    name: "Warm Browns",
+    colors: [
+      'hsl(20, 70%, 75%)',
+      'hsl(20, 70%, 50%)',
+      'hsl(20, 70%, 30%)'
+    ]
   },
   {
-    name: "Pink",
-    light: { color: '#ff69b4', crystal: 'Pink' },
-    solid: { color: '#FF007F', crystal: 'Rose' },
-    dark: { color: '#c71585', crystal: 'Dark Pink' }
-  },
-  {
-    name: "Orange",
-    light: { color: '#FFAF90', crystal: 'Peach' },
-    solid: { color: '#ff8c00', crystal: 'Orange' },
-    dark: { color: '#ff4500', crystal: 'Vermilion' }
-  },
-  {
-    name: "Amber",
-    light: { color: '#FFF8AA', crystal: 'Cornsilk' },
-    solid: { color: '#FFBF00', crystal: 'Amber' },
-    dark: { color: '#B8860B', crystal: 'Dark Goldenrod' }
-  },
-  {
-    name: "Yellow",
-    light: { color: '#FFFAAA', crystal: 'Lemon Chiffon' },
-    solid: { color: '#FFF700', crystal: 'Lemon' },
-    dark: { color: '#DAA520', crystal: 'Goldenrod' }
-  },
-  {
-    name: "Chartreuse",
-    light: { color: '#F0FFF0', crystal: 'Honeydew' },
-    solid: { color: '#7FFF00', crystal: 'Chartreuse' },
-    dark: { color: '#6B8E23', crystal: 'Olive Drab' }
-  },
-  {
-    name: "Green",
-    light: { color: '#A0FFA0', crystal: 'Light Green' },
-    solid: { color: '#00EE00', crystal: 'Green' },
-    dark: { color: '#2E8B57', crystal: 'Sea Green' }
-  },
-  {
-    name: "Jade",
-    light: { color: '#A0FFFF', crystal: 'Light Cyan' },
-    solid: { color: '#00A86B', crystal: 'Jade' },
-    dark: { color: '#2F4F4F', crystal: 'Dark Slate Gray' }
-  },
-  {
-    name: "Teal",
-    light: { color: '#A0FFFF', crystal: 'Light Cyan' },
-    solid: { color: '#13ddcf', crystal: 'Teal' },
-    dark: { color: '#2F4F4F', crystal: 'Dark Slate Gray' }
-  },
-  {
-    name: "Cyan",
-    light: { color: '#A0FFFF', crystal: 'Light Cyan' },
-    solid: { color: '#00FFFF', crystal: 'Cyan' },
-    dark: { color: '#008B8B', crystal: 'Dark Cyan' }
-  },
-  {
-    name: "Blue",
-    light: { color: '#A6F3FF', crystal: 'Light Blue' },
-    solid: { color: '#0000FF', crystal: 'Blue' },
-    dark: { color: '#00008B', crystal: 'Dark Blue' }
-  },
-  {
-    name: "Violet",
-    light: { color: '#C8C8FF', crystal: 'Ghost White' },
-    solid: { color: '#8A2BE2', crystal: 'Blue Violet' },
-    dark: { color: '#663399', crystal: 'Rebecca Purple' }
-  },
-  {
-    name: "Purple",
-    light: { color: '#A6A6FA', crystal: 'Lavender' },
-    solid: { color: '#C000C0', crystal: 'Purple' },
-    dark: { color: '#4B0082', crystal: 'Deep Purple' }
-  },
-  {
-    name: "Magenta",
-    light: { color: '#ffb4ff', crystal: 'Light Magenta' },
-    solid: { color: '#FF00FF', crystal: 'Magenta' },
-    dark: { color: '#8B008B', crystal: 'Dark Magenta' }
-  },
-  {
-    name: "Brown",
-    light: { color: '#eed681', crystal: 'Tan' },
-    solid: { color: '#CD853F', crystal: 'Bronze' },
-    dark: { color: '#8B4513', crystal: 'Brown' }
+    name: "Cool Browns",
+    colors: [
+      'hsl(20, 50%, 75%)',
+      'hsl(20, 50%, 50%)',
+      'hsl(20, 50%, 30%)'
+    ]
   },
   {
     name: "Light Grays",
-    light: { color: '#FFFFFF', crystal: 'White' },
-    solid: { color: '#C0C0C0', crystal: 'Light Gray' },
-    dark: { color: '#AAAAAA', crystal: 'Silver' }
+    colors: [
+      'hsl(0, 0%, 100%)',
+      'hsl(0, 0%, 80%)',
+      'hsl(0, 0%, 60%)'
+    ]
   },
   {
     name: "Dark Grays",
-    light: { color: '#888888', crystal: 'Gray' },
-    solid: { color: '#555555', crystal: 'Dark Gray' },
-    dark: { color: '#111111', crystal: 'Black' }
-  }
+    colors: [
+      'hsl(0, 0%, 40%)',
+      'hsl(0, 0%, 20%)',
+      'hsl(0, 0%, 0%)'
+    ]
+  },
 ];
+
+// Generate color families dynamically
+export const generateColorFamilies = () => {
+  const generatedFamilies = colorHues.map(hue => ({
+    name: hue.name,
+    colors: colorTransformations.map(transform => 
+      `hsl(${hue.hue}, ${transform.s}, ${transform.l})`
+    )
+  }));
+
+  return [...generatedFamilies, ...specialColorFamilies];
+};
+
+// Export the generated color families
+export const colorFamilies = generateColorFamilies();

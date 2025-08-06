@@ -1,0 +1,152 @@
+<html>
+<head>
+<script>
+colorFamilies = [
+  {
+    name: "Pink",
+    light: { color: 'hsl(-20 100% 70%)', crystal: 'Pink' },
+    solid: { color: 'hsl(-20 100% 50%)', crystal: 'Rose' },
+    dark: { color: 'hsl(-20 100% 30%)', crystal: 'Dark Pink' }
+  },
+  {
+    name: "Red",
+    light: { color: 'hsl(0 100% 70%)', crystal: 'Pink' },
+    solid: { color: 'hsl(0 100% 50%)', crystal: 'Rose' },
+    dark: { color: 'hsl(0 100% 30%)', crystal: 'Dark Pink' }
+  },
+  {
+    name: "Orange",
+    light: { color: 'hsl(20 100% 70%)', crystal: 'Pink' },
+    solid: { color: 'hsl(20 100% 50%)', crystal: 'Rose' },
+    dark: { color: 'hsl(20 100% 30%)', crystal: 'Dark Pink' }
+  },
+  {
+    name: "Amber",
+    light: { color: 'hsl(40 100% 70%)', crystal: 'Pink' },
+    solid: { color: 'hsl(40 100% 50%)', crystal: 'Rose' },
+    dark: { color: 'hsl(40 100% 30%)', crystal: 'Dark Pink' }
+  },
+  {
+    name: "Yellow",
+    light: { color: 'hsl(60 100% 70%)', crystal: 'Pink' },
+    solid: { color: 'hsl(60 100% 50%)', crystal: 'Rose' },
+    dark: { color: 'hsl(60 100% 30%)', crystal: 'Dark Pink' }
+  },
+  {
+    name: "Chartreuse",
+    light: { color: 'hsl(80 100% 70%)', crystal: 'Pink' },
+    solid: { color: 'hsl(80 100% 50%)', crystal: 'Rose' },
+    dark: { color: 'hsl(80 100% 30%)', crystal: 'Dark Pink' }
+  },
+  {
+    name: "Green",
+    light: { color: 'hsl(110 100% 70%)', crystal: 'Pink' },
+    solid: { color: 'hsl(110 100% 50%)', crystal: 'Rose' },
+    dark: { color: 'hsl(110 100% 30%)', crystal: 'Dark Pink' }
+  },
+  {
+    name: "Jade",
+    light: { color: 'hsl(150 100% 70%)', crystal: 'Pink' },
+    solid: { color: 'hsl(150 100% 50%)', crystal: 'Rose' },
+    dark: { color: 'hsl(150 100% 30%)', crystal: 'Dark Pink' }
+  },
+  {
+    name: "Teal",
+    light: { color: 'hsl(170 100% 70%)', crystal: 'Pink' },
+    solid: { color: 'hsl(170 100% 50%)', crystal: 'Rose' },
+    dark: { color: 'hsl(170 100% 30%)', crystal: 'Dark Pink' }
+  },
+  {
+    name: "Cyan",
+    light: { color: 'hsl(190 100% 70%)', crystal: 'Pink' },
+    solid: { color: 'hsl(190 100% 50%)', crystal: 'Rose' },
+    dark: { color: 'hsl(190 100% 30%)', crystal: 'Dark Pink' }
+  },
+  {
+    name: "Blue",
+    light: { color: 'hsl(230 100% 70%)', crystal: 'Pink' },
+    solid: { color: 'hsl(230 100% 50%)', crystal: 'Rose' },
+    dark: { color: 'hsl(230 100% 30%)', crystal: 'Dark Pink' }
+  },
+  {
+    name: "Violet",
+    light: { color: 'hsl(280 100% 70%)', crystal: 'Pink' },
+    solid: { color: 'hsl(280 100% 50%)', crystal: 'Rose' },
+    dark: { color: 'hsl(280 100% 30%)', crystal: 'Dark Pink' }
+  },
+  {
+    name: "Purple",
+    light: { color: 'hsl(300 100% 70%)', crystal: 'Pink' },
+    solid: { color: 'hsl(300 100% 50%)', crystal: 'Rose' },
+    dark: { color: 'hsl(300 100% 30%)', crystal: 'Dark Pink' }
+  },
+  {
+    name: "Magenta",
+    light: { color: 'hsl(330 100% 70%)', crystal: 'Pink' },
+    solid: { color: 'hsl(330 100% 50%)', crystal: 'Rose' },
+    dark: { color: 'hsl(330 100% 30%)', crystal: 'Dark Pink' }
+  },
+  {
+    name: "Warm Browns",
+    light: { color: 'hsl(20 70% 70%)', crystal: 'Pink' },
+    solid: { color: 'hsl(20 70% 50%)', crystal: 'Rose' },
+    dark: { color: 'hsl(20 70% 30%)', crystal: 'Dark Pink' }
+  },
+  {
+    name: "Cool Browns",
+    light: { color: 'hsl(20 50% 70%)', crystal: 'Pink' },
+    solid: { color: 'hsl(20 50% 50%)', crystal: 'Rose' },
+    dark: { color: 'hsl(20 50% 30%)', crystal: 'Dark Pink' }
+  },
+  {
+    name: "Light Grays",
+    light: { color: 'hsl(0 0% 100%)', crystal: 'Pink' },
+    solid: { color: 'hsl(0 0% 80%)', crystal: 'Rose' },
+    dark: { color: 'hsl(0 0% 60%)', crystal: 'Dark Pink' }
+  },
+  {
+    name: "Dark Grays",
+    light: { color: 'hsl(0 0% 40%)', crystal: 'Pink' },
+    solid: { color: 'hsl(0 0% 20%)', crystal: 'Rose' },
+    dark: { color: 'hsl(0 0% 0%)', crystal: 'Dark Pink' }
+  },
+];
+</script>
+<style>
+body {background-color: black; font-family: Arial;}
+.color-family {color: #AAA; font-size: 12px;}
+.color-swatch {display: inline-block; width: 16px; height: 16px; border-radius: 3px; margin: 1px; border: 1px solid #AAA;}
+</style>
+</head>
+<body>
+<script>
+colorFamilies.forEach(function(colorFamily) {
+		newDiv = document.createElement("div");
+		newDiv.classList.add("color-family");
+		newDiv.innerHTML = colorFamily.name;
+
+		containerDiv = document.createElement("div");
+		containerDiv.classList.add("container-div");
+		newDiv.appendChild(containerDiv)
+
+		lightDiv = document.createElement("div");
+		lightDiv.classList.add("color-swatch");
+		lightDiv.style.backgroundColor = colorFamily.light.color;
+		containerDiv.appendChild(lightDiv)
+
+		solidDiv = document.createElement("div");
+		solidDiv.classList.add("color-swatch");
+		solidDiv.style.backgroundColor = colorFamily.solid.color;
+		containerDiv.appendChild(solidDiv)
+
+		darkDiv = document.createElement("div");
+		darkDiv.classList.add("color-swatch");
+		darkDiv.style.backgroundColor = colorFamily.dark.color;
+		containerDiv.appendChild(darkDiv)
+
+		document.body.appendChild(newDiv);
+		});
+</script>
+</body>
+</html>
+

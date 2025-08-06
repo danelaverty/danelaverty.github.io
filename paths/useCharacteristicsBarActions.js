@@ -1,4 +1,4 @@
-import { useDataStore } from './useDataStore.js';
+import { useDataStore } from './dataCoordinator.js';
 import { useColorUtils } from './colorUtils.js';
 
 export const useCharacteristicsBarActions = () => {
@@ -46,35 +46,66 @@ export const useCharacteristicsBarActions = () => {
     if (!selectedCircle) return;
     
     const circleId = selectedCircle.id;
+    
+    // Update the circle's type
     dataStore.updateCircle(circleId, {
       type: typeInfo.id
     });
+    
+    // NEW: Save this type as the most recently set type for the circle's document
+    // This will affect future circles created in the same document
+    const circle = dataStore.getCircle ? dataStore.getCircle(circleId) : null;
+    if (circle && circle.documentId) {
+      // Use the document store's method to track the most recently set type
+      if (dataStore.setMostRecentlySetCircleType) {
+        dataStore.setMostRecentlySetCircleType(circle.documentId, typeInfo.id);
+      }
+    }
   };
 
   const selectEmoji = (attribute) => {
     const selectedSquares = dataStore.getSelectedSquares();
     
-    if (selectedSquares.length === 0) {
+    if (true) {
       // No square selected - create a new square with this emoji
       const square = dataStore.createSquare();
       if (square) {
-        dataStore.updateSquare(square.id, {
+        // Include emojiCss property when updating square
+        const updateData = {
           emoji: attribute.emoji,
           emojiKey: attribute.key,
           color: attribute.color,
           name: attribute.defaultName || '???'
-        });
+        };
+        
+        // Add emojiCss if it exists on the attribute
+        if (attribute.emojiCss) {
+          updateData.emojiCss = attribute.emojiCss;
+        }
+        
+        dataStore.updateSquare(square.id, updateData);
         dataStore.selectSquare(square.id);
       }
     } else {
       // Update selected squares with this emoji
       selectedSquares.forEach(squareId => {
-        dataStore.updateSquare(squareId, {
+        // Include emojiCss property when updating existing squares
+        const updateData = {
           emoji: attribute.emoji,
           emojiKey: attribute.key,
           color: attribute.color
           // Don't change the name - it should remain independently editable
-        });
+        };
+        
+        // Add emojiCss if it exists on the attribute
+        if (attribute.emojiCss) {
+          updateData.emojiCss = attribute.emojiCss;
+        } else {
+          // Clear emojiCss if the new emoji doesn't have it
+          updateData.emojiCss = null;
+        }
+        
+        dataStore.updateSquare(squareId, updateData);
       });
     }
   };
