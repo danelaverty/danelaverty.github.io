@@ -1,4 +1,4 @@
-// ConnectionManager.js - Efficient connection management for squares
+// ConnectionManager.js - Efficient connection management for squares (Fixed deletion handling)
 import { reactive, computed } from './vue-composition-api.js';
 
 export class ConnectionManager {
@@ -9,6 +9,7 @@ export class ConnectionManager {
         
         this.CONNECTION_DISTANCE = 120;
         this.lastSquarePositions = new Map(); // Cache for position change detection
+        this.lastSquareIds = new Set(); // Cache for tracking which squares existed
     }
 
     /**
@@ -29,25 +30,54 @@ export class ConnectionManager {
     }
 
     /**
-     * Check if positions have changed since last update
+     * Check if the set of squares has changed (added/removed) or positions changed
      */
-    hasPositionChanged(squares) {
+    hasSquaresChanged(squares) {
+        const currentSquareIds = new Set(squares.map(s => s.id));
+        
+        // Check if squares were added or removed
+        if (currentSquareIds.size !== this.lastSquareIds.size) {
+            return true;
+        }
+        
+        // Check if different squares exist
+        for (const id of currentSquareIds) {
+            if (!this.lastSquareIds.has(id)) {
+                return true;
+            }
+        }
+        
+        for (const id of this.lastSquareIds) {
+            if (!currentSquareIds.has(id)) {
+                return true;
+            }
+        }
+        
+        // Check if positions changed
         for (const square of squares) {
             const lastPos = this.lastSquarePositions.get(square.id);
             if (!lastPos || lastPos.x !== square.x || lastPos.y !== square.y) {
                 return true;
             }
         }
+        
         return false;
     }
 
     /**
-     * Update cached positions
+     * Update cached positions and square IDs
      */
-    updatePositionCache(squares) {
+    updateCaches(squares) {
+        // Update position cache
         this.lastSquarePositions.clear();
         squares.forEach(square => {
             this.lastSquarePositions.set(square.id, { x: square.x, y: square.y });
+        });
+        
+        // Update square ID cache
+        this.lastSquareIds.clear();
+        squares.forEach(square => {
+            this.lastSquareIds.add(square.id);
         });
     }
 
@@ -57,18 +87,21 @@ export class ConnectionManager {
      * @param {Set} draggedSquareIds - IDs of squares currently being dragged (optional optimization)
      */
     updateConnections(squares, draggedSquareIds = null) {
-        // Early exit if no position changes (optimization for non-drag updates)
-        if (!draggedSquareIds && !this.hasPositionChanged(squares)) {
+        
+        // Always update if squares were added/removed, or if no drag optimization is requested
+        const squaresChanged = this.hasSquaresChanged(squares);
+        
+        if (!draggedSquareIds && !squaresChanged) {
             return;
         }
 
         const newConnections = new Map();
         
-        // If we have dragged squares, we can optimize by only checking connections
-        // involving at least one dragged square
-        if (draggedSquareIds && draggedSquareIds.size > 0) {
+        // If we have dragged squares and the set of squares hasn't changed, we can optimize
+        if (draggedSquareIds && draggedSquareIds.size > 0 && !squaresChanged) {
             this.updateConnectionsOptimized(squares, draggedSquareIds, newConnections);
         } else {
+            // Full update when squares are added/removed or no drag optimization
             this.updateConnectionsFull(squares, newConnections);
         }
 
@@ -78,14 +111,15 @@ export class ConnectionManager {
             this.data.connections.set(id, connection);
         });
 
-        // Update position cache
-        this.updatePositionCache(squares);
+        // Update caches
+        this.updateCaches(squares);
     }
 
     /**
-     * Full connection update (used when not dragging or when squares change)
+     * Full connection update (used when squares are added/removed or when not dragging)
      */
     updateConnectionsFull(squares, newConnections) {
+        
         for (let i = 0; i < squares.length; i++) {
             for (let j = i + 1; j < squares.length; j++) {
                 const square1 = squares[i];
@@ -156,11 +190,12 @@ export class ConnectionManager {
     }
 
     /**
-     * Clear all connections
+     * Clear all connections and caches
      */
     clearConnections() {
         this.data.connections.clear();
         this.lastSquarePositions.clear();
+        this.lastSquareIds.clear();
     }
 
     /**
@@ -177,5 +212,13 @@ export class ConnectionManager {
         return this.getConnections().filter(conn => 
             conn.square1Id === squareId || conn.square2Id === squareId
         );
+    }
+
+    /**
+     * Force a full recalculation of connections (useful for debugging)
+     */
+    forceUpdate(squares) {
+        this.clearConnections();
+        this.updateConnections(squares);
     }
 }

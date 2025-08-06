@@ -20,8 +20,16 @@ export function createViewerManager(dataStore) {
     };
 
     const handleCloseViewer = (viewerId) => {
-        const viewerTitle = dataStore.getViewerTitle(viewerId);
-        if (confirm(`Are you sure you want to close "${viewerTitle}"? The document will not be deleted.`)) {
+        const viewer = dataStore.data.circleViewers.get(viewerId);
+        const hasCustomTitle = viewer && viewer.customTitle;
+        
+        if (hasCustomTitle) {
+            const viewerTitle = dataStore.getViewerTitle(viewerId);
+            if (confirm(`Are you sure you want to close "${viewerTitle}"? The document will not be deleted.`)) {
+                dataStore.deleteCircleViewer(viewerId);
+            }
+        } else {
+            // No custom title, close without confirmation
             dataStore.deleteCircleViewer(viewerId);
         }
     };

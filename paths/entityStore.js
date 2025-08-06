@@ -1,4 +1,4 @@
-// entityStore.js - Unified entity management for circles and squares (Updated for emoji support)
+// entityStore.js - Unified entity management for circles and squares (Updated to use document's mostRecentlySetCircleType)
 import { reactive } from './vue-composition-api.js';
 
 let entityStoreInstance = null;
@@ -30,16 +30,17 @@ function createEntityStore() {
     };
 
     // Generic entity operations
-    const createEntity = (entityType, documentId, containerWidth, containerHeight, viewerWidths = []) => {
+    const createEntity = (entityType, documentId, containerWidth, containerHeight, viewerWidths = [], documentStore = null) => {
         const id = `${entityType}_${entityType === 'circle' ? data.nextCircleId++ : data.nextSquareId++}`;
         
         let position;
         if (entityType === 'square') {
             const dimensions = calculateSquareContainerDimensions(viewerWidths);
-            position = generateRandomPosition(dimensions.width, dimensions.height, 100);
+            position = generateRandomPosition(dimensions.width, dimensions.height - 100, 100);
         } else {
             const actualHeight = containerHeight || (window.innerHeight - 120);
             position = generateRandomPosition(containerWidth - 40, actualHeight);
+	    position.x -= containerWidth / 2;
         }
 
         const entity = {
@@ -55,13 +56,23 @@ function createEntityStore() {
             entity.color = '#4CAF50'; // Default green color
             entity.colors = ['#4CAF50']; // Support for multiple colors
             entity.crystal = 'Green'; // Default crystal name
-            entity.type = 'basic'; // Default circle type
+            
+            // NEW: Set circle type based on document's mostRecentlySetCircleType
+            let defaultType = 'basic'; // Fallback default
+            if (documentStore) {
+                const recentType = documentStore.getMostRecentlySetCircleType(documentId);
+                if (recentType) {
+                    defaultType = recentType;
+                }
+            }
+            entity.type = defaultType;
         }
 
-        // Add square-specific properties (NEW: emoji support)
+        // Add square-specific properties
         if (entityType === 'square') {
             entity.emoji = null; // Default: no emoji
             entity.emojiKey = null; // Key from attributeInfo
+            entity.emojiCss = null; // CSS filter for emoji
             entity.color = '#FF6B6B'; // Default color (can be overridden by emoji)
         }
 
@@ -113,8 +124,8 @@ function createEntityStore() {
     };
 
     // Specific entity type methods (for backward compatibility)
-    const createCircle = (documentId, containerWidth, containerHeight) => {
-        return createEntity('circle', documentId, containerWidth, containerHeight);
+    const createCircle = (documentId, containerWidth, containerHeight, documentStore = null) => {
+        return createEntity('circle', documentId, containerWidth, containerHeight, [], documentStore);
     };
 
     const createSquare = (documentId, viewerWidths) => {
@@ -175,13 +186,17 @@ function createEntityStore() {
         if (savedData.squares) {
             data.squares = new Map(savedData.squares);
             
-            // Ensure all squares have the new emoji properties (NEW: migration for existing squares)
+            // Ensure all squares have the new emoji properties
             data.squares.forEach((square, id) => {
                 if (square.emoji === undefined) {
                     square.emoji = null;
                 }
                 if (square.emojiKey === undefined) {
                     square.emojiKey = null;
+                }
+                // Ensure emojiCss property exists
+                if (square.emojiCss === undefined) {
+                    square.emojiCss = null;
                 }
                 // Ensure squares have a color property
                 if (!square.color) {

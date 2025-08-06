@@ -3,6 +3,7 @@ import { useEntityStore } from './entityStore.js';
 import { useDocumentStore } from './documentStore.js';
 import { useUIStore } from './uiStore.js';
 import { EntityService } from './entityService.js';
+import { getRecentEmojisStoreInstance } from './useRecentEmojis.js';
 
 let dataCoordinatorInstance = null;
 
@@ -20,35 +21,39 @@ function createDataCoordinator() {
 
     // Persistence
     const saveToStorage = () => {
-        try {
-            const dataToSave = {
-                ...entityStore.serialize(),
-                ...documentStore.serialize(),
-                ...uiStore.serialize()
-            };
-            localStorage.setItem(storageKey, JSON.stringify(dataToSave));
-            return true;
-        } catch (error) {
-            console.error('Failed to save to storage:', error);
-            return false;
-        }
-    };
-
-    const loadFromStorage = () => {
-        try {
-            const saved = localStorage.getItem(storageKey);
-            if (saved) {
-                const savedData = JSON.parse(saved);
-                entityStore.deserialize(savedData);
-                documentStore.deserialize(savedData);
-                uiStore.deserialize(savedData);
-                return true;
-            }
-        } catch (error) {
-            console.error('Failed to load from storage:', error);
-        }
+    try {
+        const recentEmojisStore = getRecentEmojisStoreInstance(); // ADD THIS LINE
+        const dataToSave = {
+            ...entityStore.serialize(),
+            ...documentStore.serialize(),
+            ...uiStore.serialize(),
+            ...recentEmojisStore.serialize() // ADD THIS LINE
+        };
+        localStorage.setItem(storageKey, JSON.stringify(dataToSave));
+        return true;
+    } catch (error) {
+        console.error('Failed to save to storage:', error);
         return false;
-    };
+    }
+};
+
+const loadFromStorage = () => {
+    try {
+        const recentEmojisStore = getRecentEmojisStoreInstance(); // ADD THIS LINE
+        const saved = localStorage.getItem(storageKey);
+        if (saved) {
+            const savedData = JSON.parse(saved);
+            entityStore.deserialize(savedData);
+            documentStore.deserialize(savedData);
+            uiStore.deserialize(savedData);
+            recentEmojisStore.deserialize(savedData); // ADD THIS LINE
+            return true;
+        }
+    } catch (error) {
+        console.error('Failed to load from storage:', error);
+    }
+    return false;
+};
 
     const initializeApp = () => {
         const loaded = loadFromStorage();
@@ -119,6 +124,8 @@ function createDataCoordinator() {
         },
 
         // Read operations (no persistence needed)
+        getCircle: entityStore.getCircle,
+        getSquare: entityStore.getSquare,
         getCirclesForDocument: entityStore.getCirclesForDocument,
         getSquaresForDocument: entityStore.getSquaresForDocument,
         getCirclesForViewer: (viewerId) => {
@@ -162,6 +169,14 @@ function createDataCoordinator() {
             if (success) saveToStorage();
             return success;
         },
+        
+        // NEW: Circle type tracking methods
+        setMostRecentlySetCircleType: (documentId, circleType) => {
+            const result = documentStore.setMostRecentlySetCircleType(documentId, circleType);
+            if (result) saveToStorage();
+            return result;
+        },
+        getMostRecentlySetCircleType: documentStore.getMostRecentlySetCircleType,
 
         // Document read operations
         getAllCircleDocuments: documentStore.getAllCircleDocuments,

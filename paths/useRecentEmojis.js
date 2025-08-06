@@ -1,4 +1,4 @@
-// useRecentEmojis.js - Composable for managing recently used emojis with persistence
+// useRecentEmojis.js - Enhanced with category loading functionality
 import { reactive } from './vue-composition-api.js';
 
 let recentEmojisStoreInstance = null;
@@ -28,9 +28,31 @@ function createRecentEmojisStore() {
     }
   };
   
+  // NEW: Load an entire category of emojis into the recent list
+  const loadCategoryToRecent = (categoryEmojis) => {
+    if (!categoryEmojis || !Array.isArray(categoryEmojis)) return;
+    
+    // Clear current recent emojis first
+    data.recentEmojis.splice(0);
+    
+    // Add emojis from the category, up to the maximum limit
+    const emojisToAdd = categoryEmojis.slice(0, MAX_RECENT_EMOJIS);
+    
+    emojisToAdd.forEach(emoji => {
+      if (emoji && emoji.key) {
+        data.recentEmojis.push({ ...emoji });
+      }
+    });
+    
+    // Ensure we don't exceed the maximum
+    if (data.recentEmojis.length > MAX_RECENT_EMOJIS) {
+      data.recentEmojis = data.recentEmojis.slice(0, MAX_RECENT_EMOJIS);
+    }
+  };
+  
   // Clear all recent emojis
   const clearRecentEmojis = () => {
-    data.recentEmojis = [];
+    data.recentEmojis.splice(0);
   };
   
   // Remove a specific emoji from recent list
@@ -44,6 +66,16 @@ function createRecentEmojisStore() {
   // Check if an emoji is in the recent list
   const isRecentEmoji = (key) => {
     return data.recentEmojis.some(emoji => emoji.key === key);
+  };
+
+  // Get count of recent emojis
+  const getRecentCount = () => {
+    return data.recentEmojis.length;
+  };
+
+  // Check if recent list is full
+  const isRecentListFull = () => {
+    return data.recentEmojis.length >= MAX_RECENT_EMOJIS;
   };
 
   // Serialization for persistence
@@ -60,9 +92,12 @@ function createRecentEmojisStore() {
   return {
     data,
     addRecentEmoji,
+    loadCategoryToRecent,  // NEW: Export the category loading function
     clearRecentEmojis,
     removeRecentEmoji,
     isRecentEmoji,
+    getRecentCount,        // NEW: Export count function
+    isRecentListFull,      // NEW: Export full check function
     serialize,
     deserialize
   };
@@ -81,9 +116,12 @@ export const useRecentEmojis = () => {
   return {
     recentEmojis: store.data.recentEmojis,
     addRecentEmoji: store.addRecentEmoji,
+    loadCategoryToRecent: store.loadCategoryToRecent,  // NEW: Export category loading
     clearRecentEmojis: store.clearRecentEmojis,
     removeRecentEmoji: store.removeRecentEmoji,
-    isRecentEmoji: store.isRecentEmoji
+    isRecentEmoji: store.isRecentEmoji,
+    getRecentCount: store.getRecentCount,              // NEW: Export helper functions
+    isRecentListFull: store.isRecentListFull
   };
 };
 

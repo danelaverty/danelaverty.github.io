@@ -1,5 +1,5 @@
 // alignmentUtils.js - Entity alignment utilities
-import { useDataStore } from './useDataStore.js';
+import { useDataStore } from './dataCoordinator.js';
 
 /**
  * Align entities vertically or horizontally

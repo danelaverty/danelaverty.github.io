@@ -1,8 +1,8 @@
 import { ref, computed } from './vue-composition-api.js';
-import { useDataStore } from './useDataStore.js';
+import { useDataStore } from './dataCoordinator.js';
 import { colorFamilies } from './colorFamilies.js';
 import { circleTypes } from './circleTypes.js';
-import { attributeInfo } from './emojiAttributes.js';
+import { attributeInfo, storyCategories } from './emojiAttributes.js';
 import { useColorUtils } from './colorUtils.js';
 
 export const useCharacteristicsBarData = () => {
@@ -53,7 +53,39 @@ export const useCharacteristicsBarData = () => {
     return circleTypes.find(type => type.id === circleType.value) || circleTypes[0];
   });
 
-  // Convert attributeInfo to array for grid display
+  // Organize emojis by story categories
+  const emojisByCategory = computed(() => {
+    const categorizedEmojis = [];
+    
+    // Add emojis from each story category
+    Object.entries(storyCategories).forEach(([categoryKey, category]) => {
+      const categoryEmojis = [];
+      
+      category.emojis.forEach(emojiKey => {
+        if (attributeInfo[emojiKey]) {
+          categoryEmojis.push({
+            key: emojiKey,
+            ...attributeInfo[emojiKey]
+          });
+        }
+      });
+      
+      if (categoryEmojis.length > 0) {
+        categorizedEmojis.push({
+          category: {
+            key: categoryKey,
+            name: category.name,
+            description: category.description
+          },
+          emojis: categoryEmojis
+        });
+      }
+    });
+    
+    return categorizedEmojis;
+  });
+
+  // Convert attributeInfo to array for grid display (legacy fallback)
   const emojiAttributes = computed(() => {
     return Object.entries(attributeInfo).map(([key, value]) => ({
       key,
@@ -77,6 +109,7 @@ export const useCharacteristicsBarData = () => {
     circleType,
     currentTypeInfo,
     emojiAttributes,
+    emojisByCategory,
     colorFamilies,
     circleTypes,
     isColorSelected,

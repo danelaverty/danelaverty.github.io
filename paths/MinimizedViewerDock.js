@@ -1,6 +1,6 @@
 // MinimizedViewerDock.js - Dock for minimized viewers
 import { computed } from './vue-composition-api.js';
-import { useDataStore } from './useDataStore.js';
+import { useDataStore } from './dataCoordinator.js';
 import { injectComponentStyles } from './styleUtils.js';
 
 // Inject component styles
@@ -27,22 +27,22 @@ const componentStyles = `
     }
 
     .minimized-viewer-icon {
-        width: 40px;
+        width: 50px;
         height: 40px;
         background-color: #333;
         border: 1px solid #555;
-        border-radius: 6px;
+        border-radius: 4px;
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
         color: white;
-        font-size: 10px;
+        font-size: 9px;
         text-align: center;
         word-break: break-word;
         line-height: 1.1;
         transition: all 0.2s ease;
-        padding: 2px;
+        padding: 0px;
     }
 
     .minimized-viewer-icon:hover {
@@ -73,7 +73,7 @@ export const MinimizedViewerDock = {
         const getViewerDisplayName = (viewer) => {
             const title = dataStore.getViewerTitle(viewer.id);
             // Truncate long titles for display in dock
-            return title.length > 8 ? title.substring(0, 8) + '...' : title;
+            return title.length > 16 ? title.substring(0, 16) + '...' : title;
         };
 
         return {

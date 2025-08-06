@@ -1,4 +1,4 @@
-// entityService.js - Business logic layer for entity operations
+// entityService.js - Business logic layer for entity operations (Updated to pass documentStore to circle creation)
 import { useEntityStore } from './entityStore.js';
 import { useDocumentStore } from './documentStore.js';
 import { useUIStore } from './uiStore.js';
@@ -12,17 +12,38 @@ export class EntityService {
         this.entityStore = useEntityStore();
         this.documentStore = useDocumentStore();
         this.uiStore = useUIStore();
+        // Get connection manager for updating connections
+        const { connectionManager } = useConnections();
+        this.connectionManager = connectionManager;
+    }
+
+    /**
+     * Helper to get current squares for connection updates
+     */
+    _getCurrentSquares() {
+        const currentDoc = this.documentStore.getCurrentSquareDocument();
+        return currentDoc ? this.entityStore.getSquaresForDocument(currentDoc.id) : [];
+    }
+
+    /**
+     * Helper to update connections after square changes
+     */
+    _updateConnectionsAfterChange() {
+        const squares = this._getCurrentSquares();
+        this.connectionManager.updateConnections(squares);
     }
 
     /**
      * Create a circle in a specific viewer with all necessary relationships
+     * UPDATED: Pass documentStore to entityStore.createCircle for type inheritance
      */
     createCircleInViewer(viewerId) {
         const documentId = this.uiStore.getCircleDocumentForViewer(viewerId);
         if (!documentId) return null;
 
         const viewer = this.uiStore.data.circleViewers.get(viewerId);
-        const circle = this.entityStore.createCircle(documentId, viewer.width);
+        // NEW: Pass documentStore to enable type inheritance
+        const circle = this.entityStore.createCircle(documentId, viewer.width, null, this.documentStore);
         
         // Create default square document for this circle
         this.documentStore.ensureSquareDocumentForCircle(circle.id);
@@ -39,6 +60,9 @@ export class EntityService {
 
         const viewerWidths = this.uiStore.getVisibleCircleViewers().map(v => v.width);
         const square = this.entityStore.createSquare(currentDoc.id, viewerWidths);
+        
+        // Update connections after creating new square
+        this._updateConnectionsAfterChange();
         
         return square;
     }
@@ -64,6 +88,9 @@ export class EntityService {
             if (this.uiStore.getSelectedCircles().length === 0) {
                 this.documentStore.data.currentSquareDocumentId = null;
             }
+            
+            // Update connections since squares might have been deleted
+            this._updateConnectionsAfterChange();
         }
         
         return deleted;
@@ -73,24 +100,39 @@ export class EntityService {
      * Delete a square with proper cleanup
      */
     deleteSquare(id) {
-        console.log(`Attempting to delete square ${id}`);
+        console.log(`EntityService.deleteSquare: Attempting to delete square ${id}`);
         
         // Get the square's document info before deletion
         const square = this.entityStore.getSquare(id);
         console.log('Square found:', square);
         
-        let circleId = null;
-        if (square) {
-            console.log('Square documentId:', square.documentId);
-            const squareDoc = this.documentStore.getSquareDocument(square.documentId);
-            console.log('Square document found:', squareDoc);
-            circleId = squareDoc?.circleId;
-            console.log('Circle ID:', circleId);
+        if (!square) {
+            console.log('Square not found, cannot delete');
+            return false;
         }
         
+        let circleId = null;
+        console.log('Square documentId:', square.documentId);
+        const squareDoc = this.documentStore.getSquareDocument(square.documentId);
+        console.log('Square document found:', squareDoc);
+        circleId = squareDoc?.circleId;
+        console.log('Circle ID:', circleId);
+        
+        // Remove from selection first
         this.uiStore.removeFromSelection('square', id);
+        
+        // Delete the square
         const deleted = this.entityStore.deleteSquare(id);
-        console.log('Square deleted:', deleted);
+        console.log('Square deleted from entity store:', deleted);
+        
+        // Update connections after deletion - force a full update
+        if (deleted) {
+            console.log('Updating connections after square deletion...');
+            const squares = this._getCurrentSquares();
+            console.log(`Current squares after deletion: ${squares.length}`);
+            // Force a full update to ensure deleted square connections are removed
+            this.connectionManager.forceUpdate(squares);
+        }
         
         return deleted;
     }
@@ -115,6 +157,8 @@ export class EntityService {
                 this._handleSquareDocumentSelection(id);
             } else {
                 this.documentStore.data.currentSquareDocumentId = null;
+                // Clear connections when no square document is selected
+                this.connectionManager.clearConnections();
             }
         } else {
             // Ctrl+click - toggle selection
@@ -176,6 +220,12 @@ export class EntityService {
         });
 
         const deleted = this.documentStore.deleteCircleDocument(id);
+        
+        // Update connections since squares might have been deleted
+        if (deleted) {
+            this._updateConnectionsAfterChange();
+        }
+        
         return deleted;
     }
 
@@ -200,6 +250,8 @@ export class EntityService {
             this._handleSquareDocumentSelection(circleIds[0]);
         } else {
             this.documentStore.data.currentSquareDocumentId = null;
+            // Clear connections when no square document is selected
+            this.connectionManager.clearConnections();
         }
         
         return circles.length;
@@ -234,6 +286,11 @@ export class EntityService {
             }
         });
         
+        // Update connections once after all deletions
+        if (deletedCount > 0) {
+            this._updateConnectionsAfterChange();
+        }
+        
         return deletedCount;
     }
 
@@ -242,10 +299,19 @@ export class EntityService {
         let deletedCount = 0;
         
         squareIds.forEach(id => {
-            if (this.deleteSquare(id)) {
+            // Remove from selection first
+            this.uiStore.removeFromSelection('square', id);
+            
+            // Delete the square
+            if (this.entityStore.deleteSquare(id)) {
                 deletedCount++;
             }
         });
+        
+        // Update connections once after all deletions
+        if (deletedCount > 0) {
+            this._updateConnectionsAfterChange();
+        }
         
         return deletedCount;
     }
@@ -259,6 +325,8 @@ export class EntityService {
 
     moveSelectedSquares(deltaX, deltaY) {
         this.entityStore.moveEntities('square', this.uiStore.getSelectedSquares(), deltaX, deltaY);
+        // Update connections after moving squares
+        this._updateConnectionsAfterChange();
     }
 
     // Private helper methods
@@ -270,9 +338,13 @@ export class EntityService {
         const squareDocuments = this.documentStore.getSquareDocumentsForCircle(circleId);
         if (squareDocuments.length > 0) {
             this.documentStore.setCurrentSquareDocument(squareDocuments[0].id);
+            // Update connections when document changes
+            this._updateConnectionsAfterChange();
         } else {
             const defaultSquareDoc = this.documentStore.createSquareDocument(circleId, 'Default');
             this.documentStore.setCurrentSquareDocument(defaultSquareDoc.id);
+            // Clear connections for new empty document
+            this.connectionManager.clearConnections();
         }
     }
 
@@ -283,6 +355,8 @@ export class EntityService {
         const selectedCount = this.uiStore.getSelectedCircles().length;
         if (selectedCount !== 1) {
             this.documentStore.data.currentSquareDocumentId = null;
+            // Clear connections when no square document is selected
+            this.connectionManager.clearConnections();
         } else {
             // Single circle selected - show its squares
             const singleCircleId = this.uiStore.getSelectedCircles()[0];

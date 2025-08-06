@@ -1,4 +1,4 @@
-// entityHandlers.js - Entity event handling logic (Updated with connection updates)
+// entityHandlers.js - Entity event handling logic (Updated to remove redundant connection updates)
 /**
  * Create entity event handlers
  * @param {Object} dataStore - The data store instance
@@ -39,8 +39,7 @@ export function createEntityHandlers(dataStore) {
     const handleSquareMoveMultiple = ({ entityType, deltaX, deltaY }) => {
         if (entityType === 'square') {
             dataStore.moveSelectedSquares(deltaX, deltaY);
-            // Update connections after bulk move
-            updateConnectionsAfterChange();
+            // Note: moveSelectedSquares now handles connection updates internally
         }
     };
 
@@ -48,8 +47,7 @@ export function createEntityHandlers(dataStore) {
         const square = dataStore.createSquare();
         if (square) {
             dataStore.selectSquare(square.id);
-            // Update connections after adding new square
-            updateConnectionsAfterChange();
+            // Note: createSquare now handles connection updates internally
         }
     };
 
@@ -92,6 +90,8 @@ export function createEntityHandlers(dataStore) {
         dataStore.data.selectedCircleId = null;
         dataStore.data.selectedSquareId = null;
         dataStore.data.currentSquareDocumentId = null;
+        // Clear connections when document changes
+        connectionManager.clearConnections();
     };
 
     return {

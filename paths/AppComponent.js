@@ -1,4 +1,4 @@
-// AppComponent.js - Main application component (Updated with connection rendering)
+// AppComponent.js - Main application component (Updated with SharedDropdown)
 import { ref, computed, onMounted, onUnmounted } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
 import { useRectangleSelection } from './useRectangleSelection.js';
@@ -8,6 +8,8 @@ import { EntityControls } from './EntityControls.js';
 import { CircleViewer } from './CircleViewer.js';
 import { MinimizedViewerDock } from './MinimizedViewerDock.js';
 import { CircleCharacteristicsBar } from './CircleCharacteristicsBar.js';
+import { SquareDocumentTabs } from './SquareDocumentTabs.js';
+import { SharedDropdown } from './SharedDropdown.js';
 import { ConnectionComponent, ConnectionSVGComponent } from './ConnectionComponent.js';
 import { createKeyboardHandler, setupKeyboardListeners } from './keyboardHandler.js';
 import { createViewerManager } from './viewerManager.js';
@@ -66,6 +68,16 @@ export const App = {
             () => currentSquares.value
         );
 
+        // Shared dropdown reference
+        const sharedDropdownRef = ref(null);
+
+        // Handle show dropdown requests from EntityControls
+        const handleShowDropdown = (config) => {
+            if (sharedDropdownRef.value) {
+                sharedDropdownRef.value.show(config);
+            }
+        };
+
         // Rectangle selection for squares
         const {
             isSelecting: isSelectingSquares,
@@ -98,6 +110,13 @@ export const App = {
             }
         };
 
+        // Handle square document tab changes
+        const handleSquareDocumentTabChange = (docId) => {
+            // The SquareDocumentTabs component already calls dataStore.setCurrentSquareDocument
+            // We just need to ensure any dependent state is updated if needed
+            console.log('Square document changed to:', docId);
+        };
+
         // Set up keyboard handling
         let keyboardCleanup;
         
@@ -121,11 +140,14 @@ export const App = {
             hasSelectedCircle,
             connections, // Expose connections for template
             squareViewerContentRef,
+            sharedDropdownRef,
             isSelectingSquares,
             squareSelectionRect,
             getSquareSelectionRectStyle,
             handleSquareViewerClick,
             handleSquareViewerContainerClick,
+            handleSquareDocumentTabChange,
+            handleShowDropdown,
             // Expose handlers from modules
             ...entityHandlers,
             ...viewerManager
@@ -137,6 +159,8 @@ export const App = {
         CircleViewer,
         MinimizedViewerDock,
         CircleCharacteristicsBar,
+        SquareDocumentTabs,
+        SharedDropdown,
         ConnectionComponent // Add the connection component
     },
     template: `
@@ -148,15 +172,14 @@ export const App = {
             <div class="viewers-container">
                 <!-- Circle Viewers -->
                 <CircleViewer
-                    v-for="(viewer, index) in visibleCircleViewers"
+                    v-for="viewer in visibleCircleViewers"
                     :key="viewer.id"
                     :viewer-id="viewer.id"
-                    :show-add-button="index === visibleCircleViewers.length - 1"
-                    @add-viewer="handleAddViewer"
                     @start-reorder="handleStartReorder"
                     @minimize-viewer="handleMinimizeViewer"
                     @close-viewer="handleCloseViewer"
                     @viewer-click="handleViewerContainerClick"
+                    @show-dropdown="handleShowDropdown"
                 />
                 
                 <!-- Square Viewer -->
@@ -164,17 +187,20 @@ export const App = {
                     <!-- Circle Characteristics Bar -->
                     <CircleCharacteristicsBar />
                     
+                    <!-- Square Document Tabs -->
+                    <SquareDocumentTabs @document-change="handleSquareDocumentTabChange" />
+                    
                     <div 
                         ref="squareViewerContentRef"
                         :class="['square-viewer-content', { 'no-characteristics-bar': !hasSelectedCircle }]"
                         @click="handleSquareViewerClick"
                     >
                         <!-- Connection Rendering - THIS IS THE KEY ADDITION -->
-			<ConnectionComponent
-				v-for="connection in connections"
-				:key="connection.id"
-				:connection="connection"
-			/>
+                        <ConnectionComponent
+                            v-for="connection in connections"
+                            :key="connection.id"
+                            :connection="connection"
+                        />
                         
                         <EntityComponent
                             v-for="square in currentSquares"
@@ -188,11 +214,20 @@ export const App = {
                             @move-multiple="handleSquareMoveMultiple"
                         />
                         
+                        <!-- Entity controls for squares -->
                         <EntityControls 
                             entity-type="square"
                             @add-entity="handleAddSquare"
-                            @document-change="handleSquareDocumentChange"
+                            @document-change="handleSquareDocumentTabChange"
+                            @show-dropdown="handleShowDropdown"
                         />
+                        
+                        <!-- Add viewer button - moved from circle viewer to square viewer -->
+                        <button 
+                            class="add-viewer-button"
+                            @click="handleAddViewer"
+                            title="Add new viewer"
+                        >+</button>
                         
                         <!-- Rectangle selection visual for squares -->
                         <div 
@@ -202,6 +237,9 @@ export const App = {
                         ></div>
                     </div>
                 </div>
+                
+                <!-- Shared Dropdown - positioned at viewers-container level to avoid clipping -->
+                <SharedDropdown ref="sharedDropdownRef" />
             </div>
         </div>
     `

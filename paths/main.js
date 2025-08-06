@@ -1,4 +1,4 @@
-// main.js - Main application entry point (refactored)
+// main.js - Main application entry point (updated with tabs support)
 import { createApp } from './vue-composition-api.js';
 import { App } from './AppComponent.js';
 import { injectComponentStyles } from './styleUtils.js';
@@ -46,16 +46,16 @@ const globalStyles = `
 
     .square-viewer-content {
         width: 100%;
-        height: calc(100% - 50px);
+        height: calc(100% - 82px); /* Account for characteristics bar (50px) and tabs bar (32px) */
         position: relative;
         overflow: hidden;
-        margin-top: 50px; /* Account for characteristics bar */
+        margin-top: 82px; /* Account for both bars */
     }
 
     /* Adjust square viewer content when characteristics bar is hidden */
     .square-viewer-content.no-characteristics-bar {
-        margin-top: 0;
-        height: 100%;
+        margin-top: 32px; /* Only account for tabs bar */
+        height: calc(100% - 32px);
     }
 
     /* Adjust app container left margin when minimized dock is visible */
@@ -71,6 +71,30 @@ const globalStyles = `
         background-color: rgba(255, 107, 107, 0.1);
         pointer-events: none;
         z-index: 1000;
+    }
+
+    /* Add viewer button in square viewer */
+    .add-viewer-button {
+        position: absolute;
+        bottom: 10px;
+        left: 10px;
+        width: 25px;
+        height: 25px;
+        border-radius: 50%;
+        background-color: #333;
+        color: #999;
+        border: 2px solid #666;
+        font-size: 20px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1001;
+        transition: background-color 0.2s ease;
+    }
+
+    .add-viewer-button:hover {
+        background-color: #666;
     }
 `;
 
