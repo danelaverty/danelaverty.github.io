@@ -305,6 +305,98 @@ export const circleTypeStyles = `
         will-change: transform, opacity, filter;
     }
 
+/* Particles for glow type */
+    .particles {
+        position: absolute;
+        top: 100%;
+        left: 100%;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        transform: scale(2);
+    }
+
+    .angle {
+        position: absolute;
+        top: 0;
+        left: 0;
+    }
+
+    .position {
+        position: absolute;
+        top: 0;
+        left: 0;
+    }
+
+    .pulse {
+        position: absolute;
+        top: 0;
+        left: 0;
+        animation: pulse 1.5s linear 0s infinite alternate;
+    }
+
+    .particle {
+        position: absolute;
+        width: 3px;
+        height: 3px;
+        border-radius: 50%;
+        border: 1px solid white;
+        background-color: var(--circle-color);
+    }
+
+    @keyframes angle {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    @keyframes position {
+        0% { transform: translate(0,0); opacity: 1; }
+        100% { transform: translate(5px,5px); opacity: 0; }
+    }
+
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        100% { transform: scale(.5); }
+    }
+
+    /* Chakra Form (Polygon Shapes) for glow type */
+    .outer-polygon-container {
+        position: absolute;
+        transform: scale(.8);
+        top: 50%;
+        left: 50%;
+        transform-origin: center center;
+    }
+
+    .inner-polygon-container {
+        position: absolute;
+        transform-origin: 50% 50%;
+        width: 0;
+        height: 0;
+    }
+
+    .shape {
+        width: 40px;
+        height: 40px;
+        background-color: #FFA;
+        transform: translate(-50%, -50%);
+    }
+
+    /* Animation classes for chakra forms */
+    .angle-animation {
+        animation: angle 16s linear infinite;
+    }
+
+    .angle-reverse-animation {
+        animation: anglerev 16s linear infinite;
+    }
+
+    @keyframes anglerev {
+        0% { transform: rotate(360deg); }
+        100% { transform: rotate(0deg); }
+    }
+
+
     /* Reduced motion support */
     @media (prefers-reduced-motion: reduce) {
         .circle-type-gem .gem-svg, 
