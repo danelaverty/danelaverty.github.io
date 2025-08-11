@@ -23,4 +23,10 @@ export const circleTypes = [
     description: 'Crystalline gem with faceted surface',
     icon: '⬢'
   },
+  {
+    id: 'emoji',
+    name: 'Emoji',
+    description: 'An emoji',
+    icon: '☺'
+  },
 ];

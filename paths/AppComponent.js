@@ -1,8 +1,9 @@
-// AppComponent.js - Main application component (Updated with SharedDropdown)
+// AppComponent.js - Main application component (Updated with Energy Proximity System)
 import { ref, computed, onMounted, onUnmounted } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
 import { useRectangleSelection } from './useRectangleSelection.js';
 import { useConnectionUpdater, useConnections } from './useConnections.js';
+import { useEnergyProximitySystem } from './EnergyProximitySystem.js';
 import { EntityComponent } from './EntityComponent.js';
 import { EntityControls } from './EntityControls.js';
 import { CircleViewer } from './CircleViewer.js';
@@ -10,6 +11,7 @@ import { MinimizedViewerDock } from './MinimizedViewerDock.js';
 import { CircleCharacteristicsBar } from './CircleCharacteristicsBar.js';
 import { SquareDocumentTabs } from './SquareDocumentTabs.js';
 import { SharedDropdown } from './SharedDropdown.js';
+import { IndicatorEmojiPicker } from './IndicatorEmojiPicker.js';
 import { ConnectionComponent, ConnectionSVGComponent } from './ConnectionComponent.js';
 import { createKeyboardHandler, setupKeyboardListeners } from './keyboardHandler.js';
 import { createViewerManager } from './viewerManager.js';
@@ -20,6 +22,7 @@ export const App = {
     setup() {
         const dataStore = useDataStore();
         const squareViewerContentRef = ref(null);
+        const proximitySystem = useEnergyProximitySystem();
 
         // Computed properties for viewers and squares
         const visibleCircleViewers = computed(() => dataStore.getVisibleCircleViewers());
@@ -35,7 +38,7 @@ export const App = {
             return dataStore.getSelectedCircles().length === 1;
         });
 
-        // Connection management - THIS IS THE KEY ADDITION
+        // Connection management
         const { connections } = useConnections();
         
         // Calculate container dimensions for connections
@@ -57,8 +60,47 @@ export const App = {
             }
         );
 
+        // Shared dropdown reference
+        const sharedDropdownRef = ref(null);
+
+        // Indicator emoji picker state
+        const isIndicatorPickerVisible = ref(false);
+        const currentIndicatorEmoji = ref(null);
+
+        // Handle show dropdown requests from EntityControls
+        const handleShowDropdown = (config) => {
+            if (sharedDropdownRef.value) {
+                sharedDropdownRef.value.show(config);
+            }
+        };
+
+        // Handle indicator emoji picker
+        const handleShowIndicatorPicker = (currentIndicator = null) => {
+            currentIndicatorEmoji.value = currentIndicator;
+            isIndicatorPickerVisible.value = true;
+        };
+
+        const handleIndicatorPickerClose = () => {
+            isIndicatorPickerVisible.value = false;
+            currentIndicatorEmoji.value = null;
+        };
+
+        const handleIndicatorPickerSelect = (indicatorEmoji) => {
+            const selectedSquares = dataStore.getSelectedSquares();
+            
+            // Apply indicator emoji to all selected squares
+            selectedSquares.forEach(squareId => {
+                dataStore.updateSquare(squareId, { indicatorEmoji });
+            });
+            
+            console.log(`Applied indicator "${indicatorEmoji}" to ${selectedSquares.length} squares`);
+            
+            // Close the picker
+            handleIndicatorPickerClose();
+        };
+
         // Create handlers
-        const keyboardHandler = createKeyboardHandler(dataStore);
+        const keyboardHandler = createKeyboardHandler(dataStore, handleShowIndicatorPicker);
         const viewerManager = createViewerManager(dataStore);
         const entityHandlers = createEntityHandlers(dataStore);
         
@@ -67,16 +109,6 @@ export const App = {
             dataStore, 
             () => currentSquares.value
         );
-
-        // Shared dropdown reference
-        const sharedDropdownRef = ref(null);
-
-        // Handle show dropdown requests from EntityControls
-        const handleShowDropdown = (config) => {
-            if (sharedDropdownRef.value) {
-                sharedDropdownRef.value.show(config);
-            }
-        };
 
         // Rectangle selection for squares
         const {
@@ -117,19 +149,25 @@ export const App = {
             console.log('Square document changed to:', docId);
         };
 
-        // Set up keyboard handling
+        // Set up keyboard handling and proximity system
         let keyboardCleanup;
         
         onMounted(() => {
             keyboardCleanup = setupKeyboardListeners(keyboardHandler);
             document.addEventListener('mousemove', viewerManager.handleReorderMove);
             document.addEventListener('mouseup', viewerManager.handleReorderEnd);
+            
+            // Start the energy proximity system
+            proximitySystem.start();
         });
 
         onUnmounted(() => {
             if (keyboardCleanup) keyboardCleanup();
             document.removeEventListener('mousemove', viewerManager.handleReorderMove);
             document.removeEventListener('mouseup', viewerManager.handleReorderEnd);
+            
+            // Stop the energy proximity system
+            proximitySystem.stop();
         });
 
         return {
@@ -141,6 +179,8 @@ export const App = {
             connections, // Expose connections for template
             squareViewerContentRef,
             sharedDropdownRef,
+            isIndicatorPickerVisible,
+            currentIndicatorEmoji,
             isSelectingSquares,
             squareSelectionRect,
             getSquareSelectionRectStyle,
@@ -148,6 +188,8 @@ export const App = {
             handleSquareViewerContainerClick,
             handleSquareDocumentTabChange,
             handleShowDropdown,
+            handleIndicatorPickerClose,
+            handleIndicatorPickerSelect,
             // Expose handlers from modules
             ...entityHandlers,
             ...viewerManager
@@ -161,7 +203,8 @@ export const App = {
         CircleCharacteristicsBar,
         SquareDocumentTabs,
         SharedDropdown,
-        ConnectionComponent // Add the connection component
+        IndicatorEmojiPicker,
+        ConnectionComponent
     },
     template: `
         <div :class="['app-container', { 'has-minimized-dock': hasMinimizedViewers }]">
@@ -195,7 +238,7 @@ export const App = {
                         :class="['square-viewer-content', { 'no-characteristics-bar': !hasSelectedCircle }]"
                         @click="handleSquareViewerClick"
                     >
-                        <!-- Connection Rendering - THIS IS THE KEY ADDITION -->
+                        <!-- Connection Rendering -->
                         <ConnectionComponent
                             v-for="connection in connections"
                             :key="connection.id"
@@ -212,14 +255,6 @@ export const App = {
                             @update-position="handleSquarePositionUpdate"
                             @update-name="handleSquareNameUpdate"
                             @move-multiple="handleSquareMoveMultiple"
-                        />
-                        
-                        <!-- Entity controls for squares -->
-                        <EntityControls 
-                            entity-type="square"
-                            @add-entity="handleAddSquare"
-                            @document-change="handleSquareDocumentTabChange"
-                            @show-dropdown="handleShowDropdown"
                         />
                         
                         <!-- Add viewer button - moved from circle viewer to square viewer -->
@@ -240,6 +275,14 @@ export const App = {
                 
                 <!-- Shared Dropdown - positioned at viewers-container level to avoid clipping -->
                 <SharedDropdown ref="sharedDropdownRef" />
+                
+                <!-- Indicator Emoji Picker -->
+                <IndicatorEmojiPicker
+                    :is-visible="isIndicatorPickerVisible"
+                    :current-indicator="currentIndicatorEmoji"
+                    @close="handleIndicatorPickerClose"
+                    @select="handleIndicatorPickerSelect"
+                />
             </div>
         </div>
     `

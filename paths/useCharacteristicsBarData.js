@@ -2,6 +2,7 @@ import { ref, computed } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
 import { colorFamilies } from './colorFamilies.js';
 import { circleTypes } from './circleTypes.js';
+import { energyTypes } from './energyTypes.js';
 import { attributeInfo, storyCategories } from './emojiAttributes.js';
 import { useColorUtils } from './colorUtils.js';
 
@@ -46,6 +47,12 @@ export const useCharacteristicsBarData = () => {
   const circleType = computed(() => {
     if (!selectedCircle.value) return 'basic';
     return selectedCircle.value.type || 'basic';
+  });
+
+  // Get circle energy types
+  const circleEnergyTypes = computed(() => {
+    if (!selectedCircle.value) return [];
+    return selectedCircle.value.energyTypes || [];
   });
 
   // Get type info
@@ -102,18 +109,25 @@ export const useCharacteristicsBarData = () => {
     return circleType.value === typeId;
   };
 
+  const isEnergySelected = (energyId) => {
+    return circleEnergyTypes.value.includes(energyId);
+  };
+
   return {
     selectedCircle,
     isVisible,
     circleColors,
     circleType,
+    circleEnergyTypes,
     currentTypeInfo,
     emojiAttributes,
     emojisByCategory,
     colorFamilies,
     circleTypes,
+    energyTypes,
     isColorSelected,
     isTypeSelected,
+    isEnergySelected,
     findColorInfo
   };
 };

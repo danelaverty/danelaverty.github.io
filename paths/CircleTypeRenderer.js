@@ -1,4 +1,4 @@
-// CircleTypeRenderer.js - Fixed to properly handle multicolor glow circles
+// CircleTypeRenderer.js - Fixed to properly handle multicolor glow circles and emoji circles
 import { injectComponentStyles } from './styleUtils.js';
 import { adjustBrightness, darken, lighten } from './colorUtils.js';
 import { SelectionRenderer } from './SelectionRenderer.js';
@@ -6,6 +6,7 @@ import { BasicCircleRenderer } from './BasicCircleRenderer.js';
 import { GlowCircleRenderer } from './GlowCircleRenderer.js';
 import { TriangleCircleRenderer } from './TriangleCircleRenderer.js';
 import { GemCircleRenderer } from './GemCircleRenderer.js';
+import { EmojiCircleRenderer } from './EmojiCircleRenderer.js';
 import { circleTypeStyles } from './circleTypeStyles.js';
 import { ColorFlowSystem } from './ColorFlowSystem.js';
 
@@ -43,7 +44,7 @@ export const CircleTypeRenderer = {
         
         // Set the appropriate type class
         if (element && element.classList) {
-            element.classList.remove('circle-type-basic', 'circle-type-glow', 'circle-type-triangle', 'circle-type-gem');
+            element.classList.remove('circle-type-basic', 'circle-type-glow', 'circle-type-triangle', 'circle-type-gem', 'circle-type-emoji');
             element.classList.add(`circle-type-${currentType}`);
         }
         
@@ -59,6 +60,9 @@ export const CircleTypeRenderer = {
                 break;
             case 'gem':
                 GemCircleRenderer.render(element, circle);
+                break;
+            case 'emoji':
+                EmojiCircleRenderer.render(element, circle);
                 break;
             default:
                 BasicCircleRenderer.render(element, circle);
@@ -117,7 +121,8 @@ export const CircleTypeRenderer = {
             '.triangle-outline',
             '.color-flow-overlay',
             '.outer-polygon-container',
-            '.gem-container'
+            '.gem-container',
+            '.emoji-circle-container'
         ];
         
         elementsToRemove.forEach(selector => {

@@ -63,6 +63,32 @@ export const useCharacteristicsBarActions = () => {
     }
   };
 
+  const selectEnergy = (energyId, isCtrlClick, selectedCircle, currentEnergyTypes) => {
+    if (!selectedCircle) return;
+    
+    const circleId = selectedCircle.id;
+    let newEnergyTypes;
+    
+    if (isCtrlClick || currentEnergyTypes.length > 0) {
+      // Multi-selection mode or adding to existing
+      if (currentEnergyTypes.includes(energyId)) {
+        // Remove energy type if already selected
+        newEnergyTypes = currentEnergyTypes.filter(id => id !== energyId);
+      } else {
+        // Add energy type
+        newEnergyTypes = [...currentEnergyTypes, energyId];
+      }
+    } else {
+      // Single selection mode
+      newEnergyTypes = [energyId];
+    }
+    
+    // Update circle with new energy types
+    dataStore.updateCircle(circleId, {
+      energyTypes: newEnergyTypes
+    });
+  };
+
   const selectEmoji = (attribute) => {
     const selectedSquares = dataStore.getSelectedSquares();
     
@@ -110,9 +136,23 @@ export const useCharacteristicsBarActions = () => {
     }
   };
 
+  // NEW: Circle emoji selection for emoji-type circles
+  const selectCircleEmoji = (emoji, selectedCircle) => {
+    if (!selectedCircle || selectedCircle.type !== 'emoji') return;
+    
+    const circleId = selectedCircle.id;
+    
+    // Update the circle's emoji
+    dataStore.updateCircle(circleId, {
+      emoji: emoji
+    });
+  };
+
   return {
     selectColor,
     selectType,
-    selectEmoji
+    selectEnergy,
+    selectEmoji,
+    selectCircleEmoji
   };
 };

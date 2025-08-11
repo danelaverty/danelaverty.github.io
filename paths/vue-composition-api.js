@@ -8,5 +8,6 @@ export const {
     onUnmounted, 
     onUpdated,
     watch, 
+    watchEffect, 
     nextTick 
 } = Vue;

@@ -8,7 +8,7 @@ const selectionStyles = `
         display: block !important; /* Force display to prevent hiding */
         pointer-events: none;
         transition: all 0.2s ease;
-        z-index: 25 !important; /* Higher z-index to ensure visibility */
+        z-index: 9 !important; /* Higher z-index to ensure visibility */
         border: 3px solid transparent;
         box-sizing: border-box !important; /* Ensure consistent sizing */
         opacity: 1 !important; /* Force opacity */
@@ -63,7 +63,7 @@ const selectionStyles = `
         left: -2px;
         width: calc(100% + 4px);
         height: calc(100% + 4px);
-        border: 4px solid transparent;
+        border: 2px solid transparent;
         border-radius: 6px;
     }
 
