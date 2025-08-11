@@ -63,10 +63,10 @@ export const ConnectionComponent = {
             const { square1, square2 } = props.connection;
             
             // Calculate center points of squares (16px offset for center of 32px squares)
-            const x1 = square1.x + 30; // Center of square
-            const y1 = square1.y + 16; // Center of square
-            const x2 = square2.x + 30;
-            const y2 = square2.y + 16;
+            const x1 = square1.x + 21; // Center of square
+            const y1 = square1.y + 21; // Center of square
+            const x2 = square2.x + 21;
+            const y2 = square2.y + 21;
             
             // Calculate distance and angle
             const dx = x2 - x1;

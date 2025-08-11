@@ -1,4 +1,4 @@
-// styles/circleTypeStyles.js - Enhanced CSS styles for all circle types including multi-facet gem animations
+// styles/circleTypeStyles.js - Enhanced CSS styles for all circle types including emoji circles
 export const circleTypeStyles = `
     /* Basic circle type (default) */
     .circle-type-basic {
@@ -118,6 +118,30 @@ export const circleTypeStyles = `
         transition: transform 0.3s ease;
         z-index: 5;
         pointer-events: none;
+    }
+
+    /* Emoji circle type - transparent background, just the emoji */
+    .circle-type-emoji {
+        background-color: transparent !important;
+        border: none !important;
+        border-radius: 50% !important;
+        position: relative;
+        overflow: visible;
+    }
+
+    /* Emoji container styling */
+    .emoji-circle-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        pointer-events: none;
+        z-index: 1;
     }
 
     /* Enhanced Gem circle type with multi-facet animation support */
@@ -434,6 +458,24 @@ export const circleTypeStyles = `
 
 /* FIXED: Override single-color styling for gem circles */
 .circle-shape.circle-type-gem.single-color {
+    background: none !important;
+    background-color: transparent !important;
+}
+
+/* FIXED: Ensure ALL emoji circles never show basic background */
+.circle-shape.circle-type-emoji {
+    background: none !important;
+    background-color: transparent !important;
+}
+
+/* FIXED: Override any multi-color styling for emoji circles */
+.circle-shape.circle-type-emoji.multi-color {
+    background: none !important;
+    background-color: transparent !important;
+}
+
+/* FIXED: Override single-color styling for emoji circles */
+.circle-shape.circle-type-emoji.single-color {
     background: none !important;
     background-color: transparent !important;
 }

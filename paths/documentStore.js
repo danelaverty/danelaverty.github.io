@@ -36,6 +36,7 @@ function createDocumentStore() {
         
         // For square documents with default "Tab" name, use numbered format
         if (entityType === 'square' && !baseName) {
+		if (!existingNames.has('Story')) { return 'Story'; }
             let counter = 1;
             let uniqueName;
             do {

@@ -53,7 +53,7 @@ const emojiRendererStyles = `
     .emoji-renderer--square .emoji-renderer__multi-container {
         font-size: 30px;
         position: absolute;
-        top: 50%;
+        top: 45%;
         left: 50%;
         transform: translate(-50%, -50%);
     }
@@ -73,8 +73,10 @@ const emojiRendererStyles = `
 
     .emoji-renderer--picker .emoji-renderer__icon,
     .emoji-renderer--picker .emoji-renderer__multi-container {
-        font-size: 24px;
+        font-size: 30px;
         height: 28px;
+		position: relative;
+			  bottom: 5px;
     }
 
     .emoji-renderer--picker .emoji-renderer__multi-emoji {

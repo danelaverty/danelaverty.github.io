@@ -1,4 +1,4 @@
-// entityStore.js - Unified entity management for circles and squares (Updated to use document's mostRecentlySetCircleType)
+// entityStore.js - Unified entity management for circles and squares with bold, indicator emoji, circle emoji, and energy support
 import { reactive } from './vue-composition-api.js';
 
 let entityStoreInstance = null;
@@ -56,6 +56,7 @@ function createEntityStore() {
             entity.color = '#4CAF50'; // Default green color
             entity.colors = ['#4CAF50']; // Support for multiple colors
             entity.crystal = 'Green'; // Default crystal name
+            entity.energyTypes = []; // NEW: Energy types array
             
             // NEW: Set circle type based on document's mostRecentlySetCircleType
             let defaultType = 'basic'; // Fallback default
@@ -66,6 +67,14 @@ function createEntityStore() {
                 }
             }
             entity.type = defaultType;
+            
+            // NEW: Add emoji property for emoji-type circles
+            entity.emoji = null; // Default: no emoji, will be set when type is 'emoji'
+            
+            // Set default emoji for emoji-type circles
+            if (entity.type === 'emoji') {
+                entity.emoji = '🧑🏼'; // Default emoji for emoji circles
+            }
         }
 
         // Add square-specific properties
@@ -74,6 +83,8 @@ function createEntityStore() {
             entity.emojiKey = null; // Key from attributeInfo
             entity.emojiCss = null; // CSS filter for emoji
             entity.color = '#FF6B6B'; // Default color (can be overridden by emoji)
+            entity.bold = false; // Default bold state
+            entity.indicatorEmoji = null; // Default indicator emoji
         }
 
         const store = entityType === 'circle' ? data.circles : data.squares;
@@ -97,7 +108,7 @@ function createEntityStore() {
         if (entity) {
             Object.assign(entity, updates);
             
-            // For circles, ensure color consistency
+            // For circles, ensure color consistency, emoji handling, and energy types
             if (entityType === 'circle') {
                 // If colors array is updated but color is not, update primary color
                 if (updates.colors && !updates.color && updates.colors.length > 0) {
@@ -110,6 +121,19 @@ function createEntityStore() {
                 // Ensure colors array always exists
                 if (!entity.colors) {
                     entity.colors = entity.color ? [entity.color] : ['#4CAF50'];
+                }
+                
+                // Ensure energyTypes array always exists
+                if (!entity.energyTypes) {
+                    entity.energyTypes = [];
+                }
+                
+                // Handle emoji when type changes to/from 'emoji'
+                if (updates.type === 'emoji' && !entity.emoji) {
+                    entity.emoji = '🧑🏼'; // Set default emoji for emoji circles
+                } else if (updates.type && updates.type !== 'emoji') {
+                    // Don't clear emoji when changing away from emoji type - keep it for future use
+                    // entity.emoji = null; // Commented out to preserve emoji
                 }
             }
             
@@ -170,7 +194,7 @@ function createEntityStore() {
         if (savedData.circles) {
             data.circles = new Map(savedData.circles);
             
-            // Ensure all circles have the new color properties
+            // Ensure all circles have the new color, emoji, and energy properties
             data.circles.forEach((circle, id) => {
                 if (!circle.colors) {
                     circle.colors = circle.color ? [circle.color] : ['#4CAF50'];
@@ -181,12 +205,24 @@ function createEntityStore() {
                 if (!circle.color) {
                     circle.color = '#4CAF50'; // Default color
                 }
+                // Ensure emoji property exists for circles
+                if (circle.emoji === undefined) {
+                    circle.emoji = null;
+                }
+                // Set default emoji for existing emoji-type circles that don't have one
+                if (circle.type === 'emoji' && !circle.emoji) {
+                    circle.emoji = '🧑🏼';
+                }
+                // NEW: Ensure energyTypes property exists for circles
+                if (!circle.energyTypes) {
+                    circle.energyTypes = [];
+                }
             });
         }
         if (savedData.squares) {
             data.squares = new Map(savedData.squares);
             
-            // Ensure all squares have the new emoji properties
+            // Ensure all squares have the new emoji, bold, and indicator properties
             data.squares.forEach((square, id) => {
                 if (square.emoji === undefined) {
                     square.emoji = null;
@@ -201,6 +237,14 @@ function createEntityStore() {
                 // Ensure squares have a color property
                 if (!square.color) {
                     square.color = '#FF6B6B'; // Default square color
+                }
+                // Ensure squares have a bold property
+                if (square.bold === undefined) {
+                    square.bold = false; // Default to not bold
+                }
+                // Ensure squares have an indicator emoji property
+                if (square.indicatorEmoji === undefined) {
+                    square.indicatorEmoji = null; // Default to no indicator
                 }
             });
         }

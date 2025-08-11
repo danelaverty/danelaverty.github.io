@@ -10,7 +10,7 @@ const componentStyles = `
         top: 50px; /* Position below the characteristics bar */
         left: 0;
         right: 0;
-        height: 32px;
+        height: 21px;
         border-bottom: 1px solid #333;
         display: flex;
         align-items: stretch;
@@ -39,7 +39,7 @@ const componentStyles = `
         padding: 0 12px;
         min-width: 80px;
         max-width: 160px;
-        height: 32px;
+        height: 21px;
         background-color: #2a2a2a;
         border: 1px solid #333;
         border-bottom: none;
@@ -50,7 +50,7 @@ const componentStyles = `
         position: relative;
         flex-shrink: 0;
         margin-right: 2px;
-        margin-top: 4px;
+        margin-top: 0px;
     }
 
     .document-tab:hover {
@@ -62,7 +62,7 @@ const componentStyles = `
         background-color: #0a0a0a; /* Match square viewer background */
         border-color: #555;
         margin-top: 0;
-        height: 36px;
+        height: 21px;
         z-index: 2;
         color: white;
     }
@@ -163,7 +163,7 @@ const componentStyles = `
         align-items: center;
         justify-content: center;
         width: 32px;
-        height: 32px;
+        height: 21px;
         background-color: #2a2a2a;
         border: 1px solid #333;
         border-bottom: none;
@@ -174,7 +174,6 @@ const componentStyles = `
         flex-shrink: 0;
         color: #777;
         font-size: 14px;
-        margin-top: 4px;
         margin-left: 2px; /* Small gap from last tab */
     }
 
@@ -196,7 +195,7 @@ const componentStyles = `
 
     .drag-placeholder {
         width: 2px;
-        height: 32px;
+        height: 21px;
         background-color: #4CAF50;
         transition: all 0.2s ease;
     }

@@ -1,4 +1,4 @@
-// ConnectionManager.js - Efficient connection management for squares (Fixed deletion handling)
+// ConnectionManager.js - Efficient connection management for squares with bold support
 import { reactive, computed } from './vue-composition-api.js';
 
 export class ConnectionManager {
@@ -7,9 +7,11 @@ export class ConnectionManager {
             connections: new Map() // Map of connection IDs to connection objects
         });
         
-        this.CONNECTION_DISTANCE = 120;
+        this.CONNECTION_DISTANCE = 130;
+        this.BOLD_CONNECTION_DISTANCE = 165; // Increased distance for bold squares
         this.lastSquarePositions = new Map(); // Cache for position change detection
         this.lastSquareIds = new Set(); // Cache for tracking which squares existed
+        this.lastSquareBoldStates = new Map(); // Cache for tracking bold state changes
     }
 
     /**
@@ -22,6 +24,17 @@ export class ConnectionManager {
     }
 
     /**
+     * Get connection distance based on whether either square is bold
+     */
+    getConnectionDistance(square1, square2) {
+        // If either square is bold, use the bold connection distance
+        if (square1.bold === true || square2.bold === true) {
+            return this.BOLD_CONNECTION_DISTANCE;
+        }
+        return this.CONNECTION_DISTANCE;
+    }
+
+    /**
      * Generate a consistent connection ID for two squares
      */
     getConnectionId(square1Id, square2Id) {
@@ -30,7 +43,7 @@ export class ConnectionManager {
     }
 
     /**
-     * Check if the set of squares has changed (added/removed) or positions changed
+     * Check if the set of squares has changed (added/removed) or positions/bold states changed
      */
     hasSquaresChanged(squares) {
         const currentSquareIds = new Set(squares.map(s => s.id));
@@ -53,10 +66,17 @@ export class ConnectionManager {
             }
         }
         
-        // Check if positions changed
+        // Check if positions or bold states changed
         for (const square of squares) {
             const lastPos = this.lastSquarePositions.get(square.id);
+            const lastBold = this.lastSquareBoldStates.get(square.id);
+            
             if (!lastPos || lastPos.x !== square.x || lastPos.y !== square.y) {
+                return true;
+            }
+            
+            // Check if bold state changed
+            if (lastBold !== (square.bold === true)) {
                 return true;
             }
         }
@@ -65,7 +85,7 @@ export class ConnectionManager {
     }
 
     /**
-     * Update cached positions and square IDs
+     * Update cached positions, square IDs, and bold states
      */
     updateCaches(squares) {
         // Update position cache
@@ -78,6 +98,12 @@ export class ConnectionManager {
         this.lastSquareIds.clear();
         squares.forEach(square => {
             this.lastSquareIds.add(square.id);
+        });
+        
+        // Update bold state cache
+        this.lastSquareBoldStates.clear();
+        squares.forEach(square => {
+            this.lastSquareBoldStates.set(square.id, square.bold === true);
         });
     }
 
@@ -125,8 +151,9 @@ export class ConnectionManager {
                 const square1 = squares[i];
                 const square2 = squares[j];
                 const distance = this.calculateDistance(square1, square2);
+                const connectionDistance = this.getConnectionDistance(square1, square2);
                 
-                if (distance <= this.CONNECTION_DISTANCE) {
+                if (distance <= connectionDistance) {
                     const connectionId = this.getConnectionId(square1.id, square2.id);
                     newConnections.set(connectionId, {
                         id: connectionId,
@@ -134,7 +161,8 @@ export class ConnectionManager {
                         square2Id: square2.id,
                         square1: square1,
                         square2: square2,
-                        distance: distance
+                        distance: distance,
+                        connectionDistance: connectionDistance // Store the distance used for this connection
                     });
                 }
             }
@@ -156,13 +184,22 @@ export class ConnectionManager {
                 const square2 = staticSquares[j];
                 const connectionId = this.getConnectionId(square1.id, square2.id);
                 
-                // If this connection existed before, keep it
+                // If this connection existed before, keep it (but recalculate in case bold state changed)
                 if (this.data.connections.has(connectionId)) {
-                    newConnections.set(connectionId, {
-                        ...this.data.connections.get(connectionId),
-                        square1: square1, // Update references
-                        square2: square2
-                    });
+                    const distance = this.calculateDistance(square1, square2);
+                    const connectionDistance = this.getConnectionDistance(square1, square2);
+                    
+                    if (distance <= connectionDistance) {
+                        newConnections.set(connectionId, {
+                            id: connectionId,
+                            square1Id: square1.id,
+                            square2Id: square2.id,
+                            square1: square1,
+                            square2: square2,
+                            distance: distance,
+                            connectionDistance: connectionDistance
+                        });
+                    }
                 }
             }
         }
@@ -173,16 +210,18 @@ export class ConnectionManager {
                 if (draggedSquare.id === otherSquare.id) continue;
                 
                 const distance = this.calculateDistance(draggedSquare, otherSquare);
+                const connectionDistance = this.getConnectionDistance(draggedSquare, otherSquare);
                 const connectionId = this.getConnectionId(draggedSquare.id, otherSquare.id);
                 
-                if (distance <= this.CONNECTION_DISTANCE) {
+                if (distance <= connectionDistance) {
                     newConnections.set(connectionId, {
                         id: connectionId,
                         square1Id: draggedSquare.id,
                         square2Id: otherSquare.id,
                         square1: draggedSquare,
                         square2: otherSquare,
-                        distance: distance
+                        distance: distance,
+                        connectionDistance: connectionDistance
                     });
                 }
             }
@@ -196,6 +235,7 @@ export class ConnectionManager {
         this.data.connections.clear();
         this.lastSquarePositions.clear();
         this.lastSquareIds.clear();
+        this.lastSquareBoldStates.clear();
     }
 
     /**

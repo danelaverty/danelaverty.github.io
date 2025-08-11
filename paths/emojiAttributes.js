@@ -32,7 +32,8 @@ export const attributeInfo = {
   "treasure": {
     "emoji": "💎",
     "color": "#66D6FF",
-    "displayName": "Treasure"
+    "displayName": "Treasure",
+    "emojiCss": "brightness(1.2) drop-shadow(0px 0px 2px white)",
   },
   "mountain": {
     "emoji": "⛰️",
@@ -164,7 +165,14 @@ export const attributeInfo = {
   "trophy": {
     "emoji": "🏆",
     "color": "#975",
-    "displayName": "Trophy"
+    "displayName": "Trophy",
+    "emojiCss": "brightness(1.2) drop-shadow(0px 0px 2px white)",
+  },
+  "recognition": {
+    "emoji": "🎉",
+    "color": "#759",
+    "displayName": "Recognition",
+    "emojiCss": "brightness(1.2) drop-shadow(0px 0px 2px white)",
   },
   "lock": {
     "emoji": "🔒",
@@ -254,7 +262,7 @@ export const attributeInfo = {
   "technique": {
     "emoji": "✍️",
     "color": "#C99",
-    "displayName": "Technique"
+    "displayName": "Practice"
   },
   "strength": {
     "emoji": "💪",
@@ -284,7 +292,7 @@ export const attributeInfo = {
   "conceptualThing": {
     "emoji": "💭",
     "color": "#C9C",
-    "displayName": "Concept"
+    "displayName": "Idea"
   },
   "words": {
     "emoji": "💬",
@@ -311,6 +319,17 @@ export const attributeInfo = {
     "color": "#858",
     "displayName": "Mystery"
   },
+  "question": {
+    "emoji": "❓",
+    "color": "#855",
+    "displayName": "Question"
+  },
+  "solution": {
+    "emoji": "💡",
+    "color": "#dcc178",
+    "emojiCss": "brightness(1.5) drop-shadow(0px 0px 2px white) drop-shadow(0px 0px 2px white) drop-shadow(0px 0px 2px white) drop-shadow(0px 0px 2px white)",
+    "displayName": "Solution"
+  },
   "hypothesis": {
     "emoji": "💭",
     "color": "#77A",
@@ -319,7 +338,7 @@ export const attributeInfo = {
   "picture": {
     "emoji": "🖼️",
     "color": "#7AA",
-    "displayName": "Picture"
+    "displayName": "Reference"
   },
   "piece": {
     "emoji": "🧩",
@@ -507,40 +526,55 @@ export const attributeInfo = {
     "color": "#f0f0d0",
     "displayName": "Relief"
   },
+  "presentation": {
+    "emoji": "👨🏻‍🏫",
+    "color": "#bbb",
+    "emojiCss": "brightness(1.2)",
+    "displayName": "Presenting"
+  },
+  "todo": {
+    "emoji": "📝",
+    "color": "#eed",
+    "displayName": "To Do"
+  },
 };
 
 // Story categories that group related emojis by narrative theme
 export const storyCategories = {
+  "basics": {
+    "name": "Basics",
+    "emojis": ["todo"]
+  },
   "exploring": {
     "name": "Exploring",
-    "emojis": ["me", "milestone", "door", "lock", "key", "treasure"]
+    "emojis": ["milestone", "door", "lock", "key", "treasure"]
   },
   "competing": {
     "name": "Competing", 
-    "emojis": ["me", "competitor", "myPiece", "theirPiece", "goal", "trophy"]
+    "emojis": ["competitor", "myPiece", "theirPiece", "goal", "trophy"]
   },
   "copying": {
-    "name": "Copying", 
-    "emojis": ["picture", "roleModel", "technique", "trophy"]
+    "name": "Creating", 
+    "emojis": ["conceptualThing", "picture", "roleModel", "technique", "presentation", "recognition"]
   },
   "firefighting": {
     "name": "Firefighting", 
-    "emojis": ["fire", "tree", "water", "house", "fireOut"]
+    "emojis": ["fire", "tree", "water", "fireOut", "house"]
   },
   "tooBigBite": {
     "name": "Too Big Bite", 
-    "emojis": ["distress", "chunk", "cut", "spit", "swallow", "relief"]
+    "emojis": ["chunk", "distress", "cut", "spit", "relief"]
   },
   "solving": {
     "name": "Solving",
-    "emojis": ["mystery", "hypothesis", "clue", "piece", "picture"]
+    "emojis": ["mystery", "question", "hypothesis", "clue", "solution"]
   },
-  "speaking": {
+  /*"speaking": {
     "name": "Speaking",
     "emojis": ["conceptualThing", "words", "audience", "trophy"]
-  },
+  },*/
   "gardening": {
     "name": "Gardening",
-    "emojis": ["seedling", "wiltedFlower", "water", "bug", "flower"]
+    "emojis": ["seedling", "wiltedFlower", "bug", "water", "flower"]
   },
 };

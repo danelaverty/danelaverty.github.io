@@ -1,5 +1,6 @@
-// keyboardHandler.js - Centralized keyboard event handling with circle deletion confirmation
+// keyboardHandler.js - Centralized keyboard event handling with bold square support and indicator emoji picker
 import { alignEntities } from './alignmentUtils.js';
+import { useConnections } from './useConnections.js';
 
 /**
  * Check if user is currently editing text
@@ -36,10 +37,67 @@ function confirmCircleDeletion(circleCount) {
 /**
  * Create a keyboard handler with data store context
  * @param {Object} dataStore - The data store instance
+ * @param {Function} onShowIndicatorPicker - Callback to show indicator picker
  * @returns {Function} The keyboard event handler
  */
-export function createKeyboardHandler(dataStore) {
+export function createKeyboardHandler(dataStore, onShowIndicatorPicker = null) {
     return function handleKeydown(e) {
+        // Handle CTRL+I for indicator emoji picker on squares
+        if (e.key === 'i' && (e.ctrlKey || e.metaKey)) {
+            // Don't interfere with text editing - let browser handle CTRL+I normally
+            if (isTextEditingActive()) {
+                return; // Let the browser's default CTRL+I behavior work
+            }
+            
+            e.preventDefault(); // Prevent browser's italic only when not editing text
+            
+            const selectedSquares = dataStore.getSelectedSquares();
+            if (selectedSquares.length > 0 && onShowIndicatorPicker) {
+                // Get the current indicator emoji from the first selected square (if any)
+                const firstSquare = dataStore.getSquare(selectedSquares[0]);
+                const currentIndicator = firstSquare?.indicatorEmoji || null;
+                
+                onShowIndicatorPicker(currentIndicator);
+                console.log(`Opening indicator picker for ${selectedSquares.length} squares`);
+            }
+            return;
+        }
+        
+        // Handle CTRL+B for bold toggle on squares
+        if (e.key === 'b' && (e.ctrlKey || e.metaKey)) {
+            // Don't interfere with text editing - let browser handle CTRL+B normally
+            if (isTextEditingActive()) {
+                return; // Let the browser's default CTRL+B behavior work
+            }
+            
+            e.preventDefault(); // Prevent browser's bold only when not editing text
+            
+            const selectedSquares = dataStore.getSelectedSquares();
+            if (selectedSquares.length > 0) {
+                // Toggle bold state for all selected squares
+                selectedSquares.forEach(squareId => {
+                    const square = dataStore.getSquare(squareId);
+                    if (square) {
+                        // Toggle the bold property
+                        const newBoldState = !square.bold;
+                        dataStore.updateSquare(squareId, { bold: newBoldState });
+                        console.log(`Square ${squareId} bold state: ${newBoldState}`);
+                    }
+                });
+                
+                console.log(`Toggled bold state for ${selectedSquares.length} squares`);
+                
+                // Force update connections since bold state affects connection radius
+                const { connectionManager } = useConnections();
+                const currentDoc = dataStore.getCurrentSquareDocument();
+                if (currentDoc) {
+                    const squares = dataStore.getSquaresForDocument(currentDoc.id);
+                    connectionManager.forceUpdate(squares);
+                }
+            }
+            return;
+        }
+        
         // Handle CTRL+SHIFT+V for vertical alignment
         if (e.key === 'V' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
             e.preventDefault();
