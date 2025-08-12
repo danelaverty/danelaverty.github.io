@@ -1,4 +1,4 @@
-// entityStore.js - Unified entity management for circles and squares with bold, indicator emoji, circle emoji, and energy support
+// entityStore.js - Unified entity management for circles and squares with bold, indicator emoji, circle emoji, energy support, and activation
 import { reactive } from './vue-composition-api.js';
 
 let entityStoreInstance = null;
@@ -53,12 +53,12 @@ function createEntityStore() {
 
         // Add circle-specific properties
         if (entityType === 'circle') {
-            entity.color = '#4CAF50'; // Default green color
+            entity.color = '#CCCCCC'; // Default color
             entity.colors = ['#4CAF50']; // Support for multiple colors
-            entity.crystal = 'Green'; // Default crystal name
-            entity.energyTypes = []; // NEW: Energy types array
+            entity.energyTypes = []; // Energy types array
+            entity.activation = 'inactive'; // NEW: Default activation state
             
-            // NEW: Set circle type based on document's mostRecentlySetCircleType
+            // Set circle type based on document's mostRecentlySetCircleType
             let defaultType = 'basic'; // Fallback default
             if (documentStore) {
                 const recentType = documentStore.getMostRecentlySetCircleType(documentId);
@@ -68,7 +68,7 @@ function createEntityStore() {
             }
             entity.type = defaultType;
             
-            // NEW: Add emoji property for emoji-type circles
+            // Add emoji property for emoji-type circles
             entity.emoji = null; // Default: no emoji, will be set when type is 'emoji'
             
             // Set default emoji for emoji-type circles
@@ -82,7 +82,7 @@ function createEntityStore() {
             entity.emoji = null; // Default: no emoji
             entity.emojiKey = null; // Key from attributeInfo
             entity.emojiCss = null; // CSS filter for emoji
-            entity.color = '#FF6B6B'; // Default color (can be overridden by emoji)
+            entity.color = '#CCCCCC'; // Default color (can be overridden by emoji)
             entity.bold = false; // Default bold state
             entity.indicatorEmoji = null; // Default indicator emoji
         }
@@ -108,7 +108,7 @@ function createEntityStore() {
         if (entity) {
             Object.assign(entity, updates);
             
-            // For circles, ensure color consistency, emoji handling, and energy types
+            // For circles, ensure color consistency, emoji handling, energy types, and activation
             if (entityType === 'circle') {
                 // If colors array is updated but color is not, update primary color
                 if (updates.colors && !updates.color && updates.colors.length > 0) {
@@ -126,6 +126,16 @@ function createEntityStore() {
                 // Ensure energyTypes array always exists
                 if (!entity.energyTypes) {
                     entity.energyTypes = [];
+                }
+                
+                // NEW: Ensure activation property always exists
+                if (!entity.activation) {
+                    entity.activation = 'inactive';
+                }
+                
+                // Handle activation state changes
+                if (updates.activation !== undefined) {
+                    entity.activation = updates.activation;
                 }
                 
                 // Handle emoji when type changes to/from 'emoji'
@@ -194,16 +204,13 @@ function createEntityStore() {
         if (savedData.circles) {
             data.circles = new Map(savedData.circles);
             
-            // Ensure all circles have the new color, emoji, and energy properties
+            // Ensure all circles have the new color, emoji, energy, and activation properties
             data.circles.forEach((circle, id) => {
                 if (!circle.colors) {
-                    circle.colors = circle.color ? [circle.color] : ['#4CAF50'];
-                }
-                if (!circle.crystal) {
-                    circle.crystal = 'Green'; // Default crystal
+                    circle.colors = circle.color ? [circle.color] : ['#CCCCCC'];
                 }
                 if (!circle.color) {
-                    circle.color = '#4CAF50'; // Default color
+                    circle.color = '#CCCCCC'; // Default color
                 }
                 // Ensure emoji property exists for circles
                 if (circle.emoji === undefined) {
@@ -213,9 +220,13 @@ function createEntityStore() {
                 if (circle.type === 'emoji' && !circle.emoji) {
                     circle.emoji = '🧑🏼';
                 }
-                // NEW: Ensure energyTypes property exists for circles
+                // Ensure energyTypes property exists for circles
                 if (!circle.energyTypes) {
                     circle.energyTypes = [];
+                }
+                // NEW: Ensure activation property exists for circles
+                if (circle.activation === undefined) {
+                    circle.activation = 'inactive'; // Default for existing circles
                 }
             });
         }
@@ -236,7 +247,7 @@ function createEntityStore() {
                 }
                 // Ensure squares have a color property
                 if (!square.color) {
-                    square.color = '#FF6B6B'; // Default square color
+                    square.color = '#CCCCCC'; // Default square color
                 }
                 // Ensure squares have a bold property
                 if (square.bold === undefined) {

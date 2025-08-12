@@ -543,7 +543,7 @@ export const attributeInfo = {
 export const storyCategories = {
   "basics": {
     "name": "Basics",
-    "emojis": ["todo"]
+    "emojis": ["me", "todo", "conceptualThing"]
   },
   "exploring": {
     "name": "Exploring",

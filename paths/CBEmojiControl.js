@@ -7,10 +7,6 @@ export const EmojiControl = {
       type: Object,
       required: true
     },
-    meEmoji: {
-      type: Object,
-      required: true
-    },
     isPickerOpen: {
       type: Boolean,
       default: false
@@ -45,24 +41,6 @@ export const EmojiControl = {
                 v-if="causeEmoji"
                 :emoji="causeEmoji"
                 context="cause"
-                :interactive="true"
-            />
-        </div>
-        
-        <!-- Me Emoji -->
-        <div
-            :class="['emoji-display', 'recent-emoji-item', { 'picker-open': isPickerOpen }]"
-            @click="$emit('selectQuickEmoji', meEmoji)"
-            :title="getEmojiDisplayTitle(meEmoji, 'me')"
-            :style="{ 
-                backgroundColor: meEmoji ? meEmoji.color : 'transparent', 
-                border: 'none' 
-            }"
-        >
-            <EmojiRenderer 
-                v-if="meEmoji"
-                :emoji="meEmoji"
-                context="me"
                 :interactive="true"
             />
         </div>

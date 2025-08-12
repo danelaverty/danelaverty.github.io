@@ -1,108 +1,197 @@
-// pickers/CircleEmojiPickerModal.js
+// pickers/CircleEmojiPickerModal.js - Updated with enhanced variant system
+import { emojiCategories } from './emojiFullSet.js';
+import { EmojiVariantService } from './EmojiVariantService.js';
+
 export const CircleEmojiPickerModal = {
-  emits: ['selectCircleEmoji', 'close'],
+  emits: ['selectCircleEmoji', 'selectCategory', 'close'],
   
   data() {
     return {
-      emojiCategories: {
-        people: ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '🥲', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '🥸', '😎', '🤓', '🧐', '😕', '😟', '🙁', '😮', '😯', '😲', '😳', '🥺', '😦', '😧', '😨', '😰', '😥', '😢', '😭', '😱', '😖', '😣', '😞', '😓', '😩', '😫', '🥱', '😤', '😡', '😠', '🤬', '😈', '👿', '💀', '☠️', '💩', '🤡', '👹', '👺', '👻', '👽', '👾', '🤖', '😺', '😸', '😹', '😻', '😼', '😽', '🙀', '😿', '😾'],
-        animals: ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🙈', '🙉', '🙊', '🐒', '🐔', '🐧', '🐦', '🐤', '🐣', '🐥', '🦆', '🦅', '🦉', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋', '🐌', '🐞', '🐜', '🦗', '🕷️', '🦂', '🐢', '🐍', '🦎', '🦖', '🦕', '🐙', '🦑', '🦐', '🦞', '🦀', '🐡', '🐠', '🐟', '🐬', '🐳', '🐋', '🦈', '🐊', '🐅', '🐆', '🦓', '🦍', '🦧', '🐘', '🦛', '🦏', '🐪', '🐫', '🦒', '🦘', '🐃', '🐂', '🐄', '🐎', '🐖', '🐏', '🐑', '🦙', '🐐', '🦌', '🐕', '🐩', '🦮', '🐕‍🦺', '🐈', '🐓', '🦃', '🦚', '🦜', '🦢', '🦩', '🕊️', '🐇', '🦝', '🦨', '🦡', '🦔'],
-        objects: ['⚽', '🏀', '🏈', '⚾', '🥎', '🎾', '🏐', '🏉', '🥏', '🎱', '🪀', '🏓', '🏸', '🏒', '🏑', '🥍', '🏏', '🪃', '🥅', '⛳', '🪁', '🏹', '🎣', '🤿', '🥊', '🥋', '🎽', '🛹', '🛷', '⛸️', '🥌', '🎿', '⛷️', '🏂', '🪂', '🏋️‍♀️', '🏋️', '🏋️‍♂️', '🤼‍♀️', '🤼', '🤼‍♂️', '🤸‍♀️', '🤸', '🤸‍♂️', '⛹️‍♀️', '⛹️', '⛹️‍♂️', '🤺', '🤾‍♀️', '🤾', '🤾‍♂️', '🏌️‍♀️', '🏌️', '🏌️‍♂️', '🏇', '🧘‍♀️', '🧘', '🧘‍♂️', '🏄‍♀️', '🏄', '🏄‍♂️', '🏊‍♀️', '🏊', '🏊‍♂️', '🤽‍♀️', '🤽', '🤽‍♂️', '🚣‍♀️', '🚣', '🚣‍♂️', '🧗‍♀️', '🧗', '🧗‍♂️', '🚵‍♀️', '🚵', '🚵‍♂️', '🚴‍♀️', '🚴', '🚴‍♂️', '🏆', '🥇', '🥈', '🥉', '🏅', '🎖️', '🏵️', '🎗️', '🎫', '🎟️', '🎪', '🤹‍♀️', '🤹', '🤹‍♂️', '🎭', '🩰', '🎨', '🎬', '🎤', '🎧', '🎼', '🎵', '🎶', '🪘', '🥁', '🪗', '🎷', '🎺', '🪕', '🎸', '🪈', '🎻', '🎹', '🎮', '👾', '🕹️', '🎲', '♠️', '♥️', '♦️', '♣️', '♟️', '🃏', '🀄', '🎴'],
-        nature: ['🌿', '☘️', '🍀', '🎍', '🪴', '🎋', '🍃', '🍂', '🍁', '🍄', '🐚', '🪨', '🌾', '💐', '🌷', '🌹', '🥀', '🌺', '🌸', '🌼', '🌻', '🌞', '🌝', '🌛', '🌜', '🌚', '🌕', '🌖', '🌗', '🌘', '🌑', '🌒', '🌓', '🌔', '🌙', '🌎', '🌍', '🌏', '🪐', '💫', '⭐', '🌟', '✨', '⚡', '☄️', '💥', '🔥', '🌪️', '🌈', '☀️', '🌤️', '⛅', '🌦️', '🌧️', '⛈️', '🌩️', '🌨️', '❄️', '☃️', '⛄', '🌬️', '💨', '💧', '💦', '☔', '☂️', '🌊', '🌫️'],
-        symbols: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '☮️', '✝️', '☪️', '🕉️', '☸️', '✡️', '🔯', '🕎', '☯️', '☦️', '🛐', '⛎', '♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓', '🆔', '⚛️', '🉑', '☢️', '☣️', '📴', '📳', '🈶', '🈚', '🈸', '🈺', '🈷️', '✴️', '🆚', '💮', '🉐', '㊙️', '㊗️', '🈴', '🈵', '🈹', '🈲', '🅰️', '🅱️', '🆎', '🆑', '🅾️', '🆘', '❌', '⭕', '🛑', '⛔', '📛', '🚫', '💯', '💢', '♨️', '🚷', '🚯', '🚳', '🚱', '🔞', '📵', '🚭', '❗', '❕', '❓', '❔', '‼️', '⁉️', '🔅', '🔆', '〽️', '⚠️', '🚸', '🔱', '⚜️', '🔰', '♻️', '✅', '🈯', '💹', '❇️', '✳️', '❎', '🌐', '💠', 'Ⓜ️', '🌀', '💤', '🏧', '🚾', '♿', '🅿️', '🛗', '🈳', '🈂️', '🛂', '🛃', '🛄', '🛅', '🚹', '🚺', '🚼', '🚻', '🚮', '🎦', '📶', '🈁', '🔣', 'ℹ️', '🔤', '🔡', '🔠', '🆖', '🆗', '🆙', '🆒', '🆕', '🆓', '0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟']
-      }
+      activeTab: 'smileys',
+      selectedSkinTone: '🏼', // Default medium-light skin tone
+      selectedGender: 'neutral', // neutral, male, female
+      
+      skinTones: [
+        { id: 'default', emoji: '', name: 'Default' },
+        { id: 'light', emoji: '🏻', name: 'Light' },
+        { id: 'medium-light', emoji: '🏼', name: 'Medium Light' },
+        { id: 'medium', emoji: '🏽', name: 'Medium' },
+        { id: 'medium-dark', emoji: '🏾', name: 'Medium Dark' },
+        { id: 'dark', emoji: '🏿', name: 'Dark' }
+      ],
+      
+      genderOptions: [
+        { id: 'neutral', name: 'Neutral', icon: '🧑' },
+        { id: 'male', name: 'Male', icon: '👨' },
+        { id: 'female', name: 'Female', icon: '👩' }
+      ],
+      
+      tabs: [
+        { id: 'smileys', name: 'Smileys', icon: '😀' },
+        { id: 'people', name: 'People', icon: '👱‍♀️' },
+        { id: 'animals', name: 'Animals & Nature', icon: '🐶' },
+        { id: 'food', name: 'Food & Drink', icon: '🍎' },
+        { id: 'activities', name: 'Activities', icon: '⚽' },
+        { id: 'travel', name: 'Travel & Places', icon: '🚗' },
+        { id: 'objects', name: 'Objects', icon: '💡' },
+        { id: 'symbols', name: 'Symbols', icon: '❤️' },
+      ],
+      
+      emojiCategories: emojiCategories,
     };
   },
   
+  computed: {
+    currentSkinTone() {
+      return this.skinTones.find(tone => tone.emoji === this.selectedSkinTone) || this.skinTones[2];
+    },
+    
+    currentGender() {
+      return this.genderOptions.find(gender => gender.id === this.selectedGender) || this.genderOptions[0];
+    },
+    
+    currentTabData() {
+      return this.emojiCategories[this.activeTab] || {};
+    },
+    
+    shouldShowSkinToneControls() {
+      return EmojiVariantService.shouldShowSkinToneControls(this.currentTabData);
+    },
+    
+    shouldShowGenderControls() {
+      return EmojiVariantService.shouldShowGenderControls(this.currentTabData);
+    }
+  },
+  
+  methods: {
+    setActiveTab(tabId) {
+      this.activeTab = tabId;
+    },
+    
+    setSkinTone(skinTone) {
+      this.selectedSkinTone = skinTone;
+    },
+    
+    setGender(gender) {
+      this.selectedGender = gender;
+    },
+    
+    getEmojiVariant(emojiData) {
+      return EmojiVariantService.getEmojiVariant(emojiData, this.selectedSkinTone, this.selectedGender);
+    },
+    
+    selectCircleEmoji(emoji, name = '') {
+      this.$emit('selectCircleEmoji', {
+        emoji: emoji,
+        name: name,
+        key: Date.now().toString()
+      });
+    },
+    
+    selectCategory(categoryData) {
+      this.$emit('selectCategory', categoryData);
+    }
+  },
+  
   template: `
-    <div 
-        class="circle-emoji-picker-modal"
-        style="display: block;"
-    >
-        <div class="circle-emoji-picker-header">
-            <span>Select Circle Emoji</span>
-            <button 
-                class="picker-close"
-                @click="$emit('close')"
-            >×</button>
+    <div class="circle-emoji-picker-modal-enhanced">
+      <!-- Tabs -->
+      <div class="circle-emoji-tabs">
+        <button 
+          v-for="tab in tabs"
+          :key="tab.id"
+          :class="['circle-emoji-tab', { active: activeTab === tab.id }]"
+          @click="setActiveTab(tab.id)"
+        >
+          {{ tab.icon }}
+        </button>
+      </div>
+      
+      <!-- Skin Tone Controls (only when relevant) -->
+      <div v-if="shouldShowSkinToneControls" class="person-controls">
+        <div class="skin-tone-selector">
+          <span class="control-label">Skin Tone:</span>
+          <div class="skin-tone-options">
+            <button
+              v-for="tone in skinTones"
+              :key="tone.id"
+              :class="['skin-tone-option', { active: selectedSkinTone === tone.emoji }]"
+              @click="setSkinTone(tone.emoji)"
+              :title="tone.name"
+            >
+              <span v-if="tone.emoji" class="skin-tone-demo">{{ '👋' + tone.emoji }}</span>
+              <span v-else class="skin-tone-demo">👋</span>
+            </button>
+          </div>
         </div>
-        
-        <div class="circle-emoji-grid">
-            <!-- People Category -->
-            <div class="circle-emoji-category">
-                <div class="circle-emoji-category-name">People</div>
-                <div class="circle-emoji-items">
-                    <div 
-                        v-for="emoji in emojiCategories.people"
-                        :key="emoji"
-                        class="circle-emoji-item"
-                        @click="$emit('selectCircleEmoji', emoji)"
-                    >
-                        {{ emoji }}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Animals Category -->
-            <div class="circle-emoji-category">
-                <div class="circle-emoji-category-name">Animals</div>
-                <div class="circle-emoji-items">
-                    <div 
-                        v-for="emoji in emojiCategories.animals"
-                        :key="emoji"
-                        class="circle-emoji-item"
-                        @click="$emit('selectCircleEmoji', emoji)"
-                    >
-                        {{ emoji }}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Objects Category -->
-            <div class="circle-emoji-category">
-                <div class="circle-emoji-category-name">Objects</div>
-                <div class="circle-emoji-items">
-                    <div 
-                        v-for="emoji in emojiCategories.objects"
-                        :key="emoji"
-                        class="circle-emoji-item"
-                        @click="$emit('selectCircleEmoji', emoji)"
-                    >
-                        {{ emoji }}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Nature Category -->
-            <div class="circle-emoji-category">
-                <div class="circle-emoji-category-name">Nature</div>
-                <div class="circle-emoji-items">
-                    <div 
-                        v-for="emoji in emojiCategories.nature"
-                        :key="emoji"
-                        class="circle-emoji-item"
-                        @click="$emit('selectCircleEmoji', emoji)"
-                    >
-                        {{ emoji }}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Symbols Category -->
-            <div class="circle-emoji-category">
-                <div class="circle-emoji-category-name">Symbols</div>
-                <div class="circle-emoji-items">
-                    <div 
-                        v-for="emoji in emojiCategories.symbols"
-                        :key="emoji"
-                        class="circle-emoji-item"
-                        @click="$emit('selectCircleEmoji', emoji)"
-                    >
-                        {{ emoji }}
-                    </div>
-                </div>
-            </div>
+      </div>
+      
+      <!-- Gender Controls (only when relevant) -->
+      <div v-if="shouldShowGenderControls" class="person-controls">
+        <div class="gender-selector">
+          <span class="control-label">Gender:</span>
+          <div class="gender-options">
+            <button
+              v-for="gender in genderOptions"
+              :key="gender.id"
+              :class="['gender-option', { active: selectedGender === gender.id }]"
+              @click="setGender(gender.id)"
+              :title="gender.name"
+            >
+              {{ gender.icon }}
+            </button>
+          </div>
         </div>
+      </div>
+      
+      <!-- Emoji Content -->
+      <div class="circle-emoji-content">
+        <!-- Iterate through categories for current tab -->
+        <div v-for="(categoryEmojis, categoryName) in currentTabData" :key="categoryName" class="circle-emoji-section">
+          <h4 class="section-title">{{ categoryName }}</h4>
+          <div class="circle-emoji-grid">
+            <!-- Handle array of strings (simple emojis) -->
+            <div 
+              v-if="Array.isArray(categoryEmojis) && typeof categoryEmojis[0] === 'string'"
+              v-for="emoji in categoryEmojis"
+              :key="emoji"
+              class="circle-emoji-item"
+              @click="selectCircleEmoji(emoji)"
+              :title="emoji"
+            >
+              {{ emoji }}
+            </div>
+            
+            <!-- Handle array of objects (emojis with variants) -->
+            <div 
+              v-else-if="Array.isArray(categoryEmojis) && typeof categoryEmojis[0] === 'object'"
+              v-for="emojiData in categoryEmojis"
+              :key="emojiData.base"
+              class="circle-emoji-item"
+              @click="selectCircleEmoji(getEmojiVariant(emojiData), emojiData.name)"
+              :title="emojiData.name"
+            >
+              {{ getEmojiVariant(emojiData) }}
+            </div>
+            
+            <!-- Handle mixed arrays (some strings, some objects) -->
+            <template v-else-if="Array.isArray(categoryEmojis)">
+              <div 
+                v-for="item in categoryEmojis"
+                :key="typeof item === 'string' ? item : item.base"
+                class="circle-emoji-item"
+                @click="selectCircleEmoji(
+                  typeof item === 'string' ? item : getEmojiVariant(item), 
+                  typeof item === 'string' ? item : item.name
+                )"
+                :title="typeof item === 'string' ? item : item.name"
+              >
+                {{ typeof item === 'string' ? item : getEmojiVariant(item) }}
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
     </div>
   `
 };
