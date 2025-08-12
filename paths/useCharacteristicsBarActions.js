@@ -30,14 +30,12 @@ export const useCharacteristicsBarActions = () => {
       dataStore.updateCircle(circleId, {
         colors: newColors,
         color: newColors[0], // Keep first color as primary
-        crystal: findColorInfo(newColors[0])?.crystal || 'Unknown'
       });
     } else {
       // Single color selection
       dataStore.updateCircle(circleId, {
         color: colorInfo.color,
         colors: [colorInfo.color],
-        crystal: colorInfo.crystal
       });
     }
   };
@@ -52,8 +50,7 @@ export const useCharacteristicsBarActions = () => {
       type: typeInfo.id
     });
     
-    // NEW: Save this type as the most recently set type for the circle's document
-    // This will affect future circles created in the same document
+    // Save this type as the most recently set type for the circle's document
     const circle = dataStore.getCircle ? dataStore.getCircle(circleId) : null;
     if (circle && circle.documentId) {
       // Use the document store's method to track the most recently set type
@@ -86,6 +83,20 @@ export const useCharacteristicsBarActions = () => {
     // Update circle with new energy types
     dataStore.updateCircle(circleId, {
       energyTypes: newEnergyTypes
+    });
+  };
+
+  // NEW: Toggle activation state
+  const toggleActivation = (selectedCircle) => {
+    if (!selectedCircle) return;
+    
+    const circleId = selectedCircle.id;
+    const currentActivation = selectedCircle.activation || 'inactive';
+    const newActivation = currentActivation === 'activated' ? 'inactive' : 'activated';
+    
+    // Update circle with new activation state
+    dataStore.updateCircle(circleId, {
+      activation: newActivation
     });
   };
 
@@ -136,7 +147,7 @@ export const useCharacteristicsBarActions = () => {
     }
   };
 
-  // NEW: Circle emoji selection for emoji-type circles
+  // Circle emoji selection for emoji-type circles
   const selectCircleEmoji = (emoji, selectedCircle) => {
     if (!selectedCircle || selectedCircle.type !== 'emoji') return;
     
@@ -152,6 +163,7 @@ export const useCharacteristicsBarActions = () => {
     selectColor,
     selectType,
     selectEnergy,
+    toggleActivation, // NEW: Export activation toggle
     selectEmoji,
     selectCircleEmoji
   };

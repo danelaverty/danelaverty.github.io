@@ -1,4 +1,4 @@
-// controls/CircleEmojiControl.js
+// controls/CircleEmojiControl.js - Updated with better variant display
 export const CircleEmojiControl = {
   props: {
     selectedCircle: {
@@ -13,17 +13,28 @@ export const CircleEmojiControl = {
   
   emits: ['toggle'],
   
+  computed: {
+    displayEmoji() {
+      // Get the emoji to display, with fallback to default person emoji
+      return this.selectedCircle.emoji || '🧑🏼';
+    },
+    
+    displayTitle() {
+      // Create a more descriptive title
+      const emoji = this.displayEmoji;
+      return `Circle Emoji: ${emoji}`;
+    }
+  },
+  
   template: `
     <div class="characteristic-control">
         <div 
-            :class="['emoji-display', { 'picker-open': isPickerOpen }]"
+            :class="['emoji-display', 'circle-emoji-display-control', { 'picker-open': isPickerOpen }]"
             @click="$emit('toggle')"
-            style="background-color: transparent; border: none; cursor: pointer;"
-            :title="'Circle Emoji: ' + (selectedCircle.emoji || '🧑🏼')"
+            :title="displayTitle"
         >
-            <div class="circle-emoji-display">{{ selectedCircle.emoji || '🧑🏼' }}</div>
+            <div class="circle-emoji-display">{{ displayEmoji }}</div>
         </div>
     </div>
   `
 };
-

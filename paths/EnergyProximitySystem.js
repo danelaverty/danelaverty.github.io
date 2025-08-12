@@ -38,7 +38,7 @@ export class EnergyProximitySystem {
             cancelAnimationFrame(this.animationFrame);
             this.animationFrame = null;
         }
-        this.resetAllScales();
+        this.resetAllProximityEffects();
     }
 
     /**
@@ -72,7 +72,7 @@ export class EnergyProximitySystem {
         if (this.proximityEffects.has(id)) {
             const data = this.circles.get(id);
             if (data && data.element) {
-                this.setElementScale(data.element, 1.0, this.config.maxOpacity, this.config.maxSaturation);
+                this.setElementProximityEffects(data.element, 1.0, this.config.maxOpacity, this.config.maxSaturation);
             }
             this.proximityEffects.delete(id);
         }
@@ -150,9 +150,9 @@ export class EnergyProximitySystem {
     }
 
     /**
-     * Set scale transform on an element while preserving other transforms, plus opacity and saturation
+     * Set proximity effects on an element (scale, opacity, saturation) while preserving other transforms
      */
-    setElementScale(element, scale, opacity = null, saturation = null) {
+    setElementProximityEffects(element, scale, opacity = null, saturation = null) {
     const currentTransform = element.style.transform || '';
     const scaleRegex = /scale\([^)]*\)/g;
     const baseTransform = currentTransform.replace(scaleRegex, '').trim();
@@ -205,9 +205,9 @@ export class EnergyProximitySystem {
     }
 
     /**
-     * Calculate scale based on distance
+     * Calculate proximity strength based on distance
      */
-    calculateScale(distance) {
+    calculateProximityStrength(distance) {
         if (distance > this.config.maxDistance) {
             return this.config.minScale;
         }
@@ -216,7 +216,7 @@ export class EnergyProximitySystem {
             return this.config.maxScale;
         }
         
-        // Linear interpolation between min and max scale
+        // Linear interpolation between min and max proximity strength
         const normalizedDistance = (distance - this.config.minDistance) / 
                                   (this.config.maxDistance - this.config.minDistance);
         
@@ -235,6 +235,10 @@ export class EnergyProximitySystem {
      */
     isGlowCircle(circle) {
         return circle.type === 'glow';
+    }
+
+    isCircleActivated(circle) {
+        return circle.activation === 'activated';
     }
 
     /**
@@ -270,7 +274,8 @@ export class EnergyProximitySystem {
                 const glowPos = this.getEffectivePosition(glowData.circle.id);
                 if (!glowPos) return;
                 
-                let maxScale = this.config.minScale;
+                const isActivated = this.isCircleActivated(glowData.circle);
+                let maxProximityStrength = this.config.minScale;
                 let closestDistance = Infinity;
 
                 // Check distance to all exciter circles in this viewer
@@ -282,29 +287,35 @@ export class EnergyProximitySystem {
                     if (!exciterPos) return;
 
                     const distance = this.calculateDistance(glowPos, exciterPos);
-                    const scale = this.calculateScale(distance);
+                    const proximityStrength = this.calculateProximityStrength(distance);
                     
                     if (distance < closestDistance) {
                         closestDistance = distance;
                     }
                     
-                    // Use the maximum scale effect from all nearby exciters
-                    maxScale = Math.max(maxScale, scale);
+                    // Use the maximum proximity strength from all nearby exciters
+                    maxProximityStrength = Math.max(maxProximityStrength, proximityStrength);
                 });
 
-                // Only apply effect if scale is different from normal or if there are exciters in this viewer
-                if (Math.abs(maxScale - this.config.minScale) > 0.01) {
+		if (isActivated) { 
+			const maxMinScaleMidpoint = (this.config.maxScale + this.config.minScale) / 2;
+			const maxMinScaleMidpointDelta = maxProximityStrength - maxMinScaleMidpoint;
+			maxProximityStrength = maxMinScaleMidpoint - maxMinScaleMidpointDelta;
+		}
+
+                // Only apply effect if proximity strength is different from normal or if there are exciters in this viewer
+                if (Math.abs(maxProximityStrength - this.config.minScale) > 0.01) {
                     // Calculate opacity and saturation based on the same distance as scale
                     const opacityRange = this.config.maxOpacity - this.config.minOpacity;
                     const saturationRange = this.config.maxSaturation - this.config.minSaturation;
-                    const scaleRange = this.config.maxScale - this.config.minScale;
+                    const proximityStrengthRange = this.config.maxScale - this.config.minScale;
                     
-                    // Use the same proportion as scale for opacity and saturation
-                    const effectStrength = (maxScale - this.config.minScale) / scaleRange;
+                    // Use the same proportion as proximity strength for opacity and saturation
+                    const effectStrength = (maxProximityStrength - this.config.minScale) / proximityStrengthRange;
                     const opacity = this.config.minOpacity + (effectStrength * opacityRange);
                     const saturation = this.config.minSaturation + (effectStrength * saturationRange);
                     
-                    newEffects.set(glowData.circle.id, { scale: maxScale, opacity, saturation });
+                    newEffects.set(glowData.circle.id, { scale: maxProximityStrength, opacity, saturation });
                 } else if (exciterCircles.length > 0) {
                     // If there are exciters in this viewer but this glow circle is far away, apply minimum values
                     newEffects.set(glowData.circle.id, { 
@@ -316,21 +327,21 @@ export class EnergyProximitySystem {
             });
         });
 
-        // Apply scale effects
-        this.applyScaleEffects(newEffects);
+        // Apply proximity effects
+        this.applyProximityEffects(newEffects);
         this.proximityEffects = newEffects;
     }
 
     /**
-     * Apply scale effects to elements
+     * Apply proximity effects to elements
      */
-    applyScaleEffects(effects) {
+    applyProximityEffects(effects) {
         // Reset circles that no longer have effects
         this.proximityEffects.forEach((oldEffect, circleId) => {
             if (!effects.has(circleId)) {
                 const data = this.circles.get(circleId);
                 if (data && data.element) {
-                    this.setElementScale(data.element, this.config.minScale, this.config.maxOpacity, this.config.maxSaturation);
+                    this.setElementProximityEffects(data.element, this.config.minScale, this.config.maxOpacity, this.config.maxSaturation);
                 }
             }
         });
@@ -339,19 +350,19 @@ export class EnergyProximitySystem {
         effects.forEach((effect, circleId) => {
             const data = this.circles.get(circleId);
             if (data && data.element) {
-                this.setElementScale(data.element, effect.scale, effect.opacity, effect.saturation);
+                this.setElementProximityEffects(data.element, effect.scale, effect.opacity, effect.saturation);
             }
         });
     }
 
     /**
-     * Reset all scales to normal
+     * Reset all proximity effects to normal
      */
-    resetAllScales() {
+    resetAllProximityEffects() {
         this.proximityEffects.forEach((effect, circleId) => {
             const data = this.circles.get(circleId);
             if (data && data.element) {
-                this.setElementScale(data.element, this.config.minScale, this.config.maxOpacity, this.config.maxSaturation);
+                this.setElementProximityEffects(data.element, this.config.minScale, this.config.maxOpacity, this.config.maxSaturation);
             }
         });
         this.proximityEffects.clear();
@@ -370,7 +381,7 @@ export class EnergyProximitySystem {
      * Clear all registered circles and effects
      */
     clear() {
-        this.resetAllScales();
+        this.resetAllProximityEffects();
         this.circles.clear();
         this.proximityEffects.clear();
     }

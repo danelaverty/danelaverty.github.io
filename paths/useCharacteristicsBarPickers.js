@@ -52,15 +52,11 @@ export const useCharacteristicsBarPickers = () => {
   };
 
   const toggleEnergyPicker = async () => {
-    console.log('toggleEnergyPicker called');
     closeAllPickers();
-    console.log('After closeAllPickers, isEnergyPickerOpen:', isEnergyPickerOpen.value);
     isEnergyPickerOpen.value = true;
-    console.log('Set isEnergyPickerOpen to:', isEnergyPickerOpen.value);
     
     if (isEnergyPickerOpen.value) {
       await nextTick(); // Wait for Vue to create the modal DOM element
-      console.log('After nextTick, positioning energy picker, refs:', energyPickerRef.value, energyDisplayRef.value);
       positionEnergyPicker();
     }
   };
@@ -87,7 +83,6 @@ export const useCharacteristicsBarPickers = () => {
 
   // Position pickers with better error handling
   const positionColorPicker = () => {
-    console.log('Positioning color picker, refs:', colorPickerRef.value, colorDisplayRef.value);
     if (!colorPickerRef.value || !colorDisplayRef.value) {
       console.warn('Color picker refs not available for positioning');
       return;
@@ -96,7 +91,6 @@ export const useCharacteristicsBarPickers = () => {
   };
 
   const positionTypePicker = () => {
-    console.log('Positioning type picker, refs:', typePickerRef.value, typeDisplayRef.value);
     if (!typePickerRef.value || !typeDisplayRef.value) {
       console.warn('Type picker refs not available for positioning');
       return;
@@ -105,7 +99,6 @@ export const useCharacteristicsBarPickers = () => {
   };
 
   const positionEnergyPicker = () => {
-    console.log('Positioning energy picker, refs:', energyPickerRef.value, energyDisplayRef.value);
     if (!energyPickerRef.value || !energyDisplayRef.value) {
       console.warn('Energy picker refs not available for positioning');
       return;
@@ -114,7 +107,6 @@ export const useCharacteristicsBarPickers = () => {
   };
 
   const positionEmojiPicker = () => {
-    console.log('Positioning emoji picker, refs:', emojiPickerRef.value, emojiDisplayRef.value);
     if (!emojiPickerRef.value || !emojiDisplayRef.value) {
       console.warn('Emoji picker refs not available for positioning');
       return;
@@ -123,7 +115,6 @@ export const useCharacteristicsBarPickers = () => {
   };
 
   const positionCircleEmojiPicker = () => {
-    console.log('Positioning circle emoji picker, refs:', circleEmojiPickerRef.value, circleEmojiDisplayRef.value);
     if (!circleEmojiPickerRef.value || !circleEmojiDisplayRef.value) {
       console.warn('Circle emoji picker refs not available for positioning');
       return;
@@ -135,13 +126,11 @@ export const useCharacteristicsBarPickers = () => {
   const handleGlobalClick = (e) => {
     // Use requestAnimationFrame to ensure DOM updates are complete
     requestAnimationFrame(() => {
-      console.log('Global click handler, target:', e.target.className);
       
       if (isColorPickerOpen.value && 
           colorPickerRef.value && colorDisplayRef.value &&
           !colorPickerRef.value.contains(e.target) && 
           !colorDisplayRef.value.contains(e.target)) {
-        console.log('Closing color picker');
         isColorPickerOpen.value = false;
       }
       
@@ -149,7 +138,6 @@ export const useCharacteristicsBarPickers = () => {
           typePickerRef.value && typeDisplayRef.value &&
           !typePickerRef.value.contains(e.target) && 
           !typeDisplayRef.value.contains(e.target)) {
-        console.log('Closing type picker');
         isTypePickerOpen.value = false;
       }
       
@@ -157,7 +145,6 @@ export const useCharacteristicsBarPickers = () => {
           energyPickerRef.value && energyDisplayRef.value &&
           !energyPickerRef.value.contains(e.target) && 
           !energyDisplayRef.value.contains(e.target)) {
-        console.log('Closing energy picker');
         isEnergyPickerOpen.value = false;
       }
       
@@ -165,7 +152,6 @@ export const useCharacteristicsBarPickers = () => {
           emojiPickerRef.value && emojiDisplayRef.value &&
           !emojiPickerRef.value.contains(e.target) && 
           !emojiDisplayRef.value.contains(e.target)) {
-        console.log('Closing emoji picker');
         isEmojiPickerOpen.value = false;
       }
       
@@ -173,7 +159,6 @@ export const useCharacteristicsBarPickers = () => {
           circleEmojiPickerRef.value && circleEmojiDisplayRef.value &&
           !circleEmojiPickerRef.value.contains(e.target) && 
           !circleEmojiDisplayRef.value.contains(e.target)) {
-        console.log('Closing circle emoji picker');
         isCircleEmojiPickerOpen.value = false;
       }
     });

@@ -1,4 +1,4 @@
-// CircleCharacteristicsBar.js - Main component (refactored with template refs)
+// CircleCharacteristicsBar.js - Updated with activation control
 import { computed, ref, watchEffect } from './vue-composition-api.js';
 import { injectComponentStyles } from './styleUtils.js';
 import { useCharacteristicsBarData } from './useCharacteristicsBarData.js';
@@ -8,10 +8,11 @@ import { useRecentEmojis } from './useRecentEmojis.js';
 import { useDataStore } from './dataCoordinator.js';
 import { EmojiRenderer } from './EmojiRenderer.js';
 import { EmojiService } from './emojiService.js';
+import { EmojiVariantService } from './EmojiVariantService.js';
 import { getEnergyTypeColor } from './energyTypes.js';
 
 // Import styles
-import { baseCharacteristicsStyles, displayStyles, colorStyles, typeStyles, energyStyles, emojiStyles } from './cbBaseStyles.js';
+import { baseCharacteristicsStyles, displayStyles, colorStyles, typeStyles, energyStyles, activationStyles, emojiStyles } from './cbBaseStyles.js';
 import { modalStyles } from './cbModalStyles.js';
 import { pickerSpecificStyles } from './cbPickerStyles.js';
 
@@ -20,6 +21,7 @@ import { TypeControl } from './CBTypeControl.js';
 import { CircleEmojiControl } from './CBCircleEmojiControl.js';
 import { ColorControl } from './CBColorControl.js';
 import { EnergyControl } from './CBEnergyControl.js';
+import { ActivationControl } from './CBActivationControl.js'; // NEW: Import activation control
 import { EmojiControl } from './CBEmojiControl.js';
 import { RecentEmojisControl } from './CBRecentEmojisControl.js';
 
@@ -30,13 +32,14 @@ import { ColorPickerModal } from './CBColorPickerModal.js';
 import { EnergyPickerModal } from './CBEnergyPickerModal.js';
 import { EmojiPickerModal } from './CBEmojiPickerModal.js';
 
-// Combine all styles
+// Combine all styles (including new activation styles)
 const componentStyles = `
     ${baseCharacteristicsStyles}
     ${displayStyles}
     ${colorStyles}
     ${typeStyles}
     ${energyStyles}
+    ${activationStyles}
     ${emojiStyles}
     ${modalStyles}
     ${pickerSpecificStyles}
@@ -60,6 +63,7 @@ export const CircleCharacteristicsBar = {
     const circleEmojiDisplayRefTemplate = ref(null);
     const colorDisplayRefTemplate = ref(null);
     const energyDisplayRefTemplate = ref(null);
+    const activationDisplayRefTemplate = ref(null); // NEW: Activation display ref
     const emojiDisplayRefTemplate = ref(null);
     const typePickerRefTemplate = ref(null);
     const circleEmojiPickerRefTemplate = ref(null);
@@ -70,70 +74,60 @@ export const CircleCharacteristicsBar = {
     // Watch for template ref assignments and update picker hooks
     watchEffect(() => {
       if (typeDisplayRefTemplate.value) {
-        console.log('Type display template ref assigned, updating picker hook');
         pickerHooks.typeDisplayRef.value = typeDisplayRefTemplate.value.$el || typeDisplayRefTemplate.value;
       }
     });
 
     watchEffect(() => {
       if (circleEmojiDisplayRefTemplate.value) {
-        console.log('Circle emoji display template ref assigned, updating picker hook');
         pickerHooks.circleEmojiDisplayRef.value = circleEmojiDisplayRefTemplate.value.$el || circleEmojiDisplayRefTemplate.value;
       }
     });
 
     watchEffect(() => {
       if (colorDisplayRefTemplate.value) {
-        console.log('Color display template ref assigned, updating picker hook');
         pickerHooks.colorDisplayRef.value = colorDisplayRefTemplate.value.$el || colorDisplayRefTemplate.value;
       }
     });
 
     watchEffect(() => {
       if (energyDisplayRefTemplate.value) {
-        console.log('Energy display template ref assigned, updating picker hook');
         pickerHooks.energyDisplayRef.value = energyDisplayRefTemplate.value.$el || energyDisplayRefTemplate.value;
       }
     });
 
     watchEffect(() => {
       if (emojiDisplayRefTemplate.value) {
-        console.log('Emoji display template ref assigned, updating picker hook');
         pickerHooks.emojiDisplayRef.value = emojiDisplayRefTemplate.value.$el || emojiDisplayRefTemplate.value;
       }
     });
 
     watchEffect(() => {
       if (typePickerRefTemplate.value) {
-        console.log('Type picker template ref assigned, updating picker hook');
         pickerHooks.typePickerRef.value = typePickerRefTemplate.value.$el || typePickerRefTemplate.value;
       }
     });
 
     watchEffect(() => {
       if (circleEmojiPickerRefTemplate.value) {
-        console.log('Circle emoji picker template ref assigned, updating picker hook');
         pickerHooks.circleEmojiPickerRef.value = circleEmojiPickerRefTemplate.value.$el || circleEmojiPickerRefTemplate.value;
       }
     });
 
     watchEffect(() => {
       if (colorPickerRefTemplate.value) {
-        console.log('Color picker template ref assigned, updating picker hook');
         pickerHooks.colorPickerRef.value = colorPickerRefTemplate.value.$el || colorPickerRefTemplate.value;
       }
     });
 
     watchEffect(() => {
       if (energyPickerRefTemplate.value) {
-        console.log('Energy picker template ref assigned, updating picker hook');
         pickerHooks.energyPickerRef.value = energyPickerRefTemplate.value.$el || energyPickerRefTemplate.value;
       }
     });
 
     watchEffect(() => {
       if (emojiPickerRefTemplate.value) {
-        console.log('Emoji picker template ref assigned, updating picker hook');
         pickerHooks.emojiPickerRef.value = emojiPickerRefTemplate.value.$el || emojiPickerRefTemplate.value;
       }
     });
@@ -145,17 +139,20 @@ export const CircleCharacteristicsBar = {
       return emojiAttributes.value.find(attr => attr.key === 'cause') || emojiAttributes.value[0];
     });
     
-    const meEmoji = computed(() => {
-      return emojiAttributes.value.find(attr => attr.key === 'me') || emojiAttributes.value[0];
-    });
-
     // Check if circle emoji picker should be visible
     const isCircleEmojiPickerVisible = computed(() => {
       return dataHooks.selectedCircle.value && dataHooks.selectedCircle.value.type === 'emoji';
     });
 
+    // NEW: Compute activation state from selected circle
+    const isCircleActivated = computed(() => {
+      if (!dataHooks.selectedCircle.value) return false;
+      return dataHooks.selectedCircle.value.activation === 'activated';
+    });
+
     // Create action handlers with proper context
     const handleColorSelect = (colorValue, isCtrlClick) => {
+      console.log('handleColorSelect: ' + colorValue);
       const colorInfo = { color: colorValue };
       actionHooks.selectColor(colorInfo, isCtrlClick, dataHooks.selectedCircle.value, dataHooks.circleColors.value);
       if (!isCtrlClick) {
@@ -175,7 +172,13 @@ export const CircleCharacteristicsBar = {
       }
     };
 
+    // NEW: Handle activation toggle
+    const handleActivationToggle = () => {
+      actionHooks.toggleActivation(dataHooks.selectedCircle.value);
+    };
+
     const handleEmojiSelect = (attribute) => {
+      console.log('handleEmojiSelect: ' + attribute);
       actionHooks.selectEmoji(attribute);
       recentEmojiHooks.addRecentEmoji(attribute);
       if (dataStore && dataStore.saveToStorage) {
@@ -185,7 +188,7 @@ export const CircleCharacteristicsBar = {
     };
 
     const handleCircleEmojiSelect = (emoji) => {
-      actionHooks.selectCircleEmoji(emoji, dataHooks.selectedCircle.value);
+      actionHooks.selectCircleEmoji(emoji.emoji, dataHooks.selectedCircle.value);
       pickerHooks.closePickerAction('circleEmoji');
     };
 
@@ -205,7 +208,6 @@ export const CircleCharacteristicsBar = {
         dataStore.saveToStorage();
       }
       pickerHooks.closePickerAction('emoji');
-      console.log(`Loaded ${categoryGroup.emojis.length} emojis from "${categoryGroup.category.name}" category to recent palette`);
     };
 
     const handleClearRecentEmojis = () => {
@@ -226,13 +228,14 @@ export const CircleCharacteristicsBar = {
       
       // Computed values
       causeEmoji,
-      meEmoji,
       isCircleEmojiPickerVisible,
+      isCircleActivated, // NEW: Expose activation state
       
       // Action handlers
       handleColorSelect,
       handleTypeSelect,
       handleEnergySelect,
+      handleActivationToggle, // NEW: Expose activation toggle handler
       handleEmojiSelect,
       handleCircleEmojiSelect,
       handleQuickEmojiSelect,
@@ -242,6 +245,7 @@ export const CircleCharacteristicsBar = {
       // Utilities
       getEmojiDisplayTitle,
       getEnergyTypeColor,
+      EmojiVariantService,
       
       // Picker hooks
       isColorPickerOpen: pickerHooks.isColorPickerOpen,
@@ -261,6 +265,7 @@ export const CircleCharacteristicsBar = {
       circleEmojiDisplayRefTemplate,
       colorDisplayRefTemplate,
       energyDisplayRefTemplate,
+      activationDisplayRefTemplate, // NEW: Expose activation display ref
       emojiDisplayRefTemplate,
       typePickerRefTemplate,
       circleEmojiPickerRefTemplate,
@@ -276,6 +281,7 @@ export const CircleCharacteristicsBar = {
     CircleEmojiControl,
     ColorControl,
     EnergyControl,
+    ActivationControl, // NEW: Include activation control
     EmojiControl,
     RecentEmojisControl,
     TypePickerModal,
@@ -321,11 +327,17 @@ export const CircleCharacteristicsBar = {
             @toggle="toggleEnergyPicker"
         />
 
+        <!-- NEW: Activation Control -->
+        <ActivationControl 
+            ref="activationDisplayRefTemplate"
+            :isActivated="isCircleActivated"
+            @toggle="handleActivationToggle"
+        />
+
         <!-- Emoji Control -->
         <EmojiControl 
             ref="emojiDisplayRefTemplate"
             :causeEmoji="causeEmoji"
-            :meEmoji="meEmoji"
             :isPickerOpen="isEmojiPickerOpen"
             :getEmojiDisplayTitle="getEmojiDisplayTitle"
             @toggle="toggleEmojiPicker"

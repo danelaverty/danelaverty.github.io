@@ -35,7 +35,8 @@ export const displayStyles = `
     .color-display,
     .type-display,
     .energy-display,
-    .emoji-display {
+    .emoji-display,
+    .activation-display {
         display: flex;
         align-items: center;
         gap: 4px;
@@ -51,7 +52,8 @@ export const displayStyles = `
     .color-display:hover,
     .type-display:hover,
     .energy-display:hover,
-    .emoji-display:hover {
+    .emoji-display:hover,
+    .activation-display:hover {
         background-color: rgba(80, 80, 80, 0.8);
         border-color: rgba(255, 255, 255, 0.3);
     }
@@ -74,6 +76,11 @@ export const displayStyles = `
 
     .emoji-display {
         gap: 6px;
+    }
+
+    .activation-display {
+        gap: 6px;
+        min-width: 60px;
     }
 `;
 
@@ -203,6 +210,54 @@ export const energyStyles = `
         border-radius: 50%;
         margin-left: 8px;
         border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+`;
+
+export const activationStyles = `
+    .activation-display {
+        border-radius: 6px;
+        transition: all 0.2s ease;
+    }
+
+    .activation-display.activated {
+        background-color: rgba(76, 175, 80, 0.3);
+        border-color: rgba(76, 175, 80, 0.6);
+    }
+
+    .activation-display.activated:hover {
+        background-color: rgba(76, 175, 80, 0.4);
+        border-color: rgba(76, 175, 80, 0.8);
+    }
+
+    .activation-display.inactive {
+        background-color: rgba(60, 60, 60, 0.8);
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .activation-display.inactive:hover {
+        background-color: rgba(80, 80, 80, 0.8);
+        border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .activation-icon {
+        font-size: 12px;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 16px;
+    }
+
+    .activation-label {
+        color: white;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .activation-display.activated .activation-label {
+        color: #e8f5e8;
     }
 `;
 

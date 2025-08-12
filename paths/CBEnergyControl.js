@@ -18,13 +18,10 @@ export const EnergyControl = {
   emits: ['toggle'],
   
   mounted() {
-    console.log('EnergyControl mounted - using template ref approach');
-    console.log('  - this.$el:', this.$el);
   },
   
   methods: {
     handleClick() {
-      console.log('Energy control clicked, isPickerOpen:', this.isPickerOpen);
       this.$emit('toggle');
     }
   },
