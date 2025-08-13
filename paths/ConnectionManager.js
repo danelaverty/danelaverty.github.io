@@ -1,82 +1,121 @@
-// ConnectionManager.js - Efficient connection management for squares with bold support
+// ConnectionManager.js - FIXED: Separate storage for each entity type including viewer-specific types
 import { reactive, computed } from './vue-composition-api.js';
 
 export class ConnectionManager {
     constructor() {
         this.data = reactive({
-            connections: new Map() // Map of connection IDs to connection objects
+            // FIXED: Use a single Map to store connections for ALL entity types
+            // Key: entityType, Value: Map of connections for that type
+            connectionsByType: new Map()
         });
         
-        this.CONNECTION_DISTANCE = 130;
-        this.BOLD_CONNECTION_DISTANCE = 165; // Increased distance for bold squares
-        this.lastSquarePositions = new Map(); // Cache for position change detection
-        this.lastSquareIds = new Set(); // Cache for tracking which squares existed
-        this.lastSquareBoldStates = new Map(); // Cache for tracking bold state changes
+        // Connection distances for different entity types
+        this.SQUARE_CONNECTION_DISTANCE = 130;
+        this.SQUARE_BOLD_CONNECTION_DISTANCE = 165;
+        this.CIRCLE_CONNECTION_DISTANCE = 100;
+        this.CIRCLE_BOLD_CONNECTION_DISTANCE = 130;
+        
+        // FIXED: Use a single cache structure for all entity types
+        this.caches = new Map(); // Key: entityType, Value: cache object
     }
 
     /**
-     * Calculate distance between two squares
+     * Calculate distance between two entities
      */
-    calculateDistance(square1, square2) {
-        const dx = square1.x - square2.x;
-        const dy = square1.y - square2.y;
+    calculateDistance(entity1, entity2) {
+        const dx = entity1.x - entity2.x;
+        const dy = entity1.y - entity2.y;
         return Math.sqrt(dx * dx + dy * dy);
     }
 
     /**
-     * Get connection distance based on whether either square is bold
+     * Get connection distance based on entity type and whether either entity is bold
      */
-    getConnectionDistance(square1, square2) {
-        // If either square is bold, use the bold connection distance
-        if (square1.bold === true || square2.bold === true) {
-            return this.BOLD_CONNECTION_DISTANCE;
+    getConnectionDistance(entity1, entity2, entityType) {
+        if (entityType === 'square' || entityType.startsWith('square-')) {
+            if (entity1.bold === true || entity2.bold === true) {
+                return this.SQUARE_BOLD_CONNECTION_DISTANCE;
+            }
+            return this.SQUARE_CONNECTION_DISTANCE;
+        } else if (entityType === 'circle' || entityType.startsWith('circle-')) {
+            return this.CIRCLE_CONNECTION_DISTANCE;
         }
-        return this.CONNECTION_DISTANCE;
-    }
-
-    /**
-     * Generate a consistent connection ID for two squares
-     */
-    getConnectionId(square1Id, square2Id) {
-        // Always use the same order for consistent IDs
-        return square1Id < square2Id ? `${square1Id}-${square2Id}` : `${square2Id}-${square1Id}`;
-    }
-
-    /**
-     * Check if the set of squares has changed (added/removed) or positions/bold states changed
-     */
-    hasSquaresChanged(squares) {
-        const currentSquareIds = new Set(squares.map(s => s.id));
         
-        // Check if squares were added or removed
-        if (currentSquareIds.size !== this.lastSquareIds.size) {
+        return this.SQUARE_CONNECTION_DISTANCE;
+    }
+
+    /**
+     * Generate a consistent connection ID for two entities with proper type safety
+     */
+    getConnectionId(entity1Id, entity2Id, entityType) {
+        // Ensure we're working with strings, not objects
+        const id1 = String(entity1Id);
+        const id2 = String(entity2Id);
+        
+        // Create a consistent ordering
+        const baseId = id1 < id2 ? `${id1}-${id2}` : `${id2}-${id1}`;
+        return `${entityType}-${baseId}`;
+    }
+
+    /**
+     * FIXED: Get or create cache for specific entity type
+     */
+    getCache(entityType) {
+        if (!this.caches.has(entityType)) {
+            this.caches.set(entityType, {
+                lastEntityPositions: new Map(),
+                lastEntityIds: new Set(),
+                lastEntityBoldStates: new Map()
+            });
+        }
+        return this.caches.get(entityType);
+    }
+
+    /**
+     * FIXED: Get or create connections map for specific entity type
+     */
+    getConnectionsMap(entityType) {
+        if (!this.data.connectionsByType.has(entityType)) {
+            this.data.connectionsByType.set(entityType, new Map());
+        }
+        return this.data.connectionsByType.get(entityType);
+    }
+
+    /**
+     * Check if the set of entities has changed (added/removed) or positions/bold states changed
+     */
+    hasEntitiesChanged(entities, entityType) {
+        const cache = this.getCache(entityType);
+        const currentEntityIds = new Set(entities.map(e => e.id));
+        
+        // Check if entities were added or removed
+        if (currentEntityIds.size !== cache.lastEntityIds.size) {
             return true;
         }
         
-        // Check if different squares exist
-        for (const id of currentSquareIds) {
-            if (!this.lastSquareIds.has(id)) {
+        // Check if different entities exist
+        for (const id of currentEntityIds) {
+            if (!cache.lastEntityIds.has(id)) {
                 return true;
             }
         }
         
-        for (const id of this.lastSquareIds) {
-            if (!currentSquareIds.has(id)) {
+        for (const id of cache.lastEntityIds) {
+            if (!currentEntityIds.has(id)) {
                 return true;
             }
         }
         
         // Check if positions or bold states changed
-        for (const square of squares) {
-            const lastPos = this.lastSquarePositions.get(square.id);
-            const lastBold = this.lastSquareBoldStates.get(square.id);
+        for (const entity of entities) {
+            const lastPos = cache.lastEntityPositions.get(entity.id);
+            const lastBold = cache.lastEntityBoldStates.get(entity.id);
             
-            if (!lastPos || lastPos.x !== square.x || lastPos.y !== square.y) {
+            if (!lastPos || lastPos.x !== entity.x || lastPos.y !== entity.y) {
                 return true;
             }
             
-            // Check if bold state changed
-            if (lastBold !== (square.bold === true)) {
+            if (lastBold !== (entity.bold === true)) {
                 return true;
             }
         }
@@ -85,143 +124,159 @@ export class ConnectionManager {
     }
 
     /**
-     * Update cached positions, square IDs, and bold states
+     * Update cached positions, entity IDs, and bold states for specific entity type
      */
-    updateCaches(squares) {
+    updateCaches(entities, entityType) {
+        const cache = this.getCache(entityType);
+        
         // Update position cache
-        this.lastSquarePositions.clear();
-        squares.forEach(square => {
-            this.lastSquarePositions.set(square.id, { x: square.x, y: square.y });
+        cache.lastEntityPositions.clear();
+        entities.forEach(entity => {
+            cache.lastEntityPositions.set(entity.id, { x: entity.x, y: entity.y });
         });
         
-        // Update square ID cache
-        this.lastSquareIds.clear();
-        squares.forEach(square => {
-            this.lastSquareIds.add(square.id);
+        // Update entity ID cache
+        cache.lastEntityIds.clear();
+        entities.forEach(entity => {
+            cache.lastEntityIds.add(entity.id);
         });
         
         // Update bold state cache
-        this.lastSquareBoldStates.clear();
-        squares.forEach(square => {
-            this.lastSquareBoldStates.set(square.id, square.bold === true);
+        cache.lastEntityBoldStates.clear();
+        entities.forEach(entity => {
+            cache.lastEntityBoldStates.set(entity.id, entity.bold === true);
         });
     }
 
     /**
-     * Efficiently update connections based on current squares
-     * @param {Array} squares - Current squares to check
-     * @param {Set} draggedSquareIds - IDs of squares currently being dragged (optional optimization)
+     * FIXED: Update connections for specific entity type without affecting other types
+     * @param {Array} entities - Current entities to check (squares or circles)
+     * @param {string} entityType - Type of entities ('square', 'circle', 'circle-viewer_1', etc.)
+     * @param {Set} draggedEntityIds - IDs of entities currently being dragged (optional optimization)
      */
-    updateConnections(squares, draggedSquareIds = null) {
-        
-        // Always update if squares were added/removed, or if no drag optimization is requested
-        const squaresChanged = this.hasSquaresChanged(squares);
-        
-        if (!draggedSquareIds && !squaresChanged) {
-            return;
-        }
+    updateConnections(entities, entityType = 'square', draggedEntityIds = null) {
+    
+    // FIXED: Show counts for all entity types, not just square/circle
+    const totalConnections = Array.from(this.data.connectionsByType.values())
+        .reduce((sum, map) => sum + map.size, 0);
+    
+    const connectionsMap = this.getConnectionsMap(entityType);
+    
+    const entitiesChanged = this.hasEntitiesChanged(entities, entityType);
+    
+    if (!draggedEntityIds && !entitiesChanged) {
+        return;
+    }
 
         const newConnections = new Map();
         
-        // If we have dragged squares and the set of squares hasn't changed, we can optimize
-        if (draggedSquareIds && draggedSquareIds.size > 0 && !squaresChanged) {
-            this.updateConnectionsOptimized(squares, draggedSquareIds, newConnections);
+        // Use optimized update if dragging specific entities and set hasn't changed
+        if (draggedEntityIds && draggedEntityIds.size > 0 && !entitiesChanged) {
+            this.updateConnectionsOptimized(entities, entityType, draggedEntityIds, newConnections, connectionsMap);
         } else {
-            // Full update when squares are added/removed or no drag optimization
-            this.updateConnectionsFull(squares, newConnections);
+            // Full update when entities are added/removed or no drag optimization
+            this.updateConnectionsFull(entities, entityType, newConnections);
         }
 
-        // Replace connections map
-        this.data.connections.clear();
+        // FIXED: Only update connections for this specific entity type
+        connectionsMap.clear();
         newConnections.forEach((connection, id) => {
-            this.data.connections.set(id, connection);
+            connectionsMap.set(id, connection);
         });
 
-        // Update caches
-        this.updateCaches(squares);
+        // Update caches for this entity type
+        this.updateCaches(entities, entityType);
     }
 
     /**
-     * Full connection update (used when squares are added/removed or when not dragging)
+     * Full connection update with proper ID generation
      */
-    updateConnectionsFull(squares, newConnections) {
-        
-        for (let i = 0; i < squares.length; i++) {
-            for (let j = i + 1; j < squares.length; j++) {
-                const square1 = squares[i];
-                const square2 = squares[j];
-                const distance = this.calculateDistance(square1, square2);
-                const connectionDistance = this.getConnectionDistance(square1, square2);
+    updateConnectionsFull(entities, entityType, newConnections) {
+        for (let i = 0; i < entities.length; i++) {
+            for (let j = i + 1; j < entities.length; j++) {
+                const entity1 = entities[i];
+                const entity2 = entities[j];
+                
+                // Ensure entities have valid IDs
+                if (!entity1.id || !entity2.id) {
+                    continue;
+                }
+                
+                const distance = this.calculateDistance(entity1, entity2);
+                const connectionDistance = this.getConnectionDistance(entity1, entity2, entityType);
                 
                 if (distance <= connectionDistance) {
-                    const connectionId = this.getConnectionId(square1.id, square2.id);
+                    const connectionId = this.getConnectionId(entity1.id, entity2.id, entityType);
+                    
                     newConnections.set(connectionId, {
                         id: connectionId,
-                        square1Id: square1.id,
-                        square2Id: square2.id,
-                        square1: square1,
-                        square2: square2,
+                        entity1Id: entity1.id,
+                        entity2Id: entity2.id,
+                        entity1: entity1,
+                        entity2: entity2,
                         distance: distance,
-                        connectionDistance: connectionDistance // Store the distance used for this connection
+                        connectionDistance: connectionDistance,
+                        entityType: entityType
                     });
                 }
             }
         }
+        
     }
 
     /**
      * Optimized connection update for drag operations
-     * Only checks connections involving dragged squares
      */
-    updateConnectionsOptimized(squares, draggedSquareIds, newConnections) {
-        const draggedSquares = squares.filter(s => draggedSquareIds.has(s.id));
-        const staticSquares = squares.filter(s => !draggedSquareIds.has(s.id));
+    updateConnectionsOptimized(entities, entityType, draggedEntityIds, newConnections, existingConnections) {
+        const draggedEntities = entities.filter(e => draggedEntityIds.has(e.id));
+        const staticEntities = entities.filter(e => !draggedEntityIds.has(e.id));
         
-        // First, preserve connections between static squares (they haven't moved)
-        for (let i = 0; i < staticSquares.length; i++) {
-            for (let j = i + 1; j < staticSquares.length; j++) {
-                const square1 = staticSquares[i];
-                const square2 = staticSquares[j];
-                const connectionId = this.getConnectionId(square1.id, square2.id);
+        // Preserve connections between static entities
+        for (let i = 0; i < staticEntities.length; i++) {
+            for (let j = i + 1; j < staticEntities.length; j++) {
+                const entity1 = staticEntities[i];
+                const entity2 = staticEntities[j];
+                const connectionId = this.getConnectionId(entity1.id, entity2.id, entityType);
                 
-                // If this connection existed before, keep it (but recalculate in case bold state changed)
-                if (this.data.connections.has(connectionId)) {
-                    const distance = this.calculateDistance(square1, square2);
-                    const connectionDistance = this.getConnectionDistance(square1, square2);
+                if (existingConnections.has(connectionId)) {
+                    const distance = this.calculateDistance(entity1, entity2);
+                    const connectionDistance = this.getConnectionDistance(entity1, entity2, entityType);
                     
                     if (distance <= connectionDistance) {
                         newConnections.set(connectionId, {
                             id: connectionId,
-                            square1Id: square1.id,
-                            square2Id: square2.id,
-                            square1: square1,
-                            square2: square2,
+                            entity1Id: entity1.id,
+                            entity2Id: entity2.id,
+                            entity1: entity1,
+                            entity2: entity2,
                             distance: distance,
-                            connectionDistance: connectionDistance
+                            connectionDistance: connectionDistance,
+                            entityType: entityType
                         });
                     }
                 }
             }
         }
         
-        // Check connections between dragged squares and all other squares
-        for (const draggedSquare of draggedSquares) {
-            for (const otherSquare of squares) {
-                if (draggedSquare.id === otherSquare.id) continue;
+        // Check connections involving dragged entities
+        for (const draggedEntity of draggedEntities) {
+            for (const otherEntity of entities) {
+                if (draggedEntity.id === otherEntity.id) continue;
                 
-                const distance = this.calculateDistance(draggedSquare, otherSquare);
-                const connectionDistance = this.getConnectionDistance(draggedSquare, otherSquare);
-                const connectionId = this.getConnectionId(draggedSquare.id, otherSquare.id);
+                const distance = this.calculateDistance(draggedEntity, otherEntity);
+                const connectionDistance = this.getConnectionDistance(draggedEntity, otherEntity, entityType);
+                const connectionId = this.getConnectionId(draggedEntity.id, otherEntity.id, entityType);
                 
                 if (distance <= connectionDistance) {
                     newConnections.set(connectionId, {
                         id: connectionId,
-                        square1Id: draggedSquare.id,
-                        square2Id: otherSquare.id,
-                        square1: draggedSquare,
-                        square2: otherSquare,
+                        entity1Id: draggedEntity.id,
+                        entity2Id: otherEntity.id,
+                        entity1: draggedEntity,
+                        entity2: otherEntity,
                         distance: distance,
-                        connectionDistance: connectionDistance
+                        connectionDistance: connectionDistance,
+                        entityType: entityType
                     });
                 }
             }
@@ -229,36 +284,71 @@ export class ConnectionManager {
     }
 
     /**
-     * Clear all connections and caches
+     * FIXED: Clear connections for specific entity type or all if no type specified
      */
-    clearConnections() {
-        this.data.connections.clear();
-        this.lastSquarePositions.clear();
-        this.lastSquareIds.clear();
-        this.lastSquareBoldStates.clear();
+    clearConnections(entityType = null) {
+        if (entityType) {
+            // Clear only connections for specific entity type
+            const connectionsMap = this.getConnectionsMap(entityType);
+            const cache = this.getCache(entityType);
+            connectionsMap.clear();
+            cache.lastEntityPositions.clear();
+            cache.lastEntityIds.clear();
+            cache.lastEntityBoldStates.clear();
+        } else {
+            // Clear all connections and caches
+            this.data.connectionsByType.clear();
+            this.caches.clear();
+        }
     }
 
     /**
-     * Get all current connections as an array
+     * FIXED: Get all current connections from all entity types as an array
      */
     getConnections() {
-        return Array.from(this.data.connections.values());
+        const allConnections = [];
+        
+        // Add connections from all entity types
+        this.data.connectionsByType.forEach((connectionsMap, entityType) => {
+            connectionsMap.forEach(connection => {
+                allConnections.push(connection);
+            });
+        });
+        
+        return allConnections;
     }
 
     /**
-     * Get connections involving a specific square
+     * Get connections for specific entity type
      */
-    getConnectionsForSquare(squareId) {
-        return this.getConnections().filter(conn => 
-            conn.square1Id === squareId || conn.square2Id === squareId
-        );
+    getConnectionsForEntityType(entityType) {
+        const connectionsMap = this.getConnectionsMap(entityType);
+        return Array.from(connectionsMap.values());
     }
 
     /**
-     * Force a full recalculation of connections (useful for debugging)
+     * Get connections involving a specific entity
      */
-    forceUpdate(squares) {
-        this.clearConnections();
-        this.updateConnections(squares);
+    getConnectionsForEntity(entityId, entityType = null) {
+        if (entityType) {
+            // Search only in specific entity type connections
+            const connectionsMap = this.getConnectionsMap(entityType);
+            return Array.from(connectionsMap.values()).filter(conn => 
+                conn.entity1Id === entityId || conn.entity2Id === entityId
+            );
+        } else {
+            // Search in all connections
+            return this.getConnections().filter(conn => 
+                conn.entity1Id === entityId || conn.entity2Id === entityId
+            );
+        }
+    }
+
+    /**
+     * Force a full recalculation of connections for specific entity type
+     */
+    forceUpdate(entities, entityType = 'square') {
+        this.clearConnections(entityType);
+        this.updateConnections(entities, entityType);
     }
 }

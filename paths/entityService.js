@@ -1,4 +1,4 @@
-// entityService.js - Business logic layer for entity operations (Updated to pass documentStore to circle creation)
+// entityService.js - FIXED: Remove problematic clearConnections calls from circle selection
 import { useEntityStore } from './entityStore.js';
 import { useDocumentStore } from './documentStore.js';
 import { useUIStore } from './uiStore.js';
@@ -30,7 +30,7 @@ export class EntityService {
      */
     _updateConnectionsAfterChange() {
         const squares = this._getCurrentSquares();
-        this.connectionManager.updateConnections(squares);
+	this.connectionManager.updateConnections(squares, 'square');
     }
 
     /**
@@ -138,7 +138,8 @@ export class EntityService {
     }
 
     /**
-     * Select a circle with proper document and UI state management
+     * FIXED: Select a circle with proper document and UI state management
+     * Removed ALL clearConnections() calls to preserve circle connections
      */
     selectCircle(id, viewerId, isCtrlClick = false) {
         // Set the viewer as selected when selecting circles in it
@@ -157,8 +158,9 @@ export class EntityService {
                 this._handleSquareDocumentSelection(id);
             } else {
                 this.documentStore.data.currentSquareDocumentId = null;
-                // Clear connections when no square document is selected
-                this.connectionManager.clearConnections();
+                // FIXED: Don't clear ANY connections when deselecting circles
+                // Circle connections should always remain visible
+                // Square connections are handled by square document selection state
             }
         } else {
             // Ctrl+click - toggle selection
@@ -250,8 +252,8 @@ export class EntityService {
             this._handleSquareDocumentSelection(circleIds[0]);
         } else {
             this.documentStore.data.currentSquareDocumentId = null;
-            // Clear connections when no square document is selected
-            this.connectionManager.clearConnections();
+            // FIXED: Don't clear ANY connections when multiple circles are selected
+            // Circle connections should always remain visible
         }
         
         return circles.length;
@@ -332,7 +334,8 @@ export class EntityService {
     // Private helper methods
 
     /**
-     * Handle square document selection for single circle
+     * FIXED: Handle square document selection for single circle
+     * Removed clearConnections() call that was clearing all connections
      */
     _handleSquareDocumentSelection(circleId) {
         const squareDocuments = this.documentStore.getSquareDocumentsForCircle(circleId);
@@ -343,20 +346,24 @@ export class EntityService {
         } else {
             const defaultSquareDoc = this.documentStore.createSquareDocument(circleId, 'Default');
             this.documentStore.setCurrentSquareDocument(defaultSquareDoc.id);
-            // Clear connections for new empty document
-            this.connectionManager.clearConnections();
+            // FIXED: Don't clear connections for new empty document
+            // The connection system will automatically handle empty states
+            // Only update square connections, circle connections remain untouched
+            this._updateConnectionsAfterChange();
         }
     }
 
     /**
-     * Handle square document selection for multiple circles
+     * FIXED: Handle square document selection for multiple circles
+     * Removed clearConnections() call that was clearing all connections
      */
     _handleMultipleCircleSelection() {
         const selectedCount = this.uiStore.getSelectedCircles().length;
         if (selectedCount !== 1) {
             this.documentStore.data.currentSquareDocumentId = null;
-            // Clear connections when no square document is selected
-            this.connectionManager.clearConnections();
+            // FIXED: Don't clear ANY connections when no square document is selected
+            // Circle connections should always remain visible regardless of square document state
+            // Square connections will be handled automatically by the connection system
         } else {
             // Single circle selected - show its squares
             const singleCircleId = this.uiStore.getSelectedCircles()[0];

@@ -1,4 +1,4 @@
-// EntityComponent.js - Updated to support energy proximity effects
+// EntityComponent.js - FIXED: Properly pass viewerId to EntityDragHandler
 import { ref, nextTick, onMounted, onUnmounted, computed, watch } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
 import { injectComponentStyles } from './styleUtils.js';
@@ -175,7 +175,8 @@ export const EntityComponent = {
         entity: Object,
         entityType: String,
         isSelected: Boolean,
-        viewerWidth: Number
+        viewerWidth: Number,
+        viewerId: String // FIXED: Make sure viewerId prop is properly defined
     },
     components: {
         EmojiRenderer,
@@ -250,12 +251,64 @@ export const EntityComponent = {
             }
         };
 
-        // FIXED: Create drag handler with proper callbacks
+        // FIXED: Determine the correct viewerId for circles
+        const actualViewerId = computed(() => {
+            if (props.entityType === 'circle') {
+                // For circles, try multiple methods to get the correct viewer ID
+                
+                // Method 1: Use explicit viewerId prop (most reliable)
+                if (props.viewerId) {
+                    return props.viewerId;
+                }
+                
+                // Method 2: Use selected viewer from dataStore
+                if (dataStore.data?.selectedViewerId) {
+                    return dataStore.data.selectedViewerId;
+                }
+                
+                // Method 3: Try to find which viewer contains this circle
+                if (dataStore.getCirclesForViewer) {
+                    // Check common viewer IDs
+                    const commonViewerIds = ['viewer_1', 'viewer_2', 'viewer_3', 'viewer_4'];
+                    
+                    for (const viewerId of commonViewerIds) {
+                        try {
+                            const circlesInViewer = dataStore.getCirclesForViewer(viewerId);
+                            if (circlesInViewer.some(c => c.id === props.entity.id)) {
+                                return viewerId;
+                            }
+                        } catch (error) {
+                            // Skip this viewer if there's an error
+                            continue;
+                        }
+                    }
+                }
+                
+                console.warn(`❌ EntityComponent: Could not determine viewerId for circle ${props.entity.id}, using fallback`);
+                return 'viewer_1'; // Fallback
+            }
+            
+            // For squares, viewerId is not needed
+            return null;
+        });
+
+        // FIXED: Create enhanced props with the correct viewerId
+        const enhancedProps = computed(() => {
+            const base = { ...props };
+            
+            if (props.entityType === 'circle') {
+                base.viewerId = actualViewerId.value;
+            }
+            
+            return base;
+        });
+
+        // FIXED: Create drag handler with proper callbacks and enhanced props
         const dragHandler = new EntityDragHandler(
             elementRef, 
             emit, 
             dataStore, 
-            props,
+            enhancedProps.value, // Use the enhanced props with correct viewerId
             {
                 onDragMove: handleProximityDragMove,
                 onDragEnd: handleProximityDragEnd
@@ -295,12 +348,12 @@ export const EntityComponent = {
             }
 
             const indicatorMap = {
-                '❗': 'indicator-alert',
-                '✔️': 'indicator-done',
-                '⭐': 'indicator-star',
-                '😖': 'indicator-issue',
-                '▶️': 'indicator-next',
-                '🏁': 'indicator-finish'
+                'Ã¢Ââ€"': 'indicator-alert',
+                'Ã¢Å"â€Ã¯Â¸Â': 'indicator-done',
+                'Ã¢Â­Â': 'indicator-star',
+                'Ã°Å¸Ëœâ€"': 'indicator-issue',
+                'Ã¢â€"Â¶Ã¯Â¸Â': 'indicator-next',
+                'Ã°Å¸ÂÂ': 'indicator-finish'
             };
 
             return indicatorMap[props.entity.indicatorEmoji] || null;

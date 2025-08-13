@@ -1,4 +1,4 @@
-// useConnections.js - Composable for managing connections in components
+// useConnections.js - Composable for managing connections in components (Updated for circles)
 import { ref, computed, watch, onMounted } from './vue-composition-api.js';
 import { ConnectionManager } from './ConnectionManager.js';
 
@@ -18,32 +18,34 @@ export function useConnections() {
 
 /**
  * Hook for components that need to trigger connection updates
- * @param {Function} getSquares - Function that returns current squares
+ * @param {Function} getEntities - Function that returns current entities (squares or circles)
+ * @param {string} entityType - Type of entities ('square' or 'circle')
  * @param {Object} options - Configuration options
  */
-export function useConnectionUpdater(getSquares, options = {}) {
+export function useConnectionUpdater(getEntities, entityType = 'square', options = {}) {
     const { connectionManager } = useConnections();
     const { 
-        watchSquares = true, 
+        watchEntities = true, 
         immediate = true,
         debounceMs = 0
     } = options;
 
     let updateTimeout = null;
 
-    const updateConnections = (draggedSquareIds = null) => {
+    const updateConnections = (draggedEntityIds = null) => {
         if (updateTimeout) {
             clearTimeout(updateTimeout);
         }
 
-        const doUpdate = () => {
-            const squares = getSquares();
-            if (squares && squares.length > 0) {
-                connectionManager.updateConnections(squares, draggedSquareIds);
-            } else {
-                connectionManager.clearConnections();
-            }
-        };
+	const doUpdate = () => {
+		const entities = getEntities();
+		if (entities && entities.length > 0) {
+			connectionManager.updateConnections(entities, entityType, draggedEntityIds);
+		} else {
+			// FIXED: Only clear connections for the specific entity type, not all connections
+			connectionManager.clearConnections(entityType);
+		}
+	};
 
         if (debounceMs > 0) {
             updateTimeout = setTimeout(doUpdate, debounceMs);
@@ -52,13 +54,13 @@ export function useConnectionUpdater(getSquares, options = {}) {
         }
     };
 
-    // Watch squares for changes if enabled
-    if (watchSquares) {
+    // Watch entities for changes if enabled
+    if (watchEntities) {
         watch(
             () => {
-                const squares = getSquares();
-                // Create a dependency on square positions and count
-                return squares?.map(s => `${s.id}-${s.x}-${s.y}`).join(',') || '';
+                const entities = getEntities();
+                // Create a dependency on entity positions and count
+                return entities?.map(e => `${e.id}-${e.x}-${e.y}`).join(',') || '';
             },
             () => updateConnections(),
             { immediate }
@@ -73,19 +75,24 @@ export function useConnectionUpdater(getSquares, options = {}) {
 
 /**
  * Hook specifically for drag operations
- * @param {Function} getSquares - Function that returns current squares
- * @param {Function} getSelectedSquareIds - Function that returns selected square IDs
+ * @param {Function} getEntities - Function that returns current entities
+ * @param {Function} getSelectedEntityIds - Function that returns selected entity IDs
+ * @param {string} entityType - Type of entities ('square' or 'circle')
  */
-export function useConnectionDragUpdater(getSquares, getSelectedSquareIds) {
+export function useConnectionDragUpdater(getEntities, getSelectedEntityIds, entityType = 'square') {
     const { connectionManager } = useConnections();
 
     const updateConnectionsForDrag = () => {
-        const squares = getSquares();
-        const selectedIds = getSelectedSquareIds();
         
-        if (squares && squares.length > 0) {
-            const draggedSquareIds = new Set(selectedIds);
-            connectionManager.updateConnections(squares, draggedSquareIds);
+        const entities = getEntities();
+        const selectedIds = getSelectedEntityIds();
+        
+        if (entities && entities.length > 0) {
+            const draggedEntityIds = new Set(selectedIds);
+            
+            connectionManager.updateConnections(entities, entityType, draggedEntityIds);
+        } else {
+            console.warn(`❌ useConnectionDragUpdater: No entities found for ${entityType}`);
         }
     };
 

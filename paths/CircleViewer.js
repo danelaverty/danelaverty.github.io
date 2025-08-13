@@ -1,13 +1,15 @@
-// CircleViewer.js - Individual circle viewer component with rectangle selection (Updated for SharedDropdown)
+// CircleViewer.js - FIXED: Properly pass viewerId prop to EntityComponent
 import { ref, computed, onMounted, onUnmounted } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
 import { useRectangleSelection } from './useRectangleSelection.js';
+import { useConnectionUpdater, useConnections } from './useConnections.js';
 import { EntityComponent } from './EntityComponent.js';
 import { EntityControls } from './EntityControls.js';
 import { ViewerControls } from './ViewerControls.js';
+import { ConnectionComponent } from './ConnectionComponent.js';
 import { injectComponentStyles } from './styleUtils.js';
 
-// Inject component styles
+// Inject component styles (same as before)
 const componentStyles = `
     .circle-viewer {
         position: relative;
@@ -54,7 +56,6 @@ const componentStyles = `
         transition: margin-top 0.2s ease;
     }
 
-    /* No need for compact-controls class since height is now dynamic */
     .circle-viewer::before {
         background-position: center 45px;
         transition: background-position 0.2s ease;
@@ -114,7 +115,11 @@ export const CircleViewer = {
         const COMPACT_THRESHOLD = 200;
 
         const viewer = computed(() => dataStore.data.circleViewers.get(props.viewerId));
-        const currentCircles = computed(() => dataStore.getCirclesForViewer(props.viewerId));
+        
+        const currentCircles = computed(() => {
+            const circles = dataStore.getCirclesForViewer(props.viewerId);
+            return circles;
+        });
         
         const isSelected = computed(() => dataStore.isViewerSelected(props.viewerId));
         
@@ -122,6 +127,42 @@ export const CircleViewer = {
         const isCompactMode = computed(() => {
             return viewer.value && viewer.value.width < COMPACT_THRESHOLD;
         });
+
+        // Connection management for circles
+        const { connections, connectionManager } = useConnections();
+        
+        // FIXED: Filter connections to show only connections for this specific viewer
+	const viewerConnections = computed(() => {
+    
+    // FIXED: Filter for this viewer's circle connections specifically
+    const viewerEntityType = `circle-${props.viewerId}`;
+    const viewerCircleConnections = connections.value.filter(c => c.entityType === viewerEntityType);
+    
+    // Additional filtering to ensure both entities are still in this viewer (in case of deletions)
+    const currentCircleIds = new Set(currentCircles.value.map(c => c.id));
+    const filtered = viewerCircleConnections.filter(connection => {
+        const hasEntity1 = currentCircleIds.has(connection.entity1Id);
+        const hasEntity2 = currentCircleIds.has(connection.entity2Id);
+        
+        return hasEntity1 && hasEntity2;
+    });
+    
+    return filtered;
+});
+        
+        // FIXED: Set up connection updates with viewer-specific entity type to avoid conflicts
+        const { updateConnections } = useConnectionUpdater(
+            () => {
+                const circles = currentCircles.value;
+                return circles;
+            },
+            `circle-${props.viewerId}`, // FIXED: Use viewer-specific entity type
+            { 
+                watchEntities: true, 
+                immediate: true,
+                debounceMs: 30
+            }
+        );
 
         // Store initial selection state for Ctrl+drag operations
         let initialSelectedIds = new Set();
@@ -333,6 +374,7 @@ export const CircleViewer = {
             currentCircles,
             isSelected,
             viewerContentRef,
+            viewerConnections,
             isSelecting,
             selectionRect,
             getSelectionRectStyle,
@@ -346,28 +388,30 @@ export const CircleViewer = {
             handleViewerClick,
             handleViewerContainerClick,
             handleStartReorder,
+            startResize,
             handleMinimizeViewer,
-            handleCloseViewer,
-            startResize
+            handleCloseViewer
         };
     },
     components: {
         EntityComponent,
         EntityControls,
-        ViewerControls
+        ViewerControls,
+        ConnectionComponent
     },
     template: `
-    <div 
-        :class="[
-            'circle-viewer', 
-            { 
-                selected: isSelected,
-                'hide-background': viewer?.showBackground === false
-            }
-        ]"
-        :style="{ width: viewer?.width + 'px' }"
-        @click="handleViewerContainerClick"
-    >
+	    <div 
+    :class="[
+        'circle-viewer', 
+        { 
+            selected: isSelected,
+            'hide-background': viewer?.showBackground === false
+        }
+    ]"
+    :style="{ width: viewer?.width + 'px' }"
+    :data-viewer-id="viewerId"
+    @click="handleViewerContainerClick"
+>
         <ViewerControls 
             :viewer-id="viewerId"
             @start-reorder="handleStartReorder"
@@ -380,6 +424,15 @@ export const CircleViewer = {
             class="viewer-content" 
             @click="handleViewerClick"
         >
+            <!-- Connection Rendering for Circles -->
+            <ConnectionComponent
+                v-for="connection in viewerConnections"
+                :key="connection.id"
+                :connection="connection"
+                :viewer-width="viewer?.width || 400"
+            />
+            
+            <!-- FIXED: Pass viewerId prop to EntityComponent -->
             <EntityComponent
                 v-for="circle in currentCircles"
                 :key="circle.id"
@@ -387,6 +440,7 @@ export const CircleViewer = {
                 entity-type="circle"
                 :is-selected="dataStore.isCircleSelected(circle.id)"
                 :viewer-width="viewer?.width || 400"
+                :viewer-id="viewerId"
                 @select="handleCircleSelect"
                 @update-position="handleCirclePositionUpdate"
                 @update-name="handleCircleNameUpdate"

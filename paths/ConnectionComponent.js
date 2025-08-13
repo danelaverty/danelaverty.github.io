@@ -1,8 +1,8 @@
-// ConnectionComponent.js - Visual component for rendering connections (Updated)
+// ConnectionComponent.js - FIXED: Handle viewer-specific circle entity types
 import { computed } from './vue-composition-api.js';
 import { injectComponentStyles } from './styleUtils.js';
 
-// Inject connection styles - Updated to white lines
+// Inject connection styles - Updated for different entity types
 const connectionStyles = `
     .connection-line {
         position: absolute;
@@ -29,6 +29,19 @@ const connectionStyles = `
         transition: opacity 0.15s ease;
     }
 
+    /* Different styles for different entity types */
+    .connection-path.circle-connection {
+        stroke: #4CAF50;
+        stroke-width: 1.5;
+        opacity: 0.4;
+    }
+
+    .connection-path.square-connection {
+        stroke: #ffffff;
+        stroke-width: 2;
+        opacity: 0.6;
+    }
+
     .connection-path.fade-in {
         animation: connectionFadeIn 0.2s ease;
     }
@@ -39,11 +52,11 @@ const connectionStyles = `
 
     @keyframes connectionFadeIn {
         from { opacity: 0; }
-        to { opacity: 0.6; }
+        to { opacity: var(--target-opacity, 0.6); }
     }
 
     @keyframes connectionFadeOut {
-        from { opacity: 0.6; }
+        from { opacity: var(--target-opacity, 0.6); }
         to { opacity: 0; }
     }
 `;
@@ -55,18 +68,38 @@ export const ConnectionComponent = {
         connection: {
             type: Object,
             required: true
+        },
+        viewerWidth: {
+            type: Number,
+            default: null // Only needed for circles
         }
     },
     setup(props) {
-        // Calculate line position and rotation - Updated to use center of square-shape
+        // Calculate line position and rotation for both squares and circles
         const lineStyle = computed(() => {
-            const { square1, square2 } = props.connection;
+            const { entity1, entity2, entityType } = props.connection;
             
-            // Calculate center points of squares (16px offset for center of 32px squares)
-            const x1 = square1.x + 21; // Center of square
-            const y1 = square1.y + 21; // Center of square
-            const x2 = square2.x + 21;
-            const y2 = square2.y + 21;
+            let x1, y1, x2, y2;
+            
+            // FIXED: Check if this is a circle-type entity (including viewer-specific types)
+            const isCircleType = entityType === 'circle' || entityType.startsWith('circle-');
+            
+            if (isCircleType) {
+                // For circles: use center-relative positioning
+                const centerX = props.viewerWidth ? props.viewerWidth / 2 : 200; // Fallback center
+                
+                x1 = centerX + entity1.x + 16; // Center of circle (32px / 2)
+                y1 = entity1.y + 16;
+                x2 = centerX + entity2.x + 16;
+                y2 = entity2.y + 16;
+                
+            } else {
+                // For squares: use absolute positioning
+                x1 = entity1.x + 21; // Center of square (41px / 2 + border)
+                y1 = entity1.y + 21;
+                x2 = entity2.x + 21;
+                y2 = entity2.y + 21;
+            }
             
             // Calculate distance and angle
             const dx = x2 - x1;
@@ -74,14 +107,19 @@ export const ConnectionComponent = {
             const length = Math.sqrt(dx * dx + dy * dy);
             const angle = Math.atan2(dy, dx) * (180 / Math.PI);
             
+            // Get appropriate color and opacity based on entity type - FIXED: Keep circles white
+            const strokeColor = '#ffffff'; // Keep all connections white like before
+            const opacity = isCircleType ? 0.6 : 0.6; // Keep same opacity for both
+            const strokeWidth = isCircleType ? '1.5px' : '2px';
+            
             return {
                 left: x1 + 'px',
                 top: y1 + 'px',
                 width: length + 'px',
-                height: '2px',
-                backgroundColor: '#ffffff', // White color
+                height: strokeWidth,
+                backgroundColor: strokeColor,
                 transform: `rotate(${angle}deg)`,
-                opacity: 0.6
+                opacity: opacity
             };
         });
 
@@ -97,7 +135,7 @@ export const ConnectionComponent = {
     `
 };
 
-// SVG-based connection component for more complex styling - Updated for white lines and center positioning
+// SVG-based connection component for more complex styling - Updated for circles and squares
 export const ConnectionSVGComponent = {
     props: {
         connections: {
@@ -111,23 +149,43 @@ export const ConnectionSVGComponent = {
         containerHeight: {
             type: Number,
             default: 600
+        },
+        viewerWidth: {
+            type: Number,
+            default: null // Only needed when rendering circle connections
         }
     },
     setup(props) {
         const svgPaths = computed(() => {
             return props.connections.map(connection => {
-                const { square1, square2 } = connection;
+                const { entity1, entity2, entityType } = connection;
                 
-                // Calculate center points of squares (16px offset for center of 32px squares)
-                const x1 = square1.x + 16;
-                const y1 = square1.y + 16;
-                const x2 = square2.x + 16;
-                const y2 = square2.y + 16;
+                let x1, y1, x2, y2;
+                
+                // FIXED: Check if this is a circle-type entity (including viewer-specific types)
+                const isCircleType = entityType === 'circle' || entityType.startsWith('circle-');
+                
+                if (isCircleType) {
+                    // For circles: use center-relative positioning
+                    const centerX = props.viewerWidth ? props.viewerWidth / 2 : 200;
+                    x1 = centerX + entity1.x + 16; // Center of circle
+                    y1 = entity1.y + 16;
+                    x2 = centerX + entity2.x + 16;
+                    y2 = entity2.y + 16;
+                } else {
+                    // For squares: use absolute positioning  
+                    x1 = entity1.x + 21; // Center of square
+                    y1 = entity1.y + 21;
+                    x2 = entity2.x + 21;
+                    y2 = entity2.y + 21;
+                }
                 
                 return {
                     id: connection.id,
                     path: `M ${x1} ${y1} L ${x2} ${y2}`,
-                    distance: connection.distance
+                    distance: connection.distance,
+                    entityType: entityType,
+                    isCircleType: isCircleType
                 };
             });
         });
@@ -147,7 +205,7 @@ export const ConnectionSVGComponent = {
                 v-for="pathData in svgPaths"
                 :key="pathData.id"
                 :d="pathData.path"
-                class="connection-path"
+                :class="['connection-path', pathData.isCircleType ? 'circle-connection' : 'square-connection']"
             />
         </svg>
     `
