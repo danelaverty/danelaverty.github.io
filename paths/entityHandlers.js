@@ -1,9 +1,4 @@
-// entityHandlers.js - Entity event handling logic (Updated to remove redundant connection updates)
-/**
- * Create entity event handlers
- * @param {Object} dataStore - The data store instance
- * @returns {Object} Entity event handlers
- */
+// entityHandlers.js - Fixed for separate entity type connection handling
 import { useConnections } from './useConnections.js';
 
 export function createEntityHandlers(dataStore) {
@@ -15,10 +10,21 @@ export function createEntityHandlers(dataStore) {
         return currentDoc ? dataStore.getSquaresForDocument(currentDoc.id) : [];
     };
 
-    // Helper to update connections after square changes
-    const updateConnectionsAfterChange = () => {
+    // Helper to get current circles for a specific viewer
+    const getCurrentCirclesForViewer = (viewerId) => {
+        return dataStore.getCirclesForViewer ? dataStore.getCirclesForViewer(viewerId) : [];
+    };
+
+    // FIXED: Update connections for squares only
+    const updateSquareConnections = () => {
         const squares = getCurrentSquares();
-        connectionManager.updateConnections(squares);
+        connectionManager.updateConnections(squares, 'square');
+    };
+
+    // FIXED: Update connections for circles only (for a specific viewer)
+    const updateCircleConnections = (viewerId) => {
+        const circles = getCurrentCirclesForViewer(viewerId);
+        connectionManager.updateConnections(circles, 'circle');
     };
 
     // Square event handlers
@@ -28,8 +34,8 @@ export function createEntityHandlers(dataStore) {
 
     const handleSquarePositionUpdate = ({ id, x, y }) => {
         dataStore.updateSquare(id, { x, y });
-        // Update connections after position change
-        updateConnectionsAfterChange();
+        // FIXED: Update only square connections
+        updateSquareConnections();
     };
 
     const handleSquareNameUpdate = ({ id, name }) => {
@@ -39,7 +45,8 @@ export function createEntityHandlers(dataStore) {
     const handleSquareMoveMultiple = ({ entityType, deltaX, deltaY }) => {
         if (entityType === 'square') {
             dataStore.moveSelectedSquares(deltaX, deltaY);
-            // Note: moveSelectedSquares now handles connection updates internally
+            // FIXED: Update only square connections after move
+            updateSquareConnections();
         }
     };
 
@@ -47,32 +54,41 @@ export function createEntityHandlers(dataStore) {
         const square = dataStore.createSquare();
         if (square) {
             dataStore.selectSquare(square.id);
-            // Note: createSquare now handles connection updates internally
+            // FIXED: Update only square connections after add
+            updateSquareConnections();
         }
     };
 
     const handleSquareDocumentChange = (documentId) => {
         dataStore.data.selectedSquareId = null;
-        // Update connections when document changes
-        updateConnectionsAfterChange();
+        // FIXED: Update only square connections when document changes
+        updateSquareConnections();
     };
 
-    // Circle event handlers (for use in CircleViewer)
+    // Circle event handlers
     const handleCircleSelect = (id, viewerId, isCtrlClick = false) => {
         dataStore.selectCircle(id, viewerId, isCtrlClick);
     };
 
-    const handleCirclePositionUpdate = ({ id, x, y }) => {
+    const handleCirclePositionUpdate = ({ id, x, y }, viewerId = null) => {
         dataStore.updateCircle(id, { x, y });
+        // FIXED: Update only circle connections for the specific viewer
+        if (viewerId) {
+            updateCircleConnections(viewerId);
+        }
     };
 
     const handleCircleNameUpdate = ({ id, name }) => {
         dataStore.updateCircle(id, { name });
     };
 
-    const handleCircleMoveMultiple = ({ entityType, deltaX, deltaY }) => {
+    const handleCircleMoveMultiple = ({ entityType, deltaX, deltaY }, viewerId = null) => {
         if (entityType === 'circle') {
             dataStore.moveSelectedCircles(deltaX, deltaY);
+            // FIXED: Update only circle connections for the specific viewer
+            if (viewerId) {
+                updateCircleConnections(viewerId);
+            }
         }
     };
 
@@ -80,6 +96,8 @@ export function createEntityHandlers(dataStore) {
         const circle = dataStore.createCircleInViewer(viewerId);
         if (circle) {
             dataStore.selectCircle(circle.id);
+            // FIXED: Update only circle connections for the specific viewer
+            updateCircleConnections(viewerId);
         }
     };
 
@@ -90,8 +108,8 @@ export function createEntityHandlers(dataStore) {
         dataStore.data.selectedCircleId = null;
         dataStore.data.selectedSquareId = null;
         dataStore.data.currentSquareDocumentId = null;
-        // Clear connections when document changes
-        connectionManager.clearConnections();
+        // FIXED: Update only circle connections for the specific viewer
+        updateCircleConnections(viewerId);
     };
 
     return {
@@ -109,6 +127,10 @@ export function createEntityHandlers(dataStore) {
         handleCircleNameUpdate,
         handleCircleMoveMultiple,
         handleAddCircle,
-        handleCircleDocumentChange
+        handleCircleDocumentChange,
+
+        // FIXED: Expose helper methods for manual connection updates if needed
+        updateSquareConnections,
+        updateCircleConnections
     };
 }

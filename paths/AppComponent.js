@@ -1,4 +1,4 @@
-// AppComponent.js - Main application component (Updated with Energy Proximity System)
+// AppComponent.js - REVERTED: Remove global circle connection management
 import { ref, computed, onMounted, onUnmounted } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
 import { useRectangleSelection } from './useRectangleSelection.js';
@@ -20,7 +20,7 @@ import { createSquareSelectionHandlers } from './rectangleSelectionHandlers.js';
 
 export const App = {
     setup() {
-        const dataStore = useDataStore();
+	    const dataStore = useDataStore();
         const squareViewerContentRef = ref(null);
         const proximitySystem = useEnergyProximitySystem();
 
@@ -30,7 +30,8 @@ export const App = {
         
         const currentSquares = computed(() => {
             const docId = dataStore.data.currentSquareDocumentId;
-            return docId ? dataStore.getSquaresForDocument(docId) : [];
+            const squares = docId ? dataStore.getSquaresForDocument(docId) : [];
+            return squares;
         });
 
         // Check if characteristics bar should be visible
@@ -41,6 +42,13 @@ export const App = {
         // Connection management
         const { connections } = useConnections();
         
+        // FIXED: Filter connections for square viewer - only show square connections
+        const squareConnections = computed(() => {
+            return connections.value.filter(connection => {
+                return connection.entityType === 'square';
+            });
+        });
+        
         // Calculate container dimensions for connections
         const connectionContainerDimensions = computed(() => {
             const viewerWidths = visibleCircleViewers.value.reduce((sum, viewer) => sum + viewer.width, 0);
@@ -50,16 +58,19 @@ export const App = {
             };
         });
         
-        // Set up connection updates when squares change (but not during drags)
+        // FIXED: Set up connection updates for squares only
         useConnectionUpdater(
             () => currentSquares.value,
+            'square',
             { 
-                watchSquares: true, 
+                watchEntities: true, 
                 immediate: true,
-                debounceMs: 50 // Slightly higher debounce for non-drag updates
+                debounceMs: 50
             }
         );
 
+        // REMOVED: Global circle connection management - now handled per-viewer
+        
         // Shared dropdown reference
         const sharedDropdownRef = ref(null);
 
@@ -92,8 +103,6 @@ export const App = {
             selectedSquares.forEach(squareId => {
                 dataStore.updateSquare(squareId, { indicatorEmoji });
             });
-            
-            console.log(`Applied indicator "${indicatorEmoji}" to ${selectedSquares.length} squares`);
             
             // Close the picker
             handleIndicatorPickerClose();
@@ -146,7 +155,6 @@ export const App = {
         const handleSquareDocumentTabChange = (docId) => {
             // The SquareDocumentTabs component already calls dataStore.setCurrentSquareDocument
             // We just need to ensure any dependent state is updated if needed
-            console.log('Square document changed to:', docId);
         };
 
         // Set up keyboard handling and proximity system
@@ -170,13 +178,13 @@ export const App = {
             proximitySystem.stop();
         });
 
-        return {
+	return {
             dataStore,
             visibleCircleViewers,
             hasMinimizedViewers,
             currentSquares,
             hasSelectedCircle,
-            connections, // Expose connections for template
+            squareConnections, // FIXED: Only square connections for square viewer
             squareViewerContentRef,
             sharedDropdownRef,
             isIndicatorPickerVisible,
@@ -238,9 +246,9 @@ export const App = {
                         :class="['square-viewer-content', { 'no-characteristics-bar': !hasSelectedCircle }]"
                         @click="handleSquareViewerClick"
                     >
-                        <!-- Connection Rendering -->
+                        <!-- FIXED: Connection Rendering - Only square connections in square viewer -->
                         <ConnectionComponent
-                            v-for="connection in connections"
+                            v-for="connection in squareConnections"
                             :key="connection.id"
                             :connection="connection"
                         />
