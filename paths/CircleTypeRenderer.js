@@ -2,12 +2,12 @@
 import { injectComponentStyles } from './styleUtils.js';
 import { adjustBrightness, darken, lighten } from './colorUtils.js';
 import { SelectionRenderer } from './SelectionRenderer.js';
-import { BasicCircleRenderer } from './BasicCircleRenderer.js';
-import { GlowCircleRenderer } from './GlowCircleRenderer.js';
-import { TriangleCircleRenderer } from './TriangleCircleRenderer.js';
-import { GemCircleRenderer } from './GemCircleRenderer.js';
-import { EmojiCircleRenderer } from './EmojiCircleRenderer.js';
-import { circleTypeStyles } from './circleTypeStyles.js';
+import { BasicCircleRenderer } from './CRBasicCircleRenderer.js';
+import { GlowCircleRenderer } from './CRGlowCircleRenderer.js';
+import { TriangleCircleRenderer } from './CRTriangleCircleRenderer.js';
+import { GemCircleRenderer } from './CRGemCircleRenderer.js';
+import { EmojiCircleRenderer } from './CREmojiCircleRenderer.js';
+import { circleTypeStyles } from './CircleTypeStyles.js';
 import { ColorFlowSystem } from './ColorFlowSystem.js';
 
 // Inject main component styles
