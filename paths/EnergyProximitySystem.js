@@ -8,14 +8,15 @@ export class EnergyProximitySystem {
         
         // Configuration
         this.config = {
-            maxDistance: 90, // Maximum distance for effect
-            minDistance: 60,  // Minimum distance for maximum effect
+            maxDistance: 80, // Maximum distance for effect
+            minDistance: 30,  // Minimum distance for maximum effect
             maxScale: 1.5,    // Maximum scale multiplier
             minScale: 1.0,    // Minimum scale (normal size)
             maxOpacity: 1.0,  // Maximum opacity
-            minOpacity: 0.3,  // Minimum opacity when exciter is present
+            minOpacity: 0.3,  // Minimum opacity when dampener is present
             maxSaturation: 1.0, // Maximum saturation
-            minSaturation: 0.3, // Minimum saturation when exciter is present
+            minSaturation: 0.3, // Minimum saturation when dampener is present
+            inactiveOpacity: 0.4, // Opacity for inactive exciters/dampeners
             transitionDuration: '0.3s' // CSS transition duration
         };
     }
@@ -266,7 +267,10 @@ export class EnergyProximitySystem {
         circlesByViewer.forEach(viewerCircles => {
             const glowCircles = viewerCircles.filter(data => this.isGlowCircle(data.circle));
             const exciterCircles = viewerCircles.filter(data => 
-                this.hasEnergyType(data.circle, 'exciter')
+                this.hasEnergyType(data.circle, 'exciter') && this.isCircleActivated(data.circle)
+            );
+            const dampenerCircles = viewerCircles.filter(data => 
+                this.hasEnergyType(data.circle, 'dampener') && this.isCircleActivated(data.circle)
             );
 
             // Calculate effects for each glow circle within this viewer only
@@ -275,10 +279,14 @@ export class EnergyProximitySystem {
                 if (!glowPos) return;
                 
                 const isActivated = this.isCircleActivated(glowData.circle);
-                let maxProximityStrength = this.config.minScale;
-                let closestDistance = Infinity;
+                
+                // Start with the circle's natural state
+                let baseScale = isActivated ? this.config.maxScale : 0.7;
+                let netExciterEffect = 0;
+                let netDampenerEffect = 0;
+                let hasNearbyInfluencer = false;
 
-                // Check distance to all exciter circles in this viewer
+                // Calculate exciter effects - only from activated exciters
                 exciterCircles.forEach(exciterData => {
                     // Skip if it's the same circle
                     if (glowData.circle.id === exciterData.circle.id) return;
@@ -287,42 +295,71 @@ export class EnergyProximitySystem {
                     if (!exciterPos) return;
 
                     const distance = this.calculateDistance(glowPos, exciterPos);
-                    const proximityStrength = this.calculateProximityStrength(distance);
-                    
-                    if (distance < closestDistance) {
-                        closestDistance = distance;
+                    if (distance <= this.config.maxDistance) {
+                        hasNearbyInfluencer = true;
+                        const proximityStrength = this.calculateProximityStrength(distance);
+                        
+                        // Calculate exciter effect as positive influence
+                        // Convert proximity strength to an effect delta from base scale
+                        const exciterInfluence = (proximityStrength - this.config.minScale) / (this.config.maxScale - this.config.minScale);
+                        netExciterEffect = Math.max(netExciterEffect, exciterInfluence);
                     }
-                    
-                    // Use the maximum proximity strength from all nearby exciters
-                    maxProximityStrength = Math.max(maxProximityStrength, proximityStrength);
                 });
 
-		if (isActivated) { 
-			const maxMinScaleMidpoint = (this.config.maxScale + this.config.minScale) / 2;
-			const maxMinScaleMidpointDelta = maxProximityStrength - maxMinScaleMidpoint;
-			maxProximityStrength = maxMinScaleMidpoint - maxMinScaleMidpointDelta;
-		}
+                // Calculate dampener effects - only from activated dampeners
+                dampenerCircles.forEach(dampenerData => {
+                    // Skip if it's the same circle
+                    if (glowData.circle.id === dampenerData.circle.id) return;
 
-                // Only apply effect if proximity strength is different from normal or if there are exciters in this viewer
-                if (Math.abs(maxProximityStrength - this.config.minScale) > 0.01) {
-                    // Calculate opacity and saturation based on the same distance as scale
+                    const dampenerPos = this.getEffectivePosition(dampenerData.circle.id);
+                    if (!dampenerPos) return;
+
+                    const distance = this.calculateDistance(glowPos, dampenerPos);
+                    if (distance <= this.config.maxDistance) {
+                        hasNearbyInfluencer = true;
+                        const proximityStrength = this.calculateProximityStrength(distance);
+                        
+                        // Calculate dampener effect as negative influence
+                        // Convert proximity strength to an effect delta (stronger proximity = more dampening)
+                        const dampenerInfluence = (proximityStrength - this.config.minScale) / (this.config.maxScale - this.config.minScale);
+                        netDampenerEffect = Math.max(netDampenerEffect, dampenerInfluence);
+                    }
+                });
+
+                // Only apply effect if there's a nearby influencer
+                if (hasNearbyInfluencer) {
+                    // Calculate net effect: exciter pushes toward maxScale, dampener pushes toward minScale
+                    const netEffect = netExciterEffect - netDampenerEffect;
+                    
+                    // Apply the net effect to determine final scale
+                    let finalScale;
+                    if (netEffect > 0) {
+                        // More excitation than dampening - scale up from base
+                        const maxPossibleScale = isActivated ? this.config.maxScale : this.config.maxScale;
+                        finalScale = baseScale + (netEffect * (maxPossibleScale - baseScale));
+                    } else if (netEffect < 0) {
+                        // More dampening than excitation - scale down from base
+                        const minPossibleScale = isActivated ? 0.7 : 0.7;
+                        finalScale = baseScale + (netEffect * (baseScale - minPossibleScale));
+                    } else {
+                        // Equal forces or no net effect
+                        finalScale = baseScale;
+                    }
+                    
+                    // Clamp final scale within reasonable bounds
+                    //finalScale = Math.max(0.5, Math.min(this.config.maxScale, finalScale));
+                    
+                    // Calculate opacity and saturation based on final scale
+                    const effectStrength = (finalScale - 0.7) / (this.config.maxScale - 0.7);
+                    const clampedEffectStrength = Math.max(0, Math.min(1, effectStrength));
+                    
                     const opacityRange = this.config.maxOpacity - this.config.minOpacity;
                     const saturationRange = this.config.maxSaturation - this.config.minSaturation;
-                    const proximityStrengthRange = this.config.maxScale - this.config.minScale;
                     
-                    // Use the same proportion as proximity strength for opacity and saturation
-                    const effectStrength = (maxProximityStrength - this.config.minScale) / proximityStrengthRange;
-                    const opacity = this.config.minOpacity + (effectStrength * opacityRange);
-                    const saturation = this.config.minSaturation + (effectStrength * saturationRange);
+                    const opacity = this.config.minOpacity + (clampedEffectStrength * opacityRange);
+                    const saturation = this.config.minSaturation + (clampedEffectStrength * saturationRange);
                     
-                    newEffects.set(glowData.circle.id, { scale: maxProximityStrength, opacity, saturation });
-                } else if (exciterCircles.length > 0) {
-                    // If there are exciters in this viewer but this glow circle is far away, apply minimum values
-                    newEffects.set(glowData.circle.id, { 
-                        scale: this.config.minScale, 
-                        opacity: this.config.minOpacity, 
-                        saturation: this.config.minSaturation 
-                    });
+                    newEffects.set(glowData.circle.id, { scale: finalScale, opacity, saturation });
                 }
             });
         });
@@ -336,21 +373,41 @@ export class EnergyProximitySystem {
      * Apply proximity effects to elements
      */
     applyProximityEffects(effects) {
-        // Reset circles that no longer have effects
-        this.proximityEffects.forEach((oldEffect, circleId) => {
-            if (!effects.has(circleId)) {
-                const data = this.circles.get(circleId);
-                if (data && data.element) {
-                    this.setElementProximityEffects(data.element, this.config.minScale, this.config.maxOpacity, this.config.maxSaturation);
+        // Process all circles to set appropriate appearance
+        this.circles.forEach((data, circleId) => {
+            if (!data.element) return;
+
+            const circle = data.circle;
+            
+            // Handle glow circles
+            if (this.isGlowCircle(circle)) {
+                if (effects.has(circleId)) {
+                    // Apply proximity effects
+                    const effect = effects.get(circleId);
+                    this.setElementProximityEffects(data.element, effect.scale, effect.opacity, effect.saturation);
+                } else {
+                    // No proximity effects - set default appearance based on activation state
+                    const isActivated = this.isCircleActivated(circle);
+                    if (isActivated) {
+                        // Activated circles: big & bright by default
+                        this.setElementProximityEffects(data.element, this.config.maxScale, this.config.maxOpacity, this.config.maxSaturation);
+                    } else {
+                        // Inactive circles: small & dim by default
+                        // Use the minimum values from config (which should represent small & dim)
+                        this.setElementProximityEffects(data.element, 0.7, this.config.minOpacity, this.config.minSaturation);
+                    }
                 }
             }
-        });
-
-        // Apply new/updated effects
-        effects.forEach((effect, circleId) => {
-            const data = this.circles.get(circleId);
-            if (data && data.element) {
-                this.setElementProximityEffects(data.element, effect.scale, effect.opacity, effect.saturation);
+            // Handle exciter/dampener circles
+            else if (this.hasEnergyType(circle, 'exciter') || this.hasEnergyType(circle, 'dampener')) {
+                const isActivated = this.isCircleActivated(circle);
+                if (isActivated) {
+                    // Activated exciters/dampeners: full opacity
+                    this.setElementProximityEffects(data.element, this.config.minScale, this.config.maxOpacity, this.config.maxSaturation);
+                } else {
+                    // Inactive exciters/dampeners: dimmed opacity
+                    this.setElementProximityEffects(data.element, this.config.minScale, this.config.inactiveOpacity, this.config.maxSaturation);
+                }
             }
         });
     }

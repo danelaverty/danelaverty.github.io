@@ -18,7 +18,6 @@ export const ActivationControl = {
             :title="isActivated ? 'Activated - Click to deactivate' : 'Inactive - Click to activate'"
         >
             <div class="activation-icon">{{ isActivated ? '🟢' : '⚫' }}</div>
-            <div class="activation-label">{{ isActivated ? 'ON' : 'OFF' }}</div>
         </div>
     </div>
   `

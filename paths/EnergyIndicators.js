@@ -29,6 +29,11 @@ const componentStyles = `
         animation: exciterPulse 2s ease-in-out infinite;
     }
 
+    .energy-dot.dampener {
+        background-color: #9966FF;
+        animation: dampenerPulse 2.2s ease-in-out infinite;
+    }
+
     .energy-dot.attractor {
         background-color: #FF4444;
         animation: attractorPulse 2.5s ease-in-out infinite;
@@ -47,6 +52,17 @@ const componentStyles = `
         50% { 
             transform: scale(1.2);
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 4px rgba(255, 215, 0, 0);
+        }
+    }
+
+    @keyframes dampenerPulse {
+        0%, 100% { 
+            transform: scale(1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 0 rgba(153, 102, 255, 0.7);
+        }
+        50% { 
+            transform: scale(1.2);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 4px rgba(153, 102, 255, 0);
         }
     }
 
@@ -92,7 +108,7 @@ export const EnergyIndicators = {
     setup(props) {
         const sortedEnergyTypes = computed(() => {
             // Sort energy types for consistent display order
-            const order = ['exciter', 'attractor', 'attractee'];
+            const order = ['exciter', 'dampener', 'attractor', 'attractee'];
             return props.energyTypes.sort((a, b) => 
                 order.indexOf(a) - order.indexOf(b)
             );

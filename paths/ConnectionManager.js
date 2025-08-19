@@ -1,4 +1,4 @@
-// ConnectionManager.js - FIXED: Separate storage for each entity type including viewer-specific types
+// ConnectionManager.js - FIXED: Only create connections between glow and non-glow circles + DEBUG
 import { reactive, computed } from './vue-composition-api.js';
 
 export class ConnectionManager {
@@ -12,11 +12,15 @@ export class ConnectionManager {
         // Connection distances for different entity types
         this.SQUARE_CONNECTION_DISTANCE = 130;
         this.SQUARE_BOLD_CONNECTION_DISTANCE = 165;
-        this.CIRCLE_CONNECTION_DISTANCE = 100;
+        this.CIRCLE_CONNECTION_DISTANCE = 80;
         this.CIRCLE_BOLD_CONNECTION_DISTANCE = 130;
         
         // FIXED: Use a single cache structure for all entity types
         this.caches = new Map(); // Key: entityType, Value: cache object
+        
+        // DEBUG: Track connection object creation
+        this.connectionCreationCount = 0;
+        this.lastConnectionUpdate = Date.now();
     }
 
     /**
@@ -45,6 +49,18 @@ export class ConnectionManager {
     }
 
     /**
+     * NEW: Check if two circles should be connected based on glow type rule
+     * Only connect if one is glow-type and the other is non-glow-type
+     */
+    shouldConnectCircles(entity1, entity2) {
+        const entity1IsGlow = entity1.type === 'glow';
+        const entity2IsGlow = entity2.type === 'glow';
+        
+        // Only connect if exactly one is glow type (XOR logic)
+        return entity1IsGlow !== entity2IsGlow;
+    }
+
+    /**
      * Generate a consistent connection ID for two entities with proper type safety
      */
     getConnectionId(entity1Id, entity2Id, entityType) {
@@ -65,7 +81,9 @@ export class ConnectionManager {
             this.caches.set(entityType, {
                 lastEntityPositions: new Map(),
                 lastEntityIds: new Set(),
-                lastEntityBoldStates: new Map()
+                lastEntityBoldStates: new Map(),
+                lastEntityTypes: new Map(), // NEW: Track entity types for circles
+                lastEntityActivations: new Map() // DEBUG: Track activation states
             });
         }
         return this.caches.get(entityType);
@@ -82,7 +100,7 @@ export class ConnectionManager {
     }
 
     /**
-     * Check if the set of entities has changed (added/removed) or positions/bold states changed
+     * Check if the set of entities has changed (added/removed) or positions/bold states/types changed
      */
     hasEntitiesChanged(entities, entityType) {
         const cache = this.getCache(entityType);
@@ -106,10 +124,12 @@ export class ConnectionManager {
             }
         }
         
-        // Check if positions or bold states changed
+        // Check if positions, bold states, types, or activation changed
         for (const entity of entities) {
             const lastPos = cache.lastEntityPositions.get(entity.id);
             const lastBold = cache.lastEntityBoldStates.get(entity.id);
+            const lastType = cache.lastEntityTypes.get(entity.id);
+            const lastActivation = cache.lastEntityActivations.get(entity.id); // DEBUG
             
             if (!lastPos || lastPos.x !== entity.x || lastPos.y !== entity.y) {
                 return true;
@@ -118,13 +138,23 @@ export class ConnectionManager {
             if (lastBold !== (entity.bold === true)) {
                 return true;
             }
+            
+            // NEW: Check if circle type changed (important for glow connection logic)
+            if (entityType.startsWith('circle') && lastType !== entity.type) {
+                return true;
+            }
+            
+            // DEBUG: Check if activation changed - LOG THIS SPECIFIC CASE
+            if (entityType.startsWith('circle') && lastActivation !== entity.activation) {
+                return true;
+            }
         }
         
         return false;
     }
 
     /**
-     * Update cached positions, entity IDs, and bold states for specific entity type
+     * Update cached positions, entity IDs, bold states, and types for specific entity type
      */
     updateCaches(entities, entityType) {
         const cache = this.getCache(entityType);
@@ -146,6 +176,20 @@ export class ConnectionManager {
         entities.forEach(entity => {
             cache.lastEntityBoldStates.set(entity.id, entity.bold === true);
         });
+        
+        // NEW: Update type cache for circles
+        if (entityType.startsWith('circle')) {
+            cache.lastEntityTypes.clear();
+            entities.forEach(entity => {
+                cache.lastEntityTypes.set(entity.id, entity.type || 'basic');
+            });
+            
+            // DEBUG: Update activation cache
+            cache.lastEntityActivations.clear();
+            entities.forEach(entity => {
+                cache.lastEntityActivations.set(entity.id, entity.activation);
+            });
+        }
     }
 
     /**
@@ -155,18 +199,17 @@ export class ConnectionManager {
      * @param {Set} draggedEntityIds - IDs of entities currently being dragged (optional optimization)
      */
     updateConnections(entities, entityType = 'square', draggedEntityIds = null) {
-    
-    // FIXED: Show counts for all entity types, not just square/circle
-    const totalConnections = Array.from(this.data.connectionsByType.values())
-        .reduce((sum, map) => sum + map.size, 0);
-    
-    const connectionsMap = this.getConnectionsMap(entityType);
-    
-    const entitiesChanged = this.hasEntitiesChanged(entities, entityType);
-    
-    if (!draggedEntityIds && !entitiesChanged) {
-        return;
-    }
+        // FIXED: Show counts for all entity types, not just square/circle
+        const totalConnections = Array.from(this.data.connectionsByType.values())
+            .reduce((sum, map) => sum + map.size, 0);
+        
+        const connectionsMap = this.getConnectionsMap(entityType);
+        
+        const entitiesChanged = this.hasEntitiesChanged(entities, entityType);
+        
+        if (!draggedEntityIds && !entitiesChanged) {
+            return;
+        }
 
         const newConnections = new Map();
         
@@ -189,9 +232,12 @@ export class ConnectionManager {
     }
 
     /**
-     * Full connection update with proper ID generation
+     * Full connection update with proper ID generation and circle glow filtering
+     * FIXED: Preserve entity reactivity
      */
     updateConnectionsFull(entities, entityType, newConnections) {
+        const isCircleType = entityType === 'circle' || entityType.startsWith('circle-');
+        
         for (let i = 0; i < entities.length; i++) {
             for (let j = i + 1; j < entities.length; j++) {
                 const entity1 = entities[i];
@@ -202,18 +248,34 @@ export class ConnectionManager {
                     continue;
                 }
                 
+                // NEW: For circles, only connect if one is glow and other is non-glow
+                if (isCircleType && !this.shouldConnectCircles(entity1, entity2)) {
+                    continue;
+                }
+                
                 const distance = this.calculateDistance(entity1, entity2);
                 const connectionDistance = this.getConnectionDistance(entity1, entity2, entityType);
                 
                 if (distance <= connectionDistance) {
                     const connectionId = this.getConnectionId(entity1.id, entity2.id, entityType);
                     
+                    // DEBUG: Log entity references in new connections
+                    if (isCircleType) {
+                        // CRITICAL FIX: Check if entities are reactive, warn if not
+                        if (!entity1.__v_isReactive && !entity1.__v_isProxy) {
+                            console.warn(`⚠️ Entity ${entity1.id} is NOT REACTIVE! This will break connection updates.`);
+                        }
+                        if (!entity2.__v_isReactive && !entity2.__v_isProxy) {
+                            console.warn(`⚠️ Entity ${entity2.id} is NOT REACTIVE! This will break connection updates.`);
+                        }
+                    }
+                    
                     newConnections.set(connectionId, {
                         id: connectionId,
                         entity1Id: entity1.id,
                         entity2Id: entity2.id,
-                        entity1: entity1,
-                        entity2: entity2,
+                        entity1: entity1, // These MUST be reactive references
+                        entity2: entity2, // These MUST be reactive references
                         distance: distance,
                         connectionDistance: connectionDistance,
                         entityType: entityType
@@ -221,13 +283,13 @@ export class ConnectionManager {
                 }
             }
         }
-        
     }
 
     /**
-     * Optimized connection update for drag operations
+     * Optimized connection update for drag operations with circle glow filtering
      */
     updateConnectionsOptimized(entities, entityType, draggedEntityIds, newConnections, existingConnections) {
+        const isCircleType = entityType === 'circle' || entityType.startsWith('circle-');
         const draggedEntities = entities.filter(e => draggedEntityIds.has(e.id));
         const staticEntities = entities.filter(e => !draggedEntityIds.has(e.id));
         
@@ -239,16 +301,23 @@ export class ConnectionManager {
                 const connectionId = this.getConnectionId(entity1.id, entity2.id, entityType);
                 
                 if (existingConnections.has(connectionId)) {
+                    // NEW: Re-check circle glow rule even for existing connections
+                    if (isCircleType && !this.shouldConnectCircles(entity1, entity2)) {
+                        continue;
+                    }
+                    
                     const distance = this.calculateDistance(entity1, entity2);
                     const connectionDistance = this.getConnectionDistance(entity1, entity2, entityType);
                     
                     if (distance <= connectionDistance) {
+                        // DEBUG: Check if we're preserving reactive references
+                        const existingConn = existingConnections.get(connectionId);
                         newConnections.set(connectionId, {
                             id: connectionId,
                             entity1Id: entity1.id,
                             entity2Id: entity2.id,
-                            entity1: entity1,
-                            entity2: entity2,
+                            entity1: entity1, // DEBUG: Using fresh entity references
+                            entity2: entity2, // DEBUG: Using fresh entity references
                             distance: distance,
                             connectionDistance: connectionDistance,
                             entityType: entityType
@@ -263,17 +332,31 @@ export class ConnectionManager {
             for (const otherEntity of entities) {
                 if (draggedEntity.id === otherEntity.id) continue;
                 
+                // NEW: For circles, only connect if one is glow and other is non-glow
+                if (isCircleType && !this.shouldConnectCircles(draggedEntity, otherEntity)) {
+                    continue;
+                }
+                
                 const distance = this.calculateDistance(draggedEntity, otherEntity);
                 const connectionDistance = this.getConnectionDistance(draggedEntity, otherEntity, entityType);
                 const connectionId = this.getConnectionId(draggedEntity.id, otherEntity.id, entityType);
                 
                 if (distance <= connectionDistance) {
+                    
+                    // CRITICAL FIX: Check reactivity of dragged entities
+                    if (!draggedEntity.__v_isReactive && !draggedEntity.__v_isProxy) {
+                        console.warn(`⚠️ Dragged entity ${draggedEntity.id} is NOT REACTIVE!`);
+                    }
+                    if (!otherEntity.__v_isReactive && !otherEntity.__v_isProxy) {
+                        console.warn(`⚠️ Other entity ${otherEntity.id} is NOT REACTIVE!`);
+                    }
+                    
                     newConnections.set(connectionId, {
                         id: connectionId,
                         entity1Id: draggedEntity.id,
                         entity2Id: otherEntity.id,
-                        entity1: draggedEntity,
-                        entity2: otherEntity,
+                        entity1: draggedEntity, // MUST be reactive
+                        entity2: otherEntity,   // MUST be reactive
                         distance: distance,
                         connectionDistance: connectionDistance,
                         entityType: entityType
@@ -295,6 +378,8 @@ export class ConnectionManager {
             cache.lastEntityPositions.clear();
             cache.lastEntityIds.clear();
             cache.lastEntityBoldStates.clear();
+            cache.lastEntityTypes.clear(); // NEW: Clear type cache
+            cache.lastEntityActivations.clear(); // DEBUG: Clear activation cache
         } else {
             // Clear all connections and caches
             this.data.connectionsByType.clear();
@@ -348,7 +433,36 @@ export class ConnectionManager {
      * Force a full recalculation of connections for specific entity type
      */
     forceUpdate(entities, entityType = 'square') {
+        console.log(`🔄 ConnectionManager: Force update for ${entityType}`);
         this.clearConnections(entityType);
         this.updateConnections(entities, entityType);
+    }
+
+    /**
+     * DEBUG: Get debug information about current state
+     */
+    getDebugInfo() {
+        const info = {
+            totalConnections: this.getConnections().length,
+            connectionsByType: {},
+            cacheInfo: {},
+            creationCount: this.connectionCreationCount
+        };
+        
+        this.data.connectionsByType.forEach((connectionsMap, entityType) => {
+            info.connectionsByType[entityType] = connectionsMap.size;
+        });
+        
+        this.caches.forEach((cache, entityType) => {
+            info.cacheInfo[entityType] = {
+                positions: cache.lastEntityPositions.size,
+                ids: cache.lastEntityIds.size,
+                boldStates: cache.lastEntityBoldStates.size,
+                types: cache.lastEntityTypes.size,
+                activations: cache.lastEntityActivations?.size || 0
+            };
+        });
+        
+        return info;
     }
 }

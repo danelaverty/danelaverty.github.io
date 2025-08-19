@@ -1,4 +1,4 @@
-// RadiusIndicatorManager.js - Manages connection radius indicators
+// RadiusIndicatorManager.js - Manages connection radius indicators + DEBUG STATEMENTS
 import { injectComponentStyles } from './styleUtils.js';
 
 // Inject radius indicator styles
@@ -62,44 +62,56 @@ export class RadiusIndicatorManager {
     }
 
     createIndicators(selectedEntityIds, deltaX, deltaY) {
-        if (!this.container) return;
-
+	    if (!this.container) { this.container = this.entityTypeHandler.getContainer(); }
         this.removeIndicators();
         this.isActive = true;
 
         selectedEntityIds.forEach(entityId => {
             const entity = this.entityTypeHandler.findEntityById(entityId);
-            if (!entity) return;
+
+            if (!entity) {
+                console.warn('⚠️ Entity not found:', entityId);
+                return;
+            }
 
             const indicator = this.createSingleIndicator(entity, deltaX, deltaY);
+
             if (indicator) {
                 this.container.appendChild(indicator);
                 this.indicatorElements.set(entityId, indicator);
+            } else {
+                console.error('❌ Failed to create indicator for entity:', entityId);
             }
         });
     }
 
     createSingleIndicator(entity, deltaX, deltaY) {
-        const connectionDistance = this.entityTypeHandler.getConnectionDistance(entity);
-        const centerPos = this.entityTypeHandler.getCenterPosition(entity, deltaX, deltaY);
-        
-        const indicator = document.createElement('div');
-        const radius = connectionDistance;
-        const diameter = radius * 2;
-        
-        // Set classes
-        indicator.className = 'connection-radius-indicator fade-in';
-        
-        if (this.entityTypeHandler.constructor.name === 'SquareHandler' && entity.bold) {
-            indicator.classList.add('bold');
-        } else if (this.entityTypeHandler.constructor.name === 'CircleHandler') {
-            indicator.classList.add('circle-indicator');
+        try {
+            const connectionDistance = this.entityTypeHandler.getConnectionDistance(entity);
+
+            const centerPos = this.entityTypeHandler.getCenterPosition(entity, deltaX, deltaY);
+            
+            const indicator = document.createElement('div');
+            const radius = connectionDistance;
+            const diameter = radius * 2;
+            
+            // Set classes
+            indicator.className = 'connection-radius-indicator fade-in';
+            
+            if (this.entityTypeHandler.constructor.name === 'SquareHandler' && entity.bold) {
+                indicator.classList.add('bold');
+            } else if (this.entityTypeHandler.constructor.name === 'CircleHandler') {
+                indicator.classList.add('circle-indicator');
+            }
+            
+            // Set styles
+            this.applyIndicatorStyles(indicator, centerPos, radius, diameter, entity);
+            
+            return indicator;
+            
+        } catch (error) {
+            return null;
         }
-        
-        // Set styles
-        this.applyIndicatorStyles(indicator, centerPos, radius, diameter, entity);
-        
-        return indicator;
     }
 
     applyIndicatorStyles(indicator, centerPos, radius, diameter, entity) {
@@ -126,13 +138,19 @@ export class RadiusIndicatorManager {
     }
 
     updateIndicators(selectedEntityIds, deltaX, deltaY) {
-        if (!this.isActive) return;
+        if (!this.isActive) {
+            console.warn('⚠️ Not active, skipping update');
+            return;
+        }
 
         selectedEntityIds.forEach(entityId => {
             const indicator = this.indicatorElements.get(entityId);
             const entity = this.entityTypeHandler.findEntityById(entityId);
             
-            if (!indicator || !entity) return;
+            if (!indicator || !entity) {
+                console.warn('⚠️ Missing indicator or entity for:', entityId);
+                return;
+            }
 
             const centerPos = this.entityTypeHandler.getCenterPosition(entity, deltaX, deltaY);
             const connectionDistance = this.entityTypeHandler.getConnectionDistance(entity);
@@ -144,7 +162,7 @@ export class RadiusIndicatorManager {
     }
 
     removeIndicators() {
-        this.indicatorElements.forEach((indicator) => {
+        this.indicatorElements.forEach((indicator, entityId) => {
             if (indicator && indicator.parentNode) {
                 indicator.classList.add('fade-out');
                 setTimeout(() => {

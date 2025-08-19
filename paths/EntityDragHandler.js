@@ -1,4 +1,4 @@
-// EntityDragHandler.js - Refactored with improved architecture
+// EntityDragHandler.js - FIXED: Prevent connection endpoint jump on drag end
 import { onMounted } from './vue-composition-api.js';
 import { useDraggable } from './useDraggable.js';
 import { useConnectionDragUpdater } from './useConnections.js';
@@ -13,6 +13,15 @@ export class EntityDragHandler {
         this.dataStore = dataStore;
         this.props = props;
         this.proximityCallbacks = callbacks;
+        
+        // Track if actual dragging occurred
+        this.hasActuallyDragged = false;
+        
+        // FIXED: Track current drag state for connection updates
+        this.currentDragState = { deltaX: 0, deltaY: 0, isDragging: false };
+        
+        // FIXED: Flag to prevent connection updates during position transition
+        this.isUpdatingPositions = false;
         
         // Initialize type-specific handler
         this.entityTypeHandler = this.createEntityTypeHandler();
@@ -41,21 +50,75 @@ export class EntityDragHandler {
             elementRef: this.elementRef
         };
 
-        return this.props.entityType === 'circle' 
+        const handler = this.props.entityType === 'circle' 
             ? new CircleHandler(this.dataStore, handlerProps)
             : new SquareHandler(this.dataStore, handlerProps);
+
+        return handler;
     }
 
     setupConnectionUpdater() {
         const connectionEntityType = this.entityTypeHandler.getConnectionEntityType();
         
         const { updateConnectionsForDrag } = useConnectionDragUpdater(
-            () => this.dragStateManager.getCurrentEntitiesWithDeltas(),
+            // FIXED: Create a function that returns reactive entities with current drag positions
+            () => this.getReactiveEntitiesWithCurrentPositions(),
             () => this.entityTypeHandler.getSelectedEntityIds(),
             connectionEntityType
         );
         
         this.updateConnectionsForDrag = updateConnectionsForDrag;
+    }
+
+    /**
+     * FIXED: Get reactive entities with current drag positions applied
+     * This preserves reactivity while using current positions for connection calculations
+     */
+    getReactiveEntitiesWithCurrentPositions() {
+        const originalEntities = this.entityTypeHandler.getCurrentEntities();
+        
+        if (!this.currentDragState.isDragging || (!this.currentDragState.deltaX && !this.currentDragState.deltaY)) {
+            // No drag in progress, return original entities
+            return originalEntities;
+        }
+        
+        // During drag: create temporary position-updated entities while preserving reactivity
+        return originalEntities.map(entity => {
+            const isDragged = this.entityTypeHandler.getSelectedEntityIds().includes(entity.id);
+            
+            if (isDragged) {
+                // Capture current drag state for the proxy closure
+                const currentDeltaX = this.currentDragState.deltaX;
+                const currentDeltaY = this.currentDragState.deltaY;
+                
+                // Create a temporary proxy that maintains reactivity but shows updated positions
+                return new Proxy(entity, {
+                    get(target, prop) {
+                        if (prop === 'x') {
+                            return target.x + currentDeltaX;
+                        }
+                        if (prop === 'y') {
+                            return target.y + currentDeltaY;
+                        }
+                        // For all other properties (including activation), return original value
+                        // This preserves Vue reactivity for non-position properties
+                        return target[prop];
+                    },
+                    // Ensure the proxy appears reactive to Vue
+                    has(target, prop) {
+                        return prop in target;
+                    },
+                    ownKeys(target) {
+                        return Object.keys(target);
+                    },
+                    getOwnPropertyDescriptor(target, prop) {
+                        return Object.getOwnPropertyDescriptor(target, prop);
+                    }
+                });
+            }
+            
+            return entity; // Non-dragged entities unchanged
+        });
     }
 
     bindMethods() {
@@ -64,11 +127,13 @@ export class EntityDragHandler {
         this.handleMouseMove = this.handleMouseMove.bind(this);
         this.onDragMove = this.onDragMove.bind(this);
         this.onDragEnd = this.onDragEnd.bind(this);
+        this.onDragStart = this.onDragStart.bind(this);
     }
 
     setupDragging() {
         useDraggable(this.elementRef, this.onDragEnd, () => this.entityTypeHandler.getContainer(), { 
-            onDragMove: this.onDragMove 
+            onDragMove: this.onDragMove,
+            onDragStart: this.onDragStart
         });
     }
 
@@ -78,7 +143,21 @@ export class EntityDragHandler {
         });
     }
 
+    onDragStart() {
+        // Reset the drag flag when drag starts
+        this.hasActuallyDragged = false;
+        
+        // FIXED: Initialize drag state
+        this.currentDragState = { deltaX: 0, deltaY: 0, isDragging: true };
+    }
+
     onDragMove(deltaX, deltaY) {
+        // Mark that actual dragging has occurred
+        this.hasActuallyDragged = true;
+        
+        // FIXED: Update current drag state for connection calculations
+        this.currentDragState = { deltaX, deltaY, isDragging: true };
+        
         this.dragStateManager.updateDragState(deltaX, deltaY);
         
         // Call proximity callback
@@ -90,10 +169,12 @@ export class EntityDragHandler {
 
     updateVisualsDuringDrag(deltaX, deltaY) {
         const selectedIds = this.entityTypeHandler.getSelectedEntityIds();
-        
+
         // Create radius indicators on first drag move
         if (!this.radiusIndicatorManager.isActive) {
-            this.radiusIndicatorManager.createIndicators(selectedIds, deltaX, deltaY);
+            if (selectedIds && selectedIds.length > 0) {
+                this.radiusIndicatorManager.createIndicators(selectedIds, deltaX, deltaY);
+            }
         }
 
         // Update entity visuals
@@ -107,18 +188,32 @@ export class EntityDragHandler {
         }
 
         // Update radius indicators
-        this.radiusIndicatorManager.updateIndicators(selectedIds, deltaX, deltaY);
+        if (this.radiusIndicatorManager.isActive) {
+            this.radiusIndicatorManager.updateIndicators(selectedIds, deltaX, deltaY);
+        }
     }
 
     updateConnectionsDuringDrag() {
+        // FIXED: Don't update connections during position transition
+        if (this.isUpdatingPositions) {
+            return;
+        }
+        
         if (this.updateConnectionsForDrag) {
+            // DEBUG: Check if we're about to call with reactive entities
+            const entities = this.getReactiveEntitiesWithCurrentPositions();
+            entities.forEach(entity => {
+                const isReactive = entity.__v_isReactive || entity.__v_isProxy;
+            });
+            
             this.updateConnectionsForDrag();
-        } else {
-            console.warn('⚠️ EntityDragHandler: updateConnectionsForDrag is not available!');
         }
     }
 
     onDragEnd(x, y, deltaX, deltaY) {
+        // FIXED: Set flag to prevent connection updates during position transition
+        this.isUpdatingPositions = true;
+        
         // Call proximity callback
         this.proximityCallbacks.onDragEnd?.();
         
@@ -135,6 +230,18 @@ export class EntityDragHandler {
 
         // Reset drag state
         this.dragStateManager.reset();
+        
+        // FIXED: Use nextTick to ensure position updates are processed before clearing drag state
+        this.$nextTick(() => {
+            // Clear drag state AFTER position updates are complete
+            this.currentDragState = { deltaX: 0, deltaY: 0, isDragging: false };
+            this.isUpdatingPositions = false;
+            
+            // Force one final connection update with the new positions
+            if (this.updateConnectionsForDrag) {
+                this.updateConnectionsForDrag();
+            }
+        });
     }
 
     updateEntityPositions(x, y, deltaX, deltaY) {
@@ -148,12 +255,24 @@ export class EntityDragHandler {
             });
         } else {
             if (this.props.entityType === 'circle') {
-                // For circles, use center-relative coordinates
-                this.emit('update-position', { 
-                    id: this.props.entity.id, 
-                    x: this.props.entity.x + deltaX, 
-                    y: this.props.entity.y + deltaY 
-                });
+                // FIXED: Get the original entity (not proxy) to calculate correct final position
+                const originalEntity = this.entityTypeHandler.getCurrentEntities()
+                    .find(e => e.id === this.props.entity.id);
+                
+                if (originalEntity) {
+                    this.emit('update-position', { 
+                        id: this.props.entity.id, 
+                        x: originalEntity.x + deltaX,  // Use original entity position + delta
+                        y: originalEntity.y + deltaY   // Use original entity position + delta
+                    });
+                } else {
+                    // Fallback - shouldn't happen but just in case
+                    this.emit('update-position', { 
+                        id: this.props.entity.id, 
+                        x: this.props.entity.x + deltaX, 
+                        y: this.props.entity.y + deltaY 
+                    });
+                }
             } else {
                 // For squares, use absolute coordinates
                 this.emit('update-position', { 
@@ -165,6 +284,18 @@ export class EntityDragHandler {
         }
     }
 
+    // ADDED: Helper method to access Vue's nextTick (if available)
+    $nextTick(callback) {
+        // In Vue 3 composition API context, we can use setTimeout as a fallback
+        // or if Vue's nextTick is available in the context, use that
+        if (typeof window !== 'undefined' && window.Vue && window.Vue.nextTick) {
+            window.Vue.nextTick(callback);
+        } else {
+            // Fallback to setTimeout to ensure DOM updates are processed
+            setTimeout(callback, 0);
+        }
+    }
+
     handleMouseDown(e) {
         // Don't interfere with name editing
         if (e.target.hasAttribute('contenteditable')) return;
@@ -173,6 +304,9 @@ export class EntityDragHandler {
         if (e.shiftKey && this.props.entityType === 'square') {
             return;
         }
+        
+        // Reset the drag flag on mouse down
+        this.hasActuallyDragged = false;
         
         this.dragStateManager.handleMouseDown(e);
     }
@@ -187,13 +321,14 @@ export class EntityDragHandler {
             return;
         }
         
-        // Only select if no drag occurred
-        if (this.dragStateManager.shouldProcessClick()) {
+        // Only select if no actual dragging occurred AND normal click conditions are met
+        if (!this.hasActuallyDragged && this.dragStateManager.shouldProcessClick()) {
             this.emit('select', this.props.entity.id, e.ctrlKey || e.metaKey);
-        }
+        } 
         
-        // Reset drag state
+        // Reset drag state and flag
         this.dragStateManager.reset();
+        this.hasActuallyDragged = false;
     }
 
     // Cleanup method

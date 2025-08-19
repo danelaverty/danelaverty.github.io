@@ -1,4 +1,4 @@
-// useDraggable.js - Draggable functionality composable
+// useDraggable.js - Fixed draggable functionality to properly communicate drag state
 import { onMounted, onUnmounted } from './vue-composition-api.js';
 
 export function useDraggable(element, onDragEnd, containerGetter = null, options = {}) {
@@ -9,9 +9,9 @@ export function useDraggable(element, onDragEnd, containerGetter = null, options
     let offsetY = 0;
     let originalX = 0;
     let originalY = 0;
-    let hasActuallyMoved = false; // NEW: Track if there was actual movement
+    let hasActuallyMoved = false;
 
-    const { onDragMove } = options || {};
+    const { onDragMove, onDragStart } = options || {};
 
     const getContainerOffset = () => {
         let container;
@@ -31,8 +31,13 @@ export function useDraggable(element, onDragEnd, containerGetter = null, options
         if (e.target.hasAttribute('contenteditable')) return;
 
         isDragging = true;
-        hasActuallyMoved = false; // NEW: Reset movement tracking
+        hasActuallyMoved = false;
         element.value.classList.add('dragging');
+
+        // Call onDragStart callback if provided
+        if (onDragStart) {
+            onDragStart();
+        }
 
         const rect = element.value.getBoundingClientRect();
         const containerOffset = getContainerOffset();
@@ -123,6 +128,7 @@ export function useDraggable(element, onDragEnd, containerGetter = null, options
     });
 
     return {
-        isDragging: () => isDragging
+        isDragging: () => isDragging,
+        hasActuallyMoved: () => hasActuallyMoved
     };
 }

@@ -287,7 +287,7 @@ export const CircleViewer = {
             }
             dataStore.data.selectedCircleId = null;
             dataStore.data.selectedSquareId = null;
-            dataStore.data.currentSquareDocumentId = null;
+	    dataStore.setCurrentSquareDocument(null);
         };
 
         // Handle show dropdown requests from EntityControls
