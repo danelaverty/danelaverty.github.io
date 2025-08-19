@@ -1,6 +1,6 @@
 import { ConnectionUtils } from './ConnectionUtils.js';
 
-// EntityTypeHandler.js - Abstract base class for entity-specific behavior
+// EntityTypeHandler.js - Fixed to ensure circles use correct viewer containers
 export class EntityTypeHandler {
     constructor(dataStore, props) {
         this.dataStore = dataStore;
@@ -56,6 +56,11 @@ export class EntityTypeHandler {
     getContainer() {
         throw new Error('getContainer must be implemented by subclass');
     }
+
+    // ADDED: Helper method to get viewerId (useful for subclasses)
+    getViewerId() {
+        return this.props.viewerId;
+    }
 }
 
 // Circle-specific handler
@@ -86,7 +91,6 @@ export class CircleHandler extends EntityTypeHandler {
             return `circle-${actualViewerId}`;
         }
         
-        console.warn('⚠️ EntityDragHandler: Could not determine viewer ID for circle');
         return 'circle';
     }
 
@@ -211,8 +215,46 @@ export class CircleHandler extends EntityTypeHandler {
         return null;
     }
 
+    // FIXED: Get the correct viewer-specific container
     getContainer() {
-        return this.props.elementRef?.value?.closest('.viewer-content');
+        // Priority 1: Use viewerId from props
+        if (this.props.viewerId) {
+            const viewerContainer = document.querySelector(`[data-viewer-id="${this.props.viewerId}"] .viewer-content`);
+            if (viewerContainer) {
+                return viewerContainer;
+            }
+        }
+        
+        // Priority 2: Try DOM hierarchy from elementRef
+        if (this.props.elementRef?.value) {
+            const viewer = this.props.elementRef.value.closest('[data-viewer-id]');
+            if (viewer) {
+                const viewerContent = viewer.querySelector('.viewer-content');
+                if (viewerContent) {
+                    return viewerContent;
+                }
+            }
+        }
+        
+        // Priority 3: Find the viewer this entity belongs to
+        const actualViewerId = this.findActualViewerId();
+        if (actualViewerId) {
+            const viewerContainer = document.querySelector(`[data-viewer-id="${actualViewerId}"] .viewer-content`);
+            if (viewerContainer) {
+                return viewerContainer;
+            }
+        }
+        
+        // Priority 4: Selected viewer from dataStore
+        if (this.dataStore.data?.selectedViewerId) {
+            const selectedViewerContainer = document.querySelector(`[data-viewer-id="${this.dataStore.data.selectedViewerId}"] .viewer-content`);
+            if (selectedViewerContainer) {
+                return selectedViewerContainer;
+            }
+        }
+        
+        // Fallback: First available viewer content (should rarely be used now)
+        return document.querySelector('.viewer-content');
     }
 }
 

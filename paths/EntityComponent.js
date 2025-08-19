@@ -436,33 +436,34 @@ export const EntityComponent = {
         };
 
         // Watch for changes that should trigger re-rendering
-        watch(
-            () => [
-                props.entity.type, 
-                props.entity.color, 
-                props.entity.colors, 
-                props.entity.emoji, // Watch for emoji changes in circles
-                props.entity.energyTypes, // NEW: Watch for energy type changes
-                squareCount.value,
-                props.isSelected
-            ],
-            (newValues, oldValues) => {
-                if (props.entityType === 'circle' && shapeRef.value) {
-                    const hasActualChanges = newValues.some((val, index) => 
-                        JSON.stringify(val) !== JSON.stringify(oldValues?.[index])
-                    );
-                    
-                    if (hasActualChanges) {
-                        nextTick(() => {
-                            CircleTypeRenderer.render(shapeRef.value, props.entity, props.isSelected, squareCount.value);
-                            // Update proximity system registration after re-render
-                            updateProximityRegistration();
-                        });
-                    }
-                }
-            },
-            { deep: true }
-        );
+	watch(
+    () => [
+        props.entity.type, 
+        props.entity.color, 
+        props.entity.colors, 
+        props.entity.emoji, // Watch for emoji changes in circles
+        props.entity.energyTypes, // Watch for energy type changes
+        props.entity.activation, // FIXED: Watch for activation changes!
+        squareCount.value,
+        props.isSelected
+    ],
+    (newValues, oldValues) => {
+        if (props.entityType === 'circle' && shapeRef.value) {
+            const hasActualChanges = newValues.some((val, index) => 
+                JSON.stringify(val) !== JSON.stringify(oldValues?.[index])
+            );
+            
+            if (hasActualChanges) {
+                nextTick(() => {
+                    CircleTypeRenderer.render(shapeRef.value, props.entity, props.isSelected, squareCount.value);
+                    // Update proximity system registration after re-render
+                    updateProximityRegistration();
+                });
+            }
+        }
+    },
+    { deep: true }
+);
 
         // Watch for position changes to update proximity system
         watch(

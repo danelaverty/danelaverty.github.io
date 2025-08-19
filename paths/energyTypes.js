@@ -3,9 +3,16 @@ export const energyTypes = [
   {
     id: 'exciter',
     name: 'Exciter',
-    description: 'Generates and emits energy to influence other circles',
+    description: 'Generates and emits energy to influence inactive circles',
     color: '#FFD700', // Yellow
     icon: '⚡'
+  },
+  {
+    id: 'dampener',
+    name: 'Dampener',
+    description: 'Dampens and reduces energy from activated circles',
+    color: '#9966FF', // Purple
+    icon: '🔇'
   },
   {
     id: 'attractor',

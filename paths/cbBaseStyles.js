@@ -41,21 +41,10 @@ export const displayStyles = `
         align-items: center;
         gap: 4px;
         padding: 4px 8px;
-        background-color: rgba(60, 60, 60, 0.8);
-        border: 1px solid rgba(255, 255, 255, 0.2);
         border-radius: 4px;
         cursor: pointer;
         transition: all 0.2s ease;
         height: 32px;
-    }
-
-    .color-display:hover,
-    .type-display:hover,
-    .energy-display:hover,
-    .emoji-display:hover,
-    .activation-display:hover {
-        background-color: rgba(80, 80, 80, 0.8);
-        border-color: rgba(255, 255, 255, 0.3);
     }
 
     .color-display.picker-open,
@@ -80,7 +69,6 @@ export const displayStyles = `
 
     .activation-display {
         gap: 6px;
-        min-width: 60px;
     }
 `;
 
@@ -214,31 +202,6 @@ export const energyStyles = `
 `;
 
 export const activationStyles = `
-    .activation-display {
-        border-radius: 6px;
-        transition: all 0.2s ease;
-    }
-
-    .activation-display.activated {
-        background-color: rgba(76, 175, 80, 0.3);
-        border-color: rgba(76, 175, 80, 0.6);
-    }
-
-    .activation-display.activated:hover {
-        background-color: rgba(76, 175, 80, 0.4);
-        border-color: rgba(76, 175, 80, 0.8);
-    }
-
-    .activation-display.inactive {
-        background-color: rgba(60, 60, 60, 0.8);
-        border-color: rgba(255, 255, 255, 0.2);
-    }
-
-    .activation-display.inactive:hover {
-        background-color: rgba(80, 80, 80, 0.8);
-        border-color: rgba(255, 255, 255, 0.3);
-    }
-
     .activation-icon {
         font-size: 12px;
         line-height: 1;
