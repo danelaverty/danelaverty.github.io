@@ -22,12 +22,12 @@ export class ConnectionUtils {
         
         // Populate adjacency map with connections
         connections.forEach(connection => {
-            const { square1Id, square2Id } = connection;
+            const { entity1Id, entity2Id } = connection;
             
             // Only include squares that exist in the current document
-            if (adjacencyMap.has(square1Id) && adjacencyMap.has(square2Id)) {
-                adjacencyMap.get(square1Id).add(square2Id);
-                adjacencyMap.get(square2Id).add(square1Id);
+            if (adjacencyMap.has(entity1Id) && adjacencyMap.has(entity2Id)) {
+                adjacencyMap.get(entity1Id).add(entity2Id);
+                adjacencyMap.get(entity2Id).add(entity1Id);
             }
         });
         

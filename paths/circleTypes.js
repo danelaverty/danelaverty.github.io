@@ -29,4 +29,10 @@ export const circleTypes = [
     description: 'An emoji',
     icon: '☺'
   },
+  {
+    id: 'shape',
+    name: 'Shape',
+    description: 'Geometric shapes using CSS clip-path',
+    icon: '◆'
+  },
 ];

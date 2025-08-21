@@ -1,4 +1,4 @@
-// AppComponent.js - REVERTED: Remove global circle connection management
+// AppComponent.js - Updated with drag state integration for drop target highlighting and keyboard viewer reordering
 import { ref, computed, onMounted, onUnmounted } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
 import { useRectangleSelection } from './useRectangleSelection.js';
@@ -20,7 +20,7 @@ import { createSquareSelectionHandlers } from './rectangleSelectionHandlers.js';
 
 export const App = {
     setup() {
-	    const dataStore = useDataStore();
+        const dataStore = useDataStore();
         const squareViewerContentRef = ref(null);
         const proximitySystem = useEnergyProximitySystem();
 
@@ -42,7 +42,7 @@ export const App = {
         // Connection management
         const { connections } = useConnections();
         
-        // FIXED: Filter connections for square viewer - only show square connections
+        // Filter connections for square viewer - only show square connections
         const squareConnections = computed(() => {
             return connections.value.filter(connection => {
                 return connection.entityType === 'square';
@@ -58,7 +58,7 @@ export const App = {
             };
         });
         
-        // FIXED: Set up connection updates for squares only
+        // Set up connection updates for squares only
         useConnectionUpdater(
             () => currentSquares.value,
             'square',
@@ -69,8 +69,6 @@ export const App = {
             }
         );
 
-        // REMOVED: Global circle connection management - now handled per-viewer
-        
         // Shared dropdown reference
         const sharedDropdownRef = ref(null);
 
@@ -109,9 +107,45 @@ export const App = {
         };
 
         // Create handlers
-        const keyboardHandler = createKeyboardHandler(dataStore, handleShowIndicatorPicker);
-        const viewerManager = createViewerManager(dataStore);
+        const viewerManager = createViewerManager(dataStore); // This now includes dragState
         const entityHandlers = createEntityHandlers(dataStore);
+
+        // Keyboard viewer reordering handler
+        const handleKeyboardReorderViewer = (viewerId, direction) => {
+            // Prevent reordering during drag operations
+            if (viewerManager.dragState.isDragging) {
+                return;
+            }
+
+            // Use the full viewer order (including minimized viewers)
+            const viewerOrder = dataStore.data.viewerOrder;
+            const currentIndex = viewerOrder.indexOf(viewerId);
+            
+            if (currentIndex === -1) {
+                return;
+            }
+
+            let targetIndex;
+            if (direction === 'left') {
+                targetIndex = Math.max(0, currentIndex - 1);
+            } else if (direction === 'right') {
+                targetIndex = Math.min(viewerOrder.length - 1, currentIndex + 1);
+            } else {
+                return;
+            }
+
+            // Only reorder if position would actually change
+            if (targetIndex !== currentIndex) {
+                // Use the existing reorderViewers method from dataStore
+                const success = dataStore.reorderViewers(currentIndex, targetIndex);
+            }
+        };
+
+        const keyboardHandler = createKeyboardHandler(
+            dataStore, 
+            handleShowIndicatorPicker,
+            handleKeyboardReorderViewer
+        );
         
         // Square selection handlers
         const squareSelectionHandlers = createSquareSelectionHandlers(
@@ -178,13 +212,13 @@ export const App = {
             proximitySystem.stop();
         });
 
-	return {
+        return {
             dataStore,
             visibleCircleViewers,
             hasMinimizedViewers,
             currentSquares,
             hasSelectedCircle,
-            squareConnections, // FIXED: Only square connections for square viewer
+            squareConnections,
             squareViewerContentRef,
             sharedDropdownRef,
             isIndicatorPickerVisible,
@@ -200,7 +234,7 @@ export const App = {
             handleIndicatorPickerSelect,
             // Expose handlers from modules
             ...entityHandlers,
-            ...viewerManager
+            ...viewerManager // This now includes dragState and new drag handlers
         };
     },
     components: {
@@ -221,12 +255,16 @@ export const App = {
             />
             
             <div class="viewers-container">
-                <!-- Circle Viewers -->
+                <!-- Circle Viewers with drag state support -->
                 <CircleViewer
                     v-for="viewer in visibleCircleViewers"
                     :key="viewer.id"
                     :viewer-id="viewer.id"
+                    :drag-state="dragState"
                     @start-reorder="handleStartReorder"
+                    @drag-enter="handleDragEnter"
+                    @drag-leave="handleDragLeave"
+                    @drop="handleDrop"
                     @minimize-viewer="handleMinimizeViewer"
                     @close-viewer="handleCloseViewer"
                     @viewer-click="handleViewerContainerClick"
@@ -246,7 +284,7 @@ export const App = {
                         :class="['square-viewer-content', { 'no-characteristics-bar': !hasSelectedCircle }]"
                         @click="handleSquareViewerClick"
                     >
-                        <!-- FIXED: Connection Rendering - Only square connections in square viewer -->
+                        <!-- Connection Rendering - Only square connections in square viewer -->
                         <ConnectionComponent
                             v-for="connection in squareConnections"
                             :key="connection.id"
@@ -270,6 +308,7 @@ export const App = {
                             class="add-viewer-button"
                             @click="handleAddViewer"
                             title="Add new viewer"
+                            :disabled="dragState.isDragging"
                         >+</button>
                         
                         <!-- Rectangle selection visual for squares -->

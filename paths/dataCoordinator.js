@@ -4,6 +4,7 @@ import { useDocumentStore } from './documentStore.js';
 import { useUIStore } from './uiStore.js';
 import { EntityService } from './entityService.js';
 import { getRecentEmojisStoreInstance } from './useRecentEmojis.js';
+import { useClipboardStore } from './clipboardStore.js';
 
 let dataCoordinatorInstance = null;
 
@@ -22,12 +23,12 @@ function createDataCoordinator() {
     // Persistence
     const saveToStorage = () => {
     try {
-        const recentEmojisStore = getRecentEmojisStoreInstance(); // ADD THIS LINE
+        const recentEmojisStore = getRecentEmojisStoreInstance();
         const dataToSave = {
             ...entityStore.serialize(),
             ...documentStore.serialize(),
             ...uiStore.serialize(),
-            ...recentEmojisStore.serialize() // ADD THIS LINE
+            ...recentEmojisStore.serialize()
         };
         localStorage.setItem(storageKey, JSON.stringify(dataToSave));
         return true;
@@ -39,14 +40,14 @@ function createDataCoordinator() {
 
 const loadFromStorage = () => {
     try {
-        const recentEmojisStore = getRecentEmojisStoreInstance(); // ADD THIS LINE
+        const recentEmojisStore = getRecentEmojisStoreInstance();
         const saved = localStorage.getItem(storageKey);
         if (saved) {
             const savedData = JSON.parse(saved);
             entityStore.deserialize(savedData);
             documentStore.deserialize(savedData);
             uiStore.deserialize(savedData);
-            recentEmojisStore.deserialize(savedData); // ADD THIS LINE
+            recentEmojisStore.deserialize(savedData);
             return true;
         }
     } catch (error) {
@@ -170,7 +171,7 @@ const loadFromStorage = () => {
             return success;
         },
         
-        // NEW: Circle type tracking methods
+        // Circle type tracking methods
         setMostRecentlySetCircleType: (documentId, circleType) => {
             const result = documentStore.setMostRecentlySetCircleType(documentId, circleType);
             if (result) saveToStorage();

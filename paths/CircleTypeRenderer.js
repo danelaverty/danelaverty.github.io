@@ -7,6 +7,7 @@ import { GlowCircleRenderer } from './CRGlowCircleRenderer.js';
 import { TriangleCircleRenderer } from './CRTriangleCircleRenderer.js';
 import { GemCircleRenderer } from './CRGemCircleRenderer.js';
 import { EmojiCircleRenderer } from './CREmojiCircleRenderer.js';
+import { ShapeRenderer } from './CRShapeRenderer.js';
 import { circleTypeStyles } from './CircleTypeStyles.js';
 import { ColorFlowSystem } from './ColorFlowSystem.js';
 
@@ -44,7 +45,7 @@ export const CircleTypeRenderer = {
         
         // Set the appropriate type class
         if (element && element.classList) {
-            element.classList.remove('circle-type-basic', 'circle-type-glow', 'circle-type-triangle', 'circle-type-gem', 'circle-type-emoji');
+            element.classList.remove('circle-type-basic', 'circle-type-glow', 'circle-type-triangle', 'circle-type-gem', 'circle-type-emoji', 'circle-type-shape');
             element.classList.add(`circle-type-${currentType}`);
         }
         
@@ -63,6 +64,9 @@ export const CircleTypeRenderer = {
                 break;
             case 'emoji':
                 EmojiCircleRenderer.render(element, circle);
+                break;
+            case 'shape':
+                ShapeRenderer.render(element, circle);
                 break;
             default:
                 BasicCircleRenderer.render(element, circle);
@@ -122,7 +126,14 @@ export const CircleTypeRenderer = {
             '.color-flow-overlay',
             '.outer-polygon-container',
             '.gem-container',
-            '.emoji-circle-container'
+            '.emoji-circle-container',
+            '.shape-wrap',
+            '.right-triangle-wrap',
+            '.diamond-wrap',
+            '.oval-wrap',
+            '.right-triangle-shape',
+            '.diamond-shape',
+            '.oval-shape'
         ];
         
         elementsToRemove.forEach(selector => {

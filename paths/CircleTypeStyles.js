@@ -1,4 +1,4 @@
-// styles/circleTypeStyles.js - Enhanced CSS styles for all circle types including emoji circles
+// styles/circleTypeStyles.js - Enhanced CSS styles for all circle types including emoji circles and shape circles
 export const circleTypeStyles = `
     /* Basic circle type (default) */
     .circle-type-basic {
@@ -142,6 +142,73 @@ export const circleTypeStyles = `
         font-size: 28px;
         pointer-events: none;
         z-index: 1;
+    }
+
+    /* Shape circle type - transparent background, just the shapes */
+    .circle-type-shape {
+        background-color: transparent !important;
+        border: none !important;
+        border-radius: 0 !important;
+        position: relative;
+        overflow: visible;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Shape wrapper styling */
+    .shape-wrap,
+    .right-triangle-wrap,
+    .diamond-wrap,
+    .oval-wrap {
+        position: absolute;
+        width: 32px;
+        height: 32px;
+        cursor: pointer;
+        background-color: rgba(0,0,0,0.001);
+        z-index: 10;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    /* Shape element styling */
+    .right-triangle-shape,
+    .diamond-shape,
+    .oval-shape {
+        position: absolute;
+        width: 32px;
+        height: 32px;
+        background-color: var(--circle-color);
+        transition: transform 0.3s ease;
+        z-index: 5;
+        pointer-events: none;
+        filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.3));
+    }
+
+    /* Right-pointing triangle specific styling */
+    .right-triangle-shape {
+        clip-path: polygon(10% 10%, 90% 50%, 10% 90%);
+    }
+
+    /* Diamond specific styling */
+    .diamond-shape {
+        clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    }
+
+    /* Oval specific styling */
+    .oval-shape {
+        width: 30px;
+        height: 20px;
+        border-radius: 50%;
+        clip-path: none;
+    }
+
+    /* Shape hover effects */
+    .shape-wrap:hover .right-triangle-shape,
+    .shape-wrap:hover .diamond-shape,
+    .shape-wrap:hover .oval-shape {
+        transform: scale(1.1);
     }
 
     /* Enhanced Gem circle type with multi-facet animation support */
@@ -325,7 +392,10 @@ export const circleTypeStyles = `
     .circle-type-gem .gem-facet, 
     .circle-type-gem .gem-table, 
     .circle-type-gem .gem-outline, 
-    .circle-type-gem .gem-sparkle {
+    .circle-type-gem .gem-sparkle,
+    .circle-type-shape .right-triangle-shape,
+    .circle-type-shape .diamond-shape,
+    .circle-type-shape .oval-shape {
         will-change: transform, opacity, filter;
     }
 
@@ -427,7 +497,10 @@ export const circleTypeStyles = `
         .circle-type-gem .gem-facet, 
         .circle-type-gem .gem-table, 
         .circle-type-gem .gem-outline, 
-        .circle-type-gem .gem-sparkle {
+        .circle-type-gem .gem-sparkle,
+        .circle-type-shape .right-triangle-shape,
+        .circle-type-shape .diamond-shape,
+        .circle-type-shape .oval-shape {
             animation-duration: 0.01ms !important;
             animation-iteration-count: 1 !important;
         }
@@ -441,6 +514,12 @@ export const circleTypeStyles = `
         
         .circle-type-gem.multi-color .gem-svg {
             filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.5));
+        }
+
+        .circle-type-shape .right-triangle-shape,
+        .circle-type-shape .diamond-shape,
+        .circle-type-shape .oval-shape {
+            filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.4));
         }
     }
 
@@ -476,6 +555,24 @@ export const circleTypeStyles = `
 
 /* FIXED: Override single-color styling for emoji circles */
 .circle-shape.circle-type-emoji.single-color {
+    background: none !important;
+    background-color: transparent !important;
+}
+
+/* FIXED: Ensure ALL shape circles never show basic background */
+.circle-shape.circle-type-shape {
+    background: none !important;
+    background-color: transparent !important;
+}
+
+/* FIXED: Override any multi-color styling for shape circles */
+.circle-shape.circle-type-shape.multi-color {
+    background: none !important;
+    background-color: transparent !important;
+}
+
+/* FIXED: Override single-color styling for shape circles */
+.circle-shape.circle-type-shape.single-color {
     background: none !important;
     background-color: transparent !important;
 }
