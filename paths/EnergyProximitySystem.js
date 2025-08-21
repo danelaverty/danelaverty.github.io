@@ -273,6 +273,10 @@ export class EnergyProximitySystem {
                 this.hasEnergyType(data.circle, 'dampener') && this.isCircleActivated(data.circle)
             );
 
+	    if (exciterCircles.length === 0 && dampenerCircles.length === 0) {
+		    return; // Skip processing this viewer entirely
+	    }
+
             // Calculate effects for each glow circle within this viewer only
             glowCircles.forEach(glowData => {
                 const glowPos = this.getEffectivePosition(glowData.circle.id);
@@ -372,9 +376,27 @@ export class EnergyProximitySystem {
     /**
      * Apply proximity effects to elements
      */
-    applyProximityEffects(effects) {
-        // Process all circles to set appropriate appearance
-        this.circles.forEach((data, circleId) => {
+applyProximityEffects(effects) {
+    // Group circles by viewer to check for energy influencers per viewer
+    const circlesByViewer = new Map();
+    this.circles.forEach((data, circleId) => {
+        const viewerKey = data.viewerWidth;
+        if (!circlesByViewer.has(viewerKey)) {
+            circlesByViewer.set(viewerKey, []);
+        }
+        circlesByViewer.get(viewerKey).push({ circleId, data });
+    });
+
+    // Process all circles to set appropriate appearance
+    circlesByViewer.forEach(viewerCircles => {
+        // Check if this viewer has any energy influencers
+        const hasEnergyInfluencers = viewerCircles.some(({ data }) => {
+            const circle = data.circle;
+            return (this.hasEnergyType(circle, 'exciter') || this.hasEnergyType(circle, 'dampener')) 
+                   && this.isCircleActivated(circle);
+        });
+
+        viewerCircles.forEach(({ circleId, data }) => {
             if (!data.element) return;
 
             const circle = data.circle;
@@ -385,20 +407,22 @@ export class EnergyProximitySystem {
                     // Apply proximity effects
                     const effect = effects.get(circleId);
                     this.setElementProximityEffects(data.element, effect.scale, effect.opacity, effect.saturation);
-                } else {
-                    // No proximity effects - set default appearance based on activation state
+                } else if (hasEnergyInfluencers) {
+                    // Only apply activated/inactive effects if there are energy influencers in this viewer
                     const isActivated = this.isCircleActivated(circle);
                     if (isActivated) {
                         // Activated circles: big & bright by default
                         this.setElementProximityEffects(data.element, this.config.maxScale, this.config.maxOpacity, this.config.maxSaturation);
                     } else {
                         // Inactive circles: small & dim by default
-                        // Use the minimum values from config (which should represent small & dim)
                         this.setElementProximityEffects(data.element, 0.7, this.config.minOpacity, this.config.minSaturation);
                     }
+                } else {
+                    // No energy influencers in this viewer - use neutral appearance
+                    this.setElementProximityEffects(data.element, this.config.minScale, this.config.maxOpacity, this.config.maxSaturation);
                 }
             }
-            // Handle exciter/dampener circles
+            // Handle exciter/dampener circles (unchanged)
             else if (this.hasEnergyType(circle, 'exciter') || this.hasEnergyType(circle, 'dampener')) {
                 const isActivated = this.isCircleActivated(circle);
                 if (isActivated) {
@@ -410,7 +434,8 @@ export class EnergyProximitySystem {
                 }
             }
         });
-    }
+    });
+}
 
     /**
      * Reset all proximity effects to normal

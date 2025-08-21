@@ -152,7 +152,6 @@ export const CircleCharacteristicsBar = {
 
     // Create action handlers with proper context
     const handleColorSelect = (colorValue, isCtrlClick) => {
-      console.log('handleColorSelect: ' + colorValue);
       const colorInfo = { color: colorValue };
       actionHooks.selectColor(colorInfo, isCtrlClick, dataHooks.selectedCircle.value, dataHooks.circleColors.value);
       if (!isCtrlClick) {
@@ -178,7 +177,6 @@ export const CircleCharacteristicsBar = {
     };
 
     const handleEmojiSelect = (attribute) => {
-      console.log('handleEmojiSelect: ' + attribute);
       actionHooks.selectEmoji(attribute);
       recentEmojiHooks.addRecentEmoji(attribute);
       if (dataStore && dataStore.saveToStorage) {

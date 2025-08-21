@@ -1,6 +1,7 @@
-// keyboardHandler.js - Centralized keyboard event handling with bold square support and indicator emoji picker
+// keyboardHandler.js - Centralized keyboard event handling with bold square support, indicator emoji picker, viewer reordering, and copy/paste
 import { alignEntities } from './alignmentUtils.js';
 import { useConnections } from './useConnections.js';
+import { useClipboardStore } from './clipboardStore.js';
 
 /**
  * Check if user is currently editing text
@@ -38,10 +39,165 @@ function confirmCircleDeletion(circleCount) {
  * Create a keyboard handler with data store context
  * @param {Object} dataStore - The data store instance
  * @param {Function} onShowIndicatorPicker - Callback to show indicator picker
+ * @param {Function} onReorderViewer - Callback to reorder viewers (direction: 'left' or 'right')
  * @returns {Function} The keyboard event handler
  */
-export function createKeyboardHandler(dataStore, onShowIndicatorPicker = null) {
+export function createKeyboardHandler(dataStore, onShowIndicatorPicker = null, onReorderViewer = null) {
+    const clipboardStore = useClipboardStore();
+    
     return function handleKeydown(e) {
+        // Handle CTRL+C for copy
+        if (e.key === 'c' && (e.ctrlKey || e.metaKey)) {
+            // Don't interfere with text editing - let browser handle CTRL+C normally
+            if (isTextEditingActive()) {
+                return; // Let the browser's default CTRL+C behavior work
+            }
+            
+            e.preventDefault(); // Prevent browser's copy only when not editing text
+            
+            // Priority: Squares first, then Circles
+            const selectedSquares = dataStore.getSelectedSquares();
+            const selectedCircles = dataStore.getSelectedCircles();
+            
+            if (selectedSquares.length > 0) {
+                // Copy selected squares
+                const squareEntities = selectedSquares.map(id => dataStore.getSquare(id)).filter(Boolean);
+                const currentDoc = dataStore.getCurrentSquareDocument();
+                const sourceDocumentId = currentDoc ? currentDoc.id : null;
+                
+                clipboardStore.copyEntities('square', squareEntities, sourceDocumentId);
+                
+            } else if (selectedCircles.length > 0) {
+                // Copy selected circles
+                const circleEntities = selectedCircles.map(id => dataStore.getCircle(id)).filter(Boolean);
+                const selectedViewerId = dataStore.data.selectedViewerId;
+                const currentCircleDoc = selectedViewerId ? dataStore.getCircleDocumentForViewer(selectedViewerId) : null;
+                const sourceDocumentId = currentCircleDoc ? currentCircleDoc.id : null;
+                
+                clipboardStore.copyEntities('circle', circleEntities, sourceDocumentId);
+            }
+            return;
+        }
+        
+        // Handle CTRL+V for paste
+        if (e.key === 'v' && (e.ctrlKey || e.metaKey)) {
+            // Don't interfere with text editing - let browser handle CTRL+V normally
+            if (isTextEditingActive()) {
+                return; // Let the browser's default CTRL+V behavior work
+            }
+            
+            e.preventDefault(); // Prevent browser's paste only when not editing text
+            
+            const clipboardInfo = clipboardStore.getClipboardInfo();
+            if (clipboardInfo.isEmpty) {
+                return;
+            }
+            
+            if (clipboardInfo.entityType === 'square') {
+                // Paste squares to current square document
+                const currentDoc = dataStore.getCurrentSquareDocument();
+                if (!currentDoc) {
+                    return;
+                }
+
+                const pastedEntityData = clipboardStore.pasteEntities(currentDoc.id);
+                
+                const createdSquares = [];
+                
+                pastedEntityData.forEach((squareData, index) => {
+                    const square = dataStore.createSquare();
+                    
+                    if (square) {
+                        
+                        // Update the created square with pasted data (except ID and documentId which are already set)
+                        const updateResult = dataStore.updateSquare(square.id, {
+                            x: squareData.x,
+                            y: squareData.y,
+                            name: squareData.name,
+                            emoji: squareData.emoji,
+                            bold: squareData.bold,
+                            indicatorEmoji: squareData.indicatorEmoji,
+                            color: squareData.color,
+                            emojiKey: squareData.emojiKey,
+                            emojiCss: squareData.emojiCss
+                        });
+                        
+                        createdSquares.push(square);
+                    }
+                });
+                
+                // Select the newly pasted squares
+                if (createdSquares.length > 0) {
+                    dataStore.selectSquare(null, false); // Clear current selection
+                    dataStore.selectSquare(createdSquares[0].id, false); // Select first
+                    for (let i = 1; i < createdSquares.length; i++) {
+                        dataStore.selectSquare(createdSquares[i].id, true); // Add others to selection
+                    }
+                }
+            } else if (clipboardInfo.entityType === 'circle') {
+                // Paste circles to current circle document of selected viewer
+                const selectedViewerId = dataStore.data.selectedViewerId;
+                if (!selectedViewerId) {
+                    return;
+                }
+                
+                const currentCircleDoc = dataStore.getCircleDocumentForViewer(selectedViewerId);
+                if (!currentCircleDoc) {
+                    return;
+                }
+                
+                const pastedEntityData = clipboardStore.pasteEntities(currentCircleDoc.id);
+                const createdCircles = [];
+                
+                pastedEntityData.forEach(circleData => {
+                    const circle = dataStore.createCircleInViewer(selectedViewerId);
+                    if (circle) {
+                        // Update the created circle with pasted data (except ID and documentId which are already set)
+                        dataStore.updateCircle(circle.id, {
+                            x: circleData.x,
+                            y: circleData.y,
+                            name: circleData.name,
+                            type: circleData.type,
+                            color: circleData.color,
+                            colors: circleData.colors,
+                            emoji: circleData.emoji,
+                            energyTypes: circleData.energyTypes,
+                            activation: circleData.activation
+                        });
+                        createdCircles.push(circle);
+                    }
+                });
+                
+                // Select the newly pasted circles
+                if (createdCircles.length > 0) {
+                    dataStore.selectCircle(null, selectedViewerId, false); // Clear current selection
+                    dataStore.selectCircle(createdCircles[0].id, selectedViewerId, false); // Select first
+                    for (let i = 1; i < createdCircles.length; i++) {
+                        dataStore.selectCircle(createdCircles[i].id, selectedViewerId, true); // Add others to selection
+                    }
+                }
+            }
+            return;
+        }
+        
+        // Handle CTRL+SHIFT+Left/Right for viewer reordering
+        if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && (e.ctrlKey || e.metaKey) && e.shiftKey) {
+            // Don't interfere with text editing
+            if (isTextEditingActive()) {
+                return;
+            }
+            
+            e.preventDefault();
+            
+            // Get the currently selected viewer
+            const selectedViewerId = dataStore.data.selectedViewerId;
+            if (selectedViewerId && onReorderViewer) {
+                const direction = e.key === 'ArrowLeft' ? 'left' : 'right';
+                onReorderViewer(selectedViewerId, direction);
+            }
+            return;
+        }
+        
         // Handle CTRL+I for indicator emoji picker on squares
         if (e.key === 'i' && (e.ctrlKey || e.metaKey)) {
             // Don't interfere with text editing - let browser handle CTRL+I normally
@@ -58,7 +214,6 @@ export function createKeyboardHandler(dataStore, onShowIndicatorPicker = null) {
                 const currentIndicator = firstSquare?.indicatorEmoji || null;
                 
                 onShowIndicatorPicker(currentIndicator);
-                console.log(`Opening indicator picker for ${selectedSquares.length} squares`);
             }
             return;
         }
@@ -81,11 +236,8 @@ export function createKeyboardHandler(dataStore, onShowIndicatorPicker = null) {
                         // Toggle the bold property
                         const newBoldState = !square.bold;
                         dataStore.updateSquare(squareId, { bold: newBoldState });
-                        console.log(`Square ${squareId} bold state: ${newBoldState}`);
                     }
                 });
-                
-                console.log(`Toggled bold state for ${selectedSquares.length} squares`);
                 
                 // Force update connections since bold state affects connection radius
                 const { connectionManager } = useConnections();
@@ -136,11 +288,9 @@ export function createKeyboardHandler(dataStore, onShowIndicatorPicker = null) {
             // Priority: if a square document is selected, select all squares in it
             if (dataStore.data.currentSquareDocumentId) {
                 const selectedCount = dataStore.selectAllSquaresInDocument();
-                console.log(`Selected all ${selectedCount} squares in current document`);
             } else {
                 // Otherwise, select all circles in the currently selected viewer
                 const selectedCount = dataStore.selectAllCirclesInViewer();
-                console.log(`Selected all ${selectedCount} circles in selected viewer`);
             }
             return;
         }

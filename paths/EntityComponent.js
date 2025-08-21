@@ -521,7 +521,7 @@ export const EntityComponent = {
                 
                 // Start proximity system if not already started
                 if (props.entityType === 'circle') {
-                    proximitySystem.start();
+                    //proximitySystem.start();
                 }
             });
         });

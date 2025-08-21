@@ -111,12 +111,22 @@ export const EntityControls = {
         });
 
         // Button handlers
-        const handleAddClick = () => {
+	const handleAddClick = () => {
+            // For circle viewers, ensure a document is selected before adding
+            if (props.entityType === 'circle' && props.viewerId) {
+                const documentId = dataStore.getCircleDocumentForViewer(props.viewerId);
+                if (!documentId) {
+                    // No document selected - create a new one first
+                    const newDoc = dataStore.createCircleDocument();
+                    dataStore.setCircleDocumentForViewer(props.viewerId, newDoc.id);
+                }
+            }
             emit('add-entity');
         };
 
         const handleDocumentClick = (event) => {
-            const triggerElement = hasDocument.value ? documentLabelRef.value : documentButtonRef.value;
+            //const triggerElement = hasDocument.value ? documentLabelRef.value : documentButtonRef.value;
+            const triggerElement = documentButtonRef.value;
             
             emit('show-dropdown', {
                 entityType: props.entityType,
@@ -149,19 +159,20 @@ export const EntityControls = {
             
             <!-- Document Button (shown when no document selected) -->
             <button 
-                v-if="!hasDocument"
+                v-if="true || !hasDocument"
                 ref="documentButtonRef"
                 class="entity-control-button entity-document-button"
                 @click="handleDocumentClick"
-            >📁</button>
+		style="font-size: 14px;"
+            >⮺</button>
             
             <!-- Document Label (shown when document selected, clickable) -->
-            <div 
+            <!--div 
                 v-if="hasDocument"
                 ref="documentLabelRef"
                 class="entity-document-label"
                 @click="handleDocumentClick"
-            >{{ currentDocument.name }}</div>
+            >{{ currentDocument.name }}</div-->
         </div>
     `
 };

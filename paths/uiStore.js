@@ -26,7 +26,6 @@ function createUIStore() {
             id,
             width,
             currentCircleDocumentId: documentId,
-            customTitle: null,
             isMinimized: false,
             showBackground: true // Default to showing background
         };
@@ -143,10 +142,6 @@ function createUIStore() {
     const getViewerTitle = (viewerId, documentStore) => {
         const viewer = data.circleViewers.get(viewerId);
         if (!viewer) return 'Unknown Viewer';
-        
-        if (viewer.customTitle) {
-            return viewer.customTitle;
-        }
         
         if (viewer.currentCircleDocumentId && documentStore) {
             const doc = documentStore.getCircleDocument(viewer.currentCircleDocumentId);
