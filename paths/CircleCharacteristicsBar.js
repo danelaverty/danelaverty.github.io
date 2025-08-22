@@ -1,4 +1,4 @@
-// CircleCharacteristicsBar.js - Updated with activation control
+// CircleCharacteristicsBar.js - Updated to support multiple circle selection
 import { computed, ref, watchEffect } from './vue-composition-api.js';
 import { injectComponentStyles } from './styleUtils.js';
 import { useCharacteristicsBarData } from './useCharacteristicsBarData.js';
@@ -21,7 +21,7 @@ import { TypeControl } from './CBTypeControl.js';
 import { CircleEmojiControl } from './CBCircleEmojiControl.js';
 import { ColorControl } from './CBColorControl.js';
 import { EnergyControl } from './CBEnergyControl.js';
-import { ActivationControl } from './CBActivationControl.js'; // NEW: Import activation control
+import { ActivationControl } from './CBActivationControl.js';
 import { EmojiControl } from './CBEmojiControl.js';
 import { RecentEmojisControl } from './CBRecentEmojisControl.js';
 
@@ -32,7 +32,7 @@ import { ColorPickerModal } from './CBColorPickerModal.js';
 import { EnergyPickerModal } from './CBEnergyPickerModal.js';
 import { EmojiPickerModal } from './CBEmojiPickerModal.js';
 
-// Combine all styles (including new activation styles)
+// Combine all styles
 const componentStyles = `
     ${baseCharacteristicsStyles}
     ${displayStyles}
@@ -63,7 +63,7 @@ export const CircleCharacteristicsBar = {
     const circleEmojiDisplayRefTemplate = ref(null);
     const colorDisplayRefTemplate = ref(null);
     const energyDisplayRefTemplate = ref(null);
-    const activationDisplayRefTemplate = ref(null); // NEW: Activation display ref
+    const activationDisplayRefTemplate = ref(null);
     const emojiDisplayRefTemplate = ref(null);
     const typePickerRefTemplate = ref(null);
     const circleEmojiPickerRefTemplate = ref(null);
@@ -132,6 +132,23 @@ export const CircleCharacteristicsBar = {
       }
     });
 
+    // NEW: Check if multiple circles are selected
+    const hasMultipleCirclesSelected = computed(() => {
+      return dataStore.hasMultipleCirclesSelected();
+    });
+
+    // NEW: Updated visibility logic - show for single OR multiple circle selection
+    const isVisible = computed(() => {
+      const selectedCircles = dataStore.getSelectedCircles();
+      return selectedCircles.length >= 1; // Changed from === 1 to >= 1
+    });
+
+    // NEW: Get selected circle objects for multiple selection
+    const getSelectedCircleObjects = computed(() => {
+      const selectedIds = dataStore.getSelectedCircles();
+      return selectedIds.map(id => dataStore.getCircle(id)).filter(Boolean);
+    });
+
     // Extract specific values we need
     const { emojiAttributes } = dataHooks;
 
@@ -139,43 +156,140 @@ export const CircleCharacteristicsBar = {
       return emojiAttributes.value.find(attr => attr.key === 'cause') || emojiAttributes.value[0];
     });
     
+    // Check if the selected circle is a reference circle (only applies to single selection)
+    const isReferenceCircle = computed(() => {
+      return dataHooks.selectedCircle.value && dataHooks.selectedCircle.value.referenceID !== null;
+    });
+    
     // Check if circle emoji picker should be visible
     const isCircleEmojiPickerVisible = computed(() => {
-      return dataHooks.selectedCircle.value && dataHooks.selectedCircle.value.type === 'emoji';
+      if (hasMultipleCirclesSelected.value) {
+        // For multiple selection, always show circle emoji control
+        return true;
+      }
+      
+      // For single selection, check type and reference status
+      return dataHooks.selectedCircle.value && 
+             (['emoji', 'shape'].indexOf(dataHooks.selectedCircle.value.type) > -1) && 
+             !isReferenceCircle.value;
     });
 
-    // NEW: Compute activation state from selected circle
+    // NEW: Should show emoji controls (only for single circle selection)
+    const shouldShowEmojiControls = computed(() => {
+      return !hasMultipleCirclesSelected.value;
+    });
+
+    // NEW: Should show circle characteristic controls (hidden for reference circles in single selection)
+    const shouldShowCircleCharacteristicControls = computed(() => {
+      if (hasMultipleCirclesSelected.value) {
+        return true; // Always show for multiple selection
+      }
+      // For single selection, hide if it's a reference circle
+      return !isReferenceCircle.value;
+    });
+
+    // Compute activation state from selected circle(s)
     const isCircleActivated = computed(() => {
-      if (!dataHooks.selectedCircle.value) return false;
-      return dataHooks.selectedCircle.value.activation === 'activated';
+      if (hasMultipleCirclesSelected.value) {
+        // For multiple circles, show activated if ANY circle is activated
+        const selectedIds = dataStore.getSelectedCircles();
+        return selectedIds.some(id => {
+          const circle = dataStore.getCircle(id);
+          return circle && circle.activation === 'activated';
+        });
+      } else if (dataHooks.selectedCircle.value) {
+        return dataHooks.selectedCircle.value.activation === 'activated';
+      }
+      return false;
     });
 
-    // Create action handlers with proper context
+    // Create action handlers with proper context for multiple selection
     const handleColorSelect = (colorValue, isCtrlClick) => {
-      const colorInfo = { color: colorValue };
-      actionHooks.selectColor(colorInfo, isCtrlClick, dataHooks.selectedCircle.value, dataHooks.circleColors.value);
+      if (hasMultipleCirclesSelected.value) {
+        // Apply to all selected circles
+        const selectedIds = dataStore.getSelectedCircles();
+        selectedIds.forEach(circleId => {
+          const circle = dataStore.getCircle(circleId);
+          if (circle) {
+            const colorInfo = { color: colorValue };
+            actionHooks.selectColor(colorInfo, isCtrlClick, circle, circle.colors || [circle.color]);
+          }
+        });
+      } else {
+        const colorInfo = { color: colorValue };
+        actionHooks.selectColor(colorInfo, isCtrlClick, dataHooks.selectedCircle.value, dataHooks.circleColors.value);
+      }
       if (!isCtrlClick) {
         pickerHooks.closePickerAction('color');
       }
     };
 
     const handleTypeSelect = (typeInfo) => {
-      actionHooks.selectType(typeInfo, dataHooks.selectedCircle.value);
+      if (hasMultipleCirclesSelected.value) {
+        // Apply to all selected circles
+        const selectedIds = dataStore.getSelectedCircles();
+        selectedIds.forEach(circleId => {
+          const circle = dataStore.getCircle(circleId);
+          if (circle) {
+            actionHooks.selectType(typeInfo, circle);
+          }
+        });
+      } else {
+        actionHooks.selectType(typeInfo, dataHooks.selectedCircle.value);
+      }
       pickerHooks.closePickerAction('type');
     };
 
     const handleEnergySelect = (energyId, isCtrlClick) => {
-      actionHooks.selectEnergy(energyId, isCtrlClick, dataHooks.selectedCircle.value, dataHooks.circleEnergyTypes.value);
+      if (hasMultipleCirclesSelected.value) {
+        // Apply to all selected circles
+        const selectedIds = dataStore.getSelectedCircles();
+        selectedIds.forEach(circleId => {
+          const circle = dataStore.getCircle(circleId);
+          if (circle) {
+            actionHooks.selectEnergy(energyId, isCtrlClick, circle, circle.energyTypes || []);
+          }
+        });
+      } else {
+        actionHooks.selectEnergy(energyId, isCtrlClick, dataHooks.selectedCircle.value, dataHooks.circleEnergyTypes.value);
+      }
       if (!isCtrlClick) {
         pickerHooks.closePickerAction('energy');
       }
     };
 
-    // NEW: Handle activation toggle
     const handleActivationToggle = () => {
-      actionHooks.toggleActivation(dataHooks.selectedCircle.value);
+      if (hasMultipleCirclesSelected.value) {
+        // Apply to all selected circles
+        const selectedIds = dataStore.getSelectedCircles();
+        selectedIds.forEach(circleId => {
+          const circle = dataStore.getCircle(circleId);
+          if (circle) {
+            actionHooks.toggleActivation(circle);
+          }
+        });
+      } else {
+        actionHooks.toggleActivation(dataHooks.selectedCircle.value);
+      }
     };
 
+    const handleCircleEmojiSelect = (emoji) => {
+      if (hasMultipleCirclesSelected.value) {
+        // Apply to all selected circles
+        const selectedIds = dataStore.getSelectedCircles();
+        selectedIds.forEach(circleId => {
+          const circle = dataStore.getCircle(circleId);
+          if (circle) {
+            actionHooks.selectCircleEmoji(emoji.emoji, circle);
+          }
+        });
+      } else {
+        actionHooks.selectCircleEmoji(emoji.emoji, dataHooks.selectedCircle.value);
+      }
+      pickerHooks.closePickerAction('circleEmoji');
+    };
+
+    // Emoji handlers (only for single selection)
     const handleEmojiSelect = (attribute) => {
       actionHooks.selectEmoji(attribute);
       recentEmojiHooks.addRecentEmoji(attribute);
@@ -183,11 +297,6 @@ export const CircleCharacteristicsBar = {
         dataStore.saveToStorage();
       }
       pickerHooks.closePickerAction('emoji');
-    };
-
-    const handleCircleEmojiSelect = (emoji) => {
-      actionHooks.selectCircleEmoji(emoji.emoji, dataHooks.selectedCircle.value);
-      pickerHooks.closePickerAction('circleEmoji');
     };
 
     const handleQuickEmojiSelect = (attribute) => {
@@ -226,14 +335,20 @@ export const CircleCharacteristicsBar = {
       
       // Computed values
       causeEmoji,
+      isReferenceCircle,
       isCircleEmojiPickerVisible,
-      isCircleActivated, // NEW: Expose activation state
+      isCircleActivated,
+      isVisible, // Updated visibility logic
+      hasMultipleCirclesSelected, // NEW
+      shouldShowEmojiControls, // NEW
+      shouldShowCircleCharacteristicControls, // NEW
+      getSelectedCircleObjects, // NEW
       
       // Action handlers
       handleColorSelect,
       handleTypeSelect,
       handleEnergySelect,
-      handleActivationToggle, // NEW: Expose activation toggle handler
+      handleActivationToggle,
       handleEmojiSelect,
       handleCircleEmojiSelect,
       handleQuickEmojiSelect,
@@ -263,7 +378,7 @@ export const CircleCharacteristicsBar = {
       circleEmojiDisplayRefTemplate,
       colorDisplayRefTemplate,
       energyDisplayRefTemplate,
-      activationDisplayRefTemplate, // NEW: Expose activation display ref
+      activationDisplayRefTemplate,
       emojiDisplayRefTemplate,
       typePickerRefTemplate,
       circleEmojiPickerRefTemplate,
@@ -279,7 +394,7 @@ export const CircleCharacteristicsBar = {
     CircleEmojiControl,
     ColorControl,
     EnergyControl,
-    ActivationControl, // NEW: Include activation control
+    ActivationControl,
     EmojiControl,
     RecentEmojisControl,
     TypePickerModal,
@@ -291,107 +406,118 @@ export const CircleCharacteristicsBar = {
   
   template: `
     <div :class="['circle-characteristics-bar', { hidden: !isVisible }]">
-        <!-- Type Control -->
-        <TypeControl 
-            ref="typeDisplayRefTemplate"
-            :currentTypeInfo="currentTypeInfo"
-            :isPickerOpen="isTypePickerOpen"
-            @toggle="toggleTypePicker"
-        />
+        <!-- Circle Characteristic Controls (Hidden for Reference Circles in Single Selection) -->
+        <template v-if="shouldShowCircleCharacteristicControls">
+            <!-- Type Control -->
+            <TypeControl 
+                ref="typeDisplayRefTemplate"
+                :currentTypeInfo="currentTypeInfo"
+                :isPickerOpen="isTypePickerOpen"
+                @toggle="toggleTypePicker"
+            />
 
-        <!-- Circle Emoji Control -->
-        <CircleEmojiControl 
-            v-if="isCircleEmojiPickerVisible"
-            ref="circleEmojiDisplayRefTemplate"
-            :selectedCircle="selectedCircle"
-            :isPickerOpen="isCircleEmojiPickerOpen"
-            @toggle="toggleCircleEmojiPicker"
-        />
+            <!-- Circle Emoji Control -->
+            <CircleEmojiControl 
+                v-if="isCircleEmojiPickerVisible"
+                ref="circleEmojiDisplayRefTemplate"
+                :selectedCircle="selectedCircle"
+                :hasMultipleCirclesSelected="hasMultipleCirclesSelected"
+                :selectedCircles="getSelectedCircleObjects"
+                :isPickerOpen="isCircleEmojiPickerOpen"
+                @toggle="toggleCircleEmojiPicker"
+            />
 
-        <!-- Color Control -->
-        <ColorControl 
-            ref="colorDisplayRefTemplate"
-            :circleColors="circleColors"
-            :isPickerOpen="isColorPickerOpen"
-            @toggle="toggleColorPicker"
-        />
+            <!-- Color Control -->
+            <ColorControl 
+                ref="colorDisplayRefTemplate"
+                :circleColors="circleColors"
+                :isPickerOpen="isColorPickerOpen"
+                @toggle="toggleColorPicker"
+            />
 
-        <!-- Energy Control -->
-        <EnergyControl 
-            ref="energyDisplayRefTemplate"
-            :circleEnergyTypes="circleEnergyTypes"
-            :isPickerOpen="isEnergyPickerOpen"
-            :getEnergyTypeColor="getEnergyTypeColor"
-            @toggle="toggleEnergyPicker"
-        />
+            <!-- Energy Control -->
+            <EnergyControl 
+                ref="energyDisplayRefTemplate"
+                :circleEnergyTypes="circleEnergyTypes"
+                :isPickerOpen="isEnergyPickerOpen"
+                :getEnergyTypeColor="getEnergyTypeColor"
+                @toggle="toggleEnergyPicker"
+            />
 
-        <!-- NEW: Activation Control -->
-        <ActivationControl 
-            ref="activationDisplayRefTemplate"
-            :isActivated="isCircleActivated"
-            @toggle="handleActivationToggle"
-        />
+            <!-- Activation Control -->
+            <ActivationControl 
+                ref="activationDisplayRefTemplate"
+                :isActivated="isCircleActivated"
+                @toggle="handleActivationToggle"
+            />
+        </template>
 
-        <!-- Emoji Control -->
-        <EmojiControl 
-            ref="emojiDisplayRefTemplate"
-            :causeEmoji="causeEmoji"
-            :isPickerOpen="isEmojiPickerOpen"
-            :getEmojiDisplayTitle="getEmojiDisplayTitle"
-            @toggle="toggleEmojiPicker"
-            @selectQuickEmoji="handleQuickEmojiSelect"
-        />
+        <!-- Emoji Controls (Only Visible for Single Circle Selection) -->
+        <template v-if="shouldShowEmojiControls">
+            <!-- Emoji Control -->
+            <EmojiControl 
+                ref="emojiDisplayRefTemplate"
+                :causeEmoji="causeEmoji"
+                :isPickerOpen="isEmojiPickerOpen"
+                :getEmojiDisplayTitle="getEmojiDisplayTitle"
+                @toggle="toggleEmojiPicker"
+                @selectQuickEmoji="handleQuickEmojiSelect"
+            />
 
-        <!-- Recent Emojis Control -->
-        <RecentEmojisControl 
-            v-if="recentEmojis.length > 0"
-            :recentEmojis="recentEmojis"
-            :getEmojiDisplayTitle="getEmojiDisplayTitle"
-            @selectQuickEmoji="handleQuickEmojiSelect"
-            @clearRecentEmojis="handleClearRecentEmojis"
-        />
+            <!-- Recent Emojis Control -->
+            <RecentEmojisControl 
+                v-if="recentEmojis.length > 0"
+                :recentEmojis="recentEmojis"
+                :getEmojiDisplayTitle="getEmojiDisplayTitle"
+                @selectQuickEmoji="handleQuickEmojiSelect"
+                @clearRecentEmojis="handleClearRecentEmojis"
+            />
+        </template>
 
-        <!-- Type Picker Modal -->
-        <TypePickerModal 
-            v-if="isTypePickerOpen"
-            ref="typePickerRefTemplate"
-            :circleTypes="circleTypes"
-            :isTypeSelected="isTypeSelected"
-            @selectType="handleTypeSelect"
-            @close="closePickerAction('type')"
-        />
+        <!-- Picker Modals (Only show for non-reference circles) -->
+        <template v-if="shouldShowCircleCharacteristicControls">
+            <!-- Type Picker Modal -->
+            <TypePickerModal 
+                v-if="isTypePickerOpen"
+                ref="typePickerRefTemplate"
+                :circleTypes="circleTypes"
+                :isTypeSelected="isTypeSelected"
+                @selectType="handleTypeSelect"
+                @close="closePickerAction('type')"
+            />
 
-        <!-- Circle Emoji Picker Modal -->
-        <CircleEmojiPickerModal 
-            v-if="isCircleEmojiPickerOpen"
-            ref="circleEmojiPickerRefTemplate"
-            @selectCircleEmoji="handleCircleEmojiSelect"
-            @close="closePickerAction('circleEmoji')"
-        />
+            <!-- Circle Emoji Picker Modal -->
+            <CircleEmojiPickerModal 
+                v-if="isCircleEmojiPickerOpen"
+                ref="circleEmojiPickerRefTemplate"
+                @selectCircleEmoji="handleCircleEmojiSelect"
+                @close="closePickerAction('circleEmoji')"
+            />
+            
+            <!-- Color Picker Modal -->
+            <ColorPickerModal 
+                v-if="isColorPickerOpen"
+                ref="colorPickerRefTemplate"
+                :colorFamilies="colorFamilies"
+                :isColorSelected="isColorSelected"
+                @selectColor="handleColorSelect"
+                @close="closePickerAction('color')"
+            />
+
+            <!-- Energy Picker Modal -->
+            <EnergyPickerModal 
+                v-if="isEnergyPickerOpen"
+                ref="energyPickerRefTemplate"
+                :energyTypes="energyTypes"
+                :isEnergySelected="isEnergySelected"
+                @selectEnergy="handleEnergySelect"
+                @close="closePickerAction('energy')"
+            />
+        </template>
         
-        <!-- Color Picker Modal -->
-        <ColorPickerModal 
-            v-if="isColorPickerOpen"
-            ref="colorPickerRefTemplate"
-            :colorFamilies="colorFamilies"
-            :isColorSelected="isColorSelected"
-            @selectColor="handleColorSelect"
-            @close="closePickerAction('color')"
-        />
-
-        <!-- Energy Picker Modal -->
-        <EnergyPickerModal 
-            v-if="isEnergyPickerOpen"
-            ref="energyPickerRefTemplate"
-            :energyTypes="energyTypes"
-            :isEnergySelected="isEnergySelected"
-            @selectEnergy="handleEnergySelect"
-            @close="closePickerAction('energy')"
-        />
-        
-        <!-- Emoji Picker Modal -->
+        <!-- Emoji Picker Modal (Only available for single selection) -->
         <EmojiPickerModal 
-            v-if="isEmojiPickerOpen"
+            v-if="isEmojiPickerOpen && shouldShowEmojiControls"
             ref="emojiPickerRefTemplate"
             :emojisByCategory="emojisByCategory"
             :getEmojiDisplayTitle="getEmojiDisplayTitle"

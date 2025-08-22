@@ -1,4 +1,4 @@
-// clipboardStore.js - Application clipboard for copying and pasting entities
+// clipboardStore.js - Application clipboard for copying and pasting entities with reference ID support
 import { reactive } from './vue-composition-api.js';
 
 let clipboardStoreInstance = null;
@@ -19,7 +19,7 @@ function createClipboardStore() {
         const copiedEntities = entities.map(entity => {
             const copy = { ...entity };
             
-            // For circles, copy all properties including type-specific ones
+            // For circles, copy all properties including type-specific ones and referenceID
             if (entityType === 'circle') {
                 // Copy all circle properties
                 if (entity.type) copy.type = entity.type;
@@ -28,6 +28,8 @@ function createClipboardStore() {
                 if (entity.emoji) copy.emoji = entity.emoji;
                 if (entity.energyTypes) copy.energyTypes = [...entity.energyTypes];
                 if (entity.activation !== undefined) copy.activation = entity.activation;
+                // Include referenceID in the copy
+                if (entity.referenceID !== undefined) copy.referenceID = entity.referenceID;
             }
             
             // For squares, copy all properties including emoji and styling
@@ -47,32 +49,37 @@ function createClipboardStore() {
         return true;
     };
 
-    const pasteEntities = (targetDocumentId) => {
-        if (!data.entities || data.entities.length === 0) {
-            return [];
+    const pasteEntities = (targetDocumentId, isReferencePaste = false) => {
+    if (!data.entities || data.entities.length === 0) {
+        return [];
+    }
+
+    const isSameDocument = data.sourceDocumentId === targetDocumentId;
+    const positionOffset = isSameDocument ? 30 : 0;
+
+    const pastedEntities = data.entities.map(entity => {
+        const pastedEntity = { ...entity };
+        
+        // For reference paste, preserve the original ID as originalId before removing id
+        if (isReferencePaste) {
+            pastedEntity.originalId = entity.id;
         }
+        
+        // Remove the ID so new entities will get new IDs
+        delete pastedEntity.id;
+        
+        // Set the target document ID
+        pastedEntity.documentId = targetDocumentId;
+        
+        // Apply position offset if pasting to same document
+        pastedEntity.x = entity.x + positionOffset;
+        pastedEntity.y = entity.y + positionOffset;
+        
+        return pastedEntity;
+    });
 
-        const isSameDocument = data.sourceDocumentId === targetDocumentId;
-        const positionOffset = isSameDocument ? 30 : 0;
-
-        const pastedEntities = data.entities.map(entity => {
-            const pastedEntity = { ...entity };
-            
-            // Remove the ID so new entities will get new IDs
-            delete pastedEntity.id;
-            
-            // Set the target document ID
-            pastedEntity.documentId = targetDocumentId;
-            
-            // Apply position offset if pasting to same document
-            pastedEntity.x = entity.x + positionOffset;
-            pastedEntity.y = entity.y + positionOffset;
-            
-            return pastedEntity;
-        });
-
-        return pastedEntities;
-    };
+    return pastedEntities;
+};
 
     const getClipboardInfo = () => {
         return {

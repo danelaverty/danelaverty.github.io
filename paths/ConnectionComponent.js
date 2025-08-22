@@ -116,7 +116,7 @@ export const ConnectionComponent = {
             
             if (isCircleType) {
                 // Check if either circle is inactive
-                return isCircleInactive(entity1) || isCircleInactive(entity2);
+                return (isCircleInactive(entity1) && entity1.type != 'glow') || (isCircleInactive(entity2) && entity2.type != 'glow');
             }
             
             return false;

@@ -86,7 +86,7 @@ export const useCharacteristicsBarActions = () => {
     });
   };
 
-  // NEW: Toggle activation state
+  // Toggle activation state
   const toggleActivation = (selectedCircle) => {
     if (!selectedCircle) return;
     
@@ -149,13 +149,51 @@ export const useCharacteristicsBarActions = () => {
 
   // Circle emoji selection for emoji-type circles
   const selectCircleEmoji = (emoji, selectedCircle) => {
-    if (!selectedCircle || selectedCircle.type !== 'emoji') return;
+    if (!selectedCircle) return;
     
+    // Allow emoji setting regardless of circle type when explicitly called
+    // (the type restriction was causing issues with multiple selection)
     const circleId = selectedCircle.id;
     
-    // Update the circle's emoji
+    // Update the circle's emoji (allow empty string for "no emoji")
     dataStore.updateCircle(circleId, {
       emoji: emoji
+    });
+  };
+
+  // NEW: Multi-circle action methods for applying to all selected circles
+  const applyToAllSelectedCircles = (actionType, ...args) => {
+    const selectedIds = dataStore.getSelectedCircles();
+    
+    selectedIds.forEach(circleId => {
+      const circle = dataStore.getCircle(circleId);
+      if (!circle) return;
+      
+      switch (actionType) {
+        case 'color':
+          const [colorInfo, isCtrlClick] = args;
+          selectColor(colorInfo, isCtrlClick, circle, circle.colors || [circle.color]);
+          break;
+          
+        case 'type':
+          const [typeInfo] = args;
+          selectType(typeInfo, circle);
+          break;
+          
+        case 'energy':
+          const [energyId, isCtrlClickEnergy] = args;
+          selectEnergy(energyId, isCtrlClickEnergy, circle, circle.energyTypes || []);
+          break;
+          
+        case 'activation':
+          toggleActivation(circle);
+          break;
+          
+        case 'circleEmoji':
+          const [emoji] = args;
+          selectCircleEmoji(emoji, circle);
+          break;
+      }
     });
   };
 
@@ -163,8 +201,9 @@ export const useCharacteristicsBarActions = () => {
     selectColor,
     selectType,
     selectEnergy,
-    toggleActivation, // NEW: Export activation toggle
+    toggleActivation,
     selectEmoji,
-    selectCircleEmoji
+    selectCircleEmoji,
+    applyToAllSelectedCircles // NEW: For multi-circle operations
   };
 };

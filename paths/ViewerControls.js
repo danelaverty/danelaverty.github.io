@@ -225,6 +225,8 @@ const componentStyles = `
         flex-shrink: 0;
         opacity: 0;
         transition: opacity 0.2s ease;
+		    position: absolute;
+			      right: 0;
     }
 
     /* Show buttons on hover */

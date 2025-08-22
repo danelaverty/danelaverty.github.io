@@ -1,4 +1,4 @@
-// EntityComponent.js - FIXED: Properly pass viewerId to EntityDragHandler
+// EntityComponent.js - Entity component with reference circle support
 import { ref, nextTick, onMounted, onUnmounted, computed, watch } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
 import { injectComponentStyles } from './styleUtils.js';
@@ -12,7 +12,7 @@ import { EntityStyleCalculator } from './EntityStyleCalculator.js';
 import { EnergyIndicators } from './EnergyIndicators.js';
 import { useEnergyProximitySystem } from './EnergyProximitySystem.js';
 
-// Component styles - updated to support bold squares and indicator emojis
+// Component styles - updated to support bold squares, indicator emojis, and reference circles
 const componentStyles = `
     .entity-container {
         position: absolute;
@@ -155,6 +155,14 @@ const componentStyles = `
         font-weight: bold;
     }
 
+    /* Reference circle name styling - italic and yellow, non-editable */
+    .circle-name.referenced {
+        font-style: italic;
+        color: #ffff00;
+        cursor: default;
+        pointer-events: none;
+    }
+
     .entity-name[contenteditable="true"] {
         background-color: #333;
         outline: 1px solid #666;
@@ -176,7 +184,7 @@ export const EntityComponent = {
         entityType: String,
         isSelected: Boolean,
         viewerWidth: Number,
-        viewerId: String // FIXED: Make sure viewerId prop is properly defined
+        viewerId: String
     },
     components: {
         EmojiRenderer,
@@ -192,7 +200,30 @@ export const EntityComponent = {
 
         // Use separated concerns modules
         const styleCalculator = new EntityStyleCalculator(props);
-        const nameEditor = new EntityNameEditor(nameRef, emit);
+
+        // Check if this is a referenced circle
+        const isReferencedCircle = computed(() => {
+            return props.entityType === 'circle' && props.entity.referenceID !== null;
+        });
+
+        // Create a modified name editor that respects referenced circles
+        const createNameEditor = () => {
+            const baseEditor = new EntityNameEditor(nameRef, emit);
+            
+            // Override the handleNameClick to prevent editing for referenced circles
+            const originalHandleNameClick = baseEditor.handleNameClick;
+            baseEditor.handleNameClick = (e) => {
+                if (isReferencedCircle.value) {
+                    e.stopPropagation();
+                    return; // Don't allow editing for referenced circles
+                }
+                originalHandleNameClick(e);
+            };
+            
+            return baseEditor;
+        };
+
+        const nameEditor = createNameEditor();
 
         // FIXED: Create a drag move handler for proximity system updates
         const handleProximityDragMove = (deltaX, deltaY) => {
@@ -284,7 +315,7 @@ export const EntityComponent = {
                     }
                 }
                 
-                console.warn(`❌ EntityComponent: Could not determine viewerId for circle ${props.entity.id}, using fallback`);
+                console.warn(`⚠ EntityComponent: Could not determine viewerId for circle ${props.entity.id}, using fallback`);
                 return 'viewer_1'; // Fallback
             }
             
@@ -348,12 +379,12 @@ export const EntityComponent = {
             }
 
             const indicatorMap = {
-                'Ã¢Ââ€"': 'indicator-alert',
-                'Ã¢Å"â€Ã¯Â¸Â': 'indicator-done',
-                'Ã¢Â­Â': 'indicator-star',
-                'Ã°Å¸Ëœâ€"': 'indicator-issue',
-                'Ã¢â€"Â¶Ã¯Â¸Â': 'indicator-next',
-                'Ã°Å¸ÂÂ': 'indicator-finish'
+                '⚠️': 'indicator-alert',
+                '✅': 'indicator-done',
+                '⭐': 'indicator-star',
+                '🚨': 'indicator-issue',
+                '▶️': 'indicator-next',
+                '🏁': 'indicator-finish'
             };
 
             return indicatorMap[props.entity.indicatorEmoji] || null;
@@ -398,13 +429,18 @@ export const EntityComponent = {
             return classes;
         });
 
-        // Computed name classes for bold styling
+        // Computed name classes for bold styling and reference styling
         const nameClasses = computed(() => {
             const classes = ['entity-name', `${props.entityType}-name`];
             
             // Add bold class for bold squares
             if (isBold.value) {
                 classes.push('bold');
+            }
+            
+            // Add referenced class for referenced circles
+            if (isReferencedCircle.value) {
+                classes.push('referenced');
             }
             
             return classes;
@@ -443,7 +479,8 @@ export const EntityComponent = {
         props.entity.colors, 
         props.entity.emoji, // Watch for emoji changes in circles
         props.entity.energyTypes, // Watch for energy type changes
-        props.entity.activation, // FIXED: Watch for activation changes!
+        props.entity.activation, // Watch for activation changes
+        props.entity.referenceID, // Watch for referenceID changes
         squareCount.value,
         props.isSelected
     ],
@@ -563,6 +600,7 @@ export const EntityComponent = {
             isBold,
             hasIndicatorEmoji,
             circleEnergyTypes,
+            isReferencedCircle,
             // Expose methods from drag handler
             handleClick: dragHandler.handleClick,
             handleMouseDown: dragHandler.handleMouseDown,

@@ -1,6 +1,83 @@
-// pickers/CircleEmojiPickerModal.js - Updated with enhanced variant system
+// pickers/CircleEmojiPickerModal.js - Updated with "no emoji" option
 import { emojiCategories } from './emojiFullSet.js';
 import { EmojiVariantService } from './EmojiVariantService.js';
+import { injectComponentStyles } from './styleUtils.js';
+
+const circleEmojiPickerModalStyles = `
+.circle-emoji-header {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #f9f9f9;
+}
+
+.no-emoji-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.no-emoji-button {
+  background: #fff;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.no-emoji-button:hover {
+  border-color: #999;
+  background: #f5f5f5;
+}
+
+.no-emoji-icon {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.no-emoji-text {
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
+}
+
+.no-emoji-circle {
+  width: 20px;
+  height: 20px;
+  border: 2px dashed #ccc;
+  border-radius: 50%;
+}
+
+.no-emoji-label {
+  font-size: 14px;
+  color: #666;
+}
+
+.header-spacer {
+  flex: 1;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  padding: 4px 8px;
+}
+
+.close-button:hover {
+  color: #000;
+}
+`;
+
+injectComponentStyles('circle-emoji-picker-modal', circleEmojiPickerModalStyles);
 
 export const CircleEmojiPickerModal = {
   emits: ['selectCircleEmoji', 'selectCategory', 'close'],
@@ -88,6 +165,14 @@ export const CircleEmojiPickerModal = {
       });
     },
     
+    selectNoEmoji() {
+      this.$emit('selectCircleEmoji', {
+        emoji: '',
+        name: 'No Emoji',
+        key: Date.now().toString()
+      });
+    },
+    
     selectCategory(categoryData) {
       this.$emit('selectCategory', categoryData);
     }
@@ -95,6 +180,25 @@ export const CircleEmojiPickerModal = {
   
   template: `
     <div class="circle-emoji-picker-modal-enhanced">
+      <!-- Header with No Emoji option -->
+      <div class="circle-emoji-header">
+        <div class="no-emoji-section">
+          <button 
+            class="no-emoji-button"
+            @click="selectNoEmoji()"
+            title="Remove emoji from circle"
+          >
+            <div class="no-emoji-icon">
+              <span class="no-emoji-text">None</span>
+              <div class="no-emoji-circle"></div>
+            </div>
+          </button>
+          <span class="no-emoji-label">No Emoji</span>
+        </div>
+        <div class="header-spacer"></div>
+        <button class="close-button" @click="$emit('close')" title="Close picker">×</button>
+      </div>
+      
       <!-- Tabs -->
       <div class="circle-emoji-tabs">
         <button 
