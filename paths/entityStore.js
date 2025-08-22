@@ -1,4 +1,4 @@
-// entityStore.js - Unified entity management for circles and squares with bold, indicator emoji, circle emoji, energy support, and activation
+// entityStore.js - Unified entity management for circles and squares with bold, indicator emoji, circle emoji, energy support, activation, and referenceID
 import { reactive } from './vue-composition-api.js';
 
 let entityStoreInstance = null;
@@ -56,7 +56,8 @@ function createEntityStore() {
             entity.color = '#CCCCCC'; // Default color
             entity.colors = ['#4CAF50']; // Support for multiple colors
             entity.energyTypes = []; // Energy types array
-            entity.activation = 'inactive'; // NEW: Default activation state
+            entity.activation = 'activated'; // Default activation state
+            entity.referenceID = null; // NEW: Reference ID for referenced circles
             
             // Set circle type based on document's mostRecentlySetCircleType
             let defaultType = 'basic'; // Fallback default
@@ -108,7 +109,7 @@ function createEntityStore() {
         if (entity) {
             Object.assign(entity, updates);
             
-            // For circles, ensure color consistency, emoji handling, energy types, and activation
+            // For circles, ensure color consistency, emoji handling, energy types, activation, and referenceID
             if (entityType === 'circle') {
                 // If colors array is updated but color is not, update primary color
                 if (updates.colors && !updates.color && updates.colors.length > 0) {
@@ -128,14 +129,24 @@ function createEntityStore() {
                     entity.energyTypes = [];
                 }
                 
-                // NEW: Ensure activation property always exists
+                // Ensure activation property always exists
                 if (!entity.activation) {
-                    entity.activation = 'inactive';
+                    entity.activation = 'activated';
+                }
+                
+                // NEW: Ensure referenceID property always exists
+                if (entity.referenceID === undefined) {
+                    entity.referenceID = null;
                 }
                 
                 // Handle activation state changes
                 if (updates.activation !== undefined) {
                     entity.activation = updates.activation;
+                }
+                
+                // Handle referenceID changes
+                if (updates.referenceID !== undefined) {
+                    entity.referenceID = updates.referenceID;
                 }
                 
                 // Handle emoji when type changes to/from 'emoji'
@@ -145,6 +156,61 @@ function createEntityStore() {
                     // Don't clear emoji when changing away from emoji type - keep it for future use
                     // entity.emoji = null; // Commented out to preserve emoji
                 }
+
+		if (entityType === 'circle' && entity.referenceID === null) {
+			// This is an original circle (not a reference), cascade changes to its references
+			const referencedCircles = getReferencedCircles(id);
+
+			if (referencedCircles.length > 0) {
+				referencedCircles.forEach(refCircle => {
+					// Cascade name changes
+					if (updates.name !== undefined) {
+						refCircle.name = entity.name;
+					}
+
+					// Cascade color changes - use the final computed values from the main entity
+					if (updates.color !== undefined || updates.colors !== undefined) {
+						refCircle.color = entity.color;
+						refCircle.colors = [...entity.colors]; // Copy the array
+					}
+
+					// Cascade type changes
+					if (updates.type !== undefined) {
+						refCircle.type = entity.type;
+						// Handle emoji for type changes
+						if (entity.type === 'emoji' && !refCircle.emoji) {
+							refCircle.emoji = entity.emoji || '🧑🏼';
+						}
+					}
+
+					// Cascade emoji changes
+					if (updates.emoji !== undefined) {
+						refCircle.emoji = entity.emoji;
+					}
+
+					// Cascade energy types
+					if (updates.energyTypes !== undefined) {
+						refCircle.energyTypes = [...entity.energyTypes]; // Copy the array
+					}
+
+					// Cascade activation changes
+					if (updates.activation !== undefined) {
+						refCircle.activation = entity.activation;
+					}
+
+					// Ensure referenced circles have all required properties
+					if (!refCircle.energyTypes) {
+						refCircle.energyTypes = [];
+					}
+					if (!refCircle.activation) {
+						refCircle.activation = 'activated';
+					}
+					if (!refCircle.colors) {
+						refCircle.colors = [refCircle.color || '#4CAF50'];
+					}
+				});
+			}
+		}
             }
             
             return entity;
@@ -175,6 +241,16 @@ function createEntityStore() {
     const deleteCircle = (id) => deleteEntity('circle', id);
     const deleteSquare = (id) => deleteEntity('square', id);
 
+    // Utility functions for referenceID
+    const isReferencedCircle = (id) => {
+        const circle = getCircle(id);
+        return circle && circle.referenceID !== null;
+    };
+
+    const getReferencedCircles = (originalCircleId) => {
+        return Array.from(data.circles.values()).filter(circle => circle.referenceID === originalCircleId);
+    };
+
     // Bulk operations
     const moveEntities = (entityType, entityIds, deltaX, deltaY) => {
         const store = entityType === 'circle' ? data.circles : data.squares;
@@ -204,7 +280,7 @@ function createEntityStore() {
         if (savedData.circles) {
             data.circles = new Map(savedData.circles);
             
-            // Ensure all circles have the new color, emoji, energy, and activation properties
+            // Ensure all circles have the new color, emoji, energy, activation, and referenceID properties
             data.circles.forEach((circle, id) => {
                 if (!circle.colors) {
                     circle.colors = circle.color ? [circle.color] : ['#CCCCCC'];
@@ -224,9 +300,13 @@ function createEntityStore() {
                 if (!circle.energyTypes) {
                     circle.energyTypes = [];
                 }
-                // NEW: Ensure activation property exists for circles
+                // Ensure activation property exists for circles
                 if (circle.activation === undefined) {
-                    circle.activation = 'inactive'; // Default for existing circles
+                    circle.activation = 'activated'; // Default for existing circles
+                }
+                // NEW: Ensure referenceID property exists for circles
+                if (circle.referenceID === undefined) {
+                    circle.referenceID = null; // Default for existing circles
                 }
             });
         }
@@ -284,6 +364,9 @@ function createEntityStore() {
         updateSquare,
         deleteCircle,
         deleteSquare,
+        // Reference ID utilities
+        isReferencedCircle,
+        getReferencedCircles,
         // Utilities
         generateRandomPosition,
         // Serialization

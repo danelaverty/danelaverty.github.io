@@ -1,13 +1,21 @@
-// controls/CircleEmojiControl.js - Updated with better variant display
+// controls/CircleEmojiControl.js - Updated to handle multiple circle selection
 export const CircleEmojiControl = {
   props: {
     selectedCircle: {
       type: Object,
-      required: true
+      default: null // Allow null for multiple selection
     },
     isPickerOpen: {
       type: Boolean,
       default: false
+    },
+    hasMultipleCirclesSelected: {
+      type: Boolean,
+      default: false
+    },
+    selectedCircles: {
+      type: Array,
+      default: () => []
     }
   },
   
@@ -15,12 +23,25 @@ export const CircleEmojiControl = {
   
   computed: {
     displayEmoji() {
-      // Get the emoji to display, with fallback to default person emoji
-      return this.selectedCircle.emoji || '🧑🏼';
+      if (this.hasMultipleCirclesSelected) {
+        // For multiple selection, show a generic emoji or the first circle's emoji
+        if (this.selectedCircles.length > 0) {
+          const firstCircle = this.selectedCircles[0];
+          return firstCircle?.emoji || '🧑🏼';
+        }
+        return '🧑🏼'; // Default fallback
+      }
+      
+      // Single selection - use the selected circle's emoji
+      return this.selectedCircle?.emoji || '🧑🏼';
     },
     
     displayTitle() {
-      // Create a more descriptive title
+      if (this.hasMultipleCirclesSelected) {
+        return `Circle Emoji (${this.selectedCircles.length} circles): ${this.displayEmoji}`;
+      }
+      
+      // Single selection title
       const emoji = this.displayEmoji;
       return `Circle Emoji: ${emoji}`;
     }

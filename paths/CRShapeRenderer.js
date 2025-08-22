@@ -28,6 +28,39 @@ export const ShapeRenderer = {
                 this.renderRightPointingTriangle(element, circle);
                 break;
         }
+        
+        // Add emoji overlay if emoji is present
+        if (circle.emoji) {
+            this.addEmojiOverlay(element, circle);
+        }
+    },
+
+    /**
+     * Add emoji overlay on top of the shape
+     * @param {HTMLElement} element - The circle element
+     * @param {Object} circle - The circle data object
+     */
+    addEmojiOverlay(element, circle) {
+        const emojiContainer = document.createElement('div');
+        emojiContainer.className = 'shape-emoji-overlay';
+        emojiContainer.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            pointer-events: none;
+            z-index: 15;
+            background-color: transparent;
+	    filter: drop-shadow(1px 1px 2px black);
+        `;
+        
+        emojiContainer.textContent = circle.emoji;
+        element.appendChild(emojiContainer);
     },
 
     /**
@@ -39,7 +72,7 @@ export const ShapeRenderer = {
         const shapeWrap = this.createShapeWrap(element, 'right-triangle-wrap');
         
         const styles = this.getBaseShapeStyles(circle);
-        styles.clipPath = 'polygon(10% 10%, 90% 50%, 10% 90%)';
+        styles.clipPath = 'polygon(10% 10%, 100% 50%, 10% 90%)';
         
         const shapeElement = this.createShapeElement('right-triangle-shape', styles);
         this.addClickHandler(shapeWrap, element);

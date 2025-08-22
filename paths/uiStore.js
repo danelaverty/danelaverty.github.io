@@ -20,7 +20,7 @@ function createUIStore() {
     });
 
     // Viewer operations
-    const createCircleViewer = (width = 400, documentId = null) => {
+    const createCircleViewer = (width = 270, documentId = null) => {
         const id = `viewer_${data.nextViewerId++}`;
         const viewer = {
             id,
@@ -262,7 +262,7 @@ function createUIStore() {
                 }
             }
             
-            createCircleViewer(400, defaultDocId);
+            createCircleViewer(270, defaultDocId);
         }
         ensureSelectedViewer();
     };

@@ -425,9 +425,69 @@ export const CircleViewer = {
         };
 
         // Entity event handlers
-        const handleCircleSelect = (id, isCtrlClick = false) => {
-            dataStore.selectCircle(id, props.viewerId, isCtrlClick);
-        };
+	const handleCircleSelect = (id, isCtrlClick = false) => {
+    // Handle CTRL-click on reference circles
+    if (isCtrlClick) {
+        const circle = dataStore.getCircle(id);
+        if (circle && circle.referenceID) {
+            const referencedCircleId = circle.referenceID;
+            
+            // Find which document contains the referenced circle
+            const allCircleDocuments = dataStore.getAllCircleDocuments();
+            let referencedDocumentId = null;
+            
+            for (const doc of allCircleDocuments) {
+                const circlesInDoc = dataStore.getCirclesForDocument(doc.id);
+                if (circlesInDoc.some(c => c.id === referencedCircleId)) {
+                    referencedDocumentId = doc.id;
+                    break;
+                }
+            }
+		console.log(referencedDocumentId);
+            
+            if (!referencedDocumentId) {
+                console.warn(`Referenced circle ${referencedCircleId} not found in any document`);
+                return;
+            }
+            
+            // Check if referenced circle is already visible in a viewer
+            const allViewers = Array.from(dataStore.data.circleViewers.values());
+            let targetViewer = null;
+            
+            for (const viewer of allViewers) {
+                const viewerDoc = dataStore.getCircleDocumentForViewer(viewer.id);
+		if (!viewerDoc) { break; }
+		const viewerDocId = viewerDoc.id
+                if (viewerDocId === referencedDocumentId) {
+                    targetViewer = viewer;
+                    break;
+                }
+            }
+	    console.log(targetViewer);
+            
+            if (targetViewer) {
+                // Referenced circle is in an existing viewer
+                if (dataStore.data.minimizedViewers.has(targetViewer.id)) {
+                    // Un-minimize the viewer
+                    dataStore.restoreViewer(targetViewer.id);
+                }
+                // Select the referenced circle
+                dataStore.selectCircle(referencedCircleId, targetViewer.id, false);
+                dataStore.setSelectedViewer(targetViewer.id);
+            } else {
+                // Create new viewer for the referenced circle
+                const newViewer = dataStore.createCircleViewer();
+                dataStore.setCircleDocumentForViewer(newViewer.id, referencedDocumentId);
+                dataStore.selectCircle(referencedCircleId, newViewer.id, false);
+                dataStore.setSelectedViewer(newViewer.id);
+            }
+            return;
+        }
+    }
+    
+    // Normal selection (including multi-select with CTRL)
+    dataStore.selectCircle(id, props.viewerId, isCtrlClick);
+};
 
         const handleCirclePositionUpdate = ({ id, x, y }) => {
             dataStore.updateCircle(id, { x, y });

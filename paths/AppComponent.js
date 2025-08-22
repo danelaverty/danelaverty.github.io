@@ -1,4 +1,4 @@
-// AppComponent.js - Updated with drag state integration for drop target highlighting and keyboard viewer reordering
+// AppComponent.js - Updated with SquareDocumentTabs visibility control
 import { ref, computed, onMounted, onUnmounted } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
 import { useRectangleSelection } from './useRectangleSelection.js';
@@ -36,6 +36,11 @@ export const App = {
 
         // Check if characteristics bar should be visible
         const hasSelectedCircle = computed(() => {
+            return dataStore.getSelectedCircles().length === 1;
+        });
+
+        // NEW: Check if SquareDocumentTabs should be visible - only when exactly one circle is selected
+        const shouldShowSquareDocumentTabs = computed(() => {
             return dataStore.getSelectedCircles().length === 1;
         });
 
@@ -218,6 +223,7 @@ export const App = {
             hasMinimizedViewers,
             currentSquares,
             hasSelectedCircle,
+            shouldShowSquareDocumentTabs, // NEW: Expose the computed property
             squareConnections,
             squareViewerContentRef,
             sharedDropdownRef,
@@ -276,8 +282,11 @@ export const App = {
                     <!-- Circle Characteristics Bar -->
                     <CircleCharacteristicsBar />
                     
-                    <!-- Square Document Tabs -->
-                    <SquareDocumentTabs @document-change="handleSquareDocumentTabChange" />
+                    <!-- Square Document Tabs - Only show when exactly one circle is selected -->
+                    <SquareDocumentTabs 
+                        v-if="shouldShowSquareDocumentTabs"
+                        @document-change="handleSquareDocumentTabChange" 
+                    />
                     
                     <div 
                         ref="squareViewerContentRef"
