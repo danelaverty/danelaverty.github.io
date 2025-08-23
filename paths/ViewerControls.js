@@ -1,9 +1,9 @@
-// ViewerControls.js - Enhanced with drag state handling
+// ViewerControls.js - Enhanced with drag state handling and document-based properties
 import { ref, computed, nextTick, onMounted, onUnmounted } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
 import { injectComponentStyles } from './styleUtils.js';
 
-// Enhanced component styles with drag state support
+// Enhanced component styles with drag state support and editing styles
 const componentStyles = `
     .viewer-controls {
         position: absolute;
@@ -175,6 +175,7 @@ const componentStyles = `
         white-space: nowrap;
         cursor: pointer;
         transition: all 0.2s ease;
+        position: relative;
     }
 
     /* Enhanced title styling during drag */
@@ -202,19 +203,27 @@ const componentStyles = `
         pointer-events: none;
     }
 
+    /* Title editing styles */
+    .viewer-title.editing {
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+    }
+
     .viewer-title-input {
         background: transparent;
-        border: 1px solid #666;
+        border: 1px solid #4CAF50;
         color: white;
         font-size: 14px;
         padding: 4px 8px;
         border-radius: 3px;
         width: 100%;
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
     }
 
     .viewer-title-input:focus {
-        outline: none;
-        border-color: #4CAF50;
+        border-color: #66BB6A;
+        box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.3);
     }
 
     .viewer-buttons {
@@ -225,8 +234,8 @@ const componentStyles = `
         flex-shrink: 0;
         opacity: 0;
         transition: opacity 0.2s ease;
-		    position: absolute;
-			      right: 0;
+        position: absolute;
+        right: 0;
     }
 
     /* Show buttons on hover */
@@ -234,9 +243,10 @@ const componentStyles = `
         opacity: 1;
     }
 
-    /* Hide buttons during drag operations */
+    /* Hide buttons during drag operations and editing */
     .viewer-controls.being-dragged .viewer-buttons,
-    .viewer-controls.drag-disabled .viewer-buttons {
+    .viewer-controls.drag-disabled .viewer-buttons,
+    .viewer-controls.editing .viewer-buttons {
         opacity: 0.3;
         pointer-events: none;
     }
@@ -312,13 +322,21 @@ export const ViewerControls = {
     setup(props, { emit }) {
         const dataStore = useDataStore();
         const controlsRef = ref(null);
+        const titleInputRef = ref(null);
         const isCompact = ref(false);
+        const isEditing = ref(false);
+        const editingName = ref('');
         
         // Width threshold for compact mode (in pixels)
-        const COMPACT_THRESHOLD = 5200;
+        const COMPACT_THRESHOLD = 200;
 
         const viewer = computed(() => dataStore.data.circleViewers.get(props.viewerId));
         const viewerTitle = computed(() => dataStore.getViewerTitle(props.viewerId));
+        
+        // NEW: Get viewer properties from document
+        const viewerProperties = computed(() => {
+            return dataStore.getViewerProperties(props.viewerId);
+        });
         
         // Check if this viewer is selected
         const isSelected = computed(() => dataStore.isViewerSelected(props.viewerId));
@@ -344,14 +362,9 @@ export const ViewerControls = {
 
         // Check viewer width and update compact mode
         const checkCompactMode = () => {
-            if (viewer.value) {
-                isCompact.value = viewer.value.width < COMPACT_THRESHOLD;
+            if (viewerProperties.value) {
+                isCompact.value = viewerProperties.value.width < COMPACT_THRESHOLD;
             }
-        };
-
-        // Watch for viewer width changes
-        const updateCompactMode = () => {
-            checkCompactMode();
         };
 
         // Set up a mutation observer to watch for width changes
@@ -379,9 +392,63 @@ export const ViewerControls = {
             }
         });
 
+        // Title editing functionality
+        const handleTitleDoubleClick = async () => {
+            // Prevent editing during drag operations
+            if (isDragActive.value) return;
+            
+            // Get the current document for this viewer
+            const currentDoc = dataStore.getCircleDocumentForViewer(props.viewerId);
+            if (!currentDoc) return;
+            
+            isEditing.value = true;
+            editingName.value = currentDoc.name;
+            
+            // Focus the input after Vue updates the DOM
+            await nextTick();
+            if (titleInputRef.value) {
+                titleInputRef.value.focus();
+                titleInputRef.value.select();
+            }
+        };
+
+        const handleTitleSave = () => {
+            if (!isEditing.value) return;
+            
+            const currentDoc = dataStore.getCircleDocumentForViewer(props.viewerId);
+            if (!currentDoc) {
+                cancelEditing();
+                return;
+            }
+            
+            const newName = editingName.value.trim();
+            if (newName && newName !== currentDoc.name) {
+                dataStore.updateCircleDocumentName(currentDoc.id, newName);
+            }
+            
+            cancelEditing();
+        };
+
+        const cancelEditing = () => {
+            isEditing.value = false;
+            editingName.value = '';
+        };
+
+        const handleTitleKeydown = (e) => {
+            if (e.key === 'Enter') {
+                handleTitleSave();
+            } else if (e.key === 'Escape') {
+                cancelEditing();
+            }
+        };
+
+        const handleTitleBlur = () => {
+            handleTitleSave();
+        };
+
         const handleReorderMouseDown = (e) => {
-            // Prevent starting reorder if another drag is in progress
-            if (isDragDisabled.value) {
+            // Prevent starting reorder if another drag is in progress or if editing
+            if (isDragDisabled.value || isEditing.value) {
                 e.preventDefault();
                 return;
             }
@@ -390,16 +457,18 @@ export const ViewerControls = {
         };
 
         const handleClose = () => {
-            // Prevent actions during drag operations
-            if (isDragActive.value) return;
+            // Prevent actions during drag operations or editing
+            if (isDragActive.value || isEditing.value) return;
             emit('close');
         };
 
         const handleBackgroundToggle = () => {
-            // Prevent actions during drag operations
-            if (isDragActive.value) return;
+            // Prevent actions during drag operations or editing
+            if (isDragActive.value || isEditing.value) return;
             
-            const currentState = viewer.value?.showBackground !== false; // Default to true
+            const currentState = viewerProperties.value.showBackground;
+            
+            // Update the viewer properties, which will be persisted to the document
             dataStore.updateCircleViewer(props.viewerId, { 
                 showBackground: !currentState 
             });
@@ -408,13 +477,21 @@ export const ViewerControls = {
         return {
             viewer,
             viewerTitle,
+            viewerProperties,
             controlsRef,
+            titleInputRef,
             isSelected,
             isCompact,
+            isEditing,
+            editingName,
             isBeingDragged,
             isDropTarget,
             isDragActive,
             isDragDisabled,
+            handleTitleDoubleClick,
+            handleTitleSave,
+            handleTitleKeydown,
+            handleTitleBlur,
             handleReorderMouseDown,
             handleClose,
             handleBackgroundToggle
@@ -428,6 +505,7 @@ export const ViewerControls = {
                 { 
                     selected: isSelected,
                     compact: isCompact,
+                    editing: isEditing,
                     'being-dragged': isBeingDragged,
                     'drop-target': isDropTarget,
                     'drag-active': isDragActive,
@@ -442,23 +520,39 @@ export const ViewerControls = {
                     :title="isDragDisabled ? 'Drag operation in progress' : 'Drag to reorder viewers'"
                 >⋮⋮</div>
                 
-                <div class="viewer-title">
+                <div 
+                    v-if="!isEditing"
+                    class="viewer-title"
+                    @dblclick="handleTitleDoubleClick"
+                    :title="'Double-click to edit: ' + viewerTitle"
+                >
                     {{ viewerTitle }}
                 </div>
+                
+                <input
+                    v-if="isEditing"
+                    ref="titleInputRef"
+                    v-model="editingName"
+                    class="viewer-title-input"
+                    @keydown="handleTitleKeydown"
+                    @blur="handleTitleBlur"
+                    @click.stop
+                    placeholder="Document name"
+                />
                 
                 <div class="viewer-buttons">
                     <button 
                         class="viewer-button background-toggle"
-                        :class="{ active: viewer?.showBackground !== false }"
+                        :class="{ active: viewerProperties.showBackground }"
                         @click="handleBackgroundToggle"
                         title="Toggle background image"
-                        :disabled="isDragActive"
+                        :disabled="isDragActive || isEditing"
                     >∘</button>
                     <button 
                         class="viewer-button close"
                         @click="handleClose"
                         title="Close viewer"
-                        :disabled="isDragActive"
+                        :disabled="isDragActive || isEditing"
                     >×</button>
                 </div>
             </div>
@@ -473,16 +567,16 @@ export const ViewerControls = {
                 <div class="viewer-buttons">
                     <button 
                         class="viewer-button background-toggle"
-                        :class="{ active: viewer?.showBackground !== false }"
+                        :class="{ active: viewerProperties.showBackground }"
                         @click="handleBackgroundToggle"
                         title="Toggle background image"
-                        :disabled="isDragActive"
+                        :disabled="isDragActive || isEditing"
                     >∘</button>
                     <button 
                         class="viewer-button close"
                         @click="handleClose"
                         title="Close viewer"
-                        :disabled="isDragActive"
+                        :disabled="isDragActive || isEditing"
                     >×</button>
                 </div>
             </div>

@@ -1,5 +1,5 @@
-// CircleViewer.js - Enhanced with drop target highlighting
-import { ref, computed, onMounted, onUnmounted } from './vue-composition-api.js';
+// CircleViewer.js - Enhanced with drop target highlighting and document-based properties
+import { ref, computed, onMounted, onUnmounted, watch } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
 import { useRectangleSelection } from './useRectangleSelection.js';
 import { useConnectionUpdater, useConnections } from './useConnections.js';
@@ -197,12 +197,19 @@ export const CircleViewer = {
         const resizeStart = ref({ x: 0, width: 0 });
         const viewerContentRef = ref(null);
         const viewerRef = ref(null);
-        const viewerWidth = computed(() => viewer.value?.width || 400);
         
         // Width threshold for compact mode (should match ViewerControls)
         const COMPACT_THRESHOLD = 200;
 
         const viewer = computed(() => dataStore.data.circleViewers.get(props.viewerId));
+        
+        // NEW: Get viewer properties from the document instead of the viewer object
+        const viewerProperties = computed(() => {
+            return dataStore.getViewerProperties(props.viewerId);
+        });
+        
+        const viewerWidth = computed(() => viewerProperties.value.width);
+        const showBackground = computed(() => viewerProperties.value.showBackground);
         
         const currentCircles = computed(() => {
             const circles = dataStore.getCirclesForViewer(props.viewerId);
@@ -213,7 +220,7 @@ export const CircleViewer = {
         
         // Check if controls should be in compact mode
         const isCompactMode = computed(() => {
-            return viewer.value && viewer.value.width < COMPACT_THRESHOLD;
+            return viewerWidth.value < COMPACT_THRESHOLD;
         });
 
         // Drag state computed properties
@@ -424,64 +431,62 @@ export const CircleViewer = {
         };
 
         // Entity event handlers
-	const handleCircleSelect = (id, isCtrlClick = false) => {
-    // Handle CTRL-click on reference circles
-    if (isCtrlClick) {
-        const circle = dataStore.getCircle(id);
-        if (circle && circle.referenceID) {
-            const referencedCircleId = circle.referenceID;
-            
-            // Find which document contains the referenced circle
-            const allCircleDocuments = dataStore.getAllCircleDocuments();
-            let referencedDocumentId = null;
-            
-            for (const doc of allCircleDocuments) {
-                const circlesInDoc = dataStore.getCirclesForDocument(doc.id);
-                if (circlesInDoc.some(c => c.id === referencedCircleId)) {
-                    referencedDocumentId = doc.id;
-                    break;
+        const handleCircleSelect = (id, isCtrlClick = false) => {
+            // Handle CTRL-click on reference circles
+            if (isCtrlClick) {
+                const circle = dataStore.getCircle(id);
+                if (circle && circle.referenceID) {
+                    const referencedCircleId = circle.referenceID;
+                    
+                    // Find which document contains the referenced circle
+                    const allCircleDocuments = dataStore.getAllCircleDocuments();
+                    let referencedDocumentId = null;
+                    
+                    for (const doc of allCircleDocuments) {
+                        const circlesInDoc = dataStore.getCirclesForDocument(doc.id);
+                        if (circlesInDoc.some(c => c.id === referencedCircleId)) {
+                            referencedDocumentId = doc.id;
+                            break;
+                        }
+                    }
+                    
+                    if (!referencedDocumentId) {
+                        console.warn(`Referenced circle ${referencedCircleId} not found in any document`);
+                        return;
+                    }
+                    
+                    // Check if referenced circle is already visible in a viewer
+                    const allViewers = Array.from(dataStore.data.circleViewers.values());
+                    let targetViewer = null;
+                    
+                    for (const viewer of allViewers) {
+                        const viewerDoc = dataStore.getCircleDocumentForViewer(viewer.id);
+                        if (!viewerDoc) { break; }
+                        const viewerDocId = viewerDoc.id
+                        if (viewerDocId === referencedDocumentId) {
+                            targetViewer = viewer;
+                            break;
+                        }
+                    }
+                    
+                    if (targetViewer) {
+                        // Select the referenced circle
+                        dataStore.selectCircle(referencedCircleId, targetViewer.id, false);
+                        dataStore.setSelectedViewer(targetViewer.id);
+                    } else {
+                        // Create new viewer for the referenced circle
+                        const newViewer = dataStore.createCircleViewer();
+                        dataStore.setCircleDocumentForViewer(newViewer.id, referencedDocumentId);
+                        dataStore.selectCircle(referencedCircleId, newViewer.id, false);
+                        dataStore.setSelectedViewer(newViewer.id);
+                    }
+                    return;
                 }
             }
-		console.log(referencedDocumentId);
             
-            if (!referencedDocumentId) {
-                console.warn(`Referenced circle ${referencedCircleId} not found in any document`);
-                return;
-            }
-            
-            // Check if referenced circle is already visible in a viewer
-            const allViewers = Array.from(dataStore.data.circleViewers.values());
-            let targetViewer = null;
-            
-            for (const viewer of allViewers) {
-                const viewerDoc = dataStore.getCircleDocumentForViewer(viewer.id);
-		if (!viewerDoc) { break; }
-		const viewerDocId = viewerDoc.id
-                if (viewerDocId === referencedDocumentId) {
-                    targetViewer = viewer;
-                    break;
-                }
-            }
-	    console.log(targetViewer);
-            
-            if (targetViewer) {
-                // Select the referenced circle
-                dataStore.selectCircle(referencedCircleId, targetViewer.id, false);
-                dataStore.setSelectedViewer(targetViewer.id);
-            } else {
-                // Create new viewer for the referenced circle
-                const newViewer = dataStore.createCircleViewer();
-                dataStore.setCircleDocumentForViewer(newViewer.id, referencedDocumentId);
-                dataStore.selectCircle(referencedCircleId, newViewer.id, false);
-                dataStore.setSelectedViewer(newViewer.id);
-            }
-            return;
-        }
-    }
-    
-    // Normal selection (including multi-select with CTRL)
-    dataStore.selectCircle(id, props.viewerId, isCtrlClick);
-};
+            // Normal selection (including multi-select with CTRL)
+            dataStore.selectCircle(id, props.viewerId, isCtrlClick);
+        };
 
         const handleCirclePositionUpdate = ({ id, x, y }) => {
             dataStore.updateCircle(id, { x, y });
@@ -563,10 +568,10 @@ export const CircleViewer = {
             }
             
             isResizing.value = true;
-	    viewerRef.value.classList.add('resizing');
+            viewerRef.value.classList.add('resizing');
             resizeStart.value = {
                 x: e.clientX,
-                width: viewer.value?.width || 400
+                width: viewerWidth.value
             };
             e.preventDefault();
         };
@@ -577,15 +582,16 @@ export const CircleViewer = {
             const deltaX = e.clientX - resizeStart.value.x;
             const newWidth = Math.max(100, Math.min(3600, resizeStart.value.width + deltaX));
             
+            // Update the viewer properties via the data store, which will persist to document
             dataStore.updateCircleViewer(props.viewerId, { width: newWidth });
             emit('resize', { viewerId: props.viewerId, width: newWidth });
         };
 
         const endResize = () => {
             isResizing.value = false;
-	    if (viewerRef.value) {
-		    viewerRef.value.classList.remove('resizing');
-	    }
+            if (viewerRef.value) {
+                viewerRef.value.classList.remove('resizing');
+            }
         };
 
         onMounted(() => {
@@ -602,6 +608,7 @@ export const CircleViewer = {
             dataStore,
             viewer,
             viewerWidth, 
+            showBackground,
             currentCircles,
             isSelected,
             viewerContentRef,
@@ -644,13 +651,13 @@ export const CircleViewer = {
                 'circle-viewer', 
                 { 
                     selected: isSelected,
-                    'hide-background': viewer?.showBackground === false,
+                    'hide-background': !showBackground,
                     'being-dragged': isBeingDragged,
                     'drop-target-left': isDropTarget && dropTargetSide === 'left',
                     'drop-target-right': isDropTarget && dropTargetSide === 'right'
                 }
             ]"
-            :style="{ width: viewer?.width + 'px' }"
+            :style="{ width: viewerWidth + 'px' }"
             :data-viewer-id="viewerId"
             @click="handleViewerContainerClick"
             @dragenter="handleDragEnter"
@@ -679,7 +686,7 @@ export const CircleViewer = {
                     v-for="connection in viewerConnections"
                     :key="connection.id"
                     :connection="connection"
-                    :viewer-width="viewer?.width || 400"
+                    :viewer-width="viewerWidth"
                 />
                 
                 <EntityComponent
@@ -688,7 +695,7 @@ export const CircleViewer = {
                     :entity="circle"
                     entity-type="circle"
                     :is-selected="dataStore.isCircleSelected(circle.id)"
-                    :viewer-width="viewer?.width || 400"
+                    :viewer-width="viewerWidth"
                     :viewer-id="viewerId"
                     @select="handleCircleSelect"
                     @update-position="handleCirclePositionUpdate"

@@ -2,25 +2,36 @@
 import { injectComponentStyles } from './styleUtils.js';
 
 // Component styles
+// Update the styles in DocumentIconControlsComponent.js:
+
 const componentStyles = `
     /* Document icon controls - only visible on hover */
-    .document-icon-controls {
+    .document-icon-controls-container {
         position: absolute;
-        top: -8px;
-        right: -8px;
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        opacity: 0;
+        top: 0;
+        right: 0;
+        display: block; /* Changed from 'none' to 'block' */
+        opacity: 0;     /* Start hidden via opacity instead */
         transition: opacity 0.2s ease;
-        pointer-events: none;
+        z-index: 1010;
     }
 
-    .document-icon:hover .document-icon-controls {
-        opacity: 1;
+    .document-icon-controls {
+        display: flex;
+        flex-direction: row;
+        gap: 2px;
+        opacity: 1; /* Controls are visible when container is visible */
+        transition: none; /* Remove transition conflicts */
         pointer-events: auto;
+        z-index: 1009;
+        padding: 2px;
     }
 
+    .document-icon:hover .document-icon-controls-container {
+        opacity: 1; /* Show on hover via opacity */
+    }
+
+    /* Rest of the styles remain the same... */
     .circle-count-badge {
         background-color: #666;
         color: white;
@@ -45,8 +56,8 @@ const componentStyles = `
         color: white;
         border: 1px solid #888;
         border-radius: 50%;
-        width: 18px;
-        height: 18px;
+        width: 12px;
+        height: 12px;
         font-size: 10px;
         display: flex;
         align-items: center;
@@ -78,15 +89,42 @@ const componentStyles = `
         transform: scale(0.9);
     }
 
+    .close-viewer-button {
+        background-color: #666;
+        color: white;
+        border: 1px solid #888;
+        border-radius: 50%;
+        width: 12px;
+        height: 12px;
+        font-size: 10px;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        padding: 0;
+        line-height: 1;
+    }
+
+    .close-viewer-button:hover {
+        background-color: #d32f2f;
+        border-color: #f44336;
+        transform: scale(1.1);
+    }
+
+    .close-viewer-button:active {
+        transform: scale(0.9);
+    }
+
     .delete-document-button {
         background-color: #d32f2f;
         color: white;
         border: 1px solid #f44336;
         border-radius: 50%;
-        width: 18px;
-        height: 18px;
-        font-size: 12px;
-        font-weight: bold;
+        width: 12px;
+        height: 12px;
+        font-size: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -126,9 +164,13 @@ export const DocumentIconControls = {
         isPinned: {
             type: Boolean,
             default: false
+        },
+        hasOpenViewer: {
+            type: Boolean,
+            default: false
         }
     },
-    emits: ['delete-document', 'toggle-pin'],
+    emits: ['delete-document', 'toggle-pin', 'close-viewer'],
     setup(props, { emit }) {
         const handleDeleteClick = (e) => {
             e.stopPropagation(); // Prevent triggering document click
@@ -140,25 +182,38 @@ export const DocumentIconControls = {
             emit('toggle-pin', props.documentId);
         };
 
+        const handleCloseViewerClick = (e) => {
+            e.stopPropagation(); // Prevent triggering document click
+            emit('close-viewer', props.documentId);
+        };
+
         return {
             handleDeleteClick,
-            handlePinClick
+            handlePinClick,
+            handleCloseViewerClick
         };
     },
     template: `
-        <div class="document-icon-controls">
-            <div class="circle-count-badge">{{ circleCount }}</div>
-            <button 
-                :class="['pin-document-button', { pinned: isPinned }]"
-                @click="handlePinClick"
-                :title="isPinned ? 'Unpin document' : 'Pin document'"
-            >📌</button>
-            <button 
-                v-if="canDelete"
-                class="delete-document-button"
-                @click="handleDeleteClick"
-                title="Delete document"
-            >×</button>
+        <div class="document-icon-controls-container">
+		<div class="document-icon-controls">
+		    <button 
+			:class="['pin-document-button', { pinned: isPinned }]"
+			@click="handlePinClick"
+			:title="isPinned ? 'Unpin document' : 'Pin document'"
+		    >📌</button>
+		    <button 
+			v-if="hasOpenViewer"
+			class="close-viewer-button"
+			@click="handleCloseViewerClick"
+			title="Close viewer for this document"
+		    >×</button>
+		    <button 
+			v-if="canDelete"
+			class="delete-document-button"
+			@click="handleDeleteClick"
+			title="Delete document"
+		    >🗑️</button>
+		</div>
         </div>
     `
 };

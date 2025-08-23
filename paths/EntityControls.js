@@ -47,10 +47,6 @@ const componentStyles = `
         font-size: 20px;
     }
 
-    .entity-document-button {
-        font-size: 20px;
-    }
-
     .entity-document-label {
         background-color: rgba(42, 42, 42, 0.9);
         color: #999;
@@ -157,22 +153,6 @@ export const EntityControls = {
                 @click="handleAddClick"
             >+</button>
             
-            <!-- Document Button (shown when no document selected) -->
-            <button 
-                v-if="true || !hasDocument"
-                ref="documentButtonRef"
-                class="entity-control-button entity-document-button"
-                @click="handleDocumentClick"
-		style="font-size: 14px;"
-            >⮺</button>
-            
-            <!-- Document Label (shown when document selected, clickable) -->
-            <!--div 
-                v-if="hasDocument"
-                ref="documentLabelRef"
-                class="entity-document-label"
-                @click="handleDocumentClick"
-            >{{ currentDocument.name }}</div-->
         </div>
     `
 };

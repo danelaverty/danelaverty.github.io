@@ -1,4 +1,4 @@
-// dataCoordinator.js - Pure data access layer that coordinates between stores
+// dataCoordinator.js - Pure data access layer that coordinates between stores (Updated with viewer properties)
 import { useEntityStore } from './entityStore.js';
 import { useDocumentStore } from './documentStore.js';
 import { useUIStore } from './uiStore.js';
@@ -22,39 +22,39 @@ function createDataCoordinator() {
 
     // Persistence
     const saveToStorage = () => {
-    try {
-        const recentEmojisStore = getRecentEmojisStoreInstance();
-        const dataToSave = {
-            ...entityStore.serialize(),
-            ...documentStore.serialize(),
-            ...uiStore.serialize(),
-            ...recentEmojisStore.serialize()
-        };
-        localStorage.setItem(storageKey, JSON.stringify(dataToSave));
-        return true;
-    } catch (error) {
-        console.error('Failed to save to storage:', error);
-        return false;
-    }
-};
-
-const loadFromStorage = () => {
-    try {
-        const recentEmojisStore = getRecentEmojisStoreInstance();
-        const saved = localStorage.getItem(storageKey);
-        if (saved) {
-            const savedData = JSON.parse(saved);
-            entityStore.deserialize(savedData);
-            documentStore.deserialize(savedData);
-            uiStore.deserialize(savedData);
-            recentEmojisStore.deserialize(savedData);
+        try {
+            const recentEmojisStore = getRecentEmojisStoreInstance();
+            const dataToSave = {
+                ...entityStore.serialize(),
+                ...documentStore.serialize(),
+                ...uiStore.serialize(),
+                ...recentEmojisStore.serialize()
+            };
+            localStorage.setItem(storageKey, JSON.stringify(dataToSave));
             return true;
+        } catch (error) {
+            console.error('Failed to save to storage:', error);
+            return false;
         }
-    } catch (error) {
-        console.error('Failed to load from storage:', error);
-    }
-    return false;
-};
+    };
+
+    const loadFromStorage = () => {
+        try {
+            const recentEmojisStore = getRecentEmojisStoreInstance();
+            const saved = localStorage.getItem(storageKey);
+            if (saved) {
+                const savedData = JSON.parse(saved);
+                entityStore.deserialize(savedData);
+                documentStore.deserialize(savedData);
+                uiStore.deserialize(savedData);
+                recentEmojisStore.deserialize(savedData);
+                return true;
+            }
+        } catch (error) {
+            console.error('Failed to load from storage:', error);
+        }
+        return false;
+    };
 
     const initializeApp = () => {
         const loaded = loadFromStorage();
@@ -134,8 +134,8 @@ const loadFromStorage = () => {
         },
 
         // Document operations (with persistence)
-        createCircleDocument: (name) => {
-            const doc = documentStore.createCircleDocument(name);
+        createCircleDocument: (name, parentId = null) => {
+            const doc = documentStore.createCircleDocument(name, parentId);
             saveToStorage();
             return doc;
         },
@@ -151,6 +151,11 @@ const loadFromStorage = () => {
         },
         updateCircleDocumentPin: (id, isPinned) => {
             const result = documentStore.updateCircleDocumentPin(id, isPinned);
+            if (result) saveToStorage();
+            return result;
+        },
+        updateCircleDocumentParent: (id, parentId) => {
+            const result = documentStore.updateCircleDocumentParent(id, parentId);
             if (result) saveToStorage();
             return result;
         },
@@ -170,7 +175,7 @@ const loadFromStorage = () => {
             return result;
         },
         setCircleDocumentForViewer: (viewerId, documentId) => {
-            const success = uiStore.setCircleDocumentForViewer(viewerId, documentId);
+            const success = uiStore.setCircleDocumentForViewer(viewerId, documentId, documentStore);
             if (success) saveToStorage();
             return success;
         },
@@ -185,6 +190,10 @@ const loadFromStorage = () => {
 
         // Document read operations
         getAllCircleDocuments: documentStore.getAllCircleDocuments,
+        getFlattenedDocumentsWithHierarchy: documentStore.getFlattenedDocumentsWithHierarchy,
+        getDocumentHierarchy: documentStore.getDocumentHierarchy,
+        getChildDocuments: documentStore.getChildDocuments,
+        isDescendantOf: documentStore.isDescendantOf,
         getSquareDocumentsForCircle: documentStore.getSquareDocumentsForCircle,
         getCurrentSquareDocument: documentStore.getCurrentSquareDocument,
         getCircleDocumentForViewer: (viewerId) => {
@@ -192,14 +201,23 @@ const loadFromStorage = () => {
             return documentId ? documentStore.getCircleDocument(documentId) : null;
         },
 
-        // Viewer operations (with persistence)
-        createCircleViewer: () => {
-            const viewer = uiStore.createCircleViewer();
+        // NEW: Viewer properties operations (with persistence)
+        updateCircleDocumentViewerProperties: (id, properties) => {
+            const result = documentStore.updateCircleDocumentViewerProperties(id, properties);
+            if (result) saveToStorage();
+            return result;
+        },
+        getCircleDocumentViewerProperties: documentStore.getCircleDocumentViewerProperties,
+
+        // Viewer operations (with persistence and property coordination)
+        createCircleViewer: (width, documentId) => {
+            const viewer = uiStore.createCircleViewer(width, documentId);
             saveToStorage();
             return viewer;
         },
+        // UPDATED: Now passes documentStore to handle property persistence
         updateCircleViewer: (id, updates) => {
-            const result = uiStore.updateCircleViewer(id, updates);
+            const result = uiStore.updateCircleViewer(id, updates, documentStore);
             if (result) saveToStorage();
             return result;
         },
@@ -219,10 +237,23 @@ const loadFromStorage = () => {
             return result;
         },
 
-        // Viewer read operations
-        getVisibleCircleViewers: uiStore.getVisibleCircleViewers,
+        // NEW: Enhanced viewer read operations that include properties from documents
+        getVisibleCircleViewers: () => {
+            const viewers = uiStore.getVisibleCircleViewers();
+            // Enhance each viewer with properties from its document
+            return viewers.map(viewer => {
+                const properties = uiStore.getViewerProperties(viewer.id, documentStore);
+                return {
+                    ...viewer,
+                    width: properties.width,
+                    showBackground: properties.showBackground
+                };
+            });
+        },
         getViewerTitle: (viewerId) => uiStore.getViewerTitle(viewerId, documentStore),
         isViewerSelected: uiStore.isViewerSelected,
+        // NEW: Get viewer properties from document
+        getViewerProperties: (viewerId) => uiStore.getViewerProperties(viewerId, documentStore),
 
         // Selection read operations
         isCircleSelected: uiStore.isCircleSelected,
