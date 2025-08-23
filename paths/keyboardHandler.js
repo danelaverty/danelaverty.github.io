@@ -320,6 +320,12 @@ export function createKeyboardHandler(dataStore, onShowIndicatorPicker = null, o
  * @param {string} viewerId - ID of the viewer to reorder
  * @param {string} direction - 'left' or 'right'
  */
+/**
+ * Handle keyboard viewer reordering
+ * @param {Object} dataStore - The data store instance
+ * @param {string} viewerId - ID of the viewer to reorder
+ * @param {string} direction - 'left' or 'right'
+ */
 function handleKeyboardViewerReorder(dataStore, viewerId, direction) {
     // Get all viewers in order
     const allViewers = dataStore.data.viewerOrder.map(id => ({
@@ -332,12 +338,17 @@ function handleKeyboardViewerReorder(dataStore, viewerId, direction) {
         return; // Viewer not found
     }
     
-    const currentViewer = allViewers[currentIndex];
-    
     let targetIndex = -1;
     
-    // If we found a valid target, perform the reorder
-    if (targetIndex !== -1) {
+    // Calculate target index based on direction
+    if (direction === 'left') {
+        targetIndex = Math.max(0, currentIndex - 1);
+    } else if (direction === 'right') {
+        targetIndex = Math.min(allViewers.length - 1, currentIndex + 1);
+    }
+    
+    // If we found a valid target and it's different from current, perform the reorder
+    if (targetIndex !== -1 && targetIndex !== currentIndex) {
         // Use the existing reorderViewers method from dataStore
         dataStore.reorderViewers(currentIndex, targetIndex);
     }

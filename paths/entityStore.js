@@ -238,7 +238,22 @@ function createEntityStore() {
     const getSquaresForDocument = (documentId) => getEntitiesForDocument('square', documentId);
     const updateCircle = (id, updates) => updateEntity('circle', id, updates);
     const updateSquare = (id, updates) => updateEntity('square', id, updates);
-    const deleteCircle = (id) => deleteEntity('circle', id);
+    const deleteCircle = (id) => {
+    const circle = getCircle(id);
+    if (!circle) return false;
+    
+    // If this is an original circle (not a reference), convert all its references to normal circles
+    if (circle.referenceID === null) {
+        const referencedCircles = getReferencedCircles(id);
+        referencedCircles.forEach(refCircle => {
+            // Convert referenced circle to normal circle by clearing its referenceID
+            refCircle.referenceID = null;
+        });
+    }
+    
+    // Now delete the circle
+    return data.circles.delete(id);
+};
     const deleteSquare = (id) => deleteEntity('square', id);
 
     // Utility functions for referenceID

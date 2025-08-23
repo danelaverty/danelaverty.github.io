@@ -1,4 +1,4 @@
-// documentStore.js - Document management for circles and squares (Updated with mostRecentlySetCircleType and pinning)
+// documentStore.js - Document management for circles and squares (Updated with viewer properties persistence)
 import { reactive } from './vue-composition-api.js';
 
 let documentStoreInstance = null;
@@ -36,7 +36,7 @@ function createDocumentStore() {
         
         // For square documents with default "Tab" name, use numbered format
         if (entityType === 'square' && !baseName) {
-		if (!existingNames.has('Story')) { return 'Story'; }
+            if (!existingNames.has('Story')) { return 'Story'; }
             let counter = 1;
             let uniqueName;
             do {
@@ -60,7 +60,7 @@ function createDocumentStore() {
     };
 
     // Generic document operations
-    const createDocument = (entityType, name = null, circleId = null) => {
+    const createDocument = (entityType, name = null, circleId = null, parentId = null) => {
         const id = `${entityType}Doc_${entityType === 'circle' ? data.nextCircleDocumentId++ : data.nextSquareDocumentId++}`;
         const documentName = generateUniqueName(entityType, name, circleId);
         
@@ -74,7 +74,13 @@ function createDocumentStore() {
             document.circleId = circleId;
         } else if (entityType === 'circle') {
             document.mostRecentlySetCircleType = 'glow';
-            document.isPinned = false; // NEW: Default pin state
+            document.isPinned = false;
+            document.parentId = parentId || null;
+            // NEW: Add viewer properties with defaults
+            document.viewerProperties = {
+                width: 270,
+                showBackground: true
+            };
         }
         
         const store = entityType === 'circle' ? data.circleDocuments : data.squareDocuments;
@@ -102,7 +108,40 @@ function createDocumentStore() {
         return false;
     };
 
-    // NEW: Update document pin status
+    // Update document parent relationship
+    const updateCircleDocumentParent = (id, parentId) => {
+        const document = data.circleDocuments.get(id);
+        if (document) {
+            // Prevent circular references
+            if (parentId && isDescendantOf(parentId, id)) {
+                return false;
+            }
+            document.parentId = parentId;
+            return true;
+        }
+        return false;
+    };
+
+    // Check if a document is a descendant of another document
+    const isDescendantOf = (potentialDescendant, ancestorId) => {
+        let currentId = potentialDescendant;
+        const visited = new Set();
+        
+        while (currentId && !visited.has(currentId)) {
+            visited.add(currentId);
+            const doc = data.circleDocuments.get(currentId);
+            if (!doc) break;
+            
+            if (doc.parentId === ancestorId) {
+                return true;
+            }
+            currentId = doc.parentId;
+        }
+        
+        return false;
+    };
+
+    // Update document pin status
     const updateCircleDocumentPin = (id, isPinned) => {
         const document = data.circleDocuments.get(id);
         if (document) {
@@ -110,6 +149,38 @@ function createDocumentStore() {
             return true;
         }
         return false;
+    };
+
+    // NEW: Update viewer properties for a circle document
+    const updateCircleDocumentViewerProperties = (id, properties) => {
+        const document = data.circleDocuments.get(id);
+        if (document) {
+            // Ensure viewerProperties exists
+            if (!document.viewerProperties) {
+                document.viewerProperties = {
+                    width: 270,
+                    showBackground: true
+                };
+            }
+            
+            // Update only provided properties
+            Object.assign(document.viewerProperties, properties);
+            return true;
+        }
+        return false;
+    };
+
+    // NEW: Get viewer properties for a circle document
+    const getCircleDocumentViewerProperties = (id) => {
+        const document = data.circleDocuments.get(id);
+        if (document) {
+            // Return default properties if not set
+            return document.viewerProperties || {
+                width: 270,
+                showBackground: true
+            };
+        }
+        return null;
     };
 
     const deleteDocument = (entityType, id) => {
@@ -125,10 +196,110 @@ function createDocumentStore() {
             }
         }
         
+        // Handle deletion of circle documents with children
+        if (entityType === 'circle') {
+            const childDocuments = getChildDocuments(id);
+            
+            // Move children up to the parent of the deleted document
+            const parentDocument = data.circleDocuments.get(id);
+            const grandparentId = parentDocument?.parentId || null;
+            
+            childDocuments.forEach(child => {
+                child.parentId = grandparentId;
+            });
+        }
+        
         return store.delete(id);
     };
 
-    // NEW: Method to update the most recently set circle type for a document
+    // Get child documents
+    const getChildDocuments = (parentId) => {
+        return Array.from(data.circleDocuments.values()).filter(doc => doc.parentId === parentId);
+    };
+
+    // Get root documents (documents without parents)
+    const getRootDocuments = () => {
+        return Array.from(data.circleDocuments.values()).filter(doc => !doc.parentId);
+    };
+
+    // Get hierarchical document structure
+    const getDocumentHierarchy = () => {
+        const allDocs = Array.from(data.circleDocuments.values());
+        const hierarchy = [];
+        
+        // Get all root documents
+        const rootDocs = allDocs.filter(doc => !doc.parentId);
+        
+        // Recursive function to build hierarchy
+        const buildHierarchy = (parentId = null, level = 0) => {
+            const children = allDocs.filter(doc => doc.parentId === parentId);
+            
+            return children.map(doc => ({
+                ...doc,
+                level,
+                children: buildHierarchy(doc.id, level + 1)
+            }));
+        };
+        
+        // Build complete hierarchy starting from roots
+        return rootDocs.map(doc => ({
+            ...doc,
+            level: 0,
+            children: buildHierarchy(doc.id, 1)
+        }));
+    };
+
+    // Get flattened document list with hierarchy info
+    const getFlattenedDocumentsWithHierarchy = () => {
+        const allDocs = Array.from(data.circleDocuments.values());
+        const flattened = [];
+        
+        // Get root documents first, sorted by pin status then alphabetically
+        const rootDocs = allDocs.filter(doc => !doc.parentId)
+            .sort((a, b) => {
+                const aPinned = a.isPinned || false;
+                const bPinned = b.isPinned || false;
+                
+                if (aPinned && !bPinned) return -1;
+                if (!aPinned && bPinned) return 1;
+                return a.name.localeCompare(b.name);
+            });
+        
+        // Recursive function to add a document and all its children
+        const addDocumentAndChildren = (doc, level = 0) => {
+            // Add current document with level info
+            flattened.push({
+                ...doc,
+                level,
+                children: [] // We'll use this for the tree structure, but flatten here
+            });
+            
+            // Get children of this document, sorted by pin status then alphabetically
+            const children = allDocs.filter(child => child.parentId === doc.id)
+                .sort((a, b) => {
+                    const aPinned = a.isPinned || false;
+                    const bPinned = b.isPinned || false;
+                    
+                    if (aPinned && !bPinned) return -1;
+                    if (!aPinned && bPinned) return 1;
+                    return a.name.localeCompare(b.name);
+                });
+            
+            // Recursively add each child and their descendants
+            children.forEach(child => {
+                addDocumentAndChildren(child, level + 1);
+            });
+        };
+        
+        // Process each root document and its descendants
+        rootDocs.forEach(doc => {
+            addDocumentAndChildren(doc, 0);
+        });
+        
+        return flattened;
+    };
+
+    // Method to update the most recently set circle type for a document
     const setMostRecentlySetCircleType = (documentId, circleType) => {
         const document = data.circleDocuments.get(documentId);
         if (document) {
@@ -138,7 +309,7 @@ function createDocumentStore() {
         return false;
     };
 
-    // NEW: Method to get the most recently set circle type for a document
+    // Method to get the most recently set circle type for a document
     const getMostRecentlySetCircleType = (documentId) => {
         const document = data.circleDocuments.get(documentId);
         return document?.mostRecentlySetCircleType || null;
@@ -182,7 +353,7 @@ function createDocumentStore() {
     };
 
     // Specific methods (for compatibility and convenience)
-    const createCircleDocument = (name) => createDocument('circle', name);
+    const createCircleDocument = (name, parentId = null) => createDocument('circle', name, null, parentId);
     const createSquareDocument = (circleId, name) => createDocument('square', name, circleId);
     
     const getAllCircleDocuments = () => getAllDocuments('circle');
@@ -282,13 +453,23 @@ function createDocumentStore() {
         if (savedData.circleDocuments) {
             data.circleDocuments = new Map(savedData.circleDocuments);
             
-            // Ensure all circle documents have the mostRecentlySetCircleType and isPinned properties
+            // Ensure all circle documents have the required properties
             data.circleDocuments.forEach((doc, id) => {
                 if (doc.mostRecentlySetCircleType === undefined) {
                     doc.mostRecentlySetCircleType = null;
                 }
                 if (doc.isPinned === undefined) {
-                    doc.isPinned = false; // Default to unpinned for existing documents
+                    doc.isPinned = false;
+                }
+                if (doc.parentId === undefined) {
+                    doc.parentId = null;
+                }
+                // NEW: Ensure viewer properties exist with defaults
+                if (doc.viewerProperties === undefined) {
+                    doc.viewerProperties = {
+                        width: 270,
+                        showBackground: true
+                    };
                 }
             });
         }
@@ -316,8 +497,18 @@ function createDocumentStore() {
         getAllCircleDocuments,
         getCircleDocument,
         updateCircleDocumentName,
-        updateCircleDocumentPin, // NEW: Pin management
+        updateCircleDocumentPin,
+        updateCircleDocumentParent,
         deleteCircleDocument,
+        // NEW: Viewer properties methods
+        updateCircleDocumentViewerProperties,
+        getCircleDocumentViewerProperties,
+        // Hierarchy methods
+        getChildDocuments,
+        getRootDocuments,
+        getDocumentHierarchy,
+        getFlattenedDocumentsWithHierarchy,
+        isDescendantOf,
         // Circle type tracking methods
         setMostRecentlySetCircleType,
         getMostRecentlySetCircleType,

@@ -1,4 +1,4 @@
-// uiStore.js - UI state management: viewers, selections, and layout
+// uiStore.js - UI state management: viewers, selections, and layout (Updated to use document properties)
 import { reactive } from './vue-composition-api.js';
 
 let uiStoreInstance = null;
@@ -23,9 +23,8 @@ function createUIStore() {
         const id = `viewer_${data.nextViewerId++}`;
         const viewer = {
             id,
-            width,
-            currentCircleDocumentId: documentId,
-            showBackground: true // Default to showing background
+            currentCircleDocumentId: documentId
+            // NOTE: width and showBackground are now stored in the document, not here
         };
         
         data.circleViewers.set(id, viewer);
@@ -47,18 +46,46 @@ function createUIStore() {
         return getCircleViewers();
     };
 
-    const updateCircleViewer = (id, updates) => {
+    // UPDATED: Now syncs viewer properties to the associated document
+    const updateCircleViewer = (id, updates, documentStore = null) => {
         const viewer = data.circleViewers.get(id);
-        if (viewer) {
-            Object.assign(viewer, updates);
-            return viewer;
+        if (!viewer) return null;
+        
+        // If we have a document store and the viewer has a document, update the document properties
+        if (documentStore && viewer.currentCircleDocumentId) {
+            const viewerPropertyUpdates = {};
+            
+            // Extract viewer properties that should be persisted to the document
+            if (updates.width !== undefined) {
+                viewerPropertyUpdates.width = updates.width;
+            }
+            if (updates.showBackground !== undefined) {
+                viewerPropertyUpdates.showBackground = updates.showBackground;
+            }
+            
+            // Update the document's viewer properties
+            if (Object.keys(viewerPropertyUpdates).length > 0) {
+                documentStore.updateCircleDocumentViewerProperties(
+                    viewer.currentCircleDocumentId, 
+                    viewerPropertyUpdates
+                );
+            }
         }
-        return null;
+        
+        // Update non-persistent viewer properties (like currentCircleDocumentId)
+        const nonPersistentUpdates = {};
+        if (updates.currentCircleDocumentId !== undefined) {
+            nonPersistentUpdates.currentCircleDocumentId = updates.currentCircleDocumentId;
+        }
+        
+        if (Object.keys(nonPersistentUpdates).length > 0) {
+            Object.assign(viewer, nonPersistentUpdates);
+        }
+        
+        return viewer;
     };
 
     const deleteCircleViewer = (id) => {
-        if (data.circleViewers.size <= 1) return false;
-        
         data.circleViewers.delete(id);
         data.viewerOrder = data.viewerOrder.filter(viewerId => viewerId !== id);
         
@@ -119,15 +146,34 @@ function createUIStore() {
         return 'No Document';
     };
 
+    // NEW: Get viewer properties from the associated document
+    const getViewerProperties = (viewerId, documentStore) => {
+        const viewer = data.circleViewers.get(viewerId);
+        if (!viewer || !viewer.currentCircleDocumentId || !documentStore) {
+            // Return defaults if no document or document store
+            return {
+                width: 270,
+                showBackground: true
+            };
+        }
+        
+        return documentStore.getCircleDocumentViewerProperties(viewer.currentCircleDocumentId);
+    };
+
     const getCircleDocumentForViewer = (viewerId) => {
         const viewer = data.circleViewers.get(viewerId);
         return viewer ? viewer.currentCircleDocumentId : null;
     };
 
-    const setCircleDocumentForViewer = (viewerId, documentId) => {
+    // UPDATED: When setting a new document, apply the document's viewer properties
+    const setCircleDocumentForViewer = (viewerId, documentId, documentStore = null) => {
         const viewer = data.circleViewers.get(viewerId);
         if (viewer) {
             viewer.currentCircleDocumentId = documentId;
+            
+            // If we have access to the document store, we could trigger a property update
+            // but that's handled at the coordination layer
+            
             return true;
         }
         return false;
@@ -235,13 +281,14 @@ function createUIStore() {
         ensureSelectedViewer();
     };
 
-    // Serialization
+    // Serialization - Only serialize viewer structure, not properties
     const serialize = () => ({
         circleViewers: Array.from(data.circleViewers.entries()),
         viewerOrder: data.viewerOrder,
         selectedViewerId: data.selectedViewerId,
         nextViewerId: data.nextViewerId
         // Selections are intentionally not serialized - they should reset on page load
+        // Viewer properties are now stored in documents, not here
     });
 
     const deserialize = (savedData) => {
@@ -275,6 +322,7 @@ function createUIStore() {
         ensureSelectedViewer,
         isViewerSelected,
         getViewerTitle,
+        getViewerProperties, // NEW: Get properties from document
         getCircleDocumentForViewer,
         setCircleDocumentForViewer,
         // Selection management

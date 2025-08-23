@@ -307,14 +307,6 @@ export const App = {
                             @move-multiple="handleSquareMoveMultiple"
                         />
                         
-                        <!-- Add viewer button - moved from circle viewer to square viewer -->
-                        <button 
-                            class="add-viewer-button"
-                            @click="handleAddViewer"
-                            title="Add new viewer"
-                            :disabled="dragState.isDragging"
-                        >+</button>
-                        
                         <!-- Rectangle selection visual for squares -->
                         <div 
                             v-if="squareSelectionRect.visible"
