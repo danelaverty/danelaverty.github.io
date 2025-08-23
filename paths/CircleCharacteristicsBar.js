@@ -1,4 +1,4 @@
-// CircleCharacteristicsBar.js - Updated to support multiple circle selection
+// CircleCharacteristicsBar.js - Updated to support multiple circle selection and break reference control
 import { computed, ref, watchEffect } from './vue-composition-api.js';
 import { injectComponentStyles } from './styleUtils.js';
 import { useCharacteristicsBarData } from './useCharacteristicsBarData.js';
@@ -22,6 +22,7 @@ import { CircleEmojiControl } from './CBCircleEmojiControl.js';
 import { ColorControl } from './CBColorControl.js';
 import { EnergyControl } from './CBEnergyControl.js';
 import { ActivationControl } from './CBActivationControl.js';
+import { BreakReferenceControl } from './CBBreakReferenceControl.js'; // NEW: Import break reference control
 import { EmojiControl } from './CBEmojiControl.js';
 import { RecentEmojisControl } from './CBRecentEmojisControl.js';
 
@@ -188,6 +189,20 @@ export const CircleCharacteristicsBar = {
       return !isReferenceCircle.value;
     });
 
+    // NEW: Should show break reference control - opposite of shouldShowCircleCharacteristicControls
+    const shouldShowBreakReferenceControl = computed(() => {
+      if (hasMultipleCirclesSelected.value) {
+        // For multiple selection, check if ANY selected circle is a reference
+        const selectedIds = dataStore.getSelectedCircles();
+        return selectedIds.some(id => {
+          const circle = dataStore.getCircle(id);
+          return circle && circle.referenceID !== null;
+        });
+      }
+      // For single selection, show if it's a reference circle
+      return isReferenceCircle.value;
+    });
+
     // Compute activation state from selected circle(s)
     const isCircleActivated = computed(() => {
       if (hasMultipleCirclesSelected.value) {
@@ -289,6 +304,23 @@ export const CircleCharacteristicsBar = {
       pickerHooks.closePickerAction('circleEmoji');
     };
 
+    // NEW: Handle breaking references for selected circles
+    const handleBreakReference = () => {
+      if (hasMultipleCirclesSelected.value) {
+        // Break reference for all selected circles that have one
+        const selectedIds = dataStore.getSelectedCircles();
+        selectedIds.forEach(circleId => {
+          const circle = dataStore.getCircle(circleId);
+          if (circle && circle.referenceID !== null) {
+            dataStore.updateCircle(circleId, { referenceID: null });
+          }
+        });
+      } else if (dataHooks.selectedCircle.value && dataHooks.selectedCircle.value.referenceID !== null) {
+        // Break reference for single selected circle
+        dataStore.updateCircle(dataHooks.selectedCircle.value.id, { referenceID: null });
+      }
+    };
+
     // Emoji handlers (only for single selection)
     const handleEmojiSelect = (attribute) => {
       actionHooks.selectEmoji(attribute);
@@ -342,6 +374,7 @@ export const CircleCharacteristicsBar = {
       hasMultipleCirclesSelected, // NEW
       shouldShowEmojiControls, // NEW
       shouldShowCircleCharacteristicControls, // NEW
+      shouldShowBreakReferenceControl, // NEW
       getSelectedCircleObjects, // NEW
       
       // Action handlers
@@ -354,6 +387,7 @@ export const CircleCharacteristicsBar = {
       handleQuickEmojiSelect,
       handleCategorySelect,
       handleClearRecentEmojis,
+      handleBreakReference, // NEW
       
       // Utilities
       getEmojiDisplayTitle,
@@ -395,6 +429,7 @@ export const CircleCharacteristicsBar = {
     ColorControl,
     EnergyControl,
     ActivationControl,
+    BreakReferenceControl, // NEW: Add break reference control component
     EmojiControl,
     RecentEmojisControl,
     TypePickerModal,
@@ -451,6 +486,12 @@ export const CircleCharacteristicsBar = {
                 @toggle="handleActivationToggle"
             />
         </template>
+
+        <!-- Break Reference Control (Only shown for reference circles or multi-selection with references) -->
+        <BreakReferenceControl 
+            v-if="shouldShowBreakReferenceControl"
+            @break-reference="handleBreakReference"
+        />
 
         <!-- Emoji Controls (Only Visible for Single Circle Selection) -->
         <template v-if="shouldShowEmojiControls">

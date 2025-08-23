@@ -48,11 +48,12 @@ export class ConnectionManager {
     }
 
     shouldConnectCircles(entity1, entity2) {
-        const entity1IsGlow = entity1.type === 'glow';
-        const entity2IsGlow = entity2.type === 'glow';
+	    // Two entities of the same type shouldn't connect unless they're both 'shape' type
+        const entity1IsShape = entity1.type === 'shape';
+        const entity2IsShape = entity2.type === 'shape';
+	const entity1MatchesEntity2 = entity1.type === entity2.type;
         
-        // Only connect if exactly one is glow type (XOR logic)
-        return !(entity1IsGlow && entity2IsGlow);
+        return !entity1MatchesEntity2 || (entity1IsShape && entity2IsShape);
     }
 
     /**

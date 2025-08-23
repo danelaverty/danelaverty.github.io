@@ -1,10 +1,13 @@
 // alignmentUtils.js - Entity alignment utilities
 import { useDataStore } from './dataCoordinator.js';
 
+// Simple state to track zigzag alternation
+let zigzagFlipped = false;
+
 /**
  * Align entities vertically or horizontally
  * @param {string} entityType - 'circle' or 'square'
- * @param {string} direction - 'vertical' or 'horizontal'
+ * @param {string} direction - 'vertical', 'horizontal', or 'zigzag'
  */
 export function alignEntities(entityType, direction) {
     const dataStore = useDataStore();
@@ -28,6 +31,8 @@ export function alignEntities(entityType, direction) {
         alignVertically(entities, entityType, dataStore);
     } else if (direction === 'horizontal') {
         alignHorizontally(entities, entityType, dataStore);
+    } else if (direction === 'zigzag') {
+        alignZigzag(entities, entityType, dataStore);
     }
     
     console.log(`Aligned ${entities.length} ${entityType}s ${direction}ly`);
@@ -90,6 +95,52 @@ function alignHorizontally(entities, entityType, dataStore) {
     entities.forEach((entity, index) => {
         const newX = leftmostX + (spacing * index);
         const newY = midpointY;
+        
+        if (entityType === 'circle') {
+            dataStore.updateCircle(entity.id, { x: newX, y: newY });
+        } else {
+            dataStore.updateSquare(entity.id, { x: newX, y: newY });
+        }
+    });
+}
+
+/**
+ * Align entities in a zigzag pattern - two columns with vertical distribution
+ * Alternates column assignment on repeated calls
+ */
+function alignZigzag(entities, entityType, dataStore) {
+    // Toggle the zigzag flip state
+    zigzagFlipped = !zigzagFlipped;
+    
+    // Find the leftmost and rightmost X positions for the two columns
+    const leftmostX = Math.min(...entities.map(e => e.x));
+    const rightmostX = Math.max(...entities.map(e => e.x));
+    
+    // Find the topmost and bottommost Y positions for vertical distribution
+    const topmostY = Math.min(...entities.map(e => e.y));
+    const bottommostY = Math.max(...entities.map(e => e.y));
+    
+    // Sort entities by their current Y position to maintain relative order
+    entities.sort((a, b) => a.y - b.y);
+    
+    // Calculate equal vertical spacing
+    const totalHeight = bottommostY - topmostY;
+    const spacing = entities.length > 1 ? totalHeight / (entities.length - 1) : 0;
+    
+    // Update positions in zigzag pattern
+    entities.forEach((entity, index) => {
+        // Determine column assignment based on flip state
+        let leftColumn;
+        if (zigzagFlipped) {
+            // Flipped: odd indices go right, even indices go left
+            leftColumn = index % 2 === 0;
+        } else {
+            // Normal: odd indices go left, even indices go right
+            leftColumn = index % 2 === 1;
+        }
+        
+        const newX = leftColumn ? leftmostX : rightmostX;
+        const newY = topmostY + (spacing * index);
         
         if (entityType === 'circle') {
             dataStore.updateCircle(entity.id, { x: newX, y: newY });

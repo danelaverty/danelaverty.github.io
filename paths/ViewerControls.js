@@ -319,7 +319,7 @@ export const ViewerControls = {
         const isCompact = ref(false);
         
         // Width threshold for compact mode (in pixels)
-        const COMPACT_THRESHOLD = 200;
+        const COMPACT_THRESHOLD = 5200;
 
         const viewer = computed(() => dataStore.data.circleViewers.get(props.viewerId));
         const viewerTitle = computed(() => dataStore.getViewerTitle(props.viewerId));

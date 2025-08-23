@@ -151,9 +151,9 @@ export function createKeyboardHandler(dataStore, onShowIndicatorPicker = null, o
             
             // Get the currently selected viewer
             const selectedViewerId = dataStore.data.selectedViewerId;
-            if (selectedViewerId && onReorderViewer) {
-                const direction = e.key === 'ArrowLeft' ? 'left' : 'right';
-                onReorderViewer(selectedViewerId, direction);
+            if (selectedViewerId) {
+                // FIXED: Handle reordering here directly, skipping minimized viewers
+                handleKeyboardViewerReorder(dataStore, selectedViewerId, e.key === 'ArrowLeft' ? 'left' : 'right');
             }
             return;
         }
@@ -223,6 +223,19 @@ export function createKeyboardHandler(dataStore, onShowIndicatorPicker = null, o
             return;
         }
 
+        // Handle CTRL+SHIFT+Z for zigzag alignment
+        if (e.key === 'Z' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
+            e.preventDefault();
+            
+            // Priority: Squares first, then Circles
+            if (dataStore.getSelectedSquares().length > 1) {
+                alignEntities('square', 'zigzag');
+            } else if (dataStore.getSelectedCircles().length > 1) {
+                alignEntities('circle', 'zigzag');
+            }
+            return;
+        }
+
 	// SHIFT+CTRL+V - Check what to do based on selection and clipboard
         if (e.key === 'V' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
                 const selectedSquares = dataStore.getSelectedSquares();
@@ -266,11 +279,10 @@ export function createKeyboardHandler(dataStore, onShowIndicatorPicker = null, o
             e.preventDefault(); // Prevent browser's select all only when not editing text
             
             // Priority: if a square document is selected, select all squares in it
-            if (dataStore.data.currentSquareDocumentId) {
-                const selectedCount = dataStore.selectAllSquaresInDocument();
-            } else {
+            var selectedCount = dataStore.selectAllSquaresInDocument();
+            if (selectedCount == 0) {
                 // Otherwise, select all circles in the currently selected viewer
-                const selectedCount = dataStore.selectAllCirclesInViewer();
+                selectedCount = dataStore.selectAllCirclesInViewer();
             }
             return;
         }
@@ -301,6 +313,57 @@ export function createKeyboardHandler(dataStore, onShowIndicatorPicker = null, o
             }
         }
     };
+}
+
+/**
+ * Handle keyboard viewer reordering, skipping over minimized viewers
+ * @param {Object} dataStore - The data store instance
+ * @param {string} viewerId - ID of the viewer to reorder
+ * @param {string} direction - 'left' or 'right'
+ */
+function handleKeyboardViewerReorder(dataStore, viewerId, direction) {
+    // Get all viewers in order, both visible and minimized
+    const allViewers = dataStore.data.viewerOrder.map(id => ({
+        id,
+        isMinimized: dataStore.data.minimizedViewers.has(id)
+    }));
+    
+    // Find current viewer index
+    const currentIndex = allViewers.findIndex(v => v.id === viewerId);
+    if (currentIndex === -1) {
+        return; // Viewer not found
+    }
+    
+    const currentViewer = allViewers[currentIndex];
+    if (currentViewer.isMinimized) {
+        return; // Don't reorder minimized viewers
+    }
+    
+    let targetIndex = -1;
+    
+    if (direction === 'left') {
+        // Find the nearest non-minimized viewer to the left
+        for (let i = currentIndex - 1; i >= 0; i--) {
+            if (!allViewers[i].isMinimized) {
+                targetIndex = i;
+                break;
+            }
+        }
+    } else if (direction === 'right') {
+        // Find the nearest non-minimized viewer to the right
+        for (let i = currentIndex + 1; i < allViewers.length; i++) {
+            if (!allViewers[i].isMinimized) {
+                targetIndex = i;
+                break;
+            }
+        }
+    }
+    
+    // If we found a valid target, perform the reorder
+    if (targetIndex !== -1) {
+        // Use the existing reorderViewers method from dataStore
+        dataStore.reorderViewers(currentIndex, targetIndex);
+    }
 }
 
 /**
