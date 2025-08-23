@@ -25,33 +25,6 @@ export function createViewerManager(dataStore) {
         dataStore.createCircleViewer();
     };
 
-    const handleMinimizeViewer = (viewerId) => {
-        const viewer = dataStore.data.circleViewers.get(viewerId);
-        
-        // Check if we need to clear selections before minimizing the viewer
-        if (viewer && viewer.currentCircleDocumentId) {
-            const selectedCircles = dataStore.getSelectedCircles();
-            
-            // If there are selected circles, check if any belong to this viewer's document
-            if (selectedCircles.length > 0) {
-                const circlesInDocument = dataStore.getCirclesForDocument(viewer.currentCircleDocumentId);
-                const documentCircleIds = new Set(circlesInDocument.map(c => c.id));
-                
-                // Check if any selected circles are in this document
-                const hasSelectedCirclesInDocument = selectedCircles.some(circleId => 
-                    documentCircleIds.has(circleId)
-                );
-                
-                // If selected circles are in this document, clear the selection
-                if (hasSelectedCirclesInDocument) {
-                    dataStore.selectCircle(null, viewerId, false);
-                }
-            }
-        }
-        
-        dataStore.minimizeViewer(viewerId);
-    };
-
     const handleCloseViewer = (viewerId) => {
         const viewer = dataStore.data.circleViewers.get(viewerId);
         
@@ -77,10 +50,6 @@ export function createViewerManager(dataStore) {
         }
         
         dataStore.deleteCircleViewer(viewerId);
-    };
-
-    const handleRestoreViewer = (viewerId) => {
-        dataStore.restoreViewer(viewerId);
     };
 
     const handleViewerContainerClick = (viewerId) => {
@@ -222,7 +191,6 @@ export function createViewerManager(dataStore) {
         }
 
         const viewerList = Array.from(dataStore.data.circleViewers.values())
-            .filter(v => !dataStore.data.minimizedViewers.has(v.id)) // Only visible viewers
             .sort((a, b) => a.order - b.order);
 
         const draggedIndex = viewerList.findIndex(v => v.id === draggedId);
@@ -266,9 +234,7 @@ export function createViewerManager(dataStore) {
         
         // Handlers
         handleAddViewer,
-        handleMinimizeViewer,
         handleCloseViewer,
-        handleRestoreViewer,
         handleViewerContainerClick,
         handleStartReorder,
         handleReorderMove,
