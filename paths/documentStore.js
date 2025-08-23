@@ -1,4 +1,4 @@
-// documentStore.js - Document management for circles and squares (Updated with mostRecentlySetCircleType)
+// documentStore.js - Document management for circles and squares (Updated with mostRecentlySetCircleType and pinning)
 import { reactive } from './vue-composition-api.js';
 
 let documentStoreInstance = null;
@@ -74,6 +74,7 @@ function createDocumentStore() {
             document.circleId = circleId;
         } else if (entityType === 'circle') {
             document.mostRecentlySetCircleType = 'glow';
+            document.isPinned = false; // NEW: Default pin state
         }
         
         const store = entityType === 'circle' ? data.circleDocuments : data.squareDocuments;
@@ -96,6 +97,16 @@ function createDocumentStore() {
         const document = store.get(id);
         if (document) {
             document.name = name;
+            return true;
+        }
+        return false;
+    };
+
+    // NEW: Update document pin status
+    const updateCircleDocumentPin = (id, isPinned) => {
+        const document = data.circleDocuments.get(id);
+        if (document) {
+            document.isPinned = isPinned;
             return true;
         }
         return false;
@@ -271,10 +282,13 @@ function createDocumentStore() {
         if (savedData.circleDocuments) {
             data.circleDocuments = new Map(savedData.circleDocuments);
             
-            // NEW: Ensure all circle documents have the mostRecentlySetCircleType property
+            // Ensure all circle documents have the mostRecentlySetCircleType and isPinned properties
             data.circleDocuments.forEach((doc, id) => {
                 if (doc.mostRecentlySetCircleType === undefined) {
                     doc.mostRecentlySetCircleType = null;
+                }
+                if (doc.isPinned === undefined) {
+                    doc.isPinned = false; // Default to unpinned for existing documents
                 }
             });
         }
@@ -303,8 +317,9 @@ function createDocumentStore() {
         getAllCircleDocuments,
         getCircleDocument,
         updateCircleDocumentName,
+        updateCircleDocumentPin, // NEW: Pin management
         deleteCircleDocument,
-        // NEW: Circle type tracking methods
+        // Circle type tracking methods
         setMostRecentlySetCircleType,
         getMostRecentlySetCircleType,
         // Square documents

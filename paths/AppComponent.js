@@ -7,7 +7,7 @@ import { useEnergyProximitySystem } from './EnergyProximitySystem.js';
 import { EntityComponent } from './EntityComponent.js';
 import { EntityControls } from './EntityControls.js';
 import { CircleViewer } from './CircleViewer.js';
-import { MinimizedViewerDock } from './MinimizedViewerDock.js';
+import { DocumentsDock } from './DocumentsDock.js';
 import { CircleCharacteristicsBar } from './CircleCharacteristicsBar.js';
 import { SquareDocumentTabs } from './SquareDocumentTabs.js';
 import { SharedDropdown } from './SharedDropdown.js';
@@ -247,7 +247,7 @@ export const App = {
         EntityComponent,
         EntityControls,
         CircleViewer,
-        MinimizedViewerDock,
+        DocumentsDock,
         CircleCharacteristicsBar,
         SquareDocumentTabs,
         SharedDropdown,
@@ -256,7 +256,7 @@ export const App = {
     },
     template: `
         <div :class="['app-container', { 'has-minimized-dock': hasMinimizedViewers }]">
-            <MinimizedViewerDock 
+            <DocumentsDock 
                 @restore-viewer="handleRestoreViewer"
             />
             

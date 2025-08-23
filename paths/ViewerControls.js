@@ -273,10 +273,6 @@ const componentStyles = `
         color: #fff;
     }
 
-    .viewer-button.minimize:hover {
-        background-color: #4CAF50;
-    }
-
     .viewer-button.close:hover {
         background-color: #f44336;
     }
@@ -312,7 +308,7 @@ export const ViewerControls = {
             })
         }
     },
-    emits: ['start-reorder', 'minimize', 'close'],
+    emits: ['start-reorder', 'close'],
     setup(props, { emit }) {
         const dataStore = useDataStore();
         const controlsRef = ref(null);
@@ -393,12 +389,6 @@ export const ViewerControls = {
             emit('start-reorder', e);
         };
 
-        const handleMinimize = () => {
-            // Prevent actions during drag operations
-            if (isDragActive.value) return;
-            emit('minimize');
-        };
-
         const handleClose = () => {
             // Prevent actions during drag operations
             if (isDragActive.value) return;
@@ -426,7 +416,6 @@ export const ViewerControls = {
             isDragActive,
             isDragDisabled,
             handleReorderMouseDown,
-            handleMinimize,
             handleClose,
             handleBackgroundToggle
         };
@@ -466,12 +455,6 @@ export const ViewerControls = {
                         :disabled="isDragActive"
                     >∘</button>
                     <button 
-                        class="viewer-button minimize"
-                        @click="handleMinimize"
-                        title="Minimize viewer"
-                        :disabled="isDragActive"
-                    >_</button>
-                    <button 
                         class="viewer-button close"
                         @click="handleClose"
                         title="Close viewer"
@@ -495,12 +478,6 @@ export const ViewerControls = {
                         title="Toggle background image"
                         :disabled="isDragActive"
                     >∘</button>
-                    <button 
-                        class="viewer-button minimize"
-                        @click="handleMinimize"
-                        title="Minimize viewer"
-                        :disabled="isDragActive"
-                    >_</button>
                     <button 
                         class="viewer-button close"
                         @click="handleClose"
