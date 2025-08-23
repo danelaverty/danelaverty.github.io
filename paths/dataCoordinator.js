@@ -150,6 +150,11 @@ const loadFromStorage = () => {
             if (result) saveToStorage();
             return result;
         },
+        updateCircleDocumentPin: (id, isPinned) => {
+            const result = documentStore.updateCircleDocumentPin(id, isPinned);
+            if (result) saveToStorage();
+            return result;
+        },
         updateSquareDocumentName: (id, name) => {
             const result = documentStore.updateSquareDocumentName(id, name);
             if (result) saveToStorage();
