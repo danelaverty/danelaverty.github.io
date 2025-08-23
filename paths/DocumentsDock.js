@@ -6,7 +6,7 @@ import { DocumentIconControls } from './DocumentIconControlsComponent.js';
 
 // Inject component styles
 const componentStyles = `
-    .minimized-viewer-dock {
+    .documents-dock {
         position: fixed;
         left: 0;
         top: 0;
@@ -28,29 +28,29 @@ const componentStyles = `
     }
 
     /* Webkit scrollbar styling for Chrome/Safari */
-    .minimized-viewer-dock::-webkit-scrollbar {
+    .documents-dock::-webkit-scrollbar {
         width: 6px;
     }
 
-    .minimized-viewer-dock::-webkit-scrollbar-track {
+    .documents-dock::-webkit-scrollbar-track {
         background: transparent;
     }
 
-    .minimized-viewer-dock::-webkit-scrollbar-thumb {
+    .documents-dock::-webkit-scrollbar-thumb {
         background-color: #444;
         border-radius: 3px;
         transition: background-color 0.2s ease;
     }
 
-    .minimized-viewer-dock::-webkit-scrollbar-thumb:hover {
+    .documents-dock::-webkit-scrollbar-thumb:hover {
         background-color: #555;
     }
 
-    .minimized-viewer-dock::-webkit-scrollbar-thumb:active {
+    .documents-dock::-webkit-scrollbar-thumb:active {
         background-color: #666;
     }
 
-    .minimized-viewer-dock.hidden {
+    .documents-dock.hidden {
         display: none;
     }
 
@@ -153,7 +153,7 @@ const componentStyles = `
     }
 `;
 
-injectComponentStyles('minimized-viewer-dock', componentStyles);
+injectComponentStyles('documents-dock', componentStyles);
 
 export const DocumentsDock = {
     emits: ['create-viewer-for-document'],
@@ -324,7 +324,7 @@ export const DocumentsDock = {
     },
     template: `
         <div 
-            :class="['minimized-viewer-dock', { hidden: !hasDocuments }]"
+            :class="['documents-dock', { hidden: !hasDocuments }]"
         >
             <!-- New Document Button -->
             <div 

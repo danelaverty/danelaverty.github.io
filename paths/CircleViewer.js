@@ -182,7 +182,6 @@ export const CircleViewer = {
     },
     emits: [
         'start-reorder',
-        'minimize-viewer',
         'close-viewer',
         'resize',
         'viewer-click',
@@ -466,11 +465,6 @@ export const CircleViewer = {
 	    console.log(targetViewer);
             
             if (targetViewer) {
-                // Referenced circle is in an existing viewer
-                if (dataStore.data.minimizedViewers.has(targetViewer.id)) {
-                    // Un-minimize the viewer
-                    dataStore.restoreViewer(targetViewer.id);
-                }
                 // Select the referenced circle
                 dataStore.selectCircle(referencedCircleId, targetViewer.id, false);
                 dataStore.setSelectedViewer(targetViewer.id);
@@ -556,10 +550,6 @@ export const CircleViewer = {
             emit('start-reorder', { viewerId: props.viewerId, event: e });
         };
 
-        const handleMinimizeViewer = () => {
-            emit('minimize-viewer', props.viewerId);
-        };
-
         const handleCloseViewer = () => {
             emit('close-viewer', props.viewerId);
         };
@@ -638,7 +628,6 @@ export const CircleViewer = {
             handleViewerContainerClick,
             handleStartReorder,
             startResize,
-            handleMinimizeViewer,
             handleCloseViewer
         };
     },
@@ -677,7 +666,6 @@ export const CircleViewer = {
                 :viewer-id="viewerId"
                 :drag-state="dragState"
                 @start-reorder="handleStartReorder"
-                @minimize="handleMinimizeViewer"
                 @close="handleCloseViewer"
             />
             

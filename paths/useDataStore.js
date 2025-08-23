@@ -353,7 +353,6 @@ function createMainStore() {
         data: {
             get circleViewers() { return uiStore.data.circleViewers; },
             get viewerOrder() { return uiStore.data.viewerOrder; },
-            get minimizedViewers() { return uiStore.data.minimizedViewers; },
             get selectedViewerId() { return uiStore.data.selectedViewerId; },
             get currentSquareDocumentId() { return documentStore.data.currentSquareDocumentId; },
             get selectedCircleIds() { return uiStore.data.selectedCircleIds; },
@@ -432,16 +431,6 @@ function createMainStore() {
             return result;
         },
         deleteCircleViewer,
-        minimizeViewer: (id) => {
-            const result = uiStore.minimizeViewer(id);
-            if (result) saveToStorage();
-            return result;
-        },
-        restoreViewer: (id) => {
-            const result = uiStore.restoreViewer(id);
-            if (result) saveToStorage();
-            return result;
-        },
         reorderViewers: (fromIndex, toIndex) => {
             const result = uiStore.reorderViewers(fromIndex, toIndex);
             if (result) saveToStorage();

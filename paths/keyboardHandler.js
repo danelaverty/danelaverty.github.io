@@ -152,7 +152,6 @@ export function createKeyboardHandler(dataStore, onShowIndicatorPicker = null, o
             // Get the currently selected viewer
             const selectedViewerId = dataStore.data.selectedViewerId;
             if (selectedViewerId) {
-                // FIXED: Handle reordering here directly, skipping minimized viewers
                 handleKeyboardViewerReorder(dataStore, selectedViewerId, e.key === 'ArrowLeft' ? 'left' : 'right');
             }
             return;
@@ -316,16 +315,15 @@ export function createKeyboardHandler(dataStore, onShowIndicatorPicker = null, o
 }
 
 /**
- * Handle keyboard viewer reordering, skipping over minimized viewers
+ * Handle keyboard viewer reordering
  * @param {Object} dataStore - The data store instance
  * @param {string} viewerId - ID of the viewer to reorder
  * @param {string} direction - 'left' or 'right'
  */
 function handleKeyboardViewerReorder(dataStore, viewerId, direction) {
-    // Get all viewers in order, both visible and minimized
+    // Get all viewers in order
     const allViewers = dataStore.data.viewerOrder.map(id => ({
         id,
-        isMinimized: dataStore.data.minimizedViewers.has(id)
     }));
     
     // Find current viewer index
@@ -335,29 +333,8 @@ function handleKeyboardViewerReorder(dataStore, viewerId, direction) {
     }
     
     const currentViewer = allViewers[currentIndex];
-    if (currentViewer.isMinimized) {
-        return; // Don't reorder minimized viewers
-    }
     
     let targetIndex = -1;
-    
-    if (direction === 'left') {
-        // Find the nearest non-minimized viewer to the left
-        for (let i = currentIndex - 1; i >= 0; i--) {
-            if (!allViewers[i].isMinimized) {
-                targetIndex = i;
-                break;
-            }
-        }
-    } else if (direction === 'right') {
-        // Find the nearest non-minimized viewer to the right
-        for (let i = currentIndex + 1; i < allViewers.length; i++) {
-            if (!allViewers[i].isMinimized) {
-                targetIndex = i;
-                break;
-            }
-        }
-    }
     
     // If we found a valid target, perform the reorder
     if (targetIndex !== -1) {

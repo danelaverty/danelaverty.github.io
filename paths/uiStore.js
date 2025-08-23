@@ -8,7 +8,6 @@ function createUIStore() {
         // Viewer management
         circleViewers: new Map(),
         viewerOrder: [],
-        minimizedViewers: new Map(),
         selectedViewerId: null,
         nextViewerId: 1,
         
@@ -26,7 +25,6 @@ function createUIStore() {
             id,
             width,
             currentCircleDocumentId: documentId,
-            isMinimized: false,
             showBackground: true // Default to showing background
         };
         
@@ -46,7 +44,7 @@ function createUIStore() {
     };
 
     const getVisibleCircleViewers = () => {
-        return getCircleViewers().filter(viewer => !viewer.isMinimized);
+        return getCircleViewers();
     };
 
     const updateCircleViewer = (id, updates) => {
@@ -63,7 +61,6 @@ function createUIStore() {
         
         data.circleViewers.delete(id);
         data.viewerOrder = data.viewerOrder.filter(viewerId => viewerId !== id);
-        data.minimizedViewers.delete(id);
         
         // If we deleted the selected viewer, select another one
         if (data.selectedViewerId === id) {
@@ -72,34 +69,6 @@ function createUIStore() {
         }
         
         return true;
-    };
-
-    const minimizeViewer = (id) => {
-        const viewer = data.circleViewers.get(id);
-        if (viewer) {
-            viewer.isMinimized = true;
-            data.minimizedViewers.set(id, viewer);
-            
-            // If we minimized the selected viewer, select another one
-            if (data.selectedViewerId === id) {
-                data.selectedViewerId = null;
-                ensureSelectedViewer();
-            }
-            
-            return true;
-        }
-        return false;
-    };
-
-    const restoreViewer = (id) => {
-        const viewer = data.circleViewers.get(id);
-        if (viewer) {
-            viewer.isMinimized = false;
-            data.minimizedViewers.delete(id);
-            data.selectedViewerId = id; // When restoring, make it selected
-            return true;
-        }
-        return false;
     };
 
     const reorderViewers = (fromIndex, toIndex) => {
@@ -116,7 +85,7 @@ function createUIStore() {
 
     const setSelectedViewer = (viewerId) => {
         const viewer = data.circleViewers.get(viewerId);
-        if (viewer && !viewer.isMinimized) {
+        if (viewer) {
             data.selectedViewerId = viewerId;
             return true;
         }
@@ -128,7 +97,6 @@ function createUIStore() {
         
         if (!data.selectedViewerId || 
             !data.circleViewers.has(data.selectedViewerId) || 
-            data.circleViewers.get(data.selectedViewerId)?.isMinimized ||
             !visibleViewers.find(v => v.id === data.selectedViewerId)) {
             
             if (visibleViewers.length > 0) {
@@ -271,7 +239,6 @@ function createUIStore() {
     const serialize = () => ({
         circleViewers: Array.from(data.circleViewers.entries()),
         viewerOrder: data.viewerOrder,
-        minimizedViewers: Array.from(data.minimizedViewers.entries()),
         selectedViewerId: data.selectedViewerId,
         nextViewerId: data.nextViewerId
         // Selections are intentionally not serialized - they should reset on page load
@@ -283,9 +250,6 @@ function createUIStore() {
         }
         if (savedData.viewerOrder) {
             data.viewerOrder = savedData.viewerOrder;
-        }
-        if (savedData.minimizedViewers) {
-            data.minimizedViewers = new Map(savedData.minimizedViewers);
         }
         if (savedData.selectedViewerId) {
             data.selectedViewerId = savedData.selectedViewerId;
@@ -306,8 +270,6 @@ function createUIStore() {
         getVisibleCircleViewers,
         updateCircleViewer,
         deleteCircleViewer,
-        minimizeViewer,
-        restoreViewer,
         reorderViewers,
         setSelectedViewer,
         ensureSelectedViewer,

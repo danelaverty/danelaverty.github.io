@@ -301,7 +301,6 @@ function createDocumentStore() {
         if (savedData.nextSquareDocumentId) {
             data.nextSquareDocumentId = savedData.nextSquareDocumentId;
         }
-        // Note: currentSquareDocumentId is intentionally not restored - should be set by selection
     };
 
     return {

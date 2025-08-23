@@ -58,8 +58,8 @@ const globalStyles = `
         height: calc(100% - 32px);
     }
 
-    /* Adjust app container left margin when minimized dock is visible */
-    .app-container.has-minimized-dock {
+    /* Adjust app container left margin when dock is visible */
+    .app-container.has-documents-dock {
         margin-left: 60px;
         width: calc(100vw - 60px);
     }

@@ -26,7 +26,6 @@ export const App = {
 
         // Computed properties for viewers and squares
         const visibleCircleViewers = computed(() => dataStore.getVisibleCircleViewers());
-        const hasMinimizedViewers = computed(() => dataStore.data.minimizedViewers.size > 0);
         
         const currentSquares = computed(() => {
             const docId = dataStore.data.currentSquareDocumentId;
@@ -122,7 +121,6 @@ export const App = {
                 return;
             }
 
-            // Use the full viewer order (including minimized viewers)
             const viewerOrder = dataStore.data.viewerOrder;
             const currentIndex = viewerOrder.indexOf(viewerId);
             
@@ -220,7 +218,6 @@ export const App = {
         return {
             dataStore,
             visibleCircleViewers,
-            hasMinimizedViewers,
             currentSquares,
             hasSelectedCircle,
             shouldShowSquareDocumentTabs, // NEW: Expose the computed property
@@ -255,9 +252,8 @@ export const App = {
         ConnectionComponent
     },
     template: `
-        <div :class="['app-container', { 'has-minimized-dock': hasMinimizedViewers }]">
+        <div :class="['app-container', { 'has-documents-dock': true }]">
             <DocumentsDock 
-                @restore-viewer="handleRestoreViewer"
             />
             
             <div class="viewers-container">
@@ -271,7 +267,6 @@ export const App = {
                     @drag-enter="handleDragEnter"
                     @drag-leave="handleDragLeave"
                     @drop="handleDrop"
-                    @minimize-viewer="handleMinimizeViewer"
                     @close-viewer="handleCloseViewer"
                     @viewer-click="handleViewerContainerClick"
                     @show-dropdown="handleShowDropdown"
