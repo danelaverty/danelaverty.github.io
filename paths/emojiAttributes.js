@@ -547,7 +547,7 @@ export const storyCategories = {
   },
   "exploring": {
     "name": "Exploring",
-    "emojis": ["milestone", "door", "lock", "key", "treasure"]
+    "emojis": ["milestone", "door", "lock", "key", "pick", "treasure"]
   },
   "competing": {
     "name": "Competing", 
