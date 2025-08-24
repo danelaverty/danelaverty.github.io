@@ -1,12 +1,10 @@
-// DocumentIconControlsComponent.js - Controls for document icons in the dock
+// DocumentIconControlsComponent.js - Controls for document icons in the dock (Updated with create child button)
 import { injectComponentStyles } from './styleUtils.js';
 
 // Component styles
-// Update the styles in DocumentIconControlsComponent.js:
-
 const componentStyles = `
     /* Document icon controls - only visible on hover */
-    .document-icon-controls-container {
+.document-icon-controls-container {
         position: absolute;
         top: 0;
         right: 0;
@@ -14,6 +12,11 @@ const componentStyles = `
         opacity: 0;     /* Start hidden via opacity instead */
         transition: opacity 0.2s ease;
         z-index: 1010;
+    }
+
+    /* Adjust position when document has children (to avoid overlap with collapse button) */
+    .document-icon-controls-container.has-children {
+        right: 10px;
     }
 
     .document-icon-controls {
@@ -31,7 +34,6 @@ const componentStyles = `
         opacity: 1; /* Show on hover via opacity */
     }
 
-    /* Rest of the styles remain the same... */
     .circle-count-badge {
         background-color: #666;
         color: white;
@@ -51,14 +53,15 @@ const componentStyles = `
         border-color: #4CAF50;
     }
 
-    .pin-document-button {
-        background-color: #666;
+    .create-child-button {
+        background-color: #388E3C;
         color: white;
-        border: 1px solid #888;
+        border: 1px solid #4CAF50;
         border-radius: 50%;
         width: 12px;
         height: 12px;
         font-size: 10px;
+        font-weight: bold;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -68,24 +71,13 @@ const componentStyles = `
         line-height: 1;
     }
 
-    .pin-document-button.pinned {
-        background-color: #ff9800;
-        border-color: #ffb74d;
-        color: white;
-    }
-
-    .pin-document-button:hover {
-        background-color: #777;
-        border-color: #999;
+    .create-child-button:hover {
+        background-color: #4CAF50;
+        border-color: #66BB6A;
         transform: scale(1.1);
     }
 
-    .pin-document-button.pinned:hover {
-        background-color: #ffb74d;
-        border-color: #ffc947;
-    }
-
-    .pin-document-button:active {
+    .create-child-button:active {
         transform: scale(0.9);
     }
 
@@ -161,25 +153,20 @@ export const DocumentIconControls = {
             type: Boolean,
             default: false
         },
-        isPinned: {
-            type: Boolean,
-            default: false
-        },
         hasOpenViewer: {
             type: Boolean,
             default: false
-        }
+        },
+	hasChildren: {
+		type: Boolean,
+		default: false
+	}
     },
-    emits: ['delete-document', 'toggle-pin', 'close-viewer'],
+    emits: ['delete-document', 'close-viewer', 'create-child-document'],
     setup(props, { emit }) {
         const handleDeleteClick = (e) => {
             e.stopPropagation(); // Prevent triggering document click
             emit('delete-document', props.documentId);
-        };
-
-        const handlePinClick = (e) => {
-            e.stopPropagation(); // Prevent triggering document click
-            emit('toggle-pin', props.documentId);
         };
 
         const handleCloseViewerClick = (e) => {
@@ -187,20 +174,25 @@ export const DocumentIconControls = {
             emit('close-viewer', props.documentId);
         };
 
+        const handleCreateChildClick = (e) => {
+            e.stopPropagation(); // Prevent triggering document click
+            emit('create-child-document', props.documentId);
+        };
+
         return {
             handleDeleteClick,
-            handlePinClick,
-            handleCloseViewerClick
+            handleCloseViewerClick,
+            handleCreateChildClick
         };
     },
     template: `
-        <div class="document-icon-controls-container">
+	    <div :class="['document-icon-controls-container', { 'has-children': hasChildren }]">
 		<div class="document-icon-controls">
 		    <button 
-			:class="['pin-document-button', { pinned: isPinned }]"
-			@click="handlePinClick"
-			:title="isPinned ? 'Unpin document' : 'Pin document'"
-		    >📌</button>
+			class="create-child-button"
+			@click="handleCreateChildClick"
+			title="Create child document"
+		    >+</button>
 		    <button 
 			v-if="hasOpenViewer"
 			class="close-viewer-button"

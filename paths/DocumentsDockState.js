@@ -1,4 +1,4 @@
-// DocumentsDockState.js - State management for DocumentsDock with inline editing and dock drop support
+// DocumentsDockState.js - State management for DocumentsDock with inline editing and dock drop support (Pinning removed)
 import { ref, computed, nextTick } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
 
@@ -15,7 +15,6 @@ export function createDocumentsDockState() {
             if (saved) {
                 const state = JSON.parse(saved);
                 return {
-                    showUnpinned: state.showUnpinned || false,
                     collapsedDocs: new Set(state.collapsedDocs || [])
                 };
             }
@@ -23,7 +22,6 @@ export function createDocumentsDockState() {
             console.error('Failed to load dock state:', error);
         }
         return {
-            showUnpinned: false,
             collapsedDocs: new Set()
         };
     };
@@ -32,7 +30,6 @@ export function createDocumentsDockState() {
     const saveDockState = () => {
         try {
             const state = {
-                showUnpinned: showUnpinnedDocuments.value,
                 collapsedDocs: Array.from(collapsedDocuments.value)
             };
             localStorage.setItem(dockStateKey, JSON.stringify(state));
@@ -43,7 +40,6 @@ export function createDocumentsDockState() {
 
     // Initialize state from localStorage
     const initialState = loadDockState();
-    const showUnpinnedDocuments = ref(initialState.showUnpinned);
     const collapsedDocuments = ref(initialState.collapsedDocs);
     
     // Drag and drop state
@@ -94,30 +90,13 @@ export function createDocumentsDockState() {
         return filtered;
     });
 
-    // Split documents into pinned and unpinned
-    const pinnedDocuments = computed(() => {
-        return allCircleDocuments.value.filter(doc => doc.isPinned);
-    });
-
-    const unpinnedDocuments = computed(() => {
-        return allCircleDocuments.value.filter(doc => !doc.isPinned);
-    });
-
-    // Documents to display (pinned + conditionally unpinned)
-    const visibleDocuments = computed(() => {
-        if (showUnpinnedDocuments.value) {
-            return allCircleDocuments.value;
-        } else {
-            return pinnedDocuments.value;
-        }
+    // All documents to display (renamed from visibleDocuments for clarity)
+    const allDocuments = computed(() => {
+        return allCircleDocuments.value;
     });
 
     const hasDocuments = computed(() => {
         return allCircleDocuments.value.length > 0;
-    });
-
-    const hasUnpinnedDocuments = computed(() => {
-        return unpinnedDocuments.value.length > 0;
     });
 
     // Get currently visible documents (documents that have viewers)
@@ -150,13 +129,8 @@ export function createDocumentsDockState() {
         return allCircleDocuments.value.length > 1;
     };
 
-    const isDocumentPinned = (docId) => {
-        const doc = allCircleDocuments.value.find(d => d.id === docId);
-        return doc ? (doc.isPinned || false) : false;
-    };
-
     const getDocumentDisplayName = (doc) => {
-	    return doc.name;
+        return doc.name;
     };
 
     const getCircleCountForDocument = (docId) => {
@@ -168,7 +142,7 @@ export function createDocumentsDockState() {
         return currentlyVisibleDocuments.value.has(docId);
     };
 
-    // NEW: Check if document has an open viewer
+    // Check if document has an open viewer
     const hasOpenViewer = (docId) => {
         return currentlyVisibleDocuments.value.has(docId);
     };
@@ -256,29 +230,24 @@ export function createDocumentsDockState() {
 
     return {
         // State
-        showUnpinnedDocuments,
         collapsedDocuments,
         dragState,
         editingDocuments,
         
         // Computed properties
         allCircleDocuments,
-        pinnedDocuments,
-        unpinnedDocuments,
-        visibleDocuments,
+        allDocuments,
         hasDocuments,
-        hasUnpinnedDocuments,
         currentlyVisibleDocuments,
         isDockDropTarget,
         isDockDropInvalid,
         
         // Helper functions
         canDeleteDocument,
-        isDocumentPinned,
         getDocumentDisplayName,
         getCircleCountForDocument,
         isCurrentDocument,
-        hasOpenViewer, // NEW: Expose the function
+        hasOpenViewer,
         getDocumentNestingClass,
         isDragTarget,
         isBeingDragged,

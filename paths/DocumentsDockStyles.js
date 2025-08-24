@@ -1,4 +1,4 @@
-// DocumentsDockStyles.js - Styling for DocumentsDock component
+// DocumentsDockStyles.js - Styling for DocumentsDock component (Pinning removed)
 import { injectComponentStyles } from './styleUtils.js';
 
 // Enhanced component styles with resize handle and dock drop zone
@@ -75,8 +75,7 @@ const componentStyles = `
     /* Disable transition during resize */
     .documents-dock.resizing, 
     .documents-dock.resizing .document-icon,
-    .documents-dock.resizing .new-document-button,
-    .documents-dock.resizing .toggle-unpinned-button {
+    .documents-dock.resizing .new-document-button {
         transition: none !important;
     }
 
@@ -132,7 +131,7 @@ const componentStyles = `
         border: 1px solid #555;
         border-radius: 4px;
         display: flex;
-		 flex-direction: column;
+        flex-direction: column;
         align-items: left;
         justify-content: left;
         cursor: pointer;
@@ -166,7 +165,7 @@ const componentStyles = `
         background: transparent;
         border: none;
         color: white;
-	       font-family: sans-serif;
+        font-family: sans-serif;
         font-size: inherit;
         text-align: left;
         word-break: break-word;
@@ -189,7 +188,7 @@ const componentStyles = `
         width: calc(var(--dock-width, 60px) - 15px);
         margin-left: 5px;
         font-size: max(7px, min(11px, calc(var(--dock-width, 60px) * 0.13)));
-	background-color: #333;
+        background-color: #333;
     }
 
     .document-icon.nested-level-1 .document-icon-input {
@@ -200,7 +199,7 @@ const componentStyles = `
         width: calc(var(--dock-width, 60px) - 20px);
         margin-left: 10px;
         font-size: max(7px, min(10px, calc(var(--dock-width, 60px) * 0.12)));
-	background-color: #222;
+        background-color: #222;
     }
 
     .document-icon.nested-level-2 .document-icon-input {
@@ -211,7 +210,7 @@ const componentStyles = `
         width: calc(var(--dock-width, 60px) - 25px);
         margin-left: 15px;
         font-size: max(6px, min(9px, calc(var(--dock-width, 60px) * 0.11)));
-	background-color: #111;
+        background-color: #111;
     }
 
     .document-icon.nested-level-3 .document-icon-input {
@@ -223,7 +222,7 @@ const componentStyles = `
         width: calc(var(--dock-width, 60px) - 30px);
         margin-left: 20px;
         font-size: max(6px, min(8px, calc(var(--dock-width, 60px) * 0.1)));
-	background-color: #080808;
+        background-color: #080808;
     }
 
     .document-icon.nested-deep .document-icon-input {
@@ -231,7 +230,7 @@ const componentStyles = `
     }
 
     /* Collapse/expand button - responsive sizing */
-    .collapse-button {
+ .collapse-button {
         position: absolute;
         top: 0px;
         right: 0px;
@@ -244,17 +243,13 @@ const componentStyles = `
         font-size: max(8px, min(12px, calc(var(--dock-width, 60px) * 0.18)));
         font-weight: bold;
         color: white;
-        cursor: pointer;
         transition: all 0.2s ease;
         z-index: 1011;
+        pointer-events: none; /* Make non-interactive */
     }
 
     .document-icon:hover .collapse-button {
         opacity: 1;
-    }
-
-    .collapse-button:hover {
-        font-weight: bold;
     }
 
     /* Hide collapse button during editing */
@@ -350,32 +345,6 @@ const componentStyles = `
 
     .new-document-button:active {
         transform: scale(0.95);
-    }
-
-    /* Toggle button - responsive sizing */
-    .toggle-unpinned-button {
-        width: calc(var(--dock-width, 60px) - 10px);
-        min-width: 40px;
-        height: 12px;
-        background-color: #333;
-        border: 1px solid #555;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        color: #888;
-        font-size: max(10px, min(14px, calc(var(--dock-width, 60px) * 0.2)));
-        transition: all 0.2s ease;
-        margin-top: 4px;
-        margin-bottom: 4px;
-        user-select: none;
-    }
-
-    .toggle-unpinned-button:hover {
-        background-color: #444;
-        border-color: #777;
-        color: #aaa;
     }
 
     /* Hide resize handle during drag operations */

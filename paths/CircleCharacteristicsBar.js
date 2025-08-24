@@ -171,7 +171,7 @@ export const CircleCharacteristicsBar = {
       
       // For single selection, check type and reference status
       return dataHooks.selectedCircle.value && 
-             (['emoji', 'shape'].indexOf(dataHooks.selectedCircle.value.type) > -1) && 
+             (['emoji'].indexOf(dataHooks.selectedCircle.value.type) > -1) && 
              !isReferenceCircle.value;
     });
 

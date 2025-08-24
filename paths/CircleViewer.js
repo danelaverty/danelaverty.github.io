@@ -296,11 +296,16 @@ export const CircleViewer = {
         );
 
         // NEW: Listen for animation loop events to update copies
-        const handleAnimationUpdate = (event) => {
-            if (event.detail.viewerId === props.viewerId) {
-                animationCopies.value = [...event.detail.copies];
-            }
-        };
+	const handleAnimationUpdate = (event) => {
+    console.log(`[CircleViewer] Animation update received:`, event.detail);
+    if (event.detail.viewerId === props.viewerId) {
+        console.log(`[CircleViewer] Updating animation copies for viewer ${props.viewerId}:`, event.detail.copies);
+        console.log(`[CircleViewer] Previous copies:`, animationCopies.value);
+        animationCopies.value = [...event.detail.copies];
+        console.log(`[CircleViewer] New copies:`, animationCopies.value);
+        console.log(`[CircleViewer] allCircles computed will now have:`, [...currentCircles.value, ...animationCopies.value]);
+    }
+};
 
         const handleAnimationStopped = (event) => {
             if (event.detail.viewerId === props.viewerId) {

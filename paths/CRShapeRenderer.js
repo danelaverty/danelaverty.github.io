@@ -30,9 +30,9 @@ export const ShapeRenderer = {
         }
         
         // Add emoji overlay if emoji is present
-        if (circle.emoji) {
+        /*if (circle.emoji) {
             this.addEmojiOverlay(element, circle);
-        }
+        }*/
     },
 
     /**
@@ -72,7 +72,7 @@ export const ShapeRenderer = {
         const shapeWrap = this.createShapeWrap(element, 'right-triangle-wrap');
         
         const styles = this.getBaseShapeStyles(circle);
-        styles.clipPath = 'polygon(10% 10%, 100% 50%, 10% 90%)';
+        styles.clipPath = 'polygon(10% 10%, 90% 50%, 10% 90%)';
         
         const shapeElement = this.createShapeElement('right-triangle-shape', styles);
         this.addClickHandler(shapeWrap, element);

@@ -1,4 +1,4 @@
-// dataCoordinator.js - Pure data access layer that coordinates between stores (Updated with viewer properties)
+// dataCoordinator.js - Pure data access layer that coordinates between stores (Updated to use EntityService for square document changes)
 import { useEntityStore } from './entityStore.js';
 import { useDocumentStore } from './documentStore.js';
 import { useUIStore } from './uiStore.js';
@@ -169,11 +169,8 @@ function createDataCoordinator() {
             if (result) saveToStorage();
             return result;
         },
-        setCurrentSquareDocument: (id) => {
-            const result = documentStore.setCurrentSquareDocument(id);
-            if (result) saveToStorage();
-            return result;
-        },
+        // FIXED: Use EntityService method for square document switching to prevent connection flash
+        setCurrentSquareDocument: withPersistence(entityService.setCurrentSquareDocument.bind(entityService)),
         setCircleDocumentForViewer: (viewerId, documentId) => {
             const success = uiStore.setCircleDocumentForViewer(viewerId, documentId, documentStore);
             if (success) saveToStorage();

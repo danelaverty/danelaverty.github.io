@@ -1,4 +1,4 @@
-// entityService.js - FIXED: Immediate square connection clearing on circle deselection
+// entityService.js - FIXED: Immediate square connection clearing on circle deselection AND square document changes
 import { useEntityStore } from './entityStore.js';
 import { useDocumentStore } from './documentStore.js';
 import { useUIStore } from './uiStore.js';
@@ -42,6 +42,15 @@ export class EntityService {
     }
 
     /**
+     * NEW: Immediately update connections for current square document
+     * This prevents the flash when switching between square documents
+     */
+    _updateSquareConnectionsImmediately() {
+        const squares = this._getCurrentSquares();
+        this.connectionManager.updateConnections(squares, 'square');
+    }
+
+    /**
      * Create a circle in a specific viewer with all necessary relationships
      * UPDATED: Pass documentStore to entityStore.createCircle for type inheritance
      */
@@ -73,18 +82,25 @@ export class EntityService {
     /**
      * Create a square with proper container sizing
      */
-    createSquare() {
-        const currentDoc = this.documentStore.getCurrentSquareDocument();
-        if (!currentDoc) return null;
+createSquare() {
+    const currentDoc = this.documentStore.getCurrentSquareDocument();
+    if (!currentDoc) return null;
 
-        const viewerWidths = this.uiStore.getVisibleCircleViewers().map(v => v.width);
-        const square = this.entityStore.createSquare(currentDoc.id, viewerWidths);
-        
-        // Update connections after creating new square
-        this._updateConnectionsAfterChange();
-        
-        return square;
-    }
+    const visibleViewers = this.uiStore.getVisibleCircleViewers();
+    
+    // FIXED: Get viewer widths from document properties, not directly from viewer object
+    const viewerWidths = visibleViewers.map(v => {
+        const viewerProperties = this.uiStore.getViewerProperties(v.id, this.documentStore);
+        return viewerProperties.width;
+    });
+    
+    const square = this.entityStore.createSquare(currentDoc.id, viewerWidths);
+    
+    // Update connections after creating new square
+    this._updateConnectionsAfterChange();
+    
+    return square;
+}
 
     /**
      * Delete a circle and handle all cascading effects
@@ -214,6 +230,22 @@ export class EntityService {
                 this.uiStore.toggleEntitySelection('square', id);
             }
         }
+    }
+
+    /**
+     * NEW: Set current square document with immediate connection update
+     * This prevents the flash when switching between square documents
+     */
+    setCurrentSquareDocument(id) {
+        const oldDocId = this.documentStore.data.currentSquareDocumentId;
+        const result = this.documentStore.setCurrentSquareDocument(id);
+        
+        if (result && oldDocId !== id) {
+            // FIXED: Immediately update connections for new document to prevent flash
+            this._updateSquareConnectionsImmediately();
+        }
+        
+        return result;
     }
 
     /**
@@ -358,14 +390,12 @@ export class EntityService {
     _handleSquareDocumentSelection(circleId) {
         const squareDocuments = this.documentStore.getSquareDocumentsForCircle(circleId);
         if (squareDocuments.length > 0) {
-            this.documentStore.setCurrentSquareDocument(squareDocuments[0].id);
-            // Update connections when document changes
-            this._updateConnectionsAfterChange();
+            // FIXED: Use the new method that immediately updates connections
+            this.setCurrentSquareDocument(squareDocuments[0].id);
         } else {
             const defaultSquareDoc = this.documentStore.createSquareDocument(circleId, 'Default');
-            this.documentStore.setCurrentSquareDocument(defaultSquareDoc.id);
-            // Update connections for new empty document
-            this._updateConnectionsAfterChange();
+            // FIXED: Use the new method that immediately updates connections
+            this.setCurrentSquareDocument(defaultSquareDoc.id);
         }
     }
 
