@@ -1,15 +1,16 @@
-// CircleViewer.js - Enhanced with drop target highlighting and document-based properties
+// CircleViewer.js - Enhanced with drop target highlighting, document-based properties, and animation loop support
 import { ref, computed, onMounted, onUnmounted, watch } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
 import { useRectangleSelection } from './useRectangleSelection.js';
 import { useConnectionUpdater, useConnections } from './useConnections.js';
+import { useAnimationLoopManager } from './AnimationLoopManager.js';
 import { EntityComponent } from './EntityComponent.js';
 import { EntityControls } from './EntityControls.js';
 import { ViewerControls } from './ViewerControls.js';
 import { ConnectionComponent } from './ConnectionComponent.js';
 import { injectComponentStyles } from './styleUtils.js';
 
-// Enhanced component styles with drop target highlighting
+// Enhanced component styles with drop target highlighting and animation support
 const componentStyles = `
     .circle-viewer {
         position: relative;
@@ -160,6 +161,17 @@ const componentStyles = `
         pointer-events: none;
         z-index: 1000;
     }
+
+    /* NEW: Animation copy styling */
+    .entity-container.animation-copy {
+        opacity: 0.8;
+        pointer-events: none;
+        z-index: 998; /* Below normal entities but above connections */
+    }
+
+    .entity-container.animation-dimmed {
+        opacity: 0.2;
+    }
 `;
 
 injectComponentStyles('circle-viewer', componentStyles);
@@ -193,6 +205,7 @@ export const CircleViewer = {
     ],
     setup(props, { emit }) {
         const dataStore = useDataStore();
+        const animationManager = useAnimationLoopManager(); // NEW: Get animation manager
         const isResizing = ref(false);
         const resizeStart = ref({ x: 0, width: 0 });
         const viewerContentRef = ref(null);
@@ -214,6 +227,14 @@ export const CircleViewer = {
         const currentCircles = computed(() => {
             const circles = dataStore.getCirclesForViewer(props.viewerId);
             return circles;
+        });
+
+        // NEW: Get animation copies for this viewer
+        const animationCopies = ref([]);
+        
+        // NEW: Combined circles (original + animation copies)
+        const allCircles = computed(() => {
+            return [...currentCircles.value, ...animationCopies.value];
         });
         
         const isSelected = computed(() => dataStore.isViewerSelected(props.viewerId));
@@ -274,6 +295,19 @@ export const CircleViewer = {
             }
         );
 
+        // NEW: Listen for animation loop events to update copies
+        const handleAnimationUpdate = (event) => {
+            if (event.detail.viewerId === props.viewerId) {
+                animationCopies.value = [...event.detail.copies];
+            }
+        };
+
+        const handleAnimationStopped = (event) => {
+            if (event.detail.viewerId === props.viewerId) {
+                animationCopies.value = [];
+            }
+        };
+
         // Store initial selection state for Ctrl+drag operations
         let initialSelectedIds = new Set();
         let hasRectangleSelected = false;
@@ -300,6 +334,7 @@ export const CircleViewer = {
             if (!rect || rect.width < 5 || rect.height < 5) return;
             
             const intersectingIds = [];
+            // Only check original circles for selection (not animation copies)
             currentCircles.value.forEach(circle => {
                 if (isCircleIntersecting(circle, rect)) {
                     intersectingIds.push(circle.id);
@@ -432,6 +467,12 @@ export const CircleViewer = {
 
         // Entity event handlers
         const handleCircleSelect = (id, isCtrlClick = false) => {
+            // NEW: Don't allow selection of animation copies
+            const animationCopy = animationCopies.value.find(copy => copy.id === id);
+            if (animationCopy) {
+                return; // Ignore clicks on animation copies
+            }
+            
             // Handle CTRL-click on reference circles
             if (isCtrlClick) {
                 const circle = dataStore.getCircle(id);
@@ -594,14 +635,39 @@ export const CircleViewer = {
             }
         };
 
+        // NEW: Helper function to determine if a circle should be dimmed during animation
+        const isCircleDimmed = (circle) => {
+            if (!circle.isAnimationCopy && circle._isAnimationDimmed) {
+                return true;
+            }
+            return false;
+        };
+
+        // NEW: Helper function to determine if a circle is an animation copy
+        const isAnimationCopy = (circle) => {
+            return circle.isAnimationCopy === true;
+        };
+
         onMounted(() => {
             document.addEventListener('mousemove', handleResize);
             document.addEventListener('mouseup', endResize);
+            // NEW: Listen for animation events
+            window.addEventListener('animationLoopUpdate', handleAnimationUpdate);
+            window.addEventListener('animationLoopStopped', handleAnimationStopped);
+            
+            // NEW: Initialize animation copies if loop is already running
+            animationCopies.value = animationManager.getAnimationCopies(props.viewerId);
         });
 
         onUnmounted(() => {
             document.removeEventListener('mousemove', handleResize);
             document.removeEventListener('mouseup', endResize);
+            // NEW: Clean up animation event listeners
+            window.removeEventListener('animationLoopUpdate', handleAnimationUpdate);
+            window.removeEventListener('animationLoopStopped', handleAnimationStopped);
+            
+            // NEW: Stop animation loop when viewer is unmounted
+            animationManager.stopLoop(props.viewerId);
         });
 
         return {
@@ -610,6 +676,8 @@ export const CircleViewer = {
             viewerWidth, 
             showBackground,
             currentCircles,
+            animationCopies, // NEW: Expose animation copies
+            allCircles, // NEW: Expose combined circles
             isSelected,
             viewerContentRef,
             viewerRef,
@@ -635,7 +703,9 @@ export const CircleViewer = {
             handleViewerContainerClick,
             handleStartReorder,
             startResize,
-            handleCloseViewer
+            handleCloseViewer,
+            isCircleDimmed, // NEW: Expose dimming helper
+            isAnimationCopy // NEW: Expose animation copy helper
         };
     },
     components: {
@@ -689,14 +759,19 @@ export const CircleViewer = {
                     :viewer-width="viewerWidth"
                 />
                 
+                <!-- Render all circles (original + animation copies) -->
                 <EntityComponent
-                    v-for="circle in currentCircles"
+                    v-for="circle in allCircles"
                     :key="circle.id"
                     :entity="circle"
                     entity-type="circle"
                     :is-selected="dataStore.isCircleSelected(circle.id)"
                     :viewer-width="viewerWidth"
                     :viewer-id="viewerId"
+                    :class="{
+                        'animation-copy': isAnimationCopy(circle),
+                        'animation-dimmed': isCircleDimmed(circle)
+                    }"
                     @select="handleCircleSelect"
                     @update-position="handleCirclePositionUpdate"
                     @update-name="handleCircleNameUpdate"

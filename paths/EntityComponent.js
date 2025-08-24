@@ -1,4 +1,4 @@
-// EntityComponent.js - Entity component with reference circle support
+// EntityComponent.js - Entity component with reference circle support and animation copy handling
 import { ref, nextTick, onMounted, onUnmounted, computed, watch } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
 import { injectComponentStyles } from './styleUtils.js';
@@ -12,7 +12,7 @@ import { EntityStyleCalculator } from './EntityStyleCalculator.js';
 import { EnergyIndicators } from './EnergyIndicators.js';
 import { useEnergyProximitySystem } from './EnergyProximitySystem.js';
 
-// Component styles - updated to support bold squares, indicator emojis, and reference circles
+// Component styles - updated to support bold squares, indicator emojis, reference circles, and animation copies
 const componentStyles = `
     .entity-container {
         position: absolute;
@@ -163,6 +163,14 @@ const componentStyles = `
         pointer-events: none;
     }
 
+    /* NEW: Animation copy name styling - semi-transparent, non-editable */
+    .entity-name.animation-copy {
+        opacity: 0.7;
+        cursor: default;
+        pointer-events: none;
+        color: #aaaaaa;
+    }
+
     .entity-name[contenteditable="true"] {
         background-color: #333;
         outline: 1px solid #666;
@@ -173,6 +181,18 @@ const componentStyles = `
         transform: scale(1.05);
         /* FIXED: Only disable position transitions, keep transform transitions for proximity effects */
         transition: left 0s, top 0s, transform 0.15s ease-out;
+    }
+
+    /* NEW: Animation copy container styling */
+    .entity-container.animation-copy {
+        opacity: 0.8;
+        pointer-events: none;
+        z-index: 998; /* Below normal entities but above connections */
+    }
+
+    /* NEW: Animation dimmed styling for original attractees */
+    .entity-container.animation-dimmed {
+        opacity: 0.2;
     }
 `;
 
@@ -206,16 +226,28 @@ export const EntityComponent = {
             return props.entityType === 'circle' && props.entity.referenceID !== null;
         });
 
-        // Create a modified name editor that respects referenced circles
+        // NEW: Check if this is an animation copy
+        const isAnimationCopy = computed(() => {
+            return props.entity.isAnimationCopy === true;
+        });
+
+        // NEW: Check if this circle should be dimmed during animation
+        const isAnimationDimmed = computed(() => {
+            return props.entityType === 'circle' && 
+                   !isAnimationCopy.value && 
+                   props.entity._isAnimationDimmed === true;
+        });
+
+        // Create a modified name editor that respects referenced circles and animation copies
         const createNameEditor = () => {
             const baseEditor = new EntityNameEditor(nameRef, emit);
             
-            // Override the handleNameClick to prevent editing for referenced circles
+            // Override the handleNameClick to prevent editing for referenced circles and animation copies
             const originalHandleNameClick = baseEditor.handleNameClick;
             baseEditor.handleNameClick = (e) => {
-                if (isReferencedCircle.value) {
+                if (isReferencedCircle.value || isAnimationCopy.value) {
                     e.stopPropagation();
-                    return; // Don't allow editing for referenced circles
+                    return; // Don't allow editing for referenced circles or animation copies
                 }
                 originalHandleNameClick(e);
             };
@@ -315,7 +347,7 @@ export const EntityComponent = {
                     }
                 }
                 
-                console.warn(`⚠ EntityComponent: Could not determine viewerId for circle ${props.entity.id}, using fallback`);
+                console.warn(`⚠️ EntityComponent: Could not determine viewerId for circle ${props.entity.id}, using fallback`);
                 return 'viewer_1'; // Fallback
             }
             
@@ -429,7 +461,7 @@ export const EntityComponent = {
             return classes;
         });
 
-        // Computed name classes for bold styling and reference styling
+        // Computed name classes for bold styling, reference styling, and animation styling
         const nameClasses = computed(() => {
             const classes = ['entity-name', `${props.entityType}-name`];
             
@@ -441,6 +473,11 @@ export const EntityComponent = {
             // Add referenced class for referenced circles
             if (isReferencedCircle.value) {
                 classes.push('referenced');
+            }
+            
+            // NEW: Add animation copy class for animation copies
+            if (isAnimationCopy.value) {
+                classes.push('animation-copy');
             }
             
             return classes;
@@ -460,13 +497,14 @@ export const EntityComponent = {
         });
 
         // Register/update circle with proximity system
-        const updateProximityRegistration = () => {
-            if (props.entityType === 'circle' && shapeRef.value && props.viewerWidth) {
+	const updateProximityRegistration = () => {
+            if (props.entityType === 'circle' && shapeRef.value && props.viewerWidth && actualViewerId.value) {
                 proximitySystem.updateCircle(
                     props.entity.id,
                     props.entity,
                     shapeRef.value,
-                    props.viewerWidth
+                    props.viewerWidth,
+                    actualViewerId.value // FIXED: Pass the actual viewerId
                 );
             }
         };
@@ -601,6 +639,8 @@ export const EntityComponent = {
             hasIndicatorEmoji,
             circleEnergyTypes,
             isReferencedCircle,
+            isAnimationCopy, // NEW: Expose animation copy state
+            isAnimationDimmed, // NEW: Expose animation dimmed state
             // Expose methods from drag handler
             handleClick: dragHandler.handleClick,
             handleMouseDown: dragHandler.handleMouseDown,

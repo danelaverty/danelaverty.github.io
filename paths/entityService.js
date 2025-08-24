@@ -46,18 +46,29 @@ export class EntityService {
      * UPDATED: Pass documentStore to entityStore.createCircle for type inheritance
      */
     createCircleInViewer(viewerId) {
-        const documentId = this.uiStore.getCircleDocumentForViewer(viewerId);
-        if (!documentId) return null;
+    const documentId = this.uiStore.getCircleDocumentForViewer(viewerId);
+    if (!documentId) return null;
 
-        const viewer = this.uiStore.data.circleViewers.get(viewerId);
-        // NEW: Pass documentStore to enable type inheritance
-        const circle = this.entityStore.createCircle(documentId, viewer.width, null, this.documentStore);
-        
-        // Create default square document for this circle
-        this.documentStore.ensureSquareDocumentForCircle(circle.id);
-        
-        return circle;
+    const viewerProperties = this.documentStore.getCircleDocumentViewerProperties(documentId);
+    
+    if (!viewerProperties) {
+        return null;
     }
+    
+    const containerWidth = viewerProperties.width;
+    
+    if (!containerWidth || containerWidth <= 0) {
+        return null;
+    }
+
+    // Create the circle with the correct container width
+    const circle = this.entityStore.createCircle(documentId, containerWidth, null, this.documentStore);
+    
+    // Create default square document for this circle
+    this.documentStore.ensureSquareDocumentForCircle(circle.id);
+    
+    return circle;
+}
 
     /**
      * Create a square with proper container sizing
