@@ -1,4 +1,4 @@
-// DocumentsDockHandlers.js - Event handlers for DocumentsDock with inline editing and dock drop support
+// DocumentsDockHandlers.js - Event handlers for DocumentsDock with inline editing and dock drop support (Updated with create child handler)
 import { useDataStore } from './dataCoordinator.js';
 import { nextTick } from './vue-composition-api.js';
 
@@ -124,7 +124,7 @@ export function createDocumentsDockHandlers(dockState, emit) {
         // Only allow drop if we're dragging over the dock background, not over document icons
         const target = e.target;
         if (target.closest('.document-icon') || target.closest('.new-document-button') || 
-            target.closest('.toggle-unpinned-button') || target.closest('.dock-resize-handle')) {
+            target.closest('.dock-resize-handle')) {
             return;
         }
         
@@ -140,7 +140,7 @@ export function createDocumentsDockHandlers(dockState, emit) {
         // Only handle if we're dragging over the dock background
         const target = e.target;
         if (target.closest('.document-icon') || target.closest('.new-document-button') || 
-            target.closest('.toggle-unpinned-button') || target.closest('.dock-resize-handle')) {
+            target.closest('.dock-resize-handle')) {
             return;
         }
         
@@ -178,7 +178,7 @@ export function createDocumentsDockHandlers(dockState, emit) {
         // Only handle if we're dropping on the dock background
         const target = e.target;
         if (target.closest('.document-icon') || target.closest('.new-document-button') || 
-            target.closest('.toggle-unpinned-button') || target.closest('.dock-resize-handle')) {
+            target.closest('.dock-resize-handle')) {
             return;
         }
         
@@ -219,10 +219,41 @@ export function createDocumentsDockHandlers(dockState, emit) {
         emit('create-viewer-for-document', newDoc.id);
     };
 
+    // NEW: Handle creating child documents
+    const handleCreateChildDocument = (parentDocId) => {
+        // Create new document as a child of the parent
+        const newDoc = dataStore.createCircleDocument(null, parentDocId);
+        
+        // Create new viewer for this document
+        const newViewer = dataStore.createCircleViewer();
+        dataStore.setCircleDocumentForViewer(newViewer.id, newDoc.id);
+        dataStore.setSelectedViewer(newViewer.id);
+        
+        // Ensure the parent is expanded so the new child is visible
+        if (dockState.collapsedDocuments.value.has(parentDocId)) {
+            dockState.collapsedDocuments.value.delete(parentDocId);
+            dockState.saveDockState();
+        }
+        
+        emit('create-viewer-for-document', newDoc.id);
+    };
+
     const handleDocumentClick = (documentId) => {
         // Don't handle clicks if editing
         if (dockState.isEditingDocument(documentId)) return;
         
+        // If this document has children, toggle collapse instead of opening viewer
+        if (dockState.hasChildren(documentId)) {
+            if (dockState.collapsedDocuments.value.has(documentId)) {
+                dockState.collapsedDocuments.value.delete(documentId);
+            } else {
+                dockState.collapsedDocuments.value.add(documentId);
+            }
+            dockState.saveDockState(); // Persist the change
+            return;
+        }
+        
+        // For documents without children, proceed with normal viewer logic
         // Check if this document already has a visible viewer
         const visibleViewers = dataStore.getVisibleCircleViewers();
         const existingViewer = visibleViewers.find(viewer => {
@@ -294,21 +325,13 @@ export function createDocumentsDockHandlers(dockState, emit) {
     const handleDeleteDocument = (docId) => {
         if (!dockState.canDeleteDocument(docId)) return;
         
-        const doc = dockState.allCircleDocuments.value.find(d => d.id === docId);
+        const doc = dockState.allDocuments.value.find(d => d.id === docId);
         if (doc && confirm(`Are you sure you want to delete "${doc.name}"? All circles and their squares will be removed.`)) {
             dataStore.deleteCircleDocument(docId);
         }
     };
 
-    const handleTogglePin = (docId) => {
-        const doc = dockState.allCircleDocuments.value.find(d => d.id === docId);
-        if (doc) {
-            const newPinnedState = !doc.isPinned;
-            dataStore.updateCircleDocumentPin(docId, newPinnedState);
-        }
-    };
-
-    // NEW: Handle close viewer requests
+    // Handle close viewer requests
     const handleCloseViewer = (docId) => {
         // Find the viewer that's displaying this document
         const visibleViewers = dataStore.getVisibleCircleViewers();
@@ -324,11 +347,6 @@ export function createDocumentsDockHandlers(dockState, emit) {
     };
 
     // Toggle and Collapse Handlers
-    const handleToggleUnpinned = () => {
-        dockState.showUnpinnedDocuments.value = !dockState.showUnpinnedDocuments.value;
-        dockState.saveDockState(); // Persist the change
-    };
-
     const toggleCollapse = (docId, event) => {
         event.stopPropagation(); // Prevent document click
         
@@ -342,35 +360,34 @@ export function createDocumentsDockHandlers(dockState, emit) {
     };
 
     return {
-    // Drag and drop handlers for document icons
-    handleDragStart,
-    handleDragEnd,
-    handleDragOver,
-    handleDragEnter,
-    handleDragLeave,
-    handleDrop,
-    
-    // Dock drop handlers for un-nesting
-    handleDockDragOver,
-    handleDockDragEnter,
-    handleDockDragLeave,
-    handleDockDrop,
-    
-    // Document management handlers
-    handleNewDocumentClick,
-    handleDocumentClick,
-    handleDocumentDoubleClick,
-    handleDeleteDocument,
-    handleTogglePin,
-    handleCloseViewer, // ← This should be included
-    
-    // Editing handlers
-    handleEditingKeydown,
-    handleEditingBlur,
-    handleEditingInput,
-    
-    // Toggle and collapse handlers
-    handleToggleUnpinned,
-    toggleCollapse
-};
+        // Drag and drop handlers for document icons
+        handleDragStart,
+        handleDragEnd,
+        handleDragOver,
+        handleDragEnter,
+        handleDragLeave,
+        handleDrop,
+        
+        // Dock drop handlers for un-nesting
+        handleDockDragOver,
+        handleDockDragEnter,
+        handleDockDragLeave,
+        handleDockDrop,
+        
+        // Document management handlers
+        handleNewDocumentClick,
+        handleCreateChildDocument, // NEW: Export the new handler
+        handleDocumentClick,
+        handleDocumentDoubleClick,
+        handleDeleteDocument,
+        handleCloseViewer,
+        
+        // Editing handlers
+        handleEditingKeydown,
+        handleEditingBlur,
+        handleEditingInput,
+        
+        // Toggle and collapse handlers
+        toggleCollapse
+    };
 }

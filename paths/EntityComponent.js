@@ -509,6 +509,17 @@ export const EntityComponent = {
             }
         };
 
+	watch(() => props.entity, (newEntity, oldEntity) => {
+    if (newEntity.isAnimationCopy) {
+        console.log(`[EntityComponent] Animation copy ${newEntity.id} position changed:`, {
+            x: newEntity.x,
+            y: newEntity.y,
+            oldX: oldEntity?.x,
+            oldY: oldEntity?.y
+        });
+    }
+}, { deep: true });
+
         // Watch for changes that should trigger re-rendering
 	watch(
     () => [

@@ -51,8 +51,6 @@ export class EnergyProximitySystem {
      */
     isViewerActive(viewerId) {
         const isActive = this.activeViewers.value.has(viewerId); // FIXED: Use .value for reactive ref
-        console.log(`[EnergyProximitySystem] isViewerActive(${viewerId}): ${isActive}`);
-        console.log(`[EnergyProximitySystem] Current active viewers:`, Array.from(this.activeViewers.value));
         return isActive;
     }
 
@@ -69,16 +67,6 @@ export class EnergyProximitySystem {
     registerCircle(id, circle, element, viewerWidth, viewerId) {
         if (!circle || !element || !viewerId) return;
 
-        console.log(`[EnergyProximitySystem] Registering circle:`, {
-            id,
-            name: circle.name,
-            type: circle.type,
-            energyTypes: circle.energyTypes,
-            activation: circle.activation,
-            viewerId,
-            viewerWidth
-        });
-
         this.circles.set(id, {
             circle,
             element,
@@ -93,7 +81,6 @@ export class EnergyProximitySystem {
         
         // Update effects immediately after registration
         if (this.isActive) {
-            console.log(`[EnergyProximitySystem] Updating effects after registering circle ${id}`);
             this.updateProximityEffects();
         }
     }
@@ -263,11 +250,6 @@ export class EnergyProximitySystem {
      */
     hasEnergyType(circle, energyType) {
         const hasType = circle.energyTypes && circle.energyTypes.includes(energyType);
-        console.log(`[EnergyProximitySystem] hasEnergyType(${circle.id}, ${energyType}):`, {
-            result: hasType,
-            circleEnergyTypes: circle.energyTypes,
-            isArray: Array.isArray(circle.energyTypes)
-        });
         return hasType;
     }
 
@@ -280,10 +262,6 @@ export class EnergyProximitySystem {
 
     isCircleActivated(circle) {
         const isActivated = circle.activation === 'activated';
-        console.log(`[EnergyProximitySystem] isCircleActivated(${circle.id}):`, {
-            result: isActivated,
-            activation: circle.activation
-        });
         return isActivated;
     }
 
@@ -293,16 +271,12 @@ export class EnergyProximitySystem {
      */
     updateProximityEffects() {
         if (!this.isActive) {
-            console.log('[EnergyProximitySystem] System not active, skipping update');
             return;
         }
 
         const circleArray = Array.from(this.circles.values());
         const newEffects = new Map();
         const newActiveViewers = new Set(); // Track viewers with energy influencers
-
-        console.log('[EnergyProximitySystem] Starting proximity effects update');
-        console.log(`[EnergyProximitySystem] Total registered circles: ${circleArray.length}`);
 
         // Group circles by actual viewerId
         const circlesByViewer = new Map();
@@ -314,23 +288,8 @@ export class EnergyProximitySystem {
             circlesByViewer.get(viewerId).push(data);
         });
 
-        console.log(`[EnergyProximitySystem] Circles grouped by viewer:`, 
-            Array.from(circlesByViewer.entries()).map(([viewerId, circles]) => ({
-                viewerId, 
-                count: circles.length,
-                circles: circles.map(data => ({
-                    id: data.circle.id,
-                    name: data.circle.name,
-                    type: data.circle.type,
-                    energyTypes: data.circle.energyTypes,
-                    activation: data.circle.activation
-                }))
-            }))
-        );
-
         // Calculate effects for each viewer separately
         circlesByViewer.forEach((viewerCircles, viewerId) => {
-            console.log(`[EnergyProximitySystem] Processing viewer ${viewerId} with ${viewerCircles.length} circles`);
             
             const glowCircles = viewerCircles.filter(data => this.isGlowCircle(data.circle));
             const exciterCircles = viewerCircles.filter(data => 
@@ -340,35 +299,11 @@ export class EnergyProximitySystem {
                 this.hasEnergyType(data.circle, 'dampener') && this.isCircleActivated(data.circle)
             );
 
-            console.log(`[EnergyProximitySystem] Viewer ${viewerId} analysis:`, {
-                glowCircles: glowCircles.length,
-                exciterCircles: exciterCircles.length,
-                dampenerCircles: dampenerCircles.length,
-                exciterDetails: exciterCircles.map(data => ({
-                    id: data.circle.id,
-                    name: data.circle.name,
-                    energyTypes: data.circle.energyTypes,
-                    activation: data.circle.activation,
-                    hasExciterType: this.hasEnergyType(data.circle, 'exciter'),
-                    isActivated: this.isCircleActivated(data.circle)
-                })),
-                dampenerDetails: dampenerCircles.map(data => ({
-                    id: data.circle.id,
-                    name: data.circle.name,
-                    energyTypes: data.circle.energyTypes,
-                    activation: data.circle.activation,
-                    hasDampenerType: this.hasEnergyType(data.circle, 'dampener'),
-                    isActivated: this.isCircleActivated(data.circle)
-                }))
-            });
-
             if (exciterCircles.length === 0 && dampenerCircles.length === 0) {
-                console.log(`[EnergyProximitySystem] Viewer ${viewerId} has no active energy influencers, skipping`);
                 return; // Skip processing this viewer entirely
             }
 
             // Mark this viewer as active since it has energy influencers
-            console.log(`[EnergyProximitySystem] Marking viewer ${viewerId} as ACTIVE (has energy influencers)`);
             newActiveViewers.add(viewerId);
 
             // Calculate effects for each glow circle within this viewer only
@@ -457,9 +392,6 @@ export class EnergyProximitySystem {
             });
         });
 
-        // FIXED: Update reactive activeViewers - this will trigger Vue reactivity!
-        console.log(`[EnergyProximitySystem] Update complete. Active viewers:`, Array.from(newActiveViewers));
-        console.log(`[EnergyProximitySystem] Previous active viewers:`, Array.from(this.activeViewers.value));
         this.activeViewers.value = newActiveViewers;
 
         // Apply proximity effects
@@ -517,7 +449,7 @@ export class EnergyProximitySystem {
                     }
                 }
                 // Handle exciter/dampener circles
-                else if (this.hasEnergyType(circle, 'exciter') || this.hasEnergyType(circle, 'dampener')) {
+                else if (true || this.hasEnergyType(circle, 'exciter') || this.hasEnergyType(circle, 'dampener')) {
                     const isActivated = this.isCircleActivated(circle);
                     if (isActivated) {
                         // Activated exciters/dampeners: full opacity
