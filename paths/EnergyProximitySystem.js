@@ -1,9 +1,12 @@
-// EnergyProximitySystem.js - Handles proximity-based scaling, opacity, and saturation effects between energy types (WITH DEBUG LOGGING)
+// EnergyProximitySystem.js - FIXED: Make activeViewers reactive with Vue's ref
+import { ref } from './vue-composition-api.js';
+
 export class EnergyProximitySystem {
     constructor() {
         this.isActive = false;
         this.circles = new Map(); // Map of circle id to circle data and element
         this.proximityEffects = new Map(); // Map of affected circle ids to their current effects
+        this.activeViewers = ref(new Set()); // FIXED: Make this reactive!
         this.animationFrame = null;
         
         // Configuration
@@ -40,18 +43,47 @@ export class EnergyProximitySystem {
             this.animationFrame = null;
         }
         this.resetAllProximityEffects();
+        this.activeViewers.value.clear(); // FIXED: Use .value for reactive ref
+    }
+
+    /**
+     * Check if the proximity system is active for a specific viewer
+     */
+    isViewerActive(viewerId) {
+        const isActive = this.activeViewers.value.has(viewerId); // FIXED: Use .value for reactive ref
+        console.log(`[EnergyProximitySystem] isViewerActive(${viewerId}): ${isActive}`);
+        console.log(`[EnergyProximitySystem] Current active viewers:`, Array.from(this.activeViewers.value));
+        return isActive;
+    }
+
+    /**
+     * Get all active viewer IDs
+     */
+    getActiveViewers() {
+        return Array.from(this.activeViewers.value); // FIXED: Use .value for reactive ref
     }
 
     /**
      * Register a circle with the proximity system
      */
-    registerCircle(id, circle, element, viewerWidth) {
-        if (!circle || !element) return;
+    registerCircle(id, circle, element, viewerWidth, viewerId) {
+        if (!circle || !element || !viewerId) return;
+
+        console.log(`[EnergyProximitySystem] Registering circle:`, {
+            id,
+            name: circle.name,
+            type: circle.type,
+            energyTypes: circle.energyTypes,
+            activation: circle.activation,
+            viewerId,
+            viewerWidth
+        });
 
         this.circles.set(id, {
             circle,
             element,
             viewerWidth,
+            viewerId,
             lastPosition: this.getCirclePosition(circle, viewerWidth),
             tempPosition: null
         });
@@ -61,6 +93,7 @@ export class EnergyProximitySystem {
         
         // Update effects immediately after registration
         if (this.isActive) {
+            console.log(`[EnergyProximitySystem] Updating effects after registering circle ${id}`);
             this.updateProximityEffects();
         }
     }
@@ -89,14 +122,15 @@ export class EnergyProximitySystem {
     /**
      * Update circle data (called when circle moves or changes)
      */
-    updateCircle(id, circle, element, viewerWidth) {
+    updateCircle(id, circle, element, viewerWidth, viewerId) {
         if (!this.circles.has(id)) {
-            this.registerCircle(id, circle, element, viewerWidth);
+            this.registerCircle(id, circle, element, viewerWidth, viewerId);
         } else {
             const data = this.circles.get(id);
             data.circle = circle;
             data.element = element;
             data.viewerWidth = viewerWidth;
+            data.viewerId = viewerId;
             data.lastPosition = this.getCirclePosition(circle, viewerWidth);
         }
         
@@ -154,35 +188,35 @@ export class EnergyProximitySystem {
      * Set proximity effects on an element (scale, opacity, saturation) while preserving other transforms
      */
     setElementProximityEffects(element, scale, opacity = null, saturation = null) {
-    const currentTransform = element.style.transform || '';
-    const scaleRegex = /scale\([^)]*\)/g;
-    const baseTransform = currentTransform.replace(scaleRegex, '').trim();
-    
-    const newTransform = baseTransform 
-        ? `${baseTransform} scale(${scale})`
-        : `scale(${scale})`;
+        const currentTransform = element.style.transform || '';
+        const scaleRegex = /scale\([^)]*\)/g;
+        const baseTransform = currentTransform.replace(scaleRegex, '').trim();
         
-    element.style.transform = newTransform;
-    
-    // Apply opacity and saturation if provided
-    if (opacity !== null) {
-        element.style.opacity = opacity;
-        element.style.filter = `saturate(${saturation})`;
+        const newTransform = baseTransform 
+            ? `${baseTransform} scale(${scale})`
+            : `scale(${scale})`;
+            
+        element.style.transform = newTransform;
         
-        // Also apply effects to the circle's name
-        const entityContainer = element.closest('.entity-container');
-        if (entityContainer) {
-            const nameElement = entityContainer.querySelector('.entity-name');
-            if (nameElement) {
-                nameElement.style.opacity = opacity;
-                nameElement.style.filter = `saturate(${saturation})`;
+        // Apply opacity and saturation if provided
+        if (opacity !== null) {
+            element.style.opacity = opacity;
+            element.style.filter = `saturate(${saturation})`;
+            
+            // Also apply effects to the circle's name
+            const entityContainer = element.closest('.entity-container');
+            if (entityContainer) {
+                const nameElement = entityContainer.querySelector('.entity-name');
+                if (nameElement) {
+                    nameElement.style.opacity = opacity;
+                    nameElement.style.filter = `saturate(${saturation})`;
+                }
             }
         }
+        
+        // Force immediate style application for real-time updates
+        element.offsetHeight; // Trigger reflow
     }
-    
-    // Force immediate style application for real-time updates
-    element.offsetHeight; // Trigger reflow
-}
 
     /**
      * Get absolute position of a circle
@@ -228,7 +262,13 @@ export class EnergyProximitySystem {
      * Check if a circle has a specific energy type
      */
     hasEnergyType(circle, energyType) {
-        return circle.energyTypes && circle.energyTypes.includes(energyType);
+        const hasType = circle.energyTypes && circle.energyTypes.includes(energyType);
+        console.log(`[EnergyProximitySystem] hasEnergyType(${circle.id}, ${energyType}):`, {
+            result: hasType,
+            circleEnergyTypes: circle.energyTypes,
+            isArray: Array.isArray(circle.energyTypes)
+        });
+        return hasType;
     }
 
     /**
@@ -239,32 +279,59 @@ export class EnergyProximitySystem {
     }
 
     isCircleActivated(circle) {
-        return circle.activation === 'activated';
+        const isActivated = circle.activation === 'activated';
+        console.log(`[EnergyProximitySystem] isCircleActivated(${circle.id}):`, {
+            result: isActivated,
+            activation: circle.activation
+        });
+        return isActivated;
     }
 
     /**
      * Update all proximity effects
+     * FIXED: Use reactive activeViewers that will trigger Vue reactivity
      */
     updateProximityEffects() {
         if (!this.isActive) {
+            console.log('[EnergyProximitySystem] System not active, skipping update');
             return;
         }
 
         const circleArray = Array.from(this.circles.values());
         const newEffects = new Map();
+        const newActiveViewers = new Set(); // Track viewers with energy influencers
 
-        // Group circles by viewer (using viewerWidth as a proxy for viewer identity)
+        console.log('[EnergyProximitySystem] Starting proximity effects update');
+        console.log(`[EnergyProximitySystem] Total registered circles: ${circleArray.length}`);
+
+        // Group circles by actual viewerId
         const circlesByViewer = new Map();
         circleArray.forEach(data => {
-            const viewerKey = data.viewerWidth; // Use viewerWidth as viewer identifier
-            if (!circlesByViewer.has(viewerKey)) {
-                circlesByViewer.set(viewerKey, []);
+            const viewerId = data.viewerId;
+            if (!circlesByViewer.has(viewerId)) {
+                circlesByViewer.set(viewerId, []);
             }
-            circlesByViewer.get(viewerKey).push(data);
+            circlesByViewer.get(viewerId).push(data);
         });
 
+        console.log(`[EnergyProximitySystem] Circles grouped by viewer:`, 
+            Array.from(circlesByViewer.entries()).map(([viewerId, circles]) => ({
+                viewerId, 
+                count: circles.length,
+                circles: circles.map(data => ({
+                    id: data.circle.id,
+                    name: data.circle.name,
+                    type: data.circle.type,
+                    energyTypes: data.circle.energyTypes,
+                    activation: data.circle.activation
+                }))
+            }))
+        );
+
         // Calculate effects for each viewer separately
-        circlesByViewer.forEach(viewerCircles => {
+        circlesByViewer.forEach((viewerCircles, viewerId) => {
+            console.log(`[EnergyProximitySystem] Processing viewer ${viewerId} with ${viewerCircles.length} circles`);
+            
             const glowCircles = viewerCircles.filter(data => this.isGlowCircle(data.circle));
             const exciterCircles = viewerCircles.filter(data => 
                 this.hasEnergyType(data.circle, 'exciter') && this.isCircleActivated(data.circle)
@@ -273,9 +340,36 @@ export class EnergyProximitySystem {
                 this.hasEnergyType(data.circle, 'dampener') && this.isCircleActivated(data.circle)
             );
 
-	    if (exciterCircles.length === 0 && dampenerCircles.length === 0) {
-		    return; // Skip processing this viewer entirely
-	    }
+            console.log(`[EnergyProximitySystem] Viewer ${viewerId} analysis:`, {
+                glowCircles: glowCircles.length,
+                exciterCircles: exciterCircles.length,
+                dampenerCircles: dampenerCircles.length,
+                exciterDetails: exciterCircles.map(data => ({
+                    id: data.circle.id,
+                    name: data.circle.name,
+                    energyTypes: data.circle.energyTypes,
+                    activation: data.circle.activation,
+                    hasExciterType: this.hasEnergyType(data.circle, 'exciter'),
+                    isActivated: this.isCircleActivated(data.circle)
+                })),
+                dampenerDetails: dampenerCircles.map(data => ({
+                    id: data.circle.id,
+                    name: data.circle.name,
+                    energyTypes: data.circle.energyTypes,
+                    activation: data.circle.activation,
+                    hasDampenerType: this.hasEnergyType(data.circle, 'dampener'),
+                    isActivated: this.isCircleActivated(data.circle)
+                }))
+            });
+
+            if (exciterCircles.length === 0 && dampenerCircles.length === 0) {
+                console.log(`[EnergyProximitySystem] Viewer ${viewerId} has no active energy influencers, skipping`);
+                return; // Skip processing this viewer entirely
+            }
+
+            // Mark this viewer as active since it has energy influencers
+            console.log(`[EnergyProximitySystem] Marking viewer ${viewerId} as ACTIVE (has energy influencers)`);
+            newActiveViewers.add(viewerId);
 
             // Calculate effects for each glow circle within this viewer only
             glowCircles.forEach(glowData => {
@@ -304,7 +398,6 @@ export class EnergyProximitySystem {
                         const proximityStrength = this.calculateProximityStrength(distance);
                         
                         // Calculate exciter effect as positive influence
-                        // Convert proximity strength to an effect delta from base scale
                         const exciterInfluence = (proximityStrength - this.config.minScale) / (this.config.maxScale - this.config.minScale);
                         netExciterEffect = Math.max(netExciterEffect, exciterInfluence);
                     }
@@ -324,7 +417,6 @@ export class EnergyProximitySystem {
                         const proximityStrength = this.calculateProximityStrength(distance);
                         
                         // Calculate dampener effect as negative influence
-                        // Convert proximity strength to an effect delta (stronger proximity = more dampening)
                         const dampenerInfluence = (proximityStrength - this.config.minScale) / (this.config.maxScale - this.config.minScale);
                         netDampenerEffect = Math.max(netDampenerEffect, dampenerInfluence);
                     }
@@ -350,9 +442,6 @@ export class EnergyProximitySystem {
                         finalScale = baseScale;
                     }
                     
-                    // Clamp final scale within reasonable bounds
-                    //finalScale = Math.max(0.5, Math.min(this.config.maxScale, finalScale));
-                    
                     // Calculate opacity and saturation based on final scale
                     const effectStrength = (finalScale - 0.7) / (this.config.maxScale - 0.7);
                     const clampedEffectStrength = Math.max(0, Math.min(1, effectStrength));
@@ -368,6 +457,11 @@ export class EnergyProximitySystem {
             });
         });
 
+        // FIXED: Update reactive activeViewers - this will trigger Vue reactivity!
+        console.log(`[EnergyProximitySystem] Update complete. Active viewers:`, Array.from(newActiveViewers));
+        console.log(`[EnergyProximitySystem] Previous active viewers:`, Array.from(this.activeViewers.value));
+        this.activeViewers.value = newActiveViewers;
+
         // Apply proximity effects
         this.applyProximityEffects(newEffects);
         this.proximityEffects = newEffects;
@@ -376,66 +470,66 @@ export class EnergyProximitySystem {
     /**
      * Apply proximity effects to elements
      */
-applyProximityEffects(effects) {
-    // Group circles by viewer to check for energy influencers per viewer
-    const circlesByViewer = new Map();
-    this.circles.forEach((data, circleId) => {
-        const viewerKey = data.viewerWidth;
-        if (!circlesByViewer.has(viewerKey)) {
-            circlesByViewer.set(viewerKey, []);
-        }
-        circlesByViewer.get(viewerKey).push({ circleId, data });
-    });
-
-    // Process all circles to set appropriate appearance
-    circlesByViewer.forEach(viewerCircles => {
-        // Check if this viewer has any energy influencers
-        const hasEnergyInfluencers = viewerCircles.some(({ data }) => {
-            const circle = data.circle;
-            return (this.hasEnergyType(circle, 'exciter') || this.hasEnergyType(circle, 'dampener')) 
-                   && this.isCircleActivated(circle);
+    applyProximityEffects(effects) {
+        // Group circles by actual viewerId
+        const circlesByViewer = new Map();
+        this.circles.forEach((data, circleId) => {
+            const viewerId = data.viewerId;
+            if (!circlesByViewer.has(viewerId)) {
+                circlesByViewer.set(viewerId, []);
+            }
+            circlesByViewer.get(viewerId).push({ circleId, data });
         });
 
-        viewerCircles.forEach(({ circleId, data }) => {
-            if (!data.element) return;
+        // Process all circles to set appropriate appearance
+        circlesByViewer.forEach(viewerCircles => {
+            // Check if this viewer has any energy influencers
+            const hasEnergyInfluencers = viewerCircles.some(({ data }) => {
+                const circle = data.circle;
+                return (this.hasEnergyType(circle, 'exciter') || this.hasEnergyType(circle, 'dampener')) 
+                       && this.isCircleActivated(circle);
+            });
 
-            const circle = data.circle;
-            
-            // Handle glow circles
-            if (this.isGlowCircle(circle)) {
-                if (effects.has(circleId)) {
-                    // Apply proximity effects
-                    const effect = effects.get(circleId);
-                    this.setElementProximityEffects(data.element, effect.scale, effect.opacity, effect.saturation);
-                } else if (hasEnergyInfluencers) {
-                    // Only apply activated/inactive effects if there are energy influencers in this viewer
+            viewerCircles.forEach(({ circleId, data }) => {
+                if (!data.element) return;
+
+                const circle = data.circle;
+                
+                // Handle glow circles
+                if (this.isGlowCircle(circle)) {
+                    if (effects.has(circleId)) {
+                        // Apply proximity effects
+                        const effect = effects.get(circleId);
+                        this.setElementProximityEffects(data.element, effect.scale, effect.opacity, effect.saturation);
+                    } else if (hasEnergyInfluencers) {
+                        // Only apply activated/inactive effects if there are energy influencers in this viewer
+                        const isActivated = this.isCircleActivated(circle);
+                        if (isActivated) {
+                            // Activated circles: big & bright by default
+                            this.setElementProximityEffects(data.element, this.config.maxScale, this.config.maxOpacity, this.config.maxSaturation);
+                        } else {
+                            // Inactive circles: small & dim by default
+                            this.setElementProximityEffects(data.element, 0.7, this.config.minOpacity, this.config.minSaturation);
+                        }
+                    } else {
+                        // No energy influencers in this viewer - use neutral appearance
+                        this.setElementProximityEffects(data.element, this.config.minScale, this.config.maxOpacity, this.config.maxSaturation);
+                    }
+                }
+                // Handle exciter/dampener circles
+                else if (this.hasEnergyType(circle, 'exciter') || this.hasEnergyType(circle, 'dampener')) {
                     const isActivated = this.isCircleActivated(circle);
                     if (isActivated) {
-                        // Activated circles: big & bright by default
-                        this.setElementProximityEffects(data.element, this.config.maxScale, this.config.maxOpacity, this.config.maxSaturation);
+                        // Activated exciters/dampeners: full opacity
+                        this.setElementProximityEffects(data.element, this.config.minScale, this.config.maxOpacity, this.config.maxSaturation);
                     } else {
-                        // Inactive circles: small & dim by default
-                        this.setElementProximityEffects(data.element, 0.7, this.config.minOpacity, this.config.minSaturation);
+                        // Inactive exciters/dampeners: dimmed opacity
+                        this.setElementProximityEffects(data.element, this.config.minScale, this.config.inactiveOpacity, this.config.maxSaturation);
                     }
-                } else {
-                    // No energy influencers in this viewer - use neutral appearance
-                    this.setElementProximityEffects(data.element, this.config.minScale, this.config.maxOpacity, this.config.maxSaturation);
                 }
-            }
-            // Handle exciter/dampener circles (unchanged)
-            else if (this.hasEnergyType(circle, 'exciter') || this.hasEnergyType(circle, 'dampener')) {
-                const isActivated = this.isCircleActivated(circle);
-                if (isActivated) {
-                    // Activated exciters/dampeners: full opacity
-                    this.setElementProximityEffects(data.element, this.config.minScale, this.config.maxOpacity, this.config.maxSaturation);
-                } else {
-                    // Inactive exciters/dampeners: dimmed opacity
-                    this.setElementProximityEffects(data.element, this.config.minScale, this.config.inactiveOpacity, this.config.maxSaturation);
-                }
-            }
+            });
         });
-    });
-}
+    }
 
     /**
      * Reset all proximity effects to normal
@@ -448,6 +542,7 @@ applyProximityEffects(effects) {
             }
         });
         this.proximityEffects.clear();
+        this.activeViewers.value.clear(); // FIXED: Use .value to trigger reactivity
     }
 
     /**
@@ -466,6 +561,7 @@ applyProximityEffects(effects) {
         this.resetAllProximityEffects();
         this.circles.clear();
         this.proximityEffects.clear();
+        this.activeViewers.value.clear(); // FIXED: Use .value to trigger reactivity
     }
 }
 

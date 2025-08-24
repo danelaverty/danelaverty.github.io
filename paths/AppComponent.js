@@ -1,9 +1,10 @@
-// AppComponent.js - Updated with SquareDocumentTabs visibility control
+// AppComponent.js - Updated with SquareDocumentTabs visibility control and animation loop cleanup
 import { ref, computed, onMounted, onUnmounted } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
 import { useRectangleSelection } from './useRectangleSelection.js';
 import { useConnectionUpdater, useConnections } from './useConnections.js';
 import { useEnergyProximitySystem } from './EnergyProximitySystem.js';
+import { useAnimationLoopManager } from './AnimationLoopManager.js';
 import { EntityComponent } from './EntityComponent.js';
 import { EntityControls } from './EntityControls.js';
 import { CircleViewer } from './CircleViewer.js';
@@ -23,6 +24,7 @@ export const App = {
         const dataStore = useDataStore();
         const squareViewerContentRef = ref(null);
         const proximitySystem = useEnergyProximitySystem();
+        const animationManager = useAnimationLoopManager(); // NEW: Get animation manager
 
         // Computed properties for viewers and squares
         const visibleCircleViewers = computed(() => dataStore.getVisibleCircleViewers());
@@ -213,6 +215,9 @@ export const App = {
             
             // Stop the energy proximity system
             proximitySystem.stop();
+            
+            // NEW: Cleanup animation loops
+            animationManager.cleanup();
         });
 
         return {

@@ -35,20 +35,7 @@ export const EnergyControl = {
             :title="'Energy Types: ' + (circleEnergyTypes.length > 0 ? circleEnergyTypes.join(', ') : 'None')"
         >
             <!-- Display energy indicator dots -->
-            <template v-if="circleEnergyTypes.length === 0">
-                <div style="color: white; font-size: 16px;">⚡</div>
-            </template>
-            <template v-else>
-                <div 
-                    v-for="energyType in circleEnergyTypes.slice(0, 3)"
-                    :key="energyType"
-                    class="energy-indicator-dot"
-                    :style="{ backgroundColor: getEnergyTypeColor(energyType) }"
-                ></div>
-                <div v-if="circleEnergyTypes.length > 3" class="energy-count">
-                    +{{ circleEnergyTypes.length - 3 }}
-                </div>
-            </template>
+	    <div style="color: white; font-size: 16px;">⚡</div>
         </div>
     </div>
   `
