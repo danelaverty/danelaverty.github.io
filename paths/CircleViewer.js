@@ -1,4 +1,4 @@
-// CircleViewer.js - Enhanced with drop target highlighting, document-based properties, and animation loop support
+// CircleViewer.js - Enhanced with drop target highlighting, document-based properties, animation loop support, and background cycling
 import { ref, computed, onMounted, onUnmounted, watch } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
 import { useRectangleSelection } from './useRectangleSelection.js';
@@ -10,7 +10,7 @@ import { ViewerControls } from './ViewerControls.js';
 import { ConnectionComponent } from './ConnectionComponent.js';
 import { injectComponentStyles } from './styleUtils.js';
 
-// Enhanced component styles with drop target highlighting and animation support
+// Enhanced component styles with drop target highlighting, animation support, and background cycling
 const componentStyles = `
     .circle-viewer {
         position: relative;
@@ -32,7 +32,6 @@ const componentStyles = `
         left: 0;
         right: 0;
         bottom: 0;
-        background-image: url('silhouette.svg');
         background-repeat: no-repeat;
         background-position: center 45px;
         opacity: 0.3;
@@ -41,7 +40,18 @@ const componentStyles = `
         transition: opacity 0.3s ease;
     }
 
-    .circle-viewer.hide-background::before {
+    /* Background image variants */
+    .circle-viewer.background-silhouette::before {
+        background-image: url('silhouette.svg');
+        opacity: 0.3;
+    }
+
+    .circle-viewer.background-cycle::before {
+        background-image: url('cycle.svg');
+        opacity: 0.3;
+    }
+
+    .circle-viewer.background-none::before {
         opacity: 0;
     }
 
@@ -214,6 +224,13 @@ export const CircleViewer = {
         // Width threshold for compact mode (should match ViewerControls)
         const COMPACT_THRESHOLD = 200;
 
+        // Background type constants (should match ViewerControls)
+        const BACKGROUND_TYPES = {
+            SILHOUETTE: 'silhouette',
+            CYCLE: 'cycle',
+            NONE: 'none'
+        };
+
         const viewer = computed(() => dataStore.data.circleViewers.get(props.viewerId));
         
         // NEW: Get viewer properties from the document instead of the viewer object
@@ -222,7 +239,15 @@ export const CircleViewer = {
         });
         
         const viewerWidth = computed(() => viewerProperties.value.width);
-        const showBackground = computed(() => viewerProperties.value.showBackground);
+        
+        // NEW: Updated background handling for cycling
+        const backgroundType = computed(() => {
+            return viewerProperties.value.backgroundType || BACKGROUND_TYPES.SILHOUETTE;
+        });
+        
+        const backgroundClass = computed(() => {
+            return `background-${backgroundType.value}`;
+        });
         
         const currentCircles = computed(() => {
             const circles = dataStore.getCirclesForViewer(props.viewerId);
@@ -679,7 +704,8 @@ export const CircleViewer = {
             dataStore,
             viewer,
             viewerWidth, 
-            showBackground,
+            backgroundType, // NEW: Expose background type
+            backgroundClass, // NEW: Expose background class
             currentCircles,
             animationCopies, // NEW: Expose animation copies
             allCircles, // NEW: Expose combined circles
@@ -723,10 +749,10 @@ export const CircleViewer = {
         <div 
             ref="viewerRef"
             :class="[
-                'circle-viewer', 
+                'circle-viewer',
+                backgroundClass,
                 { 
                     selected: isSelected,
-                    'hide-background': !showBackground,
                     'being-dragged': isBeingDragged,
                     'drop-target-left': isDropTarget && dropTargetSide === 'left',
                     'drop-target-right': isDropTarget && dropTargetSide === 'right'
