@@ -1,4 +1,4 @@
-// uiStore.js - UI state management: viewers, selections, and layout (Updated to use document properties)
+// uiStore.js - UI state management: viewers, selections, and layout (Updated to use document properties with background type support)
 import { reactive } from './vue-composition-api.js';
 
 let uiStoreInstance = null;
@@ -18,13 +18,20 @@ function createUIStore() {
         selectedSquareViewerId: null
     });
 
+    // Background type constants (should match documentStore)
+    const BACKGROUND_TYPES = {
+        SILHOUETTE: 'silhouette',
+        CYCLE: 'cycle',
+        NONE: 'none'
+    };
+
     // Viewer operations
     const createCircleViewer = (width = 270, documentId = null) => {
         const id = `viewer_${data.nextViewerId++}`;
         const viewer = {
             id,
             currentCircleDocumentId: documentId
-            // NOTE: width and showBackground are now stored in the document, not here
+            // NOTE: width, showBackground, and backgroundType are now stored in the document, not here
         };
         
         data.circleViewers.set(id, viewer);
@@ -46,7 +53,7 @@ function createUIStore() {
         return getCircleViewers();
     };
 
-    // UPDATED: Now syncs viewer properties to the associated document
+    // UPDATED: Now syncs viewer properties to the associated document with background type support
     const updateCircleViewer = (id, updates, documentStore = null) => {
         const viewer = data.circleViewers.get(id);
         if (!viewer) return null;
@@ -61,6 +68,10 @@ function createUIStore() {
             }
             if (updates.showBackground !== undefined) {
                 viewerPropertyUpdates.showBackground = updates.showBackground;
+            }
+            // NEW: Handle backgroundType updates
+            if (updates.backgroundType !== undefined) {
+                viewerPropertyUpdates.backgroundType = updates.backgroundType;
             }
             
             // Update the document's viewer properties
@@ -146,18 +157,26 @@ function createUIStore() {
         return 'No Document';
     };
 
-    // NEW: Get viewer properties from the associated document
+    // UPDATED: Get viewer properties from the associated document with background type migration
     const getViewerProperties = (viewerId, documentStore) => {
         const viewer = data.circleViewers.get(viewerId);
         if (!viewer || !viewer.currentCircleDocumentId || !documentStore) {
             // Return defaults if no document or document store
             return {
                 width: 270,
-                showBackground: true
+                showBackground: true,
+                backgroundType: BACKGROUND_TYPES.SILHOUETTE
             };
         }
         
-        return documentStore.getCircleDocumentViewerProperties(viewer.currentCircleDocumentId);
+        const properties = documentStore.getCircleDocumentViewerProperties(viewer.currentCircleDocumentId);
+        
+        // Ensure all required properties exist with proper defaults
+        return {
+            width: properties.width || 270,
+            showBackground: properties.showBackground !== undefined ? properties.showBackground : true,
+            backgroundType: properties.backgroundType || BACKGROUND_TYPES.SILHOUETTE
+        };
     };
 
     const getCircleDocumentForViewer = (viewerId) => {
@@ -311,6 +330,8 @@ function createUIStore() {
 
     return {
         data,
+        // Constants
+        BACKGROUND_TYPES, // NEW: Expose background type constants
         // Viewer management
         createCircleViewer,
         getCircleViewers,
@@ -322,7 +343,7 @@ function createUIStore() {
         ensureSelectedViewer,
         isViewerSelected,
         getViewerTitle,
-        getViewerProperties, // NEW: Get properties from document
+        getViewerProperties, // UPDATED: Get properties from document with background type support
         getCircleDocumentForViewer,
         setCircleDocumentForViewer,
         // Selection management

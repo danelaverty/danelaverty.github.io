@@ -1,11 +1,11 @@
-// ViewerControls.js - Enhanced with drag state handling, document-based properties, energy system indicator, and animation loop toggle
+// ViewerControls.js - Enhanced with drag state handling, document-based properties, energy system indicator, animation loop toggle, and background cycling
 import { ref, computed, nextTick, onMounted, onUnmounted } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
 import { useEnergyProximitySystem } from './EnergyProximitySystem.js';
 import { useAnimationLoopManager } from './AnimationLoopManager.js';
 import { injectComponentStyles } from './styleUtils.js';
 
-// Enhanced component styles with drag state support, editing styles, energy system indicator, and animation toggle
+// Enhanced component styles with drag state support, editing styles, energy system indicator, animation toggle, and background cycling
 const componentStyles = `
     .viewer-controls {
         position: absolute;
@@ -329,16 +329,44 @@ const componentStyles = `
         background-color: #f44336;
     }
 
-    .viewer-button.background-toggle.active {
+    /* Updated background toggle styles for cycling through states */
+    .viewer-button.background-toggle {
+        position: relative;
+    }
+
+    .viewer-button.background-toggle.silhouette {
         background-color: rgba(255, 255, 255, .08);
+        color: #ccc;
+    }
+
+    .viewer-button.background-toggle.cycle {
+        background-color: rgba(76, 175, 80, 0.2);
+        color: #4CAF50;
+    }
+
+    .viewer-button.background-toggle.none {
+        background-color: transparent;
+        color: #666;
     }
 
     .viewer-button.background-toggle:hover {
         background-color: #666;
+        color: #fff;
     }
 
-    .viewer-button.background-toggle.active:hover {
+    .viewer-button.background-toggle.silhouette:hover {
         background-color: rgba(255, 255, 255, .15);
+        color: #fff;
+    }
+
+    .viewer-button.background-toggle.cycle:hover {
+        background-color: rgba(76, 175, 80, 0.3);
+        color: #66BB6A;
+    }
+
+    .viewer-button.background-toggle.none:hover {
+        background-color: #555;
+        color: #aaa;
     }
 
     /* Energy system active background toggle */
@@ -346,8 +374,12 @@ const componentStyles = `
         background-color: #777;
     }
 
-    .viewer-controls.energy-active .viewer-button.background-toggle.active:hover {
+    .viewer-controls.energy-active .viewer-button.background-toggle.silhouette:hover {
         background-color: rgba(255, 255, 255, .2);
+    }
+
+    .viewer-controls.energy-active .viewer-button.background-toggle.cycle:hover {
+        background-color: rgba(76, 175, 80, 0.4);
     }
 
     .viewer-button.animation-toggle.active {
@@ -405,6 +437,13 @@ export const ViewerControls = {
         // Width threshold for compact mode (in pixels)
         const COMPACT_THRESHOLD = 200;
 
+        // Background cycling constants
+        const BACKGROUND_TYPES = {
+            SILHOUETTE: 'silhouette',
+            CYCLE: 'cycle',
+            NONE: 'none'
+        };
+
         const viewer = computed(() => dataStore.data.circleViewers.get(props.viewerId));
         const viewerTitle = computed(() => dataStore.getViewerTitle(props.viewerId));
         
@@ -422,15 +461,40 @@ export const ViewerControls = {
             const activeViewers = proximitySystem.getActiveViewers();
             const isActive = proximitySystem.isViewerActive(props.viewerId);
             
-            console.log(`[ViewerControls] Energy active check for viewer ${props.viewerId}:`, isActive);
-            console.log(`[ViewerControls] All active viewers from proximity system:`, activeViewers);
-            console.log(`[ViewerControls] Active viewers includes this viewer:`, activeViewers.includes(props.viewerId));
-            
             return isActive;
         });
 
         // NEW: Check if animation loop is active for this viewer
         const isAnimationActive = ref(false);
+
+        // Background state computed properties
+        const backgroundType = computed(() => {
+            return viewerProperties.value.backgroundType || BACKGROUND_TYPES.SILHOUETTE;
+        });
+
+        const backgroundIcon = computed(() => {
+            switch (backgroundType.value) {
+                case BACKGROUND_TYPES.SILHOUETTE:
+                    return '◐'; // Half circle for silhouette
+                case BACKGROUND_TYPES.CYCLE:
+                    return '◯'; // Circle for cycle
+                case BACKGROUND_TYPES.NONE:
+                default:
+                    return '○'; // Empty circle for none
+            }
+        });
+
+        const backgroundTitle = computed(() => {
+            switch (backgroundType.value) {
+                case BACKGROUND_TYPES.SILHOUETTE:
+                    return 'Background: Silhouette (click to cycle)';
+                case BACKGROUND_TYPES.CYCLE:
+                    return 'Background: Cycle (click to cycle)';
+                case BACKGROUND_TYPES.NONE:
+                default:
+                    return 'Background: None (click to cycle)';
+            }
+        });
 
         // Watch for animation loop status changes
         const updateAnimationStatus = () => {
@@ -570,15 +634,31 @@ export const ViewerControls = {
             emit('close');
         };
 
-        const handleBackgroundToggle = () => {
+        // Updated background cycling handler
+        const handleBackgroundCycle = () => {
             // Prevent actions during drag operations or editing
             if (isDragActive.value || isEditing.value) return;
             
-            const currentState = viewerProperties.value.showBackground;
+            const currentType = backgroundType.value;
+            let nextType;
+            
+            // Cycle through: silhouette -> cycle -> none -> silhouette
+            switch (currentType) {
+                case BACKGROUND_TYPES.SILHOUETTE:
+                    nextType = BACKGROUND_TYPES.CYCLE;
+                    break;
+                case BACKGROUND_TYPES.CYCLE:
+                    nextType = BACKGROUND_TYPES.NONE;
+                    break;
+                case BACKGROUND_TYPES.NONE:
+                default:
+                    nextType = BACKGROUND_TYPES.SILHOUETTE;
+                    break;
+            }
             
             // Update the viewer properties, which will be persisted to the document
             dataStore.updateCircleViewer(props.viewerId, { 
-                showBackground: !currentState 
+                backgroundType: nextType
             });
         };
 
@@ -591,7 +671,9 @@ export const ViewerControls = {
                 animationManager.stopLoop(props.viewerId);
             } else {
                 // Start animation - get circles for this viewer
-                const documentId = dataStore.getCircleDocumentForViewer(props.viewerId);
+                const doc = dataStore.getCircleDocumentForViewer(props.viewerId);
+                if (!doc) return;
+                const documentId = doc.id;
                 if (!documentId) return;
                 
                 const circles = dataStore.getCirclesForDocument(documentId);
@@ -624,6 +706,10 @@ export const ViewerControls = {
             editingName,
             isEnergyActive, // NEW: Expose energy active state
             isAnimationActive, // NEW: Expose animation active state
+            backgroundType, // NEW: Expose background type
+            backgroundIcon, // NEW: Expose background icon
+            backgroundTitle, // NEW: Expose background title
+            BACKGROUND_TYPES, // NEW: Expose background type constants
             isBeingDragged,
             isDropTarget,
             isDragActive,
@@ -634,7 +720,7 @@ export const ViewerControls = {
             handleTitleBlur,
             handleReorderMouseDown,
             handleClose,
-            handleBackgroundToggle,
+            handleBackgroundCycle, // NEW: Updated handler name
             handleAnimationToggle // NEW: Expose animation toggle handler
         };
     },
@@ -692,11 +778,11 @@ export const ViewerControls = {
                     >▶</button>
                     <button 
                         class="viewer-button background-toggle"
-                        :class="{ active: viewerProperties.showBackground }"
-                        @click="handleBackgroundToggle"
-                        title="Toggle background image"
+                        :class="backgroundType"
+                        @click="handleBackgroundCycle"
+                        :title="backgroundTitle"
                         :disabled="isDragActive || isEditing"
-                    >∘</button>
+                    >{{ backgroundIcon }}</button>
                     <button 
                         class="viewer-button close"
                         @click="handleClose"
@@ -723,11 +809,11 @@ export const ViewerControls = {
                     >▶</button>
                     <button 
                         class="viewer-button background-toggle"
-                        :class="{ active: viewerProperties.showBackground }"
-                        @click="handleBackgroundToggle"
-                        title="Toggle background image"
+                        :class="backgroundType"
+                        @click="handleBackgroundCycle"
+                        :title="backgroundTitle"
                         :disabled="isDragActive || isEditing"
-                    >∘</button>
+                    >{{ backgroundIcon }}</button>
                     <button 
                         class="viewer-button close"
                         @click="handleClose"

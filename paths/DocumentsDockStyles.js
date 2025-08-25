@@ -144,6 +144,7 @@ const componentStyles = `
         line-height: 1.1;
         transition: all 0.2s ease;
         padding: 2px;
+        padding-right: 13px;
         position: relative;
         user-select: none;
     }

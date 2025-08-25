@@ -1,4 +1,4 @@
-// documentStore.js - Document management for circles and squares (Updated with viewer properties persistence)
+// documentStore.js - Document management for circles and squares (Updated with viewer properties persistence and background cycling)
 import { reactive } from './vue-composition-api.js';
 
 let documentStoreInstance = null;
@@ -11,6 +11,13 @@ function createDocumentStore() {
         nextCircleDocumentId: 1,
         nextSquareDocumentId: 1
     });
+
+    // Background type constants
+    const BACKGROUND_TYPES = {
+        SILHOUETTE: 'silhouette',
+        CYCLE: 'cycle',
+        NONE: 'none'
+    };
 
     // Utility for generating unique names
     const generateUniqueName = (entityType, baseName, contextId = null) => {
@@ -76,10 +83,11 @@ function createDocumentStore() {
             document.mostRecentlySetCircleType = 'glow';
             document.isPinned = false;
             document.parentId = parentId || null;
-            // NEW: Add viewer properties with defaults
+            // UPDATED: Add viewer properties with new backgroundType
             document.viewerProperties = {
                 width: 270,
-                showBackground: true
+                showBackground: true, // Keep for backward compatibility
+                backgroundType: BACKGROUND_TYPES.SILHOUETTE // NEW: Default background type
             };
         }
         
@@ -151,7 +159,7 @@ function createDocumentStore() {
         return false;
     };
 
-    // NEW: Update viewer properties for a circle document
+    // UPDATED: Update viewer properties for a circle document with background type support
     const updateCircleDocumentViewerProperties = (id, properties) => {
         const document = data.circleDocuments.get(id);
         if (document) {
@@ -159,28 +167,58 @@ function createDocumentStore() {
             if (!document.viewerProperties) {
                 document.viewerProperties = {
                     width: 270,
-                    showBackground: true
+                    showBackground: true,
+                    backgroundType: BACKGROUND_TYPES.SILHOUETTE
                 };
             }
             
             // Update only provided properties
             Object.assign(document.viewerProperties, properties);
+            
+            // Handle backward compatibility: if showBackground is set, update backgroundType accordingly
+            if (properties.showBackground !== undefined && properties.backgroundType === undefined) {
+                document.viewerProperties.backgroundType = properties.showBackground ? 
+                    BACKGROUND_TYPES.SILHOUETTE : BACKGROUND_TYPES.NONE;
+            }
+            
             return true;
         }
         return false;
     };
 
-    // NEW: Get viewer properties for a circle document
+    // UPDATED: Get viewer properties for a circle document with background type migration
     const getCircleDocumentViewerProperties = (id) => {
         const document = data.circleDocuments.get(id);
         if (document) {
-            // Return default properties if not set
-            return document.viewerProperties || {
-                width: 270,
-                showBackground: true
-            };
+            // Ensure properties exist with defaults
+            if (!document.viewerProperties) {
+                document.viewerProperties = {
+                    width: 270,
+                    showBackground: true,
+                    backgroundType: BACKGROUND_TYPES.SILHOUETTE
+                };
+            }
+            
+            const properties = document.viewerProperties;
+            
+            // Migrate old showBackground to backgroundType if needed
+            if (properties.backgroundType === undefined) {
+                properties.backgroundType = properties.showBackground === false ? 
+                    BACKGROUND_TYPES.NONE : BACKGROUND_TYPES.SILHOUETTE;
+            }
+            
+            // Ensure showBackground is consistent with backgroundType for backward compatibility
+            properties.showBackground = properties.backgroundType !== BACKGROUND_TYPES.NONE;
+            
+            return properties;
         }
-        return null;
+        
+        // Return default properties if document not found
+        return {
+            width: 270,
+            showBackground: true,
+            backgroundType: BACKGROUND_TYPES.SILHOUETTE
+        };
     };
 
     const deleteDocument = (entityType, id) => {
@@ -440,7 +478,7 @@ function createDocumentStore() {
         return docsToDelete.length;
     };
 
-    // Serialization
+    // UPDATED: Serialization with background type migration
     const serialize = () => ({
         circleDocuments: Array.from(data.circleDocuments.entries()),
         squareDocuments: Array.from(data.squareDocuments.entries()),
@@ -449,6 +487,7 @@ function createDocumentStore() {
         nextSquareDocumentId: data.nextSquareDocumentId
     });
 
+    // UPDATED: Deserialization with background type migration
     const deserialize = (savedData) => {
         if (savedData.circleDocuments) {
             data.circleDocuments = new Map(savedData.circleDocuments);
@@ -464,12 +503,24 @@ function createDocumentStore() {
                 if (doc.parentId === undefined) {
                     doc.parentId = null;
                 }
-                // NEW: Ensure viewer properties exist with defaults
+                // UPDATED: Ensure viewer properties exist with migration support
                 if (doc.viewerProperties === undefined) {
                     doc.viewerProperties = {
                         width: 270,
-                        showBackground: true
+                        showBackground: true,
+                        backgroundType: BACKGROUND_TYPES.SILHOUETTE
                     };
+                } else {
+                    // Migrate existing properties if needed
+                    if (doc.viewerProperties.backgroundType === undefined) {
+                        // Use showBackground to determine initial backgroundType
+                        doc.viewerProperties.backgroundType = doc.viewerProperties.showBackground === false ? 
+                            BACKGROUND_TYPES.NONE : BACKGROUND_TYPES.SILHOUETTE;
+                    }
+                    // Ensure showBackground is present for backward compatibility
+                    if (doc.viewerProperties.showBackground === undefined) {
+                        doc.viewerProperties.showBackground = doc.viewerProperties.backgroundType !== BACKGROUND_TYPES.NONE;
+                    }
                 }
             });
         }
@@ -486,6 +537,8 @@ function createDocumentStore() {
 
     return {
         data,
+        // Constants
+        BACKGROUND_TYPES, // NEW: Expose background type constants
         // Generic methods
         createDocument,
         getDocument,
@@ -500,7 +553,7 @@ function createDocumentStore() {
         updateCircleDocumentPin,
         updateCircleDocumentParent,
         deleteCircleDocument,
-        // NEW: Viewer properties methods
+        // UPDATED: Viewer properties methods with background type support
         updateCircleDocumentViewerProperties,
         getCircleDocumentViewerProperties,
         // Hierarchy methods
