@@ -1,4 +1,4 @@
-// AppComponent.js - Updated with SquareDocumentTabs visibility control and animation loop cleanup
+// AppComponent.js - Updated with drag state management for squares and ExplicitConnection support
 import { ref, computed, onMounted, onUnmounted } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
 import { useRectangleSelection } from './useRectangleSelection.js';
@@ -13,7 +13,7 @@ import { CircleCharacteristicsBar } from './CircleCharacteristicsBar.js';
 import { SquareDocumentTabs } from './SquareDocumentTabs.js';
 import { SharedDropdown } from './SharedDropdown.js';
 import { IndicatorEmojiPicker } from './IndicatorEmojiPicker.js';
-import { ConnectionComponent, ConnectionSVGComponent } from './ConnectionComponent.js';
+import { ConnectionComponent } from './ConnectionComponent.js';
 import { createKeyboardHandler, setupKeyboardListeners } from './keyboardHandler.js';
 import { createViewerManager } from './viewerManager.js';
 import { createEntityHandlers } from './entityHandlers.js';
@@ -25,6 +25,46 @@ export const App = {
         const squareViewerContentRef = ref(null);
         const proximitySystem = useEnergyProximitySystem();
         const animationManager = useAnimationLoopManager(); // NEW: Get animation manager
+
+        // NEW: Square drag state management
+        const squareDragState = ref({
+            isDragging: false,
+            draggedEntityIds: [],
+            currentDeltas: { deltaX: 0, deltaY: 0 },
+            entityType: null,
+            viewerId: null
+        });
+
+        // NEW: Handle square drag events
+        const handleSquareDragStart = (event) => {
+            squareDragState.value = {
+                isDragging: true,
+                draggedEntityIds: [event.entityId],
+                currentDeltas: { deltaX: 0, deltaY: 0 },
+                entityType: event.entityType,
+                viewerId: event.viewerId
+            };
+        };
+
+        const handleSquareDragMove = (event) => {
+            if (squareDragState.value.isDragging) {
+                squareDragState.value.currentDeltas = {
+                    deltaX: event.deltaX,
+                    deltaY: event.deltaY
+                };
+                squareDragState.value.draggedEntityIds = event.selectedEntityIds || [event.entityId];
+            }
+        };
+
+        const handleSquareDragEnd = (event) => {
+            squareDragState.value = {
+                isDragging: false,
+                draggedEntityIds: [],
+                currentDeltas: { deltaX: 0, deltaY: 0 },
+                entityType: null,
+                viewerId: null
+            };
+        };
 
         // Computed properties for viewers and squares
         const visibleCircleViewers = computed(() => dataStore.getVisibleCircleViewers());
@@ -53,6 +93,16 @@ export const App = {
             return connections.value.filter(connection => {
                 return connection.entityType === 'square';
             });
+        });
+
+        // NEW: Get explicit connections for squares
+        const squareExplicitConnections = computed(() => {
+            return dataStore.getExplicitConnectionsForEntityType('square');
+        });
+
+        // NEW: Combine regular and explicit connections for squares
+        const allSquareConnections = computed(() => {
+            return [...squareConnections.value, ...squareExplicitConnections.value];
         });
         
         // Calculate container dimensions for connections
@@ -115,6 +165,27 @@ export const App = {
         // Create handlers
         const viewerManager = createViewerManager(dataStore); // This now includes dragState
         const entityHandlers = createEntityHandlers(dataStore);
+
+        // NEW: Enhanced square select handler that supports ctrl-click for explicit connections
+        const handleSquareSelectWithExplicitConnections = (id, isCtrlClick = false) => {
+            if (isCtrlClick) {
+                // Handle explicit connection creation/deletion
+                const selectedSquareIds = dataStore.getSelectedSquares();
+                const selectedEntityType = 'square';
+                
+                const result = dataStore.handleEntityCtrlClick(
+                    id, 'square', selectedSquareIds, selectedEntityType
+                );
+                
+                console.log('Square explicit connection result:', result);
+                
+                // Don't change selection when ctrl-clicking for connections
+                return;
+            }
+            
+            // Regular selection behavior (non-ctrl click)
+            entityHandlers.handleSquareSelect(id, false); // Force non-ctrl behavior
+        };
 
         // Keyboard viewer reordering handler
         const handleKeyboardReorderViewer = (viewerId, direction) => {
@@ -226,7 +297,7 @@ export const App = {
             currentSquares,
             hasSelectedCircle,
             shouldShowSquareDocumentTabs, // NEW: Expose the computed property
-            squareConnections,
+            allSquareConnections, // UPDATED: Use combined connections
             squareViewerContentRef,
             sharedDropdownRef,
             isIndicatorPickerVisible,
@@ -240,8 +311,16 @@ export const App = {
             handleShowDropdown,
             handleIndicatorPickerClose,
             handleIndicatorPickerSelect,
-            // Expose handlers from modules
-            ...entityHandlers,
+            // NEW: Square drag state
+            squareDragState,
+            handleSquareDragStart,
+            handleSquareDragMove,
+            handleSquareDragEnd,
+            // Expose handlers from modules - UPDATED: Use explicit connection square handler
+            ...{
+                ...entityHandlers,
+                handleSquareSelect: handleSquareSelectWithExplicitConnections // Override with explicit connection version
+            },
             ...viewerManager // This now includes dragState and new drag handlers
         };
     },
@@ -293,11 +372,12 @@ export const App = {
                         :class="['square-viewer-content', { 'no-characteristics-bar': !hasSelectedCircle }]"
                         @click="handleSquareViewerClick"
                     >
-                        <!-- Connection Rendering - Only square connections in square viewer -->
+                        <!-- Connection Rendering - UPDATED: Use combined connections (regular + explicit) with drag state -->
                         <ConnectionComponent
-                            v-for="connection in squareConnections"
+                            v-for="connection in allSquareConnections"
                             :key="connection.id"
                             :connection="connection"
+                            :entity-drag-state="squareDragState"
                         />
                         
                         <EntityComponent
@@ -310,6 +390,9 @@ export const App = {
                             @update-position="handleSquarePositionUpdate"
                             @update-name="handleSquareNameUpdate"
                             @move-multiple="handleSquareMoveMultiple"
+                            @drag-start="handleSquareDragStart"
+                            @drag-move="handleSquareDragMove"
+                            @drag-end="handleSquareDragEnd"
                         />
                         
                         <!-- Rectangle selection visual for squares -->

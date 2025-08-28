@@ -310,4 +310,68 @@ export const emojiStyles = `
     .clear-recent-button:hover .clear-recent-icon {
         color: white;
     }
+
+    .connectible-display {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        height: 32px;
+    }
+
+    .connectible-display:hover {
+        background-color: rgba(60, 60, 60, 0.9);
+        border-color: rgba(255, 255, 255, 0.4);
+        transform: scale(1.05);
+    }
+
+    .connectible-icon {
+        font-size: 16px;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 20px;
+        line-height: 1;
+    }
+
+    .connectible-label {
+        color: white;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+    }
+
+    /* State-specific styling */
+    .connectible-display.receives {
+        border-color: rgba(100, 149, 237, 0.3);
+    }
+
+    .connectible-display.receives:hover {
+        border-color: rgba(100, 149, 237, 0.6);
+        background-color: rgba(100, 149, 237, 0.1);
+    }
+
+    .connectible-display.gives {
+        border-color: rgba(50, 205, 50, 0.3);
+    }
+
+    .connectible-display.gives:hover {
+        border-color: rgba(50, 205, 50, 0.6);
+        background-color: rgba(50, 205, 50, 0.1);
+    }
+
+    .connectible-display.refuses {
+        border-color: rgba(220, 20, 60, 0.3);
+    }
+
+    .connectible-display.refuses:hover {
+        border-color: rgba(220, 20, 60, 0.6);
+        background-color: rgba(220, 20, 60, 0.1);
+    }
 `;

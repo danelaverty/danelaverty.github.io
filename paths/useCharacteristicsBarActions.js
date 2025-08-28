@@ -86,6 +86,12 @@ export const useCharacteristicsBarActions = () => {
     });
   };
 
+  const updateCircleConnectible = (connectibleValue, circle) => {
+	  if (!circle) return;
+	  const dataStore = useDataStore();
+	  dataStore.updateCircle(circle.id, { connectible: connectibleValue });
+  };
+
   // Toggle activation state
   const toggleActivation = (selectedCircle) => {
     if (!selectedCircle) return;
@@ -204,6 +210,7 @@ export const useCharacteristicsBarActions = () => {
     toggleActivation,
     selectEmoji,
     selectCircleEmoji,
+    updateCircleConnectible,
     applyToAllSelectedCircles // NEW: For multi-circle operations
   };
 };

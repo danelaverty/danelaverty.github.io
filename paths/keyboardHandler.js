@@ -235,6 +235,45 @@ export function createKeyboardHandler(dataStore, onShowIndicatorPicker = null, o
             return;
         }
 
+	    // Handle CTRL+SHIFT+C for circular alignment
+        if (e.key === 'C' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
+            e.preventDefault();
+            
+            // Priority: Squares first, then Circles
+            if (dataStore.getSelectedSquares().length > 1) {
+                alignEntities('square', 'circular');
+            } else if (dataStore.getSelectedCircles().length > 1) {
+                alignEntities('circle', 'circular');
+            }
+            return;
+        }
+
+        // Handle CTRL+SHIFT+O for expanding group spacing
+        if (e.key === 'O' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
+            e.preventDefault();
+            
+            // Priority: Squares first, then Circles
+            if (dataStore.getSelectedSquares().length > 1) {
+                alignEntities('square', 'expand');
+            } else if (dataStore.getSelectedCircles().length > 1) {
+                alignEntities('circle', 'expand');
+            }
+            return;
+        }
+
+        // Handle CTRL+SHIFT+P for contracting group spacing
+        if (e.key === 'P' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
+            e.preventDefault();
+            
+            // Priority: Squares first, then Circles
+            if (dataStore.getSelectedSquares().length > 1) {
+                alignEntities('square', 'contract');
+            } else if (dataStore.getSelectedCircles().length > 1) {
+                alignEntities('circle', 'contract');
+            }
+            return;
+        }
+
 	// SHIFT+CTRL+V - Check what to do based on selection and clipboard
         if (e.key === 'V' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
                 const selectedSquares = dataStore.getSelectedSquares();

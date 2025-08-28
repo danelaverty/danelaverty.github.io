@@ -48,12 +48,12 @@ export class ConnectionManager {
     }
 
     shouldConnectCircles(entity1, entity2) {
-	    // Two entities of the same type shouldn't connect unless they're both 'shape' type
-        const entity1IsShape = entity1.type === 'shape';
-        const entity2IsShape = entity2.type === 'shape';
-	const entity1MatchesEntity2 = entity1.type === entity2.type;
+        const entity1Gives = entity1.connectible === 'gives';
+        const entity2Gives = entity2.connectible === 'gives';
+        const entity1Refuses = entity1.connectible === 'refuses';
+        const entity2Refuses = entity2.connectible === 'refuses';
         
-        return !entity1MatchesEntity2 || (entity1IsShape && entity2IsShape);
+        return (entity1Gives || entity2Gives) && !(entity1Refuses || entity2Refuses);
     }
 
     /**

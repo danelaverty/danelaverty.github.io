@@ -57,6 +57,7 @@ function createEntityStore() {
             entity.colors = ['#4CAF50']; // Support for multiple colors
             entity.energyTypes = []; // Energy types array
             entity.activation = 'activated'; // Default activation state
+	    entity.connectible = 'receives'; // NEW: Default connectible state
             entity.referenceID = null; // NEW: Reference ID for referenced circles
             
             // Set circle type based on document's mostRecentlySetCircleType
@@ -124,6 +125,10 @@ function createEntityStore() {
                     entity.colors = entity.color ? [entity.color] : ['#4CAF50'];
                 }
                 
+		if (!entity.connectible) {
+			entity.connectible = 'receives'; // Default for existing circles
+		}
+
                 // Ensure energyTypes array always exists
                 if (!entity.energyTypes) {
                     entity.energyTypes = [];
@@ -193,9 +198,17 @@ function createEntityStore() {
 						refCircle.energyTypes = [...entity.energyTypes]; // Copy the array
 					}
 
+					if (updates.connectible !== undefined) {
+						entity.connectible = updates.connectible;
+					}
+
 					// Cascade activation changes
 					if (updates.activation !== undefined) {
 						refCircle.activation = entity.activation;
+					}
+
+					if (updates.connectible !== undefined) {
+						refCircle.connectible = entity.connectible;
 					}
 
 					// Ensure referenced circles have all required properties
@@ -205,6 +218,11 @@ function createEntityStore() {
 					if (!refCircle.activation) {
 						refCircle.activation = 'activated';
 					}
+
+					if (!refCircle.connectible) {
+						refCircle.connectible = 'receives';
+					}
+
 					if (!refCircle.colors) {
 						refCircle.colors = [refCircle.color || '#4CAF50'];
 					}
@@ -307,6 +325,11 @@ function createEntityStore() {
                 if (circle.emoji === undefined) {
                     circle.emoji = null;
                 }
+
+		if (circle.connectible === undefined) {
+			circle.connectible = 'receives'; // Default for existing circles
+		}
+
                 // Set default emoji for existing emoji-type circles that don't have one
                 if (circle.type === 'emoji' && !circle.emoji) {
                     circle.emoji = '🧑🏼';

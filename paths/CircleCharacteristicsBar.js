@@ -22,7 +22,9 @@ import { CircleEmojiControl } from './CBCircleEmojiControl.js';
 import { ColorControl } from './CBColorControl.js';
 import { EnergyControl } from './CBEnergyControl.js';
 import { ActivationControl } from './CBActivationControl.js';
-import { BreakReferenceControl } from './CBBreakReferenceControl.js'; // NEW: Import break reference control
+import { CBJumpToReferenceControl } from './CBJumpToReferenceControl.js'; // NEW: Import jump to reference control
+import { CBConnectibleControl } from './CBConnectibleControl.js';
+import { BreakReferenceControl } from './CBBreakReferenceControl.js';
 import { EmojiControl } from './CBEmojiControl.js';
 import { RecentEmojisControl } from './CBRecentEmojisControl.js';
 
@@ -144,6 +146,28 @@ export const CircleCharacteristicsBar = {
       return selectedCircles.length >= 1; // Changed from === 1 to >= 1
     });
 
+    const circleConnectible = computed(() => {
+	    if (hasMultipleCirclesSelected.value) {
+		    // For multiple selection, show the most common value or 'receives' as default
+		    const selectedIds = dataStore.getSelectedCircles();
+		    const connectibleValues = selectedIds.map(id => {
+			    const circle = dataStore.getCircle(id);
+			    return circle ? circle.connectible : 'receives';
+		    });
+
+		    // Count occurrences and return most common
+		    const counts = connectibleValues.reduce((acc, val) => {
+			    acc[val] = (acc[val] || 0) + 1;
+			    return acc;
+		    }, {});
+
+		    return Object.entries(counts).reduce((a, b) => counts[a[0]] > counts[b[0]] ? a : b)[0];
+	    } else if (dataHooks.selectedCircle.value) {
+		    return dataHooks.selectedCircle.value.connectible || 'receives';
+	    }
+	    return 'receives';
+    });
+
     // NEW: Get selected circle objects for multiple selection
     const getSelectedCircleObjects = computed(() => {
       const selectedIds = dataStore.getSelectedCircles();
@@ -187,6 +211,20 @@ export const CircleCharacteristicsBar = {
       }
       // For single selection, hide if it's a reference circle
       return !isReferenceCircle.value;
+    });
+
+    // NEW: Should show jump to reference control - same logic as break reference but separate for clarity
+    const shouldShowJumpToReferenceControl = computed(() => {
+      if (hasMultipleCirclesSelected.value) {
+        // For multiple selection, check if ANY selected circle is a reference
+        const selectedIds = dataStore.getSelectedCircles();
+        return selectedIds.some(id => {
+          const circle = dataStore.getCircle(id);
+          return circle && circle.referenceID !== null;
+        });
+      }
+      // For single selection, show if it's a reference circle
+      return isReferenceCircle.value;
     });
 
     // NEW: Should show break reference control - opposite of shouldShowCircleCharacteristicControls
@@ -237,6 +275,29 @@ export const CircleCharacteristicsBar = {
       if (!isCtrlClick) {
         pickerHooks.closePickerAction('color');
       }
+    };
+
+    const handleConnectibleCycle = () => {
+	    if (hasMultipleCirclesSelected.value) {
+		    // Apply to all selected circles
+		    const selectedIds = dataStore.getSelectedCircles();
+		    selectedIds.forEach(circleId => {
+			    const circle = dataStore.getCircle(circleId);
+			    if (circle) {
+				    const nextConnectible = getNextConnectibleValue(circle.connectible);
+				    actionHooks.updateCircleConnectible(nextConnectible, circle);
+			    }
+		    });
+	    } else {
+		    const nextConnectible = getNextConnectibleValue(dataHooks.selectedCircle.value.connectible);
+		    actionHooks.updateCircleConnectible(nextConnectible, dataHooks.selectedCircle.value);
+	    }
+    };
+
+    const getNextConnectibleValue = (currentValue) => {
+	    const cycle = ['receives', 'gives', 'refuses'];
+	    const currentIndex = cycle.indexOf(currentValue);
+	    return cycle[(currentIndex + 1) % cycle.length];
     };
 
     const handleTypeSelect = (typeInfo) => {
@@ -302,6 +363,70 @@ export const CircleCharacteristicsBar = {
         actionHooks.selectCircleEmoji(emoji.emoji, dataHooks.selectedCircle.value);
       }
       pickerHooks.closePickerAction('circleEmoji');
+    };
+
+    // NEW: Handle jumping to referenced circle (same logic as ctrl+click in CircleViewer)
+    const handleJumpToReference = () => {
+      // This function implements the same logic as ctrl+click in CircleViewer.handleCircleSelect
+      if (hasMultipleCirclesSelected.value) {
+        // For multiple selection, jump to the first reference found
+        const selectedIds = dataStore.getSelectedCircles();
+        for (const circleId of selectedIds) {
+          const circle = dataStore.getCircle(circleId);
+          if (circle && circle.referenceID) {
+            performJumpToReference(circle.referenceID);
+            break; // Only jump to first reference found
+          }
+        }
+      } else if (dataHooks.selectedCircle.value && dataHooks.selectedCircle.value.referenceID) {
+        performJumpToReference(dataHooks.selectedCircle.value.referenceID);
+      }
+    };
+
+    // NEW: Helper function to perform the actual jump to reference
+    const performJumpToReference = (referencedCircleId) => {
+      // Find which document contains the referenced circle
+      const allCircleDocuments = dataStore.getAllCircleDocuments();
+      let referencedDocumentId = null;
+      
+      for (const doc of allCircleDocuments) {
+        const circlesInDoc = dataStore.getCirclesForDocument(doc.id);
+        if (circlesInDoc.some(c => c.id === referencedCircleId)) {
+          referencedDocumentId = doc.id;
+          break;
+        }
+      }
+      
+      if (!referencedDocumentId) {
+        console.warn(`Referenced circle ${referencedCircleId} not found in any document`);
+        return;
+      }
+      
+      // Check if referenced circle is already visible in a viewer
+      const allViewers = Array.from(dataStore.data.circleViewers.values());
+      let targetViewer = null;
+      
+      for (const viewer of allViewers) {
+        const viewerDoc = dataStore.getCircleDocumentForViewer(viewer.id);
+        if (!viewerDoc) { break; }
+        const viewerDocId = viewerDoc.id
+        if (viewerDocId === referencedDocumentId) {
+          targetViewer = viewer;
+          break;
+        }
+      }
+      
+      if (targetViewer) {
+        // Select the referenced circle
+        dataStore.selectCircle(referencedCircleId, targetViewer.id, false);
+        dataStore.setSelectedViewer(targetViewer.id);
+      } else {
+        // Create new viewer for the referenced circle
+        const newViewer = dataStore.createCircleViewer();
+        dataStore.setCircleDocumentForViewer(newViewer.id, referencedDocumentId);
+        dataStore.selectCircle(referencedCircleId, newViewer.id, false);
+        dataStore.setSelectedViewer(newViewer.id);
+      }
     };
 
     // NEW: Handle breaking references for selected circles
@@ -374,6 +499,7 @@ export const CircleCharacteristicsBar = {
       hasMultipleCirclesSelected, // NEW
       shouldShowEmojiControls, // NEW
       shouldShowCircleCharacteristicControls, // NEW
+      shouldShowJumpToReferenceControl, // NEW
       shouldShowBreakReferenceControl, // NEW
       getSelectedCircleObjects, // NEW
       
@@ -387,6 +513,7 @@ export const CircleCharacteristicsBar = {
       handleQuickEmojiSelect,
       handleCategorySelect,
       handleClearRecentEmojis,
+      handleJumpToReference, // NEW
       handleBreakReference, // NEW
       
       // Utilities
@@ -418,7 +545,10 @@ export const CircleCharacteristicsBar = {
       circleEmojiPickerRefTemplate,
       colorPickerRefTemplate,
       energyPickerRefTemplate,
-      emojiPickerRefTemplate
+      emojiPickerRefTemplate,
+
+      circleConnectible,
+      handleConnectibleCycle,
     };
   },
   
@@ -429,7 +559,9 @@ export const CircleCharacteristicsBar = {
     ColorControl,
     EnergyControl,
     ActivationControl,
-    BreakReferenceControl, // NEW: Add break reference control component
+    CBJumpToReferenceControl, // NEW: Add jump to reference control component
+    CBConnectibleControl,
+    BreakReferenceControl,
     EmojiControl,
     RecentEmojisControl,
     TypePickerModal,
@@ -485,9 +617,22 @@ export const CircleCharacteristicsBar = {
                 :isActivated="isCircleActivated"
                 @toggle="handleActivationToggle"
             />
+
+	    <CBConnectibleControl 
+		    v-if="shouldShowCircleCharacteristicControls"
+		    :connectible="circleConnectible"
+		    @cycle="handleConnectibleCycle"
+	    />
         </template>
 
-        <!-- Break Reference Control (Only shown for reference circles or multi-selection with references) -->
+        <!-- Reference Controls (Only shown for reference circles or multi-selection with references) -->
+        <!-- Jump to Reference Control (NEW: positioned before Break Reference Control) -->
+        <CBJumpToReferenceControl 
+            v-if="shouldShowJumpToReferenceControl"
+            @jump-to-reference="handleJumpToReference"
+        />
+
+        <!-- Break Reference Control -->
         <BreakReferenceControl 
             v-if="shouldShowBreakReferenceControl"
             @break-reference="handleBreakReference"

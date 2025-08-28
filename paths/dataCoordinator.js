@@ -1,8 +1,9 @@
-// dataCoordinator.js - Pure data access layer that coordinates between stores (Updated to use EntityService for square document changes)
+// dataCoordinator.js - Pure data access layer that coordinates between stores (Updated with ExplicitConnection support)
 import { useEntityStore } from './entityStore.js';
 import { useDocumentStore } from './documentStore.js';
 import { useUIStore } from './uiStore.js';
 import { EntityService } from './entityService.js';
+import { ExplicitConnectionService } from './ExplicitConnectionService.js';
 import { getRecentEmojisStoreInstance } from './useRecentEmojis.js';
 import { useClipboardStore } from './clipboardStore.js';
 
@@ -10,7 +11,7 @@ let dataCoordinatorInstance = null;
 
 /**
  * Pure data coordination layer - handles persistence and store coordination
- * Does NOT contain business logic - that belongs in EntityService
+ * Does NOT contain business logic - that belongs in EntityService and ExplicitConnectionService
  */
 function createDataCoordinator() {
     const entityStore = useEntityStore();
@@ -19,6 +20,19 @@ function createDataCoordinator() {
     const entityService = new EntityService();
 
     const storageKey = `circleApp_${window.location.pathname}`;
+    
+    // Create the data coordinator reference that services need
+    const dataCoordinatorRef = {
+        getCircle: (id) => entityStore.getCircle(id),
+        getSquare: (id) => entityStore.getSquare(id),
+        getCirclesForViewer: (viewerId) => {
+            const documentId = uiStore.getCircleDocumentForViewer(viewerId);
+            return documentId ? entityStore.getCirclesForDocument(documentId) : [];
+        }
+    };
+    
+    // Initialize ExplicitConnectionService with coordinator reference
+    const explicitConnectionService = new ExplicitConnectionService(dataCoordinatorRef);
 
     // Persistence
     const saveToStorage = () => {
@@ -28,7 +42,9 @@ function createDataCoordinator() {
                 ...entityStore.serialize(),
                 ...documentStore.serialize(),
                 ...uiStore.serialize(),
-                ...recentEmojisStore.serialize()
+                ...recentEmojisStore.serialize(),
+                // NEW: Add explicit connections to persistence
+                explicitConnections: explicitConnectionService.serialize()
             };
             localStorage.setItem(storageKey, JSON.stringify(dataToSave));
             return true;
@@ -48,6 +64,12 @@ function createDataCoordinator() {
                 documentStore.deserialize(savedData);
                 uiStore.deserialize(savedData);
                 recentEmojisStore.deserialize(savedData);
+                
+                // NEW: Load explicit connections after entities are loaded
+                if (savedData.explicitConnections) {
+                    explicitConnectionService.deserialize(savedData.explicitConnections);
+                }
+                
                 return true;
             }
         } catch (error) {
@@ -84,6 +106,93 @@ function createDataCoordinator() {
         };
     };
 
+    // NEW: Create wrapper for explicit connection operations
+    const withPersistenceExplicit = (serviceMethod) => {
+        return (...args) => {
+            const result = serviceMethod.apply(explicitConnectionService, args);
+            if (result && result.action !== 'error' && result.action !== 'none') {
+                saveToStorage();
+            }
+            return result;
+        };
+    };
+
+    // Enhanced delete methods that also clean up explicit connections
+    const deleteCircleWithConnections = (id) => {
+        // Delete explicit connections first
+        const connectionResult = explicitConnectionService.deleteConnectionsForEntity(id, 'circle');
+        
+        // Then delete the circle using the service
+        const deleteResult = entityService.deleteCircle(id);
+        
+        if (deleteResult) {
+            saveToStorage();
+        }
+        
+        return deleteResult;
+    };
+
+    const deleteSquareWithConnections = (id) => {
+        // Delete explicit connections first
+        const connectionResult = explicitConnectionService.deleteConnectionsForEntity(id, 'square');
+        
+        // Then delete the square using the service
+        const deleteResult = entityService.deleteSquare(id);
+        
+        if (deleteResult) {
+            saveToStorage();
+        }
+        
+        return deleteResult;
+    };
+
+    // Enhanced bulk delete methods
+    const deleteSelectedCirclesWithConnections = () => {
+        const circleIds = uiStore.getSelectedCircles();
+        let deletedCount = 0;
+        let connectionsDeletedCount = 0;
+        
+        circleIds.forEach(id => {
+            // Clean up connections first
+            const connResult = explicitConnectionService.deleteConnectionsForEntity(id, 'circle');
+            connectionsDeletedCount += connResult.count;
+            
+            // Delete circle
+            if (entityService.deleteCircle(id)) {
+                deletedCount++;
+            }
+        });
+        
+        if (deletedCount > 0) {
+            saveToStorage();
+        }
+        
+        return { deletedEntities: deletedCount, deletedConnections: connectionsDeletedCount };
+    };
+
+    const deleteSelectedSquaresWithConnections = () => {
+        const squareIds = uiStore.getSelectedSquares();
+        let deletedCount = 0;
+        let connectionsDeletedCount = 0;
+        
+        squareIds.forEach(id => {
+            // Clean up connections first
+            const connResult = explicitConnectionService.deleteConnectionsForEntity(id, 'square');
+            connectionsDeletedCount += connResult.count;
+            
+            // Delete square
+            if (entityService.deleteSquare(id)) {
+                deletedCount++;
+            }
+        });
+        
+        if (deletedCount > 0) {
+            saveToStorage();
+        }
+        
+        return { deletedEntities: deletedCount, deletedConnections: connectionsDeletedCount };
+    };
+
     // Return unified API that combines data access with business logic
     return {
         // Raw data access (for templates that need reactive refs)
@@ -96,20 +205,28 @@ function createDataCoordinator() {
             get selectedSquareIds() { return uiStore.data.selectedSquareIds; }
         },
 
-        // Business operations (with persistence)
+        // Business operations (with persistence) - UPDATED: Use enhanced delete methods
         createCircleInViewer: withPersistence(entityService.createCircleInViewer.bind(entityService)),
         createSquare: withPersistence(entityService.createSquare.bind(entityService)),
-        deleteCircle: withPersistence(entityService.deleteCircle.bind(entityService)),
-        deleteSquare: withPersistence(entityService.deleteSquare.bind(entityService)),
+        deleteCircle: deleteCircleWithConnections, // UPDATED: Use enhanced version
+        deleteSquare: deleteSquareWithConnections, // UPDATED: Use enhanced version
         selectCircle: withPersistence(entityService.selectCircle.bind(entityService)),
         selectSquare: withPersistence(entityService.selectSquare.bind(entityService)),
         deleteCircleDocument: withPersistence(entityService.deleteCircleDocument.bind(entityService)),
         selectAllCirclesInViewer: withPersistence(entityService.selectAllCirclesInViewer.bind(entityService)),
         selectAllSquaresInDocument: withPersistence(entityService.selectAllSquaresInDocument.bind(entityService)),
-        deleteSelectedCircles: withPersistence(entityService.deleteSelectedCircles.bind(entityService)),
-        deleteSelectedSquares: withPersistence(entityService.deleteSelectedSquares.bind(entityService)),
+        deleteSelectedCircles: deleteSelectedCirclesWithConnections, // UPDATED: Use enhanced version
+        deleteSelectedSquares: deleteSelectedSquaresWithConnections, // UPDATED: Use enhanced version
         moveSelectedCircles: withPersistence(entityService.moveSelectedCircles.bind(entityService)),
         moveSelectedSquares: withPersistence(entityService.moveSelectedSquares.bind(entityService)),
+
+        // NEW: Explicit connection operations
+        handleEntityCtrlClick: withPersistenceExplicit(explicitConnectionService.handleEntityCtrlClick.bind(explicitConnectionService)),
+        getExplicitConnections: explicitConnectionService.getVisualConnections.bind(explicitConnectionService),
+        getExplicitConnectionsForEntityType: explicitConnectionService.getVisualConnectionsForEntityType.bind(explicitConnectionService),
+        deleteExplicitConnectionsForEntity: withPersistenceExplicit(explicitConnectionService.deleteConnectionsForEntity.bind(explicitConnectionService)),
+        getExplicitConnectionCount: explicitConnectionService.getConnectionCount.bind(explicitConnectionService),
+        hasExplicitConnections: explicitConnectionService.hasConnections.bind(explicitConnectionService),
 
         // Simple entity operations (direct store access with persistence)
         updateCircle: (id, updates) => {

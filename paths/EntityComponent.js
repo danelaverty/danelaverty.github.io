@@ -1,16 +1,10 @@
-// EntityComponent.js - Entity component with reference circle support and animation copy handling
-import { ref, nextTick, onMounted, onUnmounted, computed, watch } from './vue-composition-api.js';
-import { useDataStore } from './dataCoordinator.js';
+// EntityComponent.js - Main entity component shell with template (UPDATED: Add drag state events)
 import { injectComponentStyles } from './styleUtils.js';
-import { CircleTypeRenderer } from './CircleTypeRenderer.js';
-import { SelectionRenderer } from './SelectionRenderer.js';
-import { EntityDragHandler } from './EntityDragHandler.js';
-import { EntityNameEditor } from './EntityNameEditor.js';
 import { EmojiRenderer } from './EmojiRenderer.js';
-import { EmojiService } from './emojiService.js';
-import { EntityStyleCalculator } from './EntityStyleCalculator.js';
 import { EnergyIndicators } from './EnergyIndicators.js';
-import { useEnergyProximitySystem } from './EnergyProximitySystem.js';
+import { useEntityState } from './EntityState.js';
+import { useEntityRendering } from './EntityRendering.js';
+import { useEntityInteractions } from './EntityInteractions.js';
 
 // Component styles - updated to support bold squares, indicator emojis, reference circles, and animation copies
 const componentStyles = `
@@ -163,7 +157,7 @@ const componentStyles = `
         pointer-events: none;
     }
 
-    /* NEW: Animation copy name styling - semi-transparent, non-editable */
+    /* Animation copy name styling - semi-transparent, non-editable */
     .entity-name.animation-copy {
         opacity: 0.7;
         cursor: default;
@@ -179,18 +173,18 @@ const componentStyles = `
     .dragging {
         z-index: 999;
         transform: scale(1.05);
-        /* FIXED: Only disable position transitions, keep transform transitions for proximity effects */
+        /* Only disable position transitions, keep transform transitions for proximity effects */
         transition: left 0s, top 0s, transform 0.15s ease-out;
     }
 
-    /* NEW: Animation copy container styling */
+    /* Animation copy container styling */
     .entity-container.animation-copy {
         opacity: 0.8;
         pointer-events: none;
         z-index: 998; /* Below normal entities but above connections */
     }
 
-    /* NEW: Animation dimmed styling for original attractees */
+    /* Animation dimmed styling for original attractees */
     .entity-container.animation-dimmed {
         opacity: 0.2;
     }
@@ -210,456 +204,30 @@ export const EntityComponent = {
         EmojiRenderer,
         EnergyIndicators
     },
-    emits: ['select', 'update-position', 'update-name', 'move-multiple'],
+    emits: ['select', 'update-position', 'update-name', 'move-multiple', 'drag-start', 'drag-move', 'drag-end'],
     setup(props, { emit }) {
-        const dataStore = useDataStore();
-        const elementRef = ref(null);
-        const shapeRef = ref(null);
-        const nameRef = ref(null);
-        const proximitySystem = useEnergyProximitySystem();
+        // Use state management composable
+        const state = useEntityState(props);
+        
+        // Use rendering composable
+        const rendering = useEntityRendering(props, state);
+        
+        // Use interactions composable
+        const interactions = useEntityInteractions(props, emit, state);
 
-        // Use separated concerns modules
-        const styleCalculator = new EntityStyleCalculator(props);
-
-        // Check if this is a referenced circle
-        const isReferencedCircle = computed(() => {
-            return props.entityType === 'circle' && props.entity.referenceID !== null;
-        });
-
-        // NEW: Check if this is an animation copy
-        const isAnimationCopy = computed(() => {
-            return props.entity.isAnimationCopy === true;
-        });
-
-        // NEW: Check if this circle should be dimmed during animation
-        const isAnimationDimmed = computed(() => {
-            return props.entityType === 'circle' && 
-                   !isAnimationCopy.value && 
-                   props.entity._isAnimationDimmed === true;
-        });
-
-        // Create a modified name editor that respects referenced circles and animation copies
-        const createNameEditor = () => {
-            const baseEditor = new EntityNameEditor(nameRef, emit);
-            
-            // Override the handleNameClick to prevent editing for referenced circles and animation copies
-            const originalHandleNameClick = baseEditor.handleNameClick;
-            baseEditor.handleNameClick = (e) => {
-                if (isReferencedCircle.value || isAnimationCopy.value) {
-                    e.stopPropagation();
-                    return; // Don't allow editing for referenced circles or animation copies
-                }
-                originalHandleNameClick(e);
-            };
-            
-            return baseEditor;
-        };
-
-        const nameEditor = createNameEditor();
-
-        // FIXED: Create a drag move handler for proximity system updates
-        const handleProximityDragMove = (deltaX, deltaY) => {
-            
-            // Update proximity system with temporary positions during drag
-            if (props.entityType === 'circle') {
-                
-                // Set temporary position for this circle
-                const centerX = props.viewerWidth / 2;
-                const tempX = centerX + props.entity.x + deltaX + 16; // +16 for circle center
-                const tempY = props.entity.y + deltaY + 16; // +16 for circle center
-                proximitySystem.setTempPosition(props.entity.id, tempX, tempY);
-                
-                // If multiple circles are selected and moving together, update all their temp positions
-                const isMultiSelected = dataStore.hasMultipleCirclesSelected() && 
-                                       dataStore.isCircleSelected(props.entity.id);
-                
-                if (isMultiSelected) {
-                    const selectedIds = dataStore.getSelectedCircles();
-                    selectedIds.forEach(id => {
-                        if (id !== props.entity.id) {
-                            const circle = dataStore.getCircle(id);
-                            if (circle) {
-                                const circleTempX = centerX + circle.x + deltaX + 16;
-                                const circleTempY = circle.y + deltaY + 16;
-                                proximitySystem.setTempPosition(id, circleTempX, circleTempY);
-                            }
-                        }
-                    });
-                }
-                
-                // CRITICAL FIX: Force immediate proximity system update
-                proximitySystem.forceUpdate();
-            }
-        };
-
-        // FIXED: Create a drag end handler for proximity system cleanup
-        const handleProximityDragEnd = () => {
-            // Clear temporary positions for circles
-            if (props.entityType === 'circle') {
-                proximitySystem.clearTempPosition(props.entity.id);
-                
-                // Clear temp positions for all selected circles if multi-selecting
-                const isMultiSelected = dataStore.hasMultipleCirclesSelected() && 
-                                       dataStore.isCircleSelected(props.entity.id);
-                
-                if (isMultiSelected) {
-                    const selectedIds = dataStore.getSelectedCircles();
-                    selectedIds.forEach(id => {
-                        proximitySystem.clearTempPosition(id);
-                    });
-                }
-                
-                // Force final update to reset any lingering effects
-                proximitySystem.forceUpdate();
-            }
-        };
-
-        // FIXED: Determine the correct viewerId for circles
-        const actualViewerId = computed(() => {
-            if (props.entityType === 'circle') {
-                // For circles, try multiple methods to get the correct viewer ID
-                
-                // Method 1: Use explicit viewerId prop (most reliable)
-                if (props.viewerId) {
-                    return props.viewerId;
-                }
-                
-                // Method 2: Use selected viewer from dataStore
-                if (dataStore.data?.selectedViewerId) {
-                    return dataStore.data.selectedViewerId;
-                }
-                
-                // Method 3: Try to find which viewer contains this circle
-                if (dataStore.getCirclesForViewer) {
-                    // Check common viewer IDs
-                    const commonViewerIds = ['viewer_1', 'viewer_2', 'viewer_3', 'viewer_4'];
-                    
-                    for (const viewerId of commonViewerIds) {
-                        try {
-                            const circlesInViewer = dataStore.getCirclesForViewer(viewerId);
-                            if (circlesInViewer.some(c => c.id === props.entity.id)) {
-                                return viewerId;
-                            }
-                        } catch (error) {
-                            // Skip this viewer if there's an error
-                            continue;
-                        }
-                    }
-                }
-                
-                console.warn(`⚠️ EntityComponent: Could not determine viewerId for circle ${props.entity.id}, using fallback`);
-                return 'viewer_1'; // Fallback
-            }
-            
-            // For squares, viewerId is not needed
-            return null;
-        });
-
-        // FIXED: Create enhanced props with the correct viewerId
-        const enhancedProps = computed(() => {
-            const base = { ...props };
-            
-            if (props.entityType === 'circle') {
-                base.viewerId = actualViewerId.value;
-            }
-            
-            return base;
-        });
-
-        // FIXED: Create drag handler with proper callbacks and enhanced props
-        const dragHandler = new EntityDragHandler(
-            elementRef, 
-            emit, 
-            dataStore, 
-            enhancedProps.value, // Use the enhanced props with correct viewerId
-            {
-                onDragMove: handleProximityDragMove,
-                onDragEnd: handleProximityDragEnd
-            }
-        );
-
-        // Check if entity has emoji using service (for squares)
-        const hasEmoji = computed(() => {
-            if (props.entityType === 'square') {
-                return EmojiService.hasEmoji(props.entity);
-            }
-            return false;
-        });
-
-        // Check if square is bold
-        const isBold = computed(() => {
-            return props.entityType === 'square' && props.entity.bold === true;
-        });
-
-        // Check if square has indicator emoji
-        const hasIndicatorEmoji = computed(() => {
-            return props.entityType === 'square' && props.entity.indicatorEmoji;
-        });
-
-        // Get circle energy types (for circles only)
-        const circleEnergyTypes = computed(() => {
-            if (props.entityType === 'circle') {
-                return props.entity.energyTypes || [];
-            }
-            return [];
-        });
-
-        // Get indicator emoji class for border styling
-        const getIndicatorClass = computed(() => {
-            if (props.entityType !== 'square' || !props.entity.indicatorEmoji) {
-                return null;
-            }
-
-            const indicatorMap = {
-                '⚠️': 'indicator-alert',
-                '✅': 'indicator-done',
-                '⭐': 'indicator-star',
-                '🚨': 'indicator-issue',
-                '▶️': 'indicator-next',
-                '🏁': 'indicator-finish'
-            };
-
-            return indicatorMap[props.entity.indicatorEmoji] || null;
-        });
-
-        // Computed position styles with center-relative positioning for circles
-        const positionStyles = computed(() => {
-            if (props.entityType === 'circle' && props.viewerWidth) {
-                // For circles: position relative to center of viewer
-                const centerX = props.viewerWidth / 2;
-                const calculatedLeft = centerX + props.entity.x;
-                
-                return {
-                    left: calculatedLeft + 'px',
-                    top: props.entity.y + 'px'
-                };
-            } else {
-                // For squares: use position as-is
-                return {
-                    left: props.entity.x + 'px',
-                    top: props.entity.y + 'px'
-                };
-            }
-        });
-
-        // Computed styles using the style calculator
-        const circleStyles = computed(() => styleCalculator.getCircleStyles());
-        const squareStyles = computed(() => styleCalculator.getSquareStyles());
-        const shapeClasses = computed(() => {
-            const classes = styleCalculator.getShapeClasses(props.isSelected);
-            
-            // Add bold class for bold squares
-            if (isBold.value) {
-                classes.push('bold');
-            }
-            
-            // Add indicator class for squares with indicator emojis
-            if (getIndicatorClass.value) {
-                classes.push(getIndicatorClass.value);
-            }
-            
-            return classes;
-        });
-
-        // Computed name classes for bold styling, reference styling, and animation styling
-        const nameClasses = computed(() => {
-            const classes = ['entity-name', `${props.entityType}-name`];
-            
-            // Add bold class for bold squares
-            if (isBold.value) {
-                classes.push('bold');
-            }
-            
-            // Add referenced class for referenced circles
-            if (isReferencedCircle.value) {
-                classes.push('referenced');
-            }
-            
-            // NEW: Add animation copy class for animation copies
-            if (isAnimationCopy.value) {
-                classes.push('animation-copy');
-            }
-            
-            return classes;
-        });
-
-        // Square count for circles (for rendering)
-        const squareCount = computed(() => {
-            if (props.entityType !== 'circle') return 0;
-            
-            const squareDocuments = dataStore.getSquareDocumentsForCircle(props.entity.id);
-            let totalSquares = 0;
-            squareDocuments.forEach(doc => {
-                const squares = dataStore.getSquaresForDocument(doc.id);
-                totalSquares += squares.length;
-            });
-            return Math.min(totalSquares, 6); // Cap at 6 for performance
-        });
-
-        // Register/update circle with proximity system
-	const updateProximityRegistration = () => {
-            if (props.entityType === 'circle' && shapeRef.value && props.viewerWidth && actualViewerId.value) {
-                proximitySystem.updateCircle(
-                    props.entity.id,
-                    props.entity,
-                    shapeRef.value,
-                    props.viewerWidth,
-                    actualViewerId.value // FIXED: Pass the actual viewerId
-                );
-            }
-        };
-
-	watch(() => props.entity, (newEntity, oldEntity) => {
-    if (newEntity.isAnimationCopy) {
-        console.log(`[EntityComponent] Animation copy ${newEntity.id} position changed:`, {
-            x: newEntity.x,
-            y: newEntity.y,
-            oldX: oldEntity?.x,
-            oldY: oldEntity?.y
-        });
-    }
-}, { deep: true });
-
-        // Watch for changes that should trigger re-rendering
-	watch(
-    () => [
-        props.entity.type, 
-        props.entity.color, 
-        props.entity.colors, 
-        props.entity.emoji, // Watch for emoji changes in circles
-        props.entity.energyTypes, // Watch for energy type changes
-        props.entity.activation, // Watch for activation changes
-        props.entity.referenceID, // Watch for referenceID changes
-        squareCount.value,
-        props.isSelected
-    ],
-    (newValues, oldValues) => {
-        if (props.entityType === 'circle' && shapeRef.value) {
-            const hasActualChanges = newValues.some((val, index) => 
-                JSON.stringify(val) !== JSON.stringify(oldValues?.[index])
-            );
-            
-            if (hasActualChanges) {
-                nextTick(() => {
-                    CircleTypeRenderer.render(shapeRef.value, props.entity, props.isSelected, squareCount.value);
-                    // Update proximity system registration after re-render
-                    updateProximityRegistration();
-                });
-            }
-        }
-    },
-    { deep: true }
-);
-
-        // Watch for position changes to update proximity system
-        watch(
-            () => [props.entity.x, props.entity.y, props.viewerWidth],
-            () => {
-                if (props.entityType === 'circle') {
-                    nextTick(() => {
-                        updateProximityRegistration();
-                    });
-                }
-            }
-        );
-
-        // Watch for selection changes - now handled centrally by SelectionRenderer
-        watch(
-            () => props.isSelected,
-            (newSelected, oldSelected) => {
-                if (shapeRef.value && newSelected !== oldSelected) {
-                    nextTick(() => {
-                        // Use centralized selection management
-                        SelectionRenderer.handleSelectionChange(
-                            shapeRef.value, 
-                            newSelected, 
-                            props.entityType, 
-                            props.entity
-                        );
-                    });
-                }
-            }
-        );
-
-        // Initialize selection and rendering on mount
-        const initializeEntityDisplay = () => {
-            if (!shapeRef.value) return;
-            
-            if (props.entityType === 'circle') {
-                // Render circle type first
-                CircleTypeRenderer.render(shapeRef.value, props.entity, props.isSelected, squareCount.value);
-                // Register with proximity system
-                updateProximityRegistration();
-            } else if (props.entityType === 'square') {
-                // Initialize selection for squares
-                SelectionRenderer.initializeSelection(
-                    shapeRef.value, 
-                    props.entityType, 
-                    props.entity, 
-                    props.isSelected
-                );
-            }
-        };
-
-        onMounted(() => {
-            nextTick(() => {
-                initializeEntityDisplay();
-                
-                // Start proximity system if not already started
-                if (props.entityType === 'circle') {
-                    //proximitySystem.start();
-                }
-            });
-        });
-
-        onUnmounted(() => {
-            // Cleanup
-            if (shapeRef.value) {
-                SelectionRenderer.removeSelectionIndicator(shapeRef.value);
-            }
-            
-            // Unregister from proximity system
-            if (props.entityType === 'circle') {
-                proximitySystem.unregisterCircle(props.entity.id);
-            }
-        });
-
-        // Cleanup function for when component is unmounted
+        // Cleanup function for external use
         const cleanup = () => {
-            if (shapeRef.value) {
-                SelectionRenderer.removeSelectionIndicator(shapeRef.value);
-            }
-            
-            // Unregister from proximity system
-            if (props.entityType === 'circle') {
-                proximitySystem.unregisterCircle(props.entity.id);
-            }
+            rendering.cleanupRendering();
         };
 
         return {
-            elementRef,
-            shapeRef,
-            nameRef,
-            positionStyles,
-            circleStyles,
-            squareStyles,
-            shapeClasses,
-            nameClasses,
-            hasEmoji,
-            isBold,
-            hasIndicatorEmoji,
-            circleEnergyTypes,
-            isReferencedCircle,
-            isAnimationCopy, // NEW: Expose animation copy state
-            isAnimationDimmed, // NEW: Expose animation dimmed state
-            // Expose methods from drag handler
-            handleClick: dragHandler.handleClick,
-            handleMouseDown: dragHandler.handleMouseDown,
-            handleNameClick: nameEditor.handleNameClick,
-            handleNameKeydown: nameEditor.handleNameKeydown,
-            finishNameEdit: nameEditor.finishNameEdit,
-            handleBlur: nameEditor.handleBlur,
-            // Expose cleanup for potential external use
+            // State
+            ...state,
+            // Rendering
+            ...rendering,
+            // Interactions
+            ...interactions,
+            // Cleanup
             cleanup
         };
     },
@@ -672,9 +240,16 @@ export const EntityComponent = {
             ...circleStyles,
             ...squareStyles
         }"
+        :class="{
+            'animation-copy': isAnimationCopy,
+            'animation-dimmed': isAnimationDimmed
+        }"
         :data-entity-id="entity.id"
         @click="handleClick"
         @mousedown="handleMouseDown"
+        @drag-start="(event) => $emit('drag-start', event)"
+        @drag-move="(event) => $emit('drag-move', event)"
+        @drag-end="(event) => $emit('drag-end', event)"
     >
         <!-- Render shape div for squares and all circle types except triangle and emoji -->
         <div 
