@@ -1,4 +1,4 @@
-// EntityDragHandler.js - FIXED: Prevent connection endpoint jump on drag end
+// EntityDragHandler.js - UPDATED: Add drag state emission for explicit connections
 import { onMounted } from './vue-composition-api.js';
 import { useDraggable } from './useDraggable.js';
 import { useConnectionDragUpdater } from './useConnections.js';
@@ -149,6 +149,13 @@ export class EntityDragHandler {
         
         // FIXED: Initialize drag state
         this.currentDragState = { deltaX: 0, deltaY: 0, isDragging: true };
+        
+        // NEW: Emit drag start event
+        this.emit('drag-start', {
+            entityId: this.props.entity.id,
+            entityType: this.props.entityType,
+            viewerId: this.props.viewerId
+        });
     }
 
     onDragMove(deltaX, deltaY) {
@@ -165,6 +172,16 @@ export class EntityDragHandler {
         
         this.updateVisualsDuringDrag(deltaX, deltaY);
         this.updateConnectionsDuringDrag();
+        
+        // NEW: Emit drag move event with current state
+        this.emit('drag-move', {
+            entityId: this.props.entity.id,
+            entityType: this.props.entityType,
+            viewerId: this.props.viewerId,
+            deltaX,
+            deltaY,
+            selectedEntityIds: this.entityTypeHandler.getSelectedEntityIds()
+        });
     }
 
     updateVisualsDuringDrag(deltaX, deltaY) {
@@ -230,6 +247,13 @@ export class EntityDragHandler {
 
         // Reset drag state
         this.dragStateManager.reset();
+        
+        // NEW: Emit drag end event
+        this.emit('drag-end', {
+            entityId: this.props.entity.id,
+            entityType: this.props.entityType,
+            viewerId: this.props.viewerId
+        });
         
         // FIXED: Use nextTick to ensure position updates are processed before clearing drag state
         this.$nextTick(() => {

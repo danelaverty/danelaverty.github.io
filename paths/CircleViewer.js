@@ -1,190 +1,15 @@
-// CircleViewer.js - Enhanced with drop target highlighting, document-based properties, animation loop support, and background cycling
-import { ref, computed, onMounted, onUnmounted, watch } from './vue-composition-api.js';
-import { useDataStore } from './dataCoordinator.js';
-import { useRectangleSelection } from './useRectangleSelection.js';
-import { useConnectionUpdater, useConnections } from './useConnections.js';
-import { useAnimationLoopManager } from './AnimationLoopManager.js';
+// CircleViewer.js - Pure Vue component shell and template (Updated with drag state management and ExplicitConnection support)
+import { onMounted, onUnmounted, computed, ref } from './vue-composition-api.js';
+import { useCircleViewerDragResize } from './CircleViewerDragResize.js';
+import { useCircleViewerSelection } from './CircleViewerSelection.js';
+import { useCircleViewerAnimations } from './CircleViewerAnimations.js';
+import { useCircleViewerState } from './CircleViewerState.js';
+import { useCircleViewerEventHandlers } from './CircleViewerEventHandlers.js';
 import { EntityComponent } from './EntityComponent.js';
 import { EntityControls } from './EntityControls.js';
 import { ViewerControls } from './ViewerControls.js';
 import { ConnectionComponent } from './ConnectionComponent.js';
-import { injectComponentStyles } from './styleUtils.js';
-
-// Enhanced component styles with drop target highlighting, animation support, and background cycling
-const componentStyles = `
-    .circle-viewer {
-        position: relative;
-        height: 100vh;
-        background-color: #111;
-        border-right: 2px solid #333;
-        flex-shrink: 0;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        cursor: pointer;
-        transition: all 0.3s ease;
-    }
-
-    .circle-viewer::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-repeat: no-repeat;
-        background-position: center 45px;
-        opacity: 0.3;
-        pointer-events: none;
-        z-index: 0;
-        transition: opacity 0.3s ease;
-    }
-
-    /* Background image variants */
-    .circle-viewer.background-silhouette::before {
-        background-image: url('silhouette.svg');
-        opacity: 0.3;
-    }
-
-    .circle-viewer.background-cycle::before {
-        background-image: url('cycle.svg');
-        opacity: 0.3;
-    }
-
-    .circle-viewer.background-none::before {
-        opacity: 0;
-    }
-
-    .circle-viewer.selected {
-        background-color: #131313;
-        border-right-color: #444;
-    }
-
-    /* Drop target highlighting styles */
-    .circle-viewer.drop-target-left {
-        border-left: 4px solid #4CAF50;
-        background-color: rgba(76, 175, 80, 0.05);
-        transform: translateX(2px);
-    }
-
-    .circle-viewer.drop-target-right {
-        border-right: 4px solid #4CAF50;
-        background-color: rgba(76, 175, 80, 0.05);
-        transform: translateX(-2px);
-    }
-
-    .circle-viewer.being-dragged {
-        opacity: 0.7;
-        transform: scale(0.98);
-        z-index: 1000;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    }
-
-    /* Drop zone indicators */
-    .drop-zone-indicator {
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        width: 4px;
-        background: linear-gradient(
-            to bottom,
-            transparent 0%,
-            #4CAF50 20%,
-            #4CAF50 80%,
-            transparent 100%
-        );
-        opacity: 0;
-        transition: opacity 0.2s ease;
-        pointer-events: none;
-        z-index: 1001;
-    }
-
-    .drop-zone-indicator.left {
-        left: -2px;
-    }
-
-    .drop-zone-indicator.right {
-        right: -2px;
-    }
-
-    .circle-viewer.drop-target-left .drop-zone-indicator.left,
-    .circle-viewer.drop-target-right .drop-zone-indicator.right {
-        opacity: 1;
-        animation: pulse-glow 1.5s infinite;
-    }
-
-    @keyframes pulse-glow {
-        0%, 100% {
-            box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
-        }
-        50% {
-            box-shadow: 0 0 16px rgba(76, 175, 80, 0.9);
-        }
-    }
-
-    .viewer-content {
-        flex: 1;
-        position: relative;
-        margin-top: 40px;
-        overflow: hidden;
-        transition: margin-top 0.2s ease;
-    }
-
-    .circle-viewer::before {
-        background-position: center 45px;
-        transition: background-position 0.2s ease;
-    }
-
-    .resize-handle {
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 4px;
-        height: 100%;
-        cursor: ew-resize;
-        z-index: 1001;
-        background-color: transparent;
-        transition: background-color 0.2s ease;
-    }
-
-    .resize-handle:hover {
-        background-color: #4CAF50;
-    }
-
-	.circle-viewer.resizing {
-		transition: none !important;
-	}
-
-    /* Hide resize handle during drag operations */
-    .circle-viewer.drop-target-left .resize-handle,
-    .circle-viewer.drop-target-right .resize-handle,
-    .circle-viewer.being-dragged .resize-handle {
-        opacity: 0;
-        pointer-events: none;
-    }
-
-    /* Rectangle selection styles */
-    .selection-rectangle {
-        position: absolute;
-        border: 1px dashed #4CAF50;
-        background-color: rgba(76, 175, 80, 0.1);
-        pointer-events: none;
-        z-index: 1000;
-    }
-
-    /* NEW: Animation copy styling */
-    .entity-container.animation-copy {
-        opacity: 0.8;
-        pointer-events: none;
-        z-index: 998; /* Below normal entities but above connections */
-    }
-
-    .entity-container.animation-dimmed {
-        opacity: 0.2;
-    }
-`;
-
-injectComponentStyles('circle-viewer', componentStyles);
+import './CircleViewerStyles.js'; // Import styles
 
 export const CircleViewer = {
     props: {
@@ -192,13 +17,12 @@ export const CircleViewer = {
             type: String,
             required: true
         },
-        // New props for drag and drop state
         dragState: {
             type: Object,
             default: () => ({
                 isDragging: false,
                 draggedViewerId: null,
-                dropTarget: null // 'left', 'right', or null
+                dropTarget: null
             })
         }
     },
@@ -208,535 +32,144 @@ export const CircleViewer = {
         'resize',
         'viewer-click',
         'show-dropdown',
-        // New drag and drop events
         'drag-enter',
         'drag-leave',
         'drop'
     ],
     setup(props, { emit }) {
-        const dataStore = useDataStore();
-        const animationManager = useAnimationLoopManager(); // NEW: Get animation manager
-        const isResizing = ref(false);
-        const resizeStart = ref({ x: 0, width: 0 });
-        const viewerContentRef = ref(null);
-        const viewerRef = ref(null);
+        // Get state and computed properties
+        const state = useCircleViewerState(props);
         
-        // Width threshold for compact mode (should match ViewerControls)
-        const COMPACT_THRESHOLD = 200;
+        // NEW: Entity drag state management
+        const entityDragState = ref({
+            isDragging: false,
+            draggedEntityIds: [],
+            currentDeltas: { deltaX: 0, deltaY: 0 },
+            entityType: null,
+            viewerId: null
+        });
 
-        // Background type constants (should match ViewerControls)
-        const BACKGROUND_TYPES = {
-            SILHOUETTE: 'silhouette',
-            CYCLE: 'cycle',
-            NONE: 'none'
+        // NEW: Handle entity drag events
+        const handleEntityDragStart = (event) => {
+            entityDragState.value = {
+                isDragging: true,
+                draggedEntityIds: [event.entityId],
+                currentDeltas: { deltaX: 0, deltaY: 0 },
+                entityType: event.entityType,
+                viewerId: event.viewerId
+            };
         };
 
-        const viewer = computed(() => dataStore.data.circleViewers.get(props.viewerId));
-        
-        // NEW: Get viewer properties from the document instead of the viewer object
-        const viewerProperties = computed(() => {
-            return dataStore.getViewerProperties(props.viewerId);
-        });
-        
-        const viewerWidth = computed(() => viewerProperties.value.width);
-        
-        // NEW: Updated background handling for cycling
-        const backgroundType = computed(() => {
-            return viewerProperties.value.backgroundType || BACKGROUND_TYPES.SILHOUETTE;
-        });
-        
-        const backgroundClass = computed(() => {
-            return `background-${backgroundType.value}`;
-        });
-        
-        const currentCircles = computed(() => {
-            const circles = dataStore.getCirclesForViewer(props.viewerId);
-            return circles;
-        });
-
-        // NEW: Get animation copies for this viewer
-        const animationCopies = ref([]);
-        
-        // NEW: Combined circles (original + animation copies)
-        const allCircles = computed(() => {
-            return [...currentCircles.value, ...animationCopies.value];
-        });
-        
-        const isSelected = computed(() => dataStore.isViewerSelected(props.viewerId));
-        
-        // Check if controls should be in compact mode
-        const isCompactMode = computed(() => {
-            return viewerWidth.value < COMPACT_THRESHOLD;
-        });
-
-        // Drag state computed properties
-        const isBeingDragged = computed(() => {
-            return props.dragState.isDragging && props.dragState.draggedViewerId === props.viewerId;
-        });
-
-        const isDropTarget = computed(() => {
-            return props.dragState.isDragging && 
-                   props.dragState.draggedViewerId !== props.viewerId &&
-                   props.dragState.dropTarget === props.viewerId;
-        });
-
-        const dropTargetSide = computed(() => {
-            if (!isDropTarget.value) return null;
-            return props.dragState.dropSide || 'right';
-        });
-
-        // Connection management for circles
-        const { connections, connectionManager } = useConnections();
-        
-        // Filter connections to show only connections for this specific viewer
-        const viewerConnections = computed(() => {
-            // Filter for this viewer's circle connections specifically
-            const viewerEntityType = `circle-${props.viewerId}`;
-            const viewerCircleConnections = connections.value.filter(c => c.entityType === viewerEntityType);
-            
-            // Additional filtering to ensure both entities are still in this viewer (in case of deletions)
-            const currentCircleIds = new Set(currentCircles.value.map(c => c.id));
-            const filtered = viewerCircleConnections.filter(connection => {
-                const hasEntity1 = currentCircleIds.has(connection.entity1Id);
-                const hasEntity2 = currentCircleIds.has(connection.entity2Id);
-                
-                return hasEntity1 && hasEntity2;
-            });
-            
-            return filtered;
-        });
-        
-        // Set up connection updates with viewer-specific entity type to avoid conflicts
-        const { updateConnections } = useConnectionUpdater(
-            () => {
-                const circles = currentCircles.value;
-                return circles;
-            },
-            `circle-${props.viewerId}`, // Use viewer-specific entity type
-            { 
-                watchEntities: true, 
-                immediate: true,
-                debounceMs: 30
-            }
-        );
-
-        // NEW: Listen for animation loop events to update copies
-	const handleAnimationUpdate = (event) => {
-    console.log(`[CircleViewer] Animation update received:`, event.detail);
-    if (event.detail.viewerId === props.viewerId) {
-        console.log(`[CircleViewer] Updating animation copies for viewer ${props.viewerId}:`, event.detail.copies);
-        console.log(`[CircleViewer] Previous copies:`, animationCopies.value);
-        animationCopies.value = [...event.detail.copies];
-        console.log(`[CircleViewer] New copies:`, animationCopies.value);
-        console.log(`[CircleViewer] allCircles computed will now have:`, [...currentCircles.value, ...animationCopies.value]);
-    }
-};
-
-        const handleAnimationStopped = (event) => {
-            if (event.detail.viewerId === props.viewerId) {
-                animationCopies.value = [];
+        const handleEntityDragMove = (event) => {
+            if (entityDragState.value.isDragging) {
+                entityDragState.value.currentDeltas = {
+                    deltaX: event.deltaX,
+                    deltaY: event.deltaY
+                };
+                entityDragState.value.draggedEntityIds = event.selectedEntityIds || [event.entityId];
             }
         };
 
-        // Store initial selection state for Ctrl+drag operations
-        let initialSelectedIds = new Set();
-        let hasRectangleSelected = false;
-        
-        // Helper function to check if a circle intersects with a rectangle
-        const isCircleIntersecting = (circle, rect) => {
-            const circleSize = 60;
-            const centerX = viewerWidth.value / 2;
-            const absoluteX = circle.x + centerX;
-            
-            const circleLeft = absoluteX;
-            const circleTop = circle.y;
-            const circleRight = absoluteX + circleSize;
-            const circleBottom = circle.y + circleSize;
-            
-            return !(circleRight < rect.left || 
-                    circleLeft > rect.right || 
-                    circleBottom < rect.top || 
-                    circleTop > rect.bottom);
+        const handleEntityDragEnd = (event) => {
+            entityDragState.value = {
+                isDragging: false,
+                draggedEntityIds: [],
+                currentDeltas: { deltaX: 0, deltaY: 0 },
+                entityType: null,
+                viewerId: null
+            };
         };
 
-        // Real-time selection during drag
-        const handleSelectionUpdate = (rect, isCtrlClick) => {
-            if (!rect || rect.width < 5 || rect.height < 5) return;
-            
-            const intersectingIds = [];
-            // Only check original circles for selection (not animation copies)
-            currentCircles.value.forEach(circle => {
-                if (isCircleIntersecting(circle, rect)) {
-                    intersectingIds.push(circle.id);
-                }
-            });
+        // Get event handlers
+        const eventHandlers = useCircleViewerEventHandlers(props, emit, state.dataStore);
 
-            let finalSelection;
+        // Use composables for different feature areas
+        const dragResize = useCircleViewerDragResize(props, emit, state.viewerRef, state.viewerWidth, state.dataStore);
+        const selection = useCircleViewerSelection(props, state.dataStore, state.viewerContentRef, state.currentCircles, state.viewerWidth);
+        const animations = useCircleViewerAnimations(props.viewerId, state.dataStore);
+
+        // NEW: Get explicit connections for this viewer
+        const explicitConnections = computed(() => {
+            // Get explicit connections for circles in this viewer
+            const entityType = `circle-${props.viewerId}`;
+            return state.dataStore.getExplicitConnectionsForEntityType(entityType);
+        });
+
+        // NEW: Combine regular connections with explicit connections
+        const allConnections = computed(() => {
+            // Get regular proximity-based connections
+            const regularConnections = state.viewerConnections.value;
+            
+            // Get explicit connections
+            const explicitConns = explicitConnections.value;
+            
+            // Combine both types
+            return [...regularConnections, ...explicitConns];
+        });
+
+        // NEW: Enhanced circle select handler that supports ctrl-click for explicit connections
+        const handleCircleSelectWithExplicitConnections = (id, isCtrlClick = false) => {
             if (isCtrlClick) {
-                finalSelection = [...new Set([...initialSelectedIds, ...intersectingIds])];
-            } else {
-                finalSelection = intersectingIds;
-            }
-
-            if (finalSelection.length > 0) {
-                dataStore.selectCircle(null, props.viewerId, false);
+                // Handle explicit connection creation/deletion
+                const selectedCircleIds = state.dataStore.getSelectedCircles();
+                const selectedEntityType = 'circle';
                 
-                finalSelection.forEach((id, index) => {
-                    dataStore.selectCircle(id, props.viewerId, index > 0);
-                });
-            } else if (!isCtrlClick) {
-                dataStore.selectCircle(null, props.viewerId, false);
-            }
-        };
-
-        // Initialize selection state when drag starts
-        const handleSelectionStart = (isCtrlClick) => {
-            initialSelectedIds = new Set(dataStore.getSelectedCircles());
-            hasRectangleSelected = false;
-            
-            if (!isCtrlClick) {
-                dataStore.selectCircle(null, props.viewerId, false);
-            }
-        };
-
-        // Finalize selection when drag ends
-        const handleSelectionComplete = (rect, isCtrlClick) => {
-            const wasRectangleSelection = rect.width >= 5 && rect.height >= 5;
-            
-            if (!wasRectangleSelection) {
-                if (!isCtrlClick) {
-                    dataStore.selectCircle(null, props.viewerId, false);
-                }
-            } else {
-                hasRectangleSelected = true;
+                const result = state.dataStore.handleEntityCtrlClick(
+                    id, 'circle', selectedCircleIds, selectedEntityType, props.viewerId
+                );
                 
-                setTimeout(() => {
-                    hasRectangleSelected = false;
-                }, 100);
-            }
-            
-            dataStore.saveToStorage();
-        };
-
-        const {
-            isSelecting,
-            selectionRect,
-            getSelectionRectStyle,
-            isEntityInSelection
-        } = useRectangleSelection(viewerContentRef, handleSelectionComplete, {
-            onSelectionStart: handleSelectionStart,
-            onSelectionUpdate: handleSelectionUpdate
-        });
-
-        // Drag and Drop Event Handlers
-        const handleDragEnter = (e) => {
-            if (!props.dragState.isDragging) return;
-            
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const rect = viewerRef.value.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const dropSide = mouseX < rect.width / 2 ? 'left' : 'right';
-            
-            emit('drag-enter', {
-                targetViewerId: props.viewerId,
-                dropSide: dropSide
-            });
-        };
-
-        const handleDragOver = (e) => {
-            if (!props.dragState.isDragging) return;
-            
-            e.preventDefault();
-            e.stopPropagation();
-            
-            // Update drop side based on mouse position
-            const rect = viewerRef.value.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const dropSide = mouseX < rect.width / 2 ? 'left' : 'right';
-            
-            emit('drag-enter', {
-                targetViewerId: props.viewerId,
-                dropSide: dropSide
-            });
-        };
-
-        const handleDragLeave = (e) => {
-            if (!props.dragState.isDragging) return;
-            
-            // Only emit drag-leave if we're actually leaving the viewer
-            // (not just moving between child elements)
-            const rect = viewerRef.value.getBoundingClientRect();
-            const x = e.clientX;
-            const y = e.clientY;
-            
-            if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
-                emit('drag-leave', {
-                    targetViewerId: props.viewerId
-                });
-            }
-        };
-
-        const handleDrop = (e) => {
-            if (!props.dragState.isDragging) return;
-            
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const rect = viewerRef.value.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const dropSide = mouseX < rect.width / 2 ? 'left' : 'right';
-            
-            emit('drop', {
-                targetViewerId: props.viewerId,
-                draggedViewerId: props.dragState.draggedViewerId,
-                dropSide: dropSide
-            });
-        };
-
-        // Entity event handlers
-        const handleCircleSelect = (id, isCtrlClick = false) => {
-            // NEW: Don't allow selection of animation copies
-            const animationCopy = animationCopies.value.find(copy => copy.id === id);
-            if (animationCopy) {
-                return; // Ignore clicks on animation copies
-            }
-            
-            // Handle CTRL-click on reference circles
-            if (isCtrlClick) {
-                const circle = dataStore.getCircle(id);
-                if (circle && circle.referenceID) {
-                    const referencedCircleId = circle.referenceID;
-                    
-                    // Find which document contains the referenced circle
-                    const allCircleDocuments = dataStore.getAllCircleDocuments();
-                    let referencedDocumentId = null;
-                    
-                    for (const doc of allCircleDocuments) {
-                        const circlesInDoc = dataStore.getCirclesForDocument(doc.id);
-                        if (circlesInDoc.some(c => c.id === referencedCircleId)) {
-                            referencedDocumentId = doc.id;
-                            break;
-                        }
-                    }
-                    
-                    if (!referencedDocumentId) {
-                        console.warn(`Referenced circle ${referencedCircleId} not found in any document`);
-                        return;
-                    }
-                    
-                    // Check if referenced circle is already visible in a viewer
-                    const allViewers = Array.from(dataStore.data.circleViewers.values());
-                    let targetViewer = null;
-                    
-                    for (const viewer of allViewers) {
-                        const viewerDoc = dataStore.getCircleDocumentForViewer(viewer.id);
-                        if (!viewerDoc) { break; }
-                        const viewerDocId = viewerDoc.id
-                        if (viewerDocId === referencedDocumentId) {
-                            targetViewer = viewer;
-                            break;
-                        }
-                    }
-                    
-                    if (targetViewer) {
-                        // Select the referenced circle
-                        dataStore.selectCircle(referencedCircleId, targetViewer.id, false);
-                        dataStore.setSelectedViewer(targetViewer.id);
-                    } else {
-                        // Create new viewer for the referenced circle
-                        const newViewer = dataStore.createCircleViewer();
-                        dataStore.setCircleDocumentForViewer(newViewer.id, referencedDocumentId);
-                        dataStore.selectCircle(referencedCircleId, newViewer.id, false);
-                        dataStore.setSelectedViewer(newViewer.id);
-                    }
-                    return;
-                }
-            }
-            
-            // Normal selection (including multi-select with CTRL)
-            dataStore.selectCircle(id, props.viewerId, isCtrlClick);
-        };
-
-        const handleCirclePositionUpdate = ({ id, x, y }) => {
-            dataStore.updateCircle(id, { x, y });
-        };
-
-        const handleCircleNameUpdate = ({ id, name }) => {
-            dataStore.updateCircle(id, { name });
-        };
-
-        const handleMoveMultiple = ({ entityType, deltaX, deltaY }) => {
-            if (entityType === 'circle') {
-                dataStore.moveSelectedCircles(deltaX, deltaY);
-            }
-        };
-
-        // Add entity handler
-        const handleAddCircle = () => {
-            const circle = dataStore.createCircleInViewer(props.viewerId);
-            if (circle) {
-                dataStore.selectCircle(circle.id);
-            }
-        };
-
-        // Document change handler
-        const handleCircleDocumentChange = (documentId) => {
-            if (documentId) {
-                dataStore.setCircleDocumentForViewer(props.viewerId, documentId);
-            }
-            dataStore.data.selectedCircleId = null;
-            dataStore.data.selectedSquareId = null;
-            dataStore.setCurrentSquareDocument(null);
-        };
-
-        // Handle show dropdown requests from EntityControls
-        const handleShowDropdown = (config) => {
-            emit('show-dropdown', config);
-        };
-
-        // Container click handler
-        const handleViewerClick = (e) => {
-            if (hasRectangleSelected) return;
-            
-            if (e.target.classList.contains('viewer-content')) {
-                dataStore.selectCircle(null, props.viewerId, false);
-            }
-        };
-
-        // Handle clicks on the entire viewer container
-        const handleViewerContainerClick = (e) => {
-            const shouldClearEntities = !hasRectangleSelected;
-            
-            if (e.target.classList.contains('circle-viewer') || 
-                e.target.classList.contains('viewer-content')) {
+                console.log('Explicit connection result:', result);
                 
-                dataStore.setSelectedViewer(props.viewerId);
-                emit('viewer-click', props.viewerId);
-                
-                if (shouldClearEntities && e.target.classList.contains('viewer-content')) {
-                    dataStore.selectCircle(null, props.viewerId, false);
-                }
-            }
-        };
-
-        // Viewer control handlers
-        const handleStartReorder = (e) => {
-            emit('start-reorder', { viewerId: props.viewerId, event: e });
-        };
-
-        const handleCloseViewer = () => {
-            emit('close-viewer', props.viewerId);
-        };
-
-        // Resize functionality
-        const startResize = (e) => {
-            // Prevent resizing during drag operations
-            if (props.dragState.isDragging) {
-                e.preventDefault();
+                // Don't change selection when ctrl-clicking for connections
                 return;
             }
             
-            isResizing.value = true;
-            viewerRef.value.classList.add('resizing');
-            resizeStart.value = {
-                x: e.clientX,
-                width: viewerWidth.value
-            };
-            e.preventDefault();
+            // Regular selection behavior (non-ctrl click)
+            eventHandlers.handleCircleSelect(id, false); // Force non-ctrl behavior
         };
 
-        const handleResize = (e) => {
-            if (!isResizing.value || props.dragState.isDragging) return;
-            
-            const deltaX = e.clientX - resizeStart.value.x;
-            const newWidth = Math.max(100, Math.min(3600, resizeStart.value.width + deltaX));
-            
-            // Update the viewer properties via the data store, which will persist to document
-            dataStore.updateCircleViewer(props.viewerId, { width: newWidth });
-            emit('resize', { viewerId: props.viewerId, width: newWidth });
-        };
-
-        const endResize = () => {
-            isResizing.value = false;
-            if (viewerRef.value) {
-                viewerRef.value.classList.remove('resizing');
-            }
-        };
-
-        // NEW: Helper function to determine if a circle should be dimmed during animation
-        const isCircleDimmed = (circle) => {
-            if (!circle.isAnimationCopy && circle._isAnimationDimmed) {
-                return true;
-            }
-            return false;
-        };
-
-        // NEW: Helper function to determine if a circle is an animation copy
-        const isAnimationCopy = (circle) => {
-            return circle.isAnimationCopy === true;
-        };
+        // Create concrete event handlers that depend on selection state
+        const handleViewerClick = eventHandlers.createHandleViewerClick(selection.hasRectangleSelected);
+        const handleViewerContainerClick = eventHandlers.createHandleViewerContainerClick(selection.hasRectangleSelected);
 
         onMounted(() => {
-            document.addEventListener('mousemove', handleResize);
-            document.addEventListener('mouseup', endResize);
-            // NEW: Listen for animation events
-            window.addEventListener('animationLoopUpdate', handleAnimationUpdate);
-            window.addEventListener('animationLoopStopped', handleAnimationStopped);
-            
-            // NEW: Initialize animation copies if loop is already running
-            animationCopies.value = animationManager.getAnimationCopies(props.viewerId);
+            dragResize.onMounted();
+            animations.onMounted();
         });
 
         onUnmounted(() => {
-            document.removeEventListener('mousemove', handleResize);
-            document.removeEventListener('mouseup', endResize);
-            // NEW: Clean up animation event listeners
-            window.removeEventListener('animationLoopUpdate', handleAnimationUpdate);
-            window.removeEventListener('animationLoopStopped', handleAnimationStopped);
-            
-            // NEW: Stop animation loop when viewer is unmounted
-            animationManager.stopLoop(props.viewerId);
+            dragResize.onUnmounted();
+            animations.onUnmounted();
         });
 
         return {
-            dataStore,
-            viewer,
-            viewerWidth, 
-            backgroundType, // NEW: Expose background type
-            backgroundClass, // NEW: Expose background class
-            currentCircles,
-            animationCopies, // NEW: Expose animation copies
-            allCircles, // NEW: Expose combined circles
-            isSelected,
-            viewerContentRef,
-            viewerRef,
-            viewerConnections,
-            isSelecting,
-            selectionRect,
-            getSelectionRectStyle,
-            isBeingDragged,
-            isDropTarget,
-            dropTargetSide,
-            handleDragEnter,
-            handleDragOver,
-            handleDragLeave,
-            handleDrop,
-            handleCircleSelect,
-            handleCirclePositionUpdate,
-            handleCircleNameUpdate,
-            handleMoveMultiple,
-            handleAddCircle,
-            handleCircleDocumentChange,
-            handleShowDropdown,
+            // State
+            ...state,
+            // NEW: Entity drag state
+            entityDragState,
+            // Composable functionality
+            ...dragResize,
+            ...selection,
+            ...animations,
+            // NEW: Explicit connections
+            explicitConnections,
+            allConnections,
+            // Event handlers (both factory-created and direct)
             handleViewerClick,
             handleViewerContainerClick,
-            handleStartReorder,
-            startResize,
-            handleCloseViewer,
-            isCircleDimmed, // NEW: Expose dimming helper
-            isAnimationCopy // NEW: Expose animation copy helper
+            handleCircleSelect: handleCircleSelectWithExplicitConnections, // UPDATED: Use explicit connection version
+            handleCirclePositionUpdate: eventHandlers.handleCirclePositionUpdate,
+            handleCircleNameUpdate: eventHandlers.handleCircleNameUpdate,
+            handleMoveMultiple: eventHandlers.handleMoveMultiple,
+            handleAddCircle: eventHandlers.handleAddCircle,
+            handleCircleDocumentChange: eventHandlers.handleCircleDocumentChange,
+            handleShowDropdown: eventHandlers.handleShowDropdown,
+            handleStartReorder: eventHandlers.handleStartReorder,
+            handleCloseViewer: eventHandlers.handleCloseViewer,
+            // NEW: Entity drag event handlers
+            handleEntityDragStart,
+            handleEntityDragMove,
+            handleEntityDragEnd
         };
     },
     components: {
@@ -782,12 +215,13 @@ export const CircleViewer = {
                 class="viewer-content" 
                 @click="handleViewerClick"
             >
-                <!-- Connection Rendering for Circles -->
+                <!-- Connection Rendering - UPDATED: Use combined connections (regular + explicit) with drag state -->
                 <ConnectionComponent
-                    v-for="connection in viewerConnections"
+                    v-for="connection in allConnections"
                     :key="connection.id"
                     :connection="connection"
                     :viewer-width="viewerWidth"
+                    :entity-drag-state="entityDragState"
                 />
                 
                 <!-- Render all circles (original + animation copies) -->
@@ -807,6 +241,9 @@ export const CircleViewer = {
                     @update-position="handleCirclePositionUpdate"
                     @update-name="handleCircleNameUpdate"
                     @move-multiple="handleMoveMultiple"
+                    @drag-start="handleEntityDragStart"
+                    @drag-move="handleEntityDragMove"
+                    @drag-end="handleEntityDragEnd"
                 />
                 
                 <EntityControls 
