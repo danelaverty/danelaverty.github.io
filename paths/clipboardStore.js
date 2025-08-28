@@ -160,7 +160,6 @@ function createClipboardStore() {
         // This prevents multiple prompts when opening new tabs
         const shouldCheckSystemClipboard = 
             data.entities.length === 0 && // No internal data
-            clipboardPermissionGranted && // We had permission in this domain
             data.lastUpdateTime === 0; // Haven't tried in this tab yet
         
         if (shouldCheckSystemClipboard) {
