@@ -1,4 +1,4 @@
-// keyboardHandler.js - Centralized keyboard event handling with bold square support, indicator emoji picker, viewer reordering, copy/paste, reference paste, and activation toggle
+// keyboardHandler.js - Centralized keyboard event handling with system clipboard support
 import { alignEntities } from './alignmentUtils.js';
 import { useConnections } from './useConnections.js';
 import { useClipboardStore } from './clipboardStore.js';
@@ -114,7 +114,9 @@ export function createKeyboardHandler(dataStore, onShowIndicatorPicker = null, o
                 const currentDoc = dataStore.getCurrentSquareDocument();
                 const sourceDocumentId = currentDoc ? currentDoc.id : null;
                 
-                clipboardStore.copyEntities('square', squareEntities, sourceDocumentId);
+                // Use async copy (fire and forget for UI responsiveness)
+                clipboardStore.copyEntities('square', squareEntities, sourceDocumentId)
+                    .catch(error => console.error('Copy failed:', error));
                 
             } else if (selectedCircles.length > 0) {
                 // Copy selected circles
@@ -123,7 +125,9 @@ export function createKeyboardHandler(dataStore, onShowIndicatorPicker = null, o
                 const currentCircleDoc = selectedViewerId ? dataStore.getCircleDocumentForViewer(selectedViewerId) : null;
                 const sourceDocumentId = currentCircleDoc ? currentCircleDoc.id : null;
                 
-                clipboardStore.copyEntities('circle', circleEntities, sourceDocumentId);
+                // Use async copy (fire and forget for UI responsiveness)
+                clipboardStore.copyEntities('circle', circleEntities, sourceDocumentId)
+                    .catch(error => console.error('Copy failed:', error));
             }
             return;
         }
@@ -137,7 +141,9 @@ export function createKeyboardHandler(dataStore, onShowIndicatorPicker = null, o
             
             e.preventDefault(); // Prevent browser's paste only when not editing text
             
-	    handleNormalPaste(dataStore, clipboardStore);
+            // Use async paste
+            handleNormalPaste(dataStore, clipboardStore)
+                .catch(error => console.error('Paste failed:', error));
         }
         
         // Handle CTRL+SHIFT+Left/Right for viewer reordering
@@ -235,7 +241,7 @@ export function createKeyboardHandler(dataStore, onShowIndicatorPicker = null, o
             return;
         }
 
-	    // Handle CTRL+SHIFT+C for circular alignment
+        // Handle CTRL+SHIFT+C for circular alignment
         if (e.key === 'C' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
             e.preventDefault();
             
@@ -274,37 +280,29 @@ export function createKeyboardHandler(dataStore, onShowIndicatorPicker = null, o
             return;
         }
 
-	// SHIFT+CTRL+V - Check what to do based on selection and clipboard
+        // SHIFT+CTRL+V - Check what to do based on selection and clipboard
         if (e.key === 'V' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
-                const selectedSquares = dataStore.getSelectedSquares();
-                const selectedCircles = dataStore.getSelectedCircles();
-                const clipboardInfo = clipboardStore.getClipboardInfo();
-                
-                // If multiple entities are selected, do vertical alignment
-                if (selectedSquares.length > 1 || selectedCircles.length > 1) {
-                    // Priority: Squares first, then Circles
-                    if (selectedSquares.length > 1) {
-                        alignEntities('square', 'vertical');
-                    } else if (selectedCircles.length > 1) {
-                        alignEntities('circle', 'vertical');
-                    }
-                    return;
+            e.preventDefault();
+            
+            const selectedSquares = dataStore.getSelectedSquares();
+            const selectedCircles = dataStore.getSelectedCircles();
+            
+            // If multiple entities are selected, do vertical alignment
+            if (selectedSquares.length > 1 || selectedCircles.length > 1) {
+                // Priority: Squares first, then Circles
+                if (selectedSquares.length > 1) {
+                    alignEntities('square', 'vertical');
+                } else if (selectedCircles.length > 1) {
+                    alignEntities('circle', 'vertical');
                 }
-                
-                // If clipboard has circles, do reference paste
-                if (!clipboardInfo.isEmpty && clipboardInfo.entityType === 'circle') {
-                    handleReferencePaste(dataStore, clipboardStore);
-                    return;
-                }
-                
-                // If clipboard has squares, do normal paste
-                if (!clipboardInfo.isEmpty && clipboardInfo.entityType === 'square') {
-                    handleNormalPaste(dataStore, clipboardStore);
-                    return;
-                }
-                
-                // If no clipboard content, ignore
                 return;
+            }
+            
+            // Otherwise handle clipboard operations asynchronously
+            handleShiftCtrlV(dataStore, clipboardStore, selectedSquares, selectedCircles)
+                .catch(error => console.error('Shift+Ctrl+V failed:', error));
+            
+            return;
         }
         
         // Handle CTRL+A for selecting all entities
@@ -354,11 +352,27 @@ export function createKeyboardHandler(dataStore, onShowIndicatorPicker = null, o
 }
 
 /**
- * Handle keyboard viewer reordering
- * @param {Object} dataStore - The data store instance
- * @param {string} viewerId - ID of the viewer to reorder
- * @param {string} direction - 'left' or 'right'
+ * Handle Shift+Ctrl+V logic asynchronously
  */
+async function handleShiftCtrlV(dataStore, clipboardStore, selectedSquares, selectedCircles) {
+    // Get clipboard info once - this will update internal store with latest system data if needed
+    const clipboardInfo = await clipboardStore.getClipboardInfo();
+    
+    // If clipboard has circles, do reference paste
+    if (!clipboardInfo.isEmpty && clipboardInfo.entityType === 'circle') {
+        await handleReferencePaste(dataStore, clipboardStore);
+        return;
+    }
+    
+    // If clipboard has squares, do normal paste
+    if (!clipboardInfo.isEmpty && clipboardInfo.entityType === 'square') {
+        await handleNormalPaste(dataStore, clipboardStore);
+        return;
+    }
+    
+    // If no clipboard content, ignore
+}
+
 /**
  * Handle keyboard viewer reordering
  * @param {Object} dataStore - The data store instance
@@ -394,10 +408,11 @@ function handleKeyboardViewerReorder(dataStore, viewerId, direction) {
 }
 
 /**
- * Handle normal paste operation
+ * Handle normal paste operation (async)
  */
-function handleNormalPaste(dataStore, clipboardStore) {
-    const clipboardInfo = clipboardStore.getClipboardInfo();
+async function handleNormalPaste(dataStore, clipboardStore) {
+    // Get clipboard info once - this will ensure we have the latest data
+    const clipboardInfo = await clipboardStore.getClipboardInfo();
     if (clipboardInfo.isEmpty) {
         return;
     }
@@ -409,7 +424,8 @@ function handleNormalPaste(dataStore, clipboardStore) {
             return;
         }
 
-        const pastedEntityData = clipboardStore.pasteEntities(currentDoc.id);
+        // Note: pasteEntities no longer needs to check system clipboard since getClipboardInfo already did
+        const pastedEntityData = await clipboardStore.pasteEntities(currentDoc.id);
         
         const createdSquares = [];
         
@@ -454,13 +470,14 @@ function handleNormalPaste(dataStore, clipboardStore) {
             return;
         }
         
-        const pastedEntityData = clipboardStore.pasteEntities(currentCircleDoc.id);
+        // Note: pasteEntities no longer needs to check system clipboard since getClipboardInfo already did
+        const pastedEntityData = await clipboardStore.pasteEntities(currentCircleDoc.id);
         const createdCircles = [];
         
         pastedEntityData.forEach(circleData => {
             const circle = dataStore.createCircleInViewer(selectedViewerId);
             if (circle) {
-                // FIXED: Include referenceID in the update data for normal paste
+                // Include referenceID in the update data for normal paste
                 const updateData = {
                     x: circleData.x,
                     y: circleData.y,
@@ -495,10 +512,11 @@ function handleNormalPaste(dataStore, clipboardStore) {
 }
 
 /**
- * Handle reference paste operation for circles
+ * Handle reference paste operation for circles (async)
  */
-function handleReferencePaste(dataStore, clipboardStore) {
-    const clipboardInfo = clipboardStore.getClipboardInfo();
+async function handleReferencePaste(dataStore, clipboardStore) {
+    // Get clipboard info once - this will ensure we have the latest data
+    const clipboardInfo = await clipboardStore.getClipboardInfo();
     if (clipboardInfo.isEmpty || clipboardInfo.entityType !== 'circle') {
         return;
     }
@@ -515,7 +533,8 @@ function handleReferencePaste(dataStore, clipboardStore) {
     }
     
     // Pass isReferencePaste = true to preserve original IDs
-    const pastedEntityData = clipboardStore.pasteEntities(currentCircleDoc.id, true);
+    // Note: pasteEntities no longer needs to check system clipboard since getClipboardInfo already did
+    const pastedEntityData = await clipboardStore.pasteEntities(currentCircleDoc.id, true);
     const createdCircles = [];
     
     pastedEntityData.forEach(circleData => {
