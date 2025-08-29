@@ -1,4 +1,4 @@
-// AppComponent.js - Updated with drag state management for squares and ExplicitConnection support
+// AppComponent.js - Updated with document hover state for viewer highlighting
 import { ref, computed, onMounted, onUnmounted } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
 import { useRectangleSelection } from './useRectangleSelection.js';
@@ -25,6 +25,9 @@ export const App = {
         const squareViewerContentRef = ref(null);
         const proximitySystem = useEnergyProximitySystem();
         const animationManager = useAnimationLoopManager(); // NEW: Get animation manager
+
+        // NEW: Document hover state for viewer highlighting
+        const hoveredDocumentId = ref(null);
 
         // NEW: Square drag state management
         const squareDragState = ref({
@@ -64,6 +67,15 @@ export const App = {
                 entityType: null,
                 viewerId: null
             };
+        };
+
+        // NEW: Document hover handlers
+        const handleDocumentHover = (documentId) => {
+            hoveredDocumentId.value = documentId;
+        };
+
+        const handleDocumentHoverEnd = () => {
+            hoveredDocumentId.value = null;
         };
 
         // Computed properties for viewers and squares
@@ -311,6 +323,10 @@ export const App = {
             handleShowDropdown,
             handleIndicatorPickerClose,
             handleIndicatorPickerSelect,
+            // NEW: Expose hover state and handlers
+            hoveredDocumentId,
+            handleDocumentHover,
+            handleDocumentHoverEnd,
             // NEW: Square drag state
             squareDragState,
             handleSquareDragStart,
@@ -338,15 +354,18 @@ export const App = {
     template: `
         <div :class="['app-container', { 'has-documents-dock': true }]">
             <DocumentsDock 
+                @document-hover="handleDocumentHover"
+                @document-hover-end="handleDocumentHoverEnd"
             />
             
             <div class="viewers-container">
-                <!-- Circle Viewers with drag state support -->
+                <!-- Circle Viewers with drag state support and hover highlighting -->
                 <CircleViewer
                     v-for="viewer in visibleCircleViewers"
                     :key="viewer.id"
                     :viewer-id="viewer.id"
                     :drag-state="dragState"
+                    :hovered-document-id="hoveredDocumentId"
                     @start-reorder="handleStartReorder"
                     @drag-enter="handleDragEnter"
                     @drag-leave="handleDragLeave"

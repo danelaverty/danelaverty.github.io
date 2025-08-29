@@ -16,7 +16,7 @@ export class EnergyProximitySystem {
             maxScale: 1.5,    // Maximum scale multiplier
             minScale: 1.0,    // Minimum scale (normal size)
             maxOpacity: 1.0,  // Maximum opacity
-            minOpacity: 0.3,  // Minimum opacity when dampener is present
+            minOpacity: 0.5,  // Minimum opacity when dampener is present
             maxSaturation: 1.0, // Maximum saturation
             minSaturation: 0.3, // Minimum saturation when dampener is present
             inactiveOpacity: 0.4, // Opacity for inactive exciters/dampeners

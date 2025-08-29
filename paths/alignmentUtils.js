@@ -156,19 +156,69 @@ function alignZigzag(entities, entityType, dataStore) {
     });
 }
 
+
+/**
+ * Check if entities are already arranged in a near-perfect circle
+ * @param {Array} entities - The entities to check
+ * @param {number} centerX - Circle center X
+ * @param {number} centerY - Circle center Y  
+ * @param {number} expectedRadius - Expected radius
+ * @returns {boolean} True if entities are already circular
+ */
+function checkIfCircular(entities, centerX, centerY, expectedRadius) {
+	// Allow 5% tolerance for radius and position variations
+	const radiusTolerance = expectedRadius * 0.05;
+	const expectedAngleStep = (2 * Math.PI) / entities.length;
+	const angleTolerance = expectedAngleStep * 0.1; // 10% tolerance for angle spacing
+	
+	// Check if all entities are roughly at the expected radius
+	const radiiMatch = entities.every(entity => {
+		const dx = entity.x - centerX;
+		const dy = entity.y - centerY;
+		const actualRadius = Math.sqrt(dx * dx + dy * dy);
+		return Math.abs(actualRadius - expectedRadius) <= radiusTolerance;
+	});
+	
+	if (!radiiMatch) {
+		return false;
+	}
+	
+	// Sort entities by current angle
+	const entitiesWithAngles = entities.map(entity => {
+		const dx = entity.x - centerX;
+		const dy = entity.y - centerY;
+		let angle = Math.atan2(dy, dx);
+		if (angle < 0) angle += 2 * Math.PI;
+		return { entity, angle };
+	}).sort((a, b) => a.angle - b.angle);
+	
+	// Check if entities are evenly spaced angularly
+	for (let i = 0; i < entitiesWithAngles.length; i++) {
+		const currentAngle = entitiesWithAngles[i].angle;
+		const nextAngle = entitiesWithAngles[(i + 1) % entitiesWithAngles.length].angle;
+		
+		let actualAngleStep = nextAngle - currentAngle;
+		if (actualAngleStep <= 0) {
+			actualAngleStep += 2 * Math.PI; // Handle wrap-around
+		}
+		
+		if (Math.abs(actualAngleStep - expectedAngleStep) > angleTolerance) {
+			return false;
+		}
+	}
+	
+	return true;
+}
+
 /**
  * Align entities in a circular pattern
  */
 function alignCircularly(entities, entityType, dataStore) {
 	if (entities.length < 2) return;
 
-	// Check if entities are already in a circular arrangement
-
-	let centerX, centerY, radius;
-
 	// Calculate the geometric center point (midpoint of bounding box)
-	centerX = entities.reduce((sum, entity) => sum + entity.x, 0) / entities.length;
-	centerY = entities.reduce((sum, entity) => sum + entity.y, 0) / entities.length;
+	const centerX = Math.round(entities.reduce((sum, entity) => sum + entity.x, 0) / entities.length);
+	const centerY = Math.round(entities.reduce((sum, entity) => sum + entity.y, 0) / entities.length);
 
 	// Calculate radius based on the current spread of entities
 	const maxDistance = Math.max(...entities.map(entity => {
@@ -179,13 +229,13 @@ function alignCircularly(entities, entityType, dataStore) {
 
 	// Ensure minimum radius for readability (80px for circles, 50px for squares)
 	const minRadius = entityType === 'circle' ? 80 : 50;
-	radius = Math.max(maxDistance, minRadius);
+	const radius = Math.max(maxDistance, minRadius);
 
-	// For 2 entities, place them horizontally opposite each other
+	// For 2 entities, place them vertically opposite each other (top and bottom)
 	if (entities.length === 2) {
 		const newPositions = [
-			{ x: Math.round(centerX - radius), y: Math.round(centerY) },
-			{ x: Math.round(centerX + radius), y: Math.round(centerY) }
+			{ x: Math.round(centerX), y: Math.round(centerY - radius) }, // Top (π/2)
+			{ x: Math.round(centerX), y: Math.round(centerY + radius) }  // Bottom (3π/2)
 		];
 
 		entities.forEach((entity, index) => {
@@ -196,28 +246,74 @@ function alignCircularly(entities, entityType, dataStore) {
 			}
 		});
 	} else {
-		// For 3+ entities, arrange in a circle
+		// For 3+ entities, arrange in a circle starting at π/2 (top position)
 		const angleStep = (2 * Math.PI) / entities.length;
-		const startAngle = 0;
+		const targetStartAngle = Math.PI / 2; // Always start at π/2 (top position)
+
+		console.log('=== CIRCULAR ALIGNMENT DEBUG ===');
+		console.log('Center:', { centerX, centerY });
+		console.log('Radius:', radius);
+		console.log('Angle step:', angleStep);
 
 		// Sort entities by their current angle from center to maintain relative positions
 		const entitiesWithAngles = entities.map(entity => {
 			const dx = entity.x - centerX;
 			const dy = entity.y - centerY;
-			// Use the same reference angle as placement (0 = right, counter-clockwise)
-			const currentAngle = Math.atan2(dy, dx);
+			// Use atan2 to get current angle, then normalize to [0, 2π] range
+			let currentAngle = Math.atan2(dy, dx);
+			if (currentAngle < 0) {
+				currentAngle += 2 * Math.PI;
+			}
 			return { entity, angle: currentAngle };
+		});
+
+		console.log('Before sorting:');
+		entitiesWithAngles.forEach((item, i) => {
+			console.log(`  Entity ${item.entity.id}: pos(${item.entity.x}, ${item.entity.y}) angle=${item.angle.toFixed(3)}rad (${(item.angle * 180 / Math.PI).toFixed(1)}°)`);
 		});
 
 		// Sort by current angle to preserve relative positioning
 		entitiesWithAngles.sort((a, b) => a.angle - b.angle);
 
-		// Position entities around the circle
+		console.log('After sorting:');
+		entitiesWithAngles.forEach((item, i) => {
+			console.log(`  [${i}] Entity ${item.entity.id}: angle=${item.angle.toFixed(3)}rad (${(item.angle * 180 / Math.PI).toFixed(1)}°)`);
+		});
+
+		// Find which entity should be closest to π/2 (90°) to use as anchor
+		let anchorIndex = 0;
+		let minDistanceToTarget = Math.abs(entitiesWithAngles[0].angle - targetStartAngle);
+		
+		for (let i = 1; i < entitiesWithAngles.length; i++) {
+			const distanceToTarget = Math.min(
+				Math.abs(entitiesWithAngles[i].angle - targetStartAngle),
+				Math.abs(entitiesWithAngles[i].angle - targetStartAngle + 2 * Math.PI),
+				Math.abs(entitiesWithAngles[i].angle - targetStartAngle - 2 * Math.PI)
+			);
+			
+			if (distanceToTarget < minDistanceToTarget) {
+				minDistanceToTarget = distanceToTarget;
+				anchorIndex = i;
+			}
+		}
+
+		console.log(`Using entity ${entitiesWithAngles[anchorIndex].entity.id} as anchor (closest to π/2)`);
+
+		// Position entities around the circle, with the anchor entity at π/2
 		entitiesWithAngles.forEach((item, index) => {
-			const firstEntityAngle = entitiesWithAngles[0].angle;
-			const angle = firstEntityAngle + (angleStep * index);
-			const newX = Math.round(centerX + Math.cos(angle) * radius);
-			const newY = Math.round(centerY + Math.sin(angle) * radius);
+			// Calculate offset from anchor - keep it simple and direct
+			const offsetFromAnchor = index - anchorIndex;
+			
+			// Calculate target angle: anchor goes to π/2, others distributed counterclockwise
+			const targetAngle = targetStartAngle - (angleStep * offsetFromAnchor);
+			
+			const newX = Math.round(centerX + Math.cos(targetAngle) * radius);
+			const newY = Math.round(centerY + Math.sin(targetAngle) * radius); // Add sin for standard math coordinates
+
+			console.log(`  Positioning entity ${item.entity.id} at index ${index} (offset ${offsetFromAnchor} from anchor):`);
+			console.log(`    Target angle: ${targetAngle.toFixed(3)}rad (${(targetAngle * 180 / Math.PI).toFixed(1)}°)`);
+			console.log(`    Old pos: (${item.entity.x}, ${item.entity.y})`);
+			console.log(`    New pos: (${newX}, ${newY})`);
 
 			if (entityType === 'circle') {
 				dataStore.updateCircle(item.entity.id, { x: newX, y: newY });
@@ -225,6 +321,8 @@ function alignCircularly(entities, entityType, dataStore) {
 				dataStore.updateSquare(item.entity.id, { x: newX, y: newY });
 			}
 		});
+
+		console.log('=== END DEBUG ===');
 	}
 }
 

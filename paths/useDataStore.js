@@ -55,7 +55,6 @@ function createMainStore() {
         if (documentStore.getAllCircleDocuments().length === 0) {
             documentStore.createCircleDocument();
         }
-        uiStore.ensureDefaults(documentStore);
         
         if (!loaded) {
             saveToStorage();

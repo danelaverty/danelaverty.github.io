@@ -1,4 +1,4 @@
-// DocumentsDock.js - Main DocumentsDock component (Updated with create child document handler)
+// DocumentsDock.js - Main DocumentsDock component (Updated with hover events for viewer highlighting)
 import { onMounted, onUnmounted } from './vue-composition-api.js';
 import { DocumentIconControls } from './DocumentIconControlsComponent.js';
 import { createDocumentsDockState } from './DocumentsDockState.js';
@@ -10,12 +10,21 @@ import { initializeDocumentsDockStyles } from './DocumentsDockStyles.js';
 initializeDocumentsDockStyles();
 
 export const DocumentsDock = {
-    emits: ['create-viewer-for-document'],
+    emits: ['create-viewer-for-document', 'document-hover', 'document-hover-end'],
     setup(props, { emit }) {
         // Create state and handlers
         const dockState = createDocumentsDockState();
         const handlers = createDocumentsDockHandlers(dockState, emit);
         const resize = createDocumentsDockResize();
+
+        // Document hover handlers
+        const handleDocumentHover = (documentId) => {
+            emit('document-hover', documentId);
+        };
+
+        const handleDocumentHoverEnd = () => {
+            emit('document-hover-end');
+        };
 
         onMounted(() => {
             resize.initializeResize();
@@ -30,7 +39,10 @@ export const DocumentsDock = {
             ...dockState,
             ...handlers,
             // Resize functionality
-            ...resize
+            ...resize,
+            // New hover handlers
+            handleDocumentHover,
+            handleDocumentHoverEnd
         };
     },
     components: {
@@ -76,6 +88,8 @@ export const DocumentsDock = {
                 :draggable="!isEditingDocument(doc.id)"
                 @click="handleDocumentClick(doc.id)"
                 @dblclick="handleDocumentDoubleClick(doc.id, $event)"
+                @mouseenter="handleDocumentHover(doc.id)"
+                @mouseleave="handleDocumentHoverEnd"
                 @dragstart="handleDragStart($event, doc.id)"
                 @dragend="handleDragEnd($event, doc.id)"
                 @dragover="handleDragOver($event, doc.id)"
