@@ -280,27 +280,6 @@ function createUIStore() {
     const hasMultipleCirclesSelected = () => hasMultipleSelected('circle');
     const hasMultipleSquaresSelected = () => hasMultipleSelected('square');
 
-    // Initialization
-    const ensureDefaults = (documentStore) => {
-        if (data.circleViewers.size === 0) {
-            // Get or create a default document
-            let defaultDocId = null;
-            if (documentStore) {
-                const docs = documentStore.getAllCircleDocuments();
-                if (docs.length > 0) {
-                    defaultDocId = docs[0].id;
-                } else {
-                    const doc = documentStore.createCircleDocument();
-                    defaultDocId = doc.id;
-                }
-            }
-            
-            createCircleViewer(270, defaultDocId);
-        }
-        ensureSelectedViewer();
-    };
-
-    // Serialization - Only serialize viewer structure, not properties
     const serialize = () => ({
         circleViewers: Array.from(data.circleViewers.entries()),
         viewerOrder: data.viewerOrder,
@@ -362,7 +341,6 @@ function createUIStore() {
         hasMultipleCirclesSelected,
         hasMultipleSquaresSelected,
         // Initialization
-        ensureDefaults,
         // Serialization
         serialize,
         deserialize

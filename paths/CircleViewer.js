@@ -24,6 +24,10 @@ export const CircleViewer = {
                 draggedViewerId: null,
                 dropTarget: null
             })
+        },
+        hoveredDocumentId: {
+            type: String,
+            default: null
         }
     },
     emits: [
@@ -206,6 +210,7 @@ export const CircleViewer = {
             <ViewerControls 
                 :viewer-id="viewerId"
                 :drag-state="dragState"
+                :hovered-document-id="hoveredDocumentId"
                 @start-reorder="handleStartReorder"
                 @close="handleCloseViewer"
             />

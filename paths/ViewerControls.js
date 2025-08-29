@@ -403,6 +403,21 @@ const componentStyles = `
     .viewer-controls.energy-active .viewer-button.animation-toggle.active:hover {
         background-color: #77CC7A;
     }
+
+    .viewer-controls.document-hovered {
+        background-color: #6C6F50;
+        color: white;
+        animation: dock-hover-glow 1.5s infinite;
+    }
+
+    @keyframes dock-hover-glow {
+        0%, 100% {
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4);
+        }
+        50% {
+            box-shadow: 0 2px 16px rgba(76, 175, 80, 0.6);
+        }
+    }
 `;
 
 injectComponentStyles('viewer-controls', componentStyles);
@@ -421,6 +436,11 @@ export const ViewerControls = {
                 draggedViewerId: null,
                 dropTarget: null
             })
+        },
+        // NEW: Prop for document hover highlighting
+        hoveredDocumentId: {
+            type: String,
+            default: null
         }
     },
     emits: ['start-reorder', 'close'],
@@ -454,6 +474,13 @@ export const ViewerControls = {
         
         // Check if this viewer is selected
         const isSelected = computed(() => dataStore.isViewerSelected(props.viewerId));
+
+        // NEW: Check if this viewer's document is being hovered in the dock
+        const isDocumentHovered = computed(() => {
+            if (!props.hoveredDocumentId) return false;
+            const currentDoc = dataStore.getCircleDocumentForViewer(props.viewerId);
+            return currentDoc && currentDoc.id === props.hoveredDocumentId;
+        });
 
         // NEW: Check if energy proximity system is active for this viewer
         const isEnergyActive = computed(() => {
@@ -710,6 +737,7 @@ export const ViewerControls = {
             backgroundIcon, // NEW: Expose background icon
             backgroundTitle, // NEW: Expose background title
             BACKGROUND_TYPES, // NEW: Expose background type constants
+            isDocumentHovered, // NEW: Expose document hover state
             isBeingDragged,
             isDropTarget,
             isDragActive,
@@ -734,6 +762,7 @@ export const ViewerControls = {
                     compact: isCompact,
                     editing: isEditing,
                     'energy-active': isEnergyActive,
+                    'document-hovered': isDocumentHovered,
                     'being-dragged': isBeingDragged,
                     'drop-target': isDropTarget,
                     'drag-active': isDragActive,

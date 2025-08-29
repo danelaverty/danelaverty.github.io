@@ -30,8 +30,8 @@ export const circleTypeStyles = `
     }
 
     @keyframes glow {
-        0% { filter: blur(5px); }
-        100% { filter: blur(10px); }
+        0% { filter: blur(3px); }
+        100% { filter: blur(6px); }
     }
 
     /* Triangle circle type - NO CIRCLE BACKGROUND */

@@ -32,11 +32,11 @@ const connectionStyles = `
 
     /* NEW: Explicit connection styles */
     .connection-line.explicit-solid {
-        background-color: #FFD700; /* Gold color for explicit connections */
+        background-color: rgba(255, 255, 255, .2);
     }
 
     .connection-line.explicit-dashed {
-        border-top: 2px dashed #FFD700;
+        border-top: 2px dashed rgba(255, 255, 255, .2);
         background-color: transparent;
     }
 
@@ -71,7 +71,7 @@ const connectionStyles = `
 
     /* NEW: Explicit connection styles */
     .connection-path.explicit-connection {
-        stroke: #FFD700; /* Gold color */
+        stroke: rgba(255, 255, 255, .2);
         stroke-width: 2.5; /* Slightly thicker */
         opacity: 0.8; /* More visible */
     }
@@ -211,7 +211,7 @@ export const ConnectionComponent = {
             
             if (isExplicit) {
                 // Explicit connections use gold color
-                strokeColor = '#FFD700';
+                strokeColor = 'rgba(255, 255, 255, .2)';
                 opacity = 0.8;
                 strokeWidth = '2.5px';
             } else if (isCircleType) {
