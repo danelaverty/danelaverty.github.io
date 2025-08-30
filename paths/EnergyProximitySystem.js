@@ -12,8 +12,8 @@ export class EnergyProximitySystem {
         // Configuration
         this.config = {
             maxDistance: 80, // Maximum distance for effect
-            minDistance: 30,  // Minimum distance for maximum effect
-            maxScale: 1.5,    // Maximum scale multiplier
+            minDistance: 50,  // Minimum distance for maximum effect
+            maxScale: 1.01,    // Maximum scale multiplier
             minScale: 1.0,    // Minimum scale (normal size)
             maxOpacity: 1.0,  // Maximum opacity
             minOpacity: 0.5,  // Minimum opacity when dampener is present
@@ -266,138 +266,223 @@ export class EnergyProximitySystem {
     }
 
     /**
-     * Update all proximity effects
-     * FIXED: Use reactive activeViewers that will trigger Vue reactivity
-     */
-    updateProximityEffects() {
-        if (!this.isActive) {
-            return;
+ * Group circles by their viewer ID for isolated processing
+ */
+groupCirclesByViewer() {
+    const circlesByViewer = new Map();
+    
+    Array.from(this.circles.values()).forEach(data => {
+        const viewerId = data.viewerId;
+        if (!circlesByViewer.has(viewerId)) {
+            circlesByViewer.set(viewerId, []);
         }
+        circlesByViewer.get(viewerId).push(data);
+    });
+    
+    return circlesByViewer;
+}
 
-        const circleArray = Array.from(this.circles.values());
-        const newEffects = new Map();
-        const newActiveViewers = new Set(); // Track viewers with energy influencers
+/**
+ * Categorize circles by their energy types within a viewer
+ */
+categorizeCirclesByEnergyType(viewerCircles) {
+    return {
+        //glowCircles: viewerCircles.filter(data => this.isGlowCircle(data.circle)),
+        glowCircles: viewerCircles,
+        exciterCircles: viewerCircles.filter(data => 
+            this.hasEnergyType(data.circle, 'exciter') //&& this.isCircleActivated(data.circle)
+        ),
+        dampenerCircles: viewerCircles.filter(data => 
+            this.hasEnergyType(data.circle, 'dampener') //&& this.isCircleActivated(data.circle)
+        )
+    };
+}
 
-        // Group circles by actual viewerId
-        const circlesByViewer = new Map();
-        circleArray.forEach(data => {
-            const viewerId = data.viewerId;
-            if (!circlesByViewer.has(viewerId)) {
-                circlesByViewer.set(viewerId, []);
-            }
-            circlesByViewer.get(viewerId).push(data);
-        });
+/**
+ * Check if a viewer has any energy influencers (exciters or dampeners)
+ */
+hasEnergyInfluencers(exciterCircles, dampenerCircles) {
+    return exciterCircles.length > 0 || dampenerCircles.length > 0;
+}
 
-        // Calculate effects for each viewer separately
-        circlesByViewer.forEach((viewerCircles, viewerId) => {
+/**
+ * Calculate the net exciter effect on a glow circle from all nearby exciters
+ */
+calculateExciterEffect(glowPos, exciterCircles, glowCircleId) {
+    let netExciterEffect = 0;
+    let hasNearbyExciter = false;
+
+    exciterCircles.forEach(exciterData => {
+        // Skip if it's the same circle
+        if (glowCircleId === exciterData.circle.id) return;
+
+        const exciterPos = this.getEffectivePosition(exciterData.circle.id);
+        if (!exciterPos) return;
+
+        const distance = this.calculateDistance(glowPos, exciterPos);
+        if (distance <= this.config.maxDistance) {
+            hasNearbyExciter = true;
+            const proximityStrength = this.calculateProximityStrength(distance);
             
-            const glowCircles = viewerCircles.filter(data => this.isGlowCircle(data.circle));
-            const exciterCircles = viewerCircles.filter(data => 
-                this.hasEnergyType(data.circle, 'exciter') && this.isCircleActivated(data.circle)
-            );
-            const dampenerCircles = viewerCircles.filter(data => 
-                this.hasEnergyType(data.circle, 'dampener') && this.isCircleActivated(data.circle)
-            );
+            // Calculate exciter effect as positive influence
+            const exciterInfluence = (proximityStrength - this.config.minScale) / 
+                                   (this.config.maxScale - this.config.minScale);
+            netExciterEffect = Math.max(netExciterEffect, exciterInfluence);
+        }
+    });
 
-            if (exciterCircles.length === 0 && dampenerCircles.length === 0) {
-                return; // Skip processing this viewer entirely
-            }
+    return { netExciterEffect, hasNearbyExciter };
+}
 
-            // Mark this viewer as active since it has energy influencers
-            newActiveViewers.add(viewerId);
+/**
+ * Calculate the net dampener effect on a glow circle from all nearby dampeners
+ */
+calculateDampenerEffect(glowPos, dampenerCircles, glowCircleId) {
+    let netDampenerEffect = 0;
+    let hasNearbyDampener = false;
 
-            // Calculate effects for each glow circle within this viewer only
-            glowCircles.forEach(glowData => {
-                const glowPos = this.getEffectivePosition(glowData.circle.id);
-                if (!glowPos) return;
-                
-                const isActivated = this.isCircleActivated(glowData.circle);
-                
-                // Start with the circle's natural state
-                let baseScale = isActivated ? this.config.maxScale : 0.7;
-                let netExciterEffect = 0;
-                let netDampenerEffect = 0;
-                let hasNearbyInfluencer = false;
+    dampenerCircles.forEach(dampenerData => {
+        // Skip if it's the same circle
+        if (glowCircleId === dampenerData.circle.id) return;
 
-                // Calculate exciter effects - only from activated exciters
-                exciterCircles.forEach(exciterData => {
-                    // Skip if it's the same circle
-                    if (glowData.circle.id === exciterData.circle.id) return;
+        const dampenerPos = this.getEffectivePosition(dampenerData.circle.id);
+        if (!dampenerPos) return;
 
-                    const exciterPos = this.getEffectivePosition(exciterData.circle.id);
-                    if (!exciterPos) return;
+        const distance = this.calculateDistance(glowPos, dampenerPos);
+        if (distance <= this.config.maxDistance) {
+            hasNearbyDampener = true;
+            const proximityStrength = this.calculateProximityStrength(distance);
+            
+            // Calculate dampener effect as negative influence
+            const dampenerInfluence = (proximityStrength - this.config.minScale) / 
+                                    (this.config.maxScale - this.config.minScale);
+            netDampenerEffect = Math.max(netDampenerEffect, dampenerInfluence);
+        }
+    });
 
-                    const distance = this.calculateDistance(glowPos, exciterPos);
-                    if (distance <= this.config.maxDistance) {
-                        hasNearbyInfluencer = true;
-                        const proximityStrength = this.calculateProximityStrength(distance);
-                        
-                        // Calculate exciter effect as positive influence
-                        const exciterInfluence = (proximityStrength - this.config.minScale) / (this.config.maxScale - this.config.minScale);
-                        netExciterEffect = Math.max(netExciterEffect, exciterInfluence);
-                    }
-                });
+    return { netDampenerEffect, hasNearbyDampener };
+}
 
-                // Calculate dampener effects - only from activated dampeners
-                dampenerCircles.forEach(dampenerData => {
-                    // Skip if it's the same circle
-                    if (glowData.circle.id === dampenerData.circle.id) return;
-
-                    const dampenerPos = this.getEffectivePosition(dampenerData.circle.id);
-                    if (!dampenerPos) return;
-
-                    const distance = this.calculateDistance(glowPos, dampenerPos);
-                    if (distance <= this.config.maxDistance) {
-                        hasNearbyInfluencer = true;
-                        const proximityStrength = this.calculateProximityStrength(distance);
-                        
-                        // Calculate dampener effect as negative influence
-                        const dampenerInfluence = (proximityStrength - this.config.minScale) / (this.config.maxScale - this.config.minScale);
-                        netDampenerEffect = Math.max(netDampenerEffect, dampenerInfluence);
-                    }
-                });
-
-                // Only apply effect if there's a nearby influencer
-                if (hasNearbyInfluencer) {
-                    // Calculate net effect: exciter pushes toward maxScale, dampener pushes toward minScale
-                    const netEffect = netExciterEffect - netDampenerEffect;
-                    
-                    // Apply the net effect to determine final scale
-                    let finalScale;
-                    if (netEffect > 0) {
-                        // More excitation than dampening - scale up from base
-                        const maxPossibleScale = isActivated ? this.config.maxScale : this.config.maxScale;
-                        finalScale = baseScale + (netEffect * (maxPossibleScale - baseScale));
-                    } else if (netEffect < 0) {
-                        // More dampening than excitation - scale down from base
-                        const minPossibleScale = isActivated ? 0.7 : 0.7;
-                        finalScale = baseScale + (netEffect * (baseScale - minPossibleScale));
-                    } else {
-                        // Equal forces or no net effect
-                        finalScale = baseScale;
-                    }
-                    
-                    // Calculate opacity and saturation based on final scale
-                    const effectStrength = (finalScale - 0.7) / (this.config.maxScale - 0.7);
-                    const clampedEffectStrength = Math.max(0, Math.min(1, effectStrength));
-                    
-                    const opacityRange = this.config.maxOpacity - this.config.minOpacity;
-                    const saturationRange = this.config.maxSaturation - this.config.minSaturation;
-                    
-                    const opacity = this.config.minOpacity + (clampedEffectStrength * opacityRange);
-                    const saturation = this.config.minSaturation + (clampedEffectStrength * saturationRange);
-                    
-                    newEffects.set(glowData.circle.id, { scale: finalScale, opacity, saturation });
-                }
-            });
-        });
-
-        this.activeViewers.value = newActiveViewers;
-
-        // Apply proximity effects
-        this.applyProximityEffects(newEffects);
-        this.proximityEffects = newEffects;
+/**
+ * Calculate the final scale based on base scale and net energy effects
+ */
+calculateFinalScale(baseScale, netExciterEffect, netDampenerEffect, isActivated) {
+    const netEffect = netExciterEffect - netDampenerEffect;
+    
+    if (netEffect > 0) {
+        // More excitation than dampening - scale up from base
+        const maxPossibleScale = isActivated ? this.config.maxScale : this.config.maxScale;
+        return baseScale + (netEffect * (maxPossibleScale - baseScale));
+    } else if (netEffect < 0) {
+        // More dampening than excitation - scale down from base
+        const minPossibleScale = isActivated ? 0.7 : 0.7;
+        return baseScale + (netEffect * (baseScale - minPossibleScale));
+    } else {
+        // Equal forces or no net effect
+        return baseScale;
     }
+}
+
+/**
+ * Calculate opacity and saturation based on the final scale
+ */
+calculateOpacityAndSaturation(finalScale) {
+    const effectStrength = (finalScale - 0.7) / (this.config.maxScale - 0.7);
+    const clampedEffectStrength = Math.max(0, Math.min(1, effectStrength));
+    
+    const opacityRange = this.config.maxOpacity - this.config.minOpacity;
+    const saturationRange = this.config.maxSaturation - this.config.minSaturation;
+    
+    const opacity = this.config.minOpacity + (clampedEffectStrength * opacityRange);
+    const saturation = this.config.minSaturation + (clampedEffectStrength * saturationRange);
+    
+    return { opacity, saturation };
+}
+
+/**
+ * Process a single glow circle and calculate its proximity effects
+ */
+processGlowCircle(glowData, exciterCircles, dampenerCircles) {
+    const glowPos = this.getEffectivePosition(glowData.circle.id);
+    if (!glowPos) return null;
+    
+    const isActivated = this.isCircleActivated(glowData.circle);
+    const baseScale = isActivated ? this.config.maxScale : 0.7;
+    
+    // Calculate energy effects
+    const { netExciterEffect, hasNearbyExciter } = this.calculateExciterEffect(
+        glowPos, exciterCircles, glowData.circle.id
+    );
+    const { netDampenerEffect, hasNearbyDampener } = this.calculateDampenerEffect(
+        glowPos, dampenerCircles, glowData.circle.id
+    );
+    
+    const hasNearbyInfluencer = hasNearbyExciter || hasNearbyDampener;
+    
+    // Only apply effect if there's a nearby influencer
+    if (!hasNearbyInfluencer) return null;
+    
+    const finalScale = this.calculateFinalScale(baseScale, netExciterEffect, netDampenerEffect, isActivated);
+    const { opacity, saturation } = this.calculateOpacityAndSaturation(finalScale);
+    
+    return {
+        circleId: glowData.circle.id,
+        scale: finalScale,
+        opacity,
+        saturation
+    };
+}
+
+/**
+ * Process all circles within a single viewer and calculate their effects
+ */
+processViewerCircles(viewerCircles, viewerId, newActiveViewers, newEffects) {
+    const { glowCircles, exciterCircles, dampenerCircles } = this.categorizeCirclesByEnergyType(viewerCircles);
+    
+    if (!this.hasEnergyInfluencers(exciterCircles, dampenerCircles)) {
+        return; // Skip processing this viewer entirely
+    }
+
+    // Mark this viewer as active since it has energy influencers
+    newActiveViewers.add(viewerId);
+
+    // Calculate effects for each glow circle within this viewer only
+    glowCircles.forEach(glowData => {
+        const effect = this.processGlowCircle(glowData, exciterCircles, dampenerCircles);
+        if (effect) {
+            newEffects.set(effect.circleId, {
+                scale: effect.scale,
+                opacity: effect.opacity,
+                saturation: effect.saturation
+            });
+        }
+    });
+}
+
+/**
+ * Main update method - now much simpler and more readable
+ */
+updateProximityEffects() {
+    if (!this.isActive) {
+        return;
+    }
+
+    const newEffects = new Map();
+    const newActiveViewers = new Set();
+
+    // Group circles by viewer for isolated processing
+    const circlesByViewer = this.groupCirclesByViewer();
+
+    // Process each viewer separately
+    circlesByViewer.forEach((viewerCircles, viewerId) => {
+        this.processViewerCircles(viewerCircles, viewerId, newActiveViewers, newEffects);
+    });
+
+    // Update reactive state and apply effects
+    this.activeViewers.value = newActiveViewers;
+    this.applyProximityEffects(newEffects);
+    this.proximityEffects = newEffects;
+}
 
     /**
      * Apply proximity effects to elements
@@ -428,7 +513,7 @@ export class EnergyProximitySystem {
                 const circle = data.circle;
                 
                 // Handle glow circles
-                if (this.isGlowCircle(circle)) {
+                if (true || this.isGlowCircle(circle)) {
                     if (effects.has(circleId)) {
                         // Apply proximity effects
                         const effect = effects.get(circleId);
