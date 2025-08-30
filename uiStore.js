@@ -1,4 +1,4 @@
-// uiStore.js - UI state management: viewers, selections, and layout
+// uiStore.js - UI state management: viewers, selections, and layout (Updated to use document properties with background type support)
 import { reactive } from './vue-composition-api.js';
 
 let uiStoreInstance = null;
@@ -8,7 +8,6 @@ function createUIStore() {
         // Viewer management
         circleViewers: new Map(),
         viewerOrder: [],
-        minimizedViewers: new Map(),
         selectedViewerId: null,
         nextViewerId: 1,
         
@@ -19,15 +18,20 @@ function createUIStore() {
         selectedSquareViewerId: null
     });
 
+    // Background type constants (should match documentStore)
+    const BACKGROUND_TYPES = {
+        SILHOUETTE: 'silhouette',
+        CYCLE: 'cycle',
+        NONE: 'none'
+    };
+
     // Viewer operations
-    const createCircleViewer = (width = 400, documentId = null) => {
+    const createCircleViewer = (width = 270, documentId = null) => {
         const id = `viewer_${data.nextViewerId++}`;
         const viewer = {
             id,
-            width,
-            currentCircleDocumentId: documentId,
-            isMinimized: false,
-            showBackground: true // Default to showing background
+            currentCircleDocumentId: documentId
+            // NOTE: width, showBackground, and backgroundType are now stored in the document, not here
         };
         
         data.circleViewers.set(id, viewer);
@@ -46,24 +50,55 @@ function createUIStore() {
     };
 
     const getVisibleCircleViewers = () => {
-        return getCircleViewers().filter(viewer => !viewer.isMinimized);
+        return getCircleViewers();
     };
 
-    const updateCircleViewer = (id, updates) => {
+    // UPDATED: Now syncs viewer properties to the associated document with background type support
+    const updateCircleViewer = (id, updates, documentStore = null) => {
         const viewer = data.circleViewers.get(id);
-        if (viewer) {
-            Object.assign(viewer, updates);
-            return viewer;
+        if (!viewer) return null;
+        
+        // If we have a document store and the viewer has a document, update the document properties
+        if (documentStore && viewer.currentCircleDocumentId) {
+            const viewerPropertyUpdates = {};
+            
+            // Extract viewer properties that should be persisted to the document
+            if (updates.width !== undefined) {
+                viewerPropertyUpdates.width = updates.width;
+            }
+            if (updates.showBackground !== undefined) {
+                viewerPropertyUpdates.showBackground = updates.showBackground;
+            }
+            // NEW: Handle backgroundType updates
+            if (updates.backgroundType !== undefined) {
+                viewerPropertyUpdates.backgroundType = updates.backgroundType;
+            }
+            
+            // Update the document's viewer properties
+            if (Object.keys(viewerPropertyUpdates).length > 0) {
+                documentStore.updateCircleDocumentViewerProperties(
+                    viewer.currentCircleDocumentId, 
+                    viewerPropertyUpdates
+                );
+            }
         }
-        return null;
+        
+        // Update non-persistent viewer properties (like currentCircleDocumentId)
+        const nonPersistentUpdates = {};
+        if (updates.currentCircleDocumentId !== undefined) {
+            nonPersistentUpdates.currentCircleDocumentId = updates.currentCircleDocumentId;
+        }
+        
+        if (Object.keys(nonPersistentUpdates).length > 0) {
+            Object.assign(viewer, nonPersistentUpdates);
+        }
+        
+        return viewer;
     };
 
     const deleteCircleViewer = (id) => {
-        if (data.circleViewers.size <= 1) return false;
-        
         data.circleViewers.delete(id);
         data.viewerOrder = data.viewerOrder.filter(viewerId => viewerId !== id);
-        data.minimizedViewers.delete(id);
         
         // If we deleted the selected viewer, select another one
         if (data.selectedViewerId === id) {
@@ -72,34 +107,6 @@ function createUIStore() {
         }
         
         return true;
-    };
-
-    const minimizeViewer = (id) => {
-        const viewer = data.circleViewers.get(id);
-        if (viewer) {
-            viewer.isMinimized = true;
-            data.minimizedViewers.set(id, viewer);
-            
-            // If we minimized the selected viewer, select another one
-            if (data.selectedViewerId === id) {
-                data.selectedViewerId = null;
-                ensureSelectedViewer();
-            }
-            
-            return true;
-        }
-        return false;
-    };
-
-    const restoreViewer = (id) => {
-        const viewer = data.circleViewers.get(id);
-        if (viewer) {
-            viewer.isMinimized = false;
-            data.minimizedViewers.delete(id);
-            data.selectedViewerId = id; // When restoring, make it selected
-            return true;
-        }
-        return false;
     };
 
     const reorderViewers = (fromIndex, toIndex) => {
@@ -116,7 +123,7 @@ function createUIStore() {
 
     const setSelectedViewer = (viewerId) => {
         const viewer = data.circleViewers.get(viewerId);
-        if (viewer && !viewer.isMinimized) {
+        if (viewer) {
             data.selectedViewerId = viewerId;
             return true;
         }
@@ -128,7 +135,6 @@ function createUIStore() {
         
         if (!data.selectedViewerId || 
             !data.circleViewers.has(data.selectedViewerId) || 
-            data.circleViewers.get(data.selectedViewerId)?.isMinimized ||
             !visibleViewers.find(v => v.id === data.selectedViewerId)) {
             
             if (visibleViewers.length > 0) {
@@ -151,15 +157,42 @@ function createUIStore() {
         return 'No Document';
     };
 
+    // UPDATED: Get viewer properties from the associated document with background type migration
+    const getViewerProperties = (viewerId, documentStore) => {
+        const viewer = data.circleViewers.get(viewerId);
+        if (!viewer || !viewer.currentCircleDocumentId || !documentStore) {
+            // Return defaults if no document or document store
+            return {
+                width: 270,
+                showBackground: true,
+                backgroundType: BACKGROUND_TYPES.SILHOUETTE
+            };
+        }
+        
+        const properties = documentStore.getCircleDocumentViewerProperties(viewer.currentCircleDocumentId);
+        
+        // Ensure all required properties exist with proper defaults
+        return {
+            width: properties.width || 270,
+            showBackground: properties.showBackground !== undefined ? properties.showBackground : true,
+            backgroundType: properties.backgroundType || BACKGROUND_TYPES.SILHOUETTE
+        };
+    };
+
     const getCircleDocumentForViewer = (viewerId) => {
         const viewer = data.circleViewers.get(viewerId);
         return viewer ? viewer.currentCircleDocumentId : null;
     };
 
-    const setCircleDocumentForViewer = (viewerId, documentId) => {
+    // UPDATED: When setting a new document, apply the document's viewer properties
+    const setCircleDocumentForViewer = (viewerId, documentId, documentStore = null) => {
         const viewer = data.circleViewers.get(viewerId);
         if (viewer) {
             viewer.currentCircleDocumentId = documentId;
+            
+            // If we have access to the document store, we could trigger a property update
+            // but that's handled at the coordination layer
+            
             return true;
         }
         return false;
@@ -247,34 +280,13 @@ function createUIStore() {
     const hasMultipleCirclesSelected = () => hasMultipleSelected('circle');
     const hasMultipleSquaresSelected = () => hasMultipleSelected('square');
 
-    // Initialization
-    const ensureDefaults = (documentStore) => {
-        if (data.circleViewers.size === 0) {
-            // Get or create a default document
-            let defaultDocId = null;
-            if (documentStore) {
-                const docs = documentStore.getAllCircleDocuments();
-                if (docs.length > 0) {
-                    defaultDocId = docs[0].id;
-                } else {
-                    const doc = documentStore.createCircleDocument();
-                    defaultDocId = doc.id;
-                }
-            }
-            
-            createCircleViewer(400, defaultDocId);
-        }
-        ensureSelectedViewer();
-    };
-
-    // Serialization
     const serialize = () => ({
         circleViewers: Array.from(data.circleViewers.entries()),
         viewerOrder: data.viewerOrder,
-        minimizedViewers: Array.from(data.minimizedViewers.entries()),
         selectedViewerId: data.selectedViewerId,
         nextViewerId: data.nextViewerId
         // Selections are intentionally not serialized - they should reset on page load
+        // Viewer properties are now stored in documents, not here
     });
 
     const deserialize = (savedData) => {
@@ -283,9 +295,6 @@ function createUIStore() {
         }
         if (savedData.viewerOrder) {
             data.viewerOrder = savedData.viewerOrder;
-        }
-        if (savedData.minimizedViewers) {
-            data.minimizedViewers = new Map(savedData.minimizedViewers);
         }
         if (savedData.selectedViewerId) {
             data.selectedViewerId = savedData.selectedViewerId;
@@ -300,19 +309,20 @@ function createUIStore() {
 
     return {
         data,
+        // Constants
+        BACKGROUND_TYPES, // NEW: Expose background type constants
         // Viewer management
         createCircleViewer,
         getCircleViewers,
         getVisibleCircleViewers,
         updateCircleViewer,
         deleteCircleViewer,
-        minimizeViewer,
-        restoreViewer,
         reorderViewers,
         setSelectedViewer,
         ensureSelectedViewer,
         isViewerSelected,
         getViewerTitle,
+        getViewerProperties, // UPDATED: Get properties from document with background type support
         getCircleDocumentForViewer,
         setCircleDocumentForViewer,
         // Selection management
@@ -331,7 +341,6 @@ function createUIStore() {
         hasMultipleCirclesSelected,
         hasMultipleSquaresSelected,
         // Initialization
-        ensureDefaults,
         // Serialization
         serialize,
         deserialize

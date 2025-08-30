@@ -1,9 +1,11 @@
-// ViewerControls.js - Enhanced with drag state handling
+// ViewerControls.js - Enhanced with drag state handling, document-based properties, energy system indicator, animation loop toggle, and background cycling
 import { ref, computed, nextTick, onMounted, onUnmounted } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
+import { useEnergyProximitySystem } from './EnergyProximitySystem.js';
+import { useAnimationLoopManager } from './AnimationLoopManager.js';
 import { injectComponentStyles } from './styleUtils.js';
 
-// Enhanced component styles with drag state support
+// Enhanced component styles with drag state support, editing styles, energy system indicator, animation toggle, and background cycling
 const componentStyles = `
     .viewer-controls {
         position: absolute;
@@ -18,6 +20,17 @@ const componentStyles = `
         z-index: 1002;
         user-select: none;
         transition: background-color 0.2s ease, height 0.2s ease;
+    }
+
+    /* NEW: Energy system active styling */
+    .viewer-controls.energy-active {
+        background-color: #442222;
+        border-bottom-color: #555;
+    }
+
+    .viewer-controls.energy-active.selected {
+        background-color: #553333;
+        border-bottom-color: #666;
     }
 
     /* Compact layout for narrow viewers - only expand on hover */
@@ -120,6 +133,12 @@ const componentStyles = `
         transition: all 0.2s ease;
     }
 
+    /* Energy system active reorder handle */
+    .viewer-controls.energy-active .reorder-handle {
+        background-color: #553333;
+        border-right-color: #555;
+    }
+
     /* Show reorder handle on hover or during drag operations */
     .viewer-controls:hover .reorder-handle,
     .viewer-controls.drag-active .reorder-handle {
@@ -154,6 +173,12 @@ const componentStyles = `
         color: #aaa;
     }
 
+    /* Energy system active reorder handle hover */
+    .viewer-controls.energy-active .reorder-handle:hover {
+        background-color: #664444;
+        color: #aaa;
+    }
+
     .reorder-handle:active {
         cursor: grabbing;
     }
@@ -162,6 +187,12 @@ const componentStyles = `
     .viewer-controls.selected .reorder-handle {
         background-color: #3a3a3a;
         border-right-color: #555;
+    }
+
+    /* Energy system active + selected reorder handle */
+    .viewer-controls.energy-active.selected .reorder-handle {
+        background-color: #664444;
+        border-right-color: #666;
     }
 
     .viewer-title {
@@ -175,6 +206,7 @@ const componentStyles = `
         white-space: nowrap;
         cursor: pointer;
         transition: all 0.2s ease;
+        position: relative;
     }
 
     /* Enhanced title styling during drag */
@@ -197,24 +229,37 @@ const componentStyles = `
         background-color: rgba(255, 255, 255, 0.05);
     }
 
+    /* Energy system active title hover */
+    .viewer-controls.energy-active .viewer-title:hover {
+        background-color: rgba(255, 255, 255, 0.08);
+    }
+
     /* Disable title editing during drag operations */
     .viewer-controls.drag-active .viewer-title {
         pointer-events: none;
     }
 
+    /* Title editing styles */
+    .viewer-title.editing {
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+    }
+
     .viewer-title-input {
         background: transparent;
-        border: 1px solid #666;
+        border: 1px solid #4CAF50;
         color: white;
         font-size: 14px;
         padding: 4px 8px;
         border-radius: 3px;
         width: 100%;
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
     }
 
     .viewer-title-input:focus {
-        outline: none;
-        border-color: #4CAF50;
+        border-color: #66BB6A;
+        box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.3);
     }
 
     .viewer-buttons {
@@ -225,6 +270,8 @@ const componentStyles = `
         flex-shrink: 0;
         opacity: 0;
         transition: opacity 0.2s ease;
+        position: absolute;
+        right: 0;
     }
 
     /* Show buttons on hover */
@@ -232,9 +279,10 @@ const componentStyles = `
         opacity: 1;
     }
 
-    /* Hide buttons during drag operations */
+    /* Hide buttons during drag operations and editing */
     .viewer-controls.being-dragged .viewer-buttons,
-    .viewer-controls.drag-disabled .viewer-buttons {
+    .viewer-controls.drag-disabled .viewer-buttons,
+    .viewer-controls.editing .viewer-buttons {
         opacity: 0.3;
         pointer-events: none;
     }
@@ -271,24 +319,104 @@ const componentStyles = `
         color: #fff;
     }
 
-    .viewer-button.minimize:hover {
-        background-color: #4CAF50;
+    /* Energy system active button hover */
+    .viewer-controls.energy-active .viewer-button:hover {
+        background-color: #555;
+        color: #fff;
     }
 
     .viewer-button.close:hover {
         background-color: #f44336;
     }
 
-    .viewer-button.background-toggle.active {
+    /* Updated background toggle styles for cycling through states */
+    .viewer-button.background-toggle {
+        position: relative;
+    }
+
+    .viewer-button.background-toggle.silhouette {
         background-color: rgba(255, 255, 255, .08);
+        color: #ccc;
+    }
+
+    .viewer-button.background-toggle.cycle {
+        background-color: rgba(76, 175, 80, 0.2);
+        color: #4CAF50;
+    }
+
+    .viewer-button.background-toggle.none {
+        background-color: transparent;
+        color: #666;
     }
 
     .viewer-button.background-toggle:hover {
         background-color: #666;
+        color: #fff;
     }
 
-    .viewer-button.background-toggle.active:hover {
+    .viewer-button.background-toggle.silhouette:hover {
         background-color: rgba(255, 255, 255, .15);
+        color: #fff;
+    }
+
+    .viewer-button.background-toggle.cycle:hover {
+        background-color: rgba(76, 175, 80, 0.3);
+        color: #66BB6A;
+    }
+
+    .viewer-button.background-toggle.none:hover {
+        background-color: #555;
+        color: #aaa;
+    }
+
+    /* Energy system active background toggle */
+    .viewer-controls.energy-active .viewer-button.background-toggle:hover {
+        background-color: #777;
+    }
+
+    .viewer-controls.energy-active .viewer-button.background-toggle.silhouette:hover {
+        background-color: rgba(255, 255, 255, .2);
+    }
+
+    .viewer-controls.energy-active .viewer-button.background-toggle.cycle:hover {
+        background-color: rgba(76, 175, 80, 0.4);
+    }
+
+    .viewer-button.animation-toggle.active {
+        background-color: #4CAF50;
+        color: white;
+    }
+
+    .viewer-button.animation-toggle:hover {
+        background-color: #666;
+    }
+
+    .viewer-button.animation-toggle.active:hover {
+        background-color: #66BB6A;
+    }
+
+    /* Energy system active animation toggle */
+    .viewer-controls.energy-active .viewer-button.animation-toggle:hover {
+        background-color: #777;
+    }
+
+    .viewer-controls.energy-active .viewer-button.animation-toggle.active:hover {
+        background-color: #77CC7A;
+    }
+
+    .viewer-controls.document-hovered {
+        background-color: #6C6F50;
+        color: white;
+        animation: dock-hover-glow 1.5s infinite;
+    }
+
+    @keyframes dock-hover-glow {
+        0%, 100% {
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4);
+        }
+        50% {
+            box-shadow: 0 2px 16px rgba(76, 175, 80, 0.6);
+        }
     }
 `;
 
@@ -308,22 +436,109 @@ export const ViewerControls = {
                 draggedViewerId: null,
                 dropTarget: null
             })
+        },
+        // NEW: Prop for document hover highlighting
+        hoveredDocumentId: {
+            type: String,
+            default: null
         }
     },
-    emits: ['start-reorder', 'minimize', 'close'],
+    emits: ['start-reorder', 'close'],
     setup(props, { emit }) {
         const dataStore = useDataStore();
+        const proximitySystem = useEnergyProximitySystem(); // NEW: Get proximity system instance
+        const animationManager = useAnimationLoopManager(); // NEW: Get animation manager instance
         const controlsRef = ref(null);
+        const titleInputRef = ref(null);
         const isCompact = ref(false);
+        const isEditing = ref(false);
+        const editingName = ref('');
         
         // Width threshold for compact mode (in pixels)
         const COMPACT_THRESHOLD = 200;
 
+        // Background cycling constants
+        const BACKGROUND_TYPES = {
+            SILHOUETTE: 'silhouette',
+            CYCLE: 'cycle',
+            NONE: 'none'
+        };
+
         const viewer = computed(() => dataStore.data.circleViewers.get(props.viewerId));
         const viewerTitle = computed(() => dataStore.getViewerTitle(props.viewerId));
         
+        // NEW: Get viewer properties from document
+        const viewerProperties = computed(() => {
+            return dataStore.getViewerProperties(props.viewerId);
+        });
+        
         // Check if this viewer is selected
         const isSelected = computed(() => dataStore.isViewerSelected(props.viewerId));
+
+        // NEW: Check if this viewer's document is being hovered in the dock
+        const isDocumentHovered = computed(() => {
+            if (!props.hoveredDocumentId) return false;
+            const currentDoc = dataStore.getCircleDocumentForViewer(props.viewerId);
+            return currentDoc && currentDoc.id === props.hoveredDocumentId;
+        });
+
+        // NEW: Check if energy proximity system is active for this viewer
+        const isEnergyActive = computed(() => {
+            // Force reactivity by calling both methods
+            const activeViewers = proximitySystem.getActiveViewers();
+            const isActive = proximitySystem.isViewerActive(props.viewerId);
+            
+            return isActive;
+        });
+
+        // NEW: Check if animation loop is active for this viewer
+        const isAnimationActive = ref(false);
+
+        // Background state computed properties
+        const backgroundType = computed(() => {
+            return viewerProperties.value.backgroundType || BACKGROUND_TYPES.SILHOUETTE;
+        });
+
+        const backgroundIcon = computed(() => {
+            switch (backgroundType.value) {
+                case BACKGROUND_TYPES.SILHOUETTE:
+                    return '◐'; // Half circle for silhouette
+                case BACKGROUND_TYPES.CYCLE:
+                    return '◯'; // Circle for cycle
+                case BACKGROUND_TYPES.NONE:
+                default:
+                    return '○'; // Empty circle for none
+            }
+        });
+
+        const backgroundTitle = computed(() => {
+            switch (backgroundType.value) {
+                case BACKGROUND_TYPES.SILHOUETTE:
+                    return 'Background: Silhouette (click to cycle)';
+                case BACKGROUND_TYPES.CYCLE:
+                    return 'Background: Cycle (click to cycle)';
+                case BACKGROUND_TYPES.NONE:
+                default:
+                    return 'Background: None (click to cycle)';
+            }
+        });
+
+        // Watch for animation loop status changes
+        const updateAnimationStatus = () => {
+            isAnimationActive.value = animationManager.isLoopActive(props.viewerId);
+        };
+
+        // Listen for animation loop events
+        onMounted(() => {
+            updateAnimationStatus();
+            window.addEventListener('animationLoopUpdate', updateAnimationStatus);
+            window.addEventListener('animationLoopStopped', updateAnimationStatus);
+        });
+
+        onUnmounted(() => {
+            window.removeEventListener('animationLoopUpdate', updateAnimationStatus);
+            window.removeEventListener('animationLoopStopped', updateAnimationStatus);
+        });
 
         // Drag state computed properties
         const isBeingDragged = computed(() => {
@@ -346,14 +561,9 @@ export const ViewerControls = {
 
         // Check viewer width and update compact mode
         const checkCompactMode = () => {
-            if (viewer.value) {
-                isCompact.value = viewer.value.width < COMPACT_THRESHOLD;
+            if (viewerProperties.value) {
+                isCompact.value = viewerProperties.value.width < COMPACT_THRESHOLD;
             }
-        };
-
-        // Watch for viewer width changes
-        const updateCompactMode = () => {
-            checkCompactMode();
         };
 
         // Set up a mutation observer to watch for width changes
@@ -381,9 +591,63 @@ export const ViewerControls = {
             }
         });
 
+        // Title editing functionality
+        const handleTitleDoubleClick = async () => {
+            // Prevent editing during drag operations
+            if (isDragActive.value) return;
+            
+            // Get the current document for this viewer
+            const currentDoc = dataStore.getCircleDocumentForViewer(props.viewerId);
+            if (!currentDoc) return;
+            
+            isEditing.value = true;
+            editingName.value = currentDoc.name;
+            
+            // Focus the input after Vue updates the DOM
+            await nextTick();
+            if (titleInputRef.value) {
+                titleInputRef.value.focus();
+                titleInputRef.value.select();
+            }
+        };
+
+        const handleTitleSave = () => {
+            if (!isEditing.value) return;
+            
+            const currentDoc = dataStore.getCircleDocumentForViewer(props.viewerId);
+            if (!currentDoc) {
+                cancelEditing();
+                return;
+            }
+            
+            const newName = editingName.value.trim();
+            if (newName && newName !== currentDoc.name) {
+                dataStore.updateCircleDocumentName(currentDoc.id, newName);
+            }
+            
+            cancelEditing();
+        };
+
+        const cancelEditing = () => {
+            isEditing.value = false;
+            editingName.value = '';
+        };
+
+        const handleTitleKeydown = (e) => {
+            if (e.key === 'Enter') {
+                handleTitleSave();
+            } else if (e.key === 'Escape') {
+                cancelEditing();
+            }
+        };
+
+        const handleTitleBlur = () => {
+            handleTitleSave();
+        };
+
         const handleReorderMouseDown = (e) => {
-            // Prevent starting reorder if another drag is in progress
-            if (isDragDisabled.value) {
+            // Prevent starting reorder if another drag is in progress or if editing
+            if (isDragDisabled.value || isEditing.value) {
                 e.preventDefault();
                 return;
             }
@@ -391,42 +655,101 @@ export const ViewerControls = {
             emit('start-reorder', e);
         };
 
-        const handleMinimize = () => {
-            // Prevent actions during drag operations
-            if (isDragActive.value) return;
-            emit('minimize');
-        };
-
         const handleClose = () => {
-            // Prevent actions during drag operations
-            if (isDragActive.value) return;
+            // Prevent actions during drag operations or editing
+            if (isDragActive.value || isEditing.value) return;
             emit('close');
         };
 
-        const handleBackgroundToggle = () => {
-            // Prevent actions during drag operations
-            if (isDragActive.value) return;
+        // Updated background cycling handler
+        const handleBackgroundCycle = () => {
+            // Prevent actions during drag operations or editing
+            if (isDragActive.value || isEditing.value) return;
             
-            const currentState = viewer.value?.showBackground !== false; // Default to true
+            const currentType = backgroundType.value;
+            let nextType;
+            
+            // Cycle through: silhouette -> cycle -> none -> silhouette
+            switch (currentType) {
+                case BACKGROUND_TYPES.SILHOUETTE:
+                    nextType = BACKGROUND_TYPES.CYCLE;
+                    break;
+                case BACKGROUND_TYPES.CYCLE:
+                    nextType = BACKGROUND_TYPES.NONE;
+                    break;
+                case BACKGROUND_TYPES.NONE:
+                default:
+                    nextType = BACKGROUND_TYPES.SILHOUETTE;
+                    break;
+            }
+            
+            // Update the viewer properties, which will be persisted to the document
             dataStore.updateCircleViewer(props.viewerId, { 
-                showBackground: !currentState 
+                backgroundType: nextType
             });
+        };
+
+        const handleAnimationToggle = () => {
+            // Prevent actions during drag operations or editing
+            if (isDragActive.value || isEditing.value) return;
+            
+            if (isAnimationActive.value) {
+                // Stop animation
+                animationManager.stopLoop(props.viewerId);
+            } else {
+                // Start animation - get circles for this viewer
+                const doc = dataStore.getCircleDocumentForViewer(props.viewerId);
+                if (!doc) return;
+                const documentId = doc.id;
+                if (!documentId) return;
+                
+                const circles = dataStore.getCirclesForDocument(documentId);
+                const viewerProps = viewerProperties.value;
+                
+                const started = animationManager.startLoop(
+                    props.viewerId, 
+                    circles, 
+                    viewerProps.width
+                );
+                
+                if (!started) {
+                    console.log('Cannot start animation: no valid attractor/attractee pairs found');
+                }
+            }
+            
+            // Update status
+            updateAnimationStatus();
         };
 
         return {
             viewer,
             viewerTitle,
+            viewerProperties,
             controlsRef,
+            titleInputRef,
             isSelected,
             isCompact,
+            isEditing,
+            editingName,
+            isEnergyActive, // NEW: Expose energy active state
+            isAnimationActive, // NEW: Expose animation active state
+            backgroundType, // NEW: Expose background type
+            backgroundIcon, // NEW: Expose background icon
+            backgroundTitle, // NEW: Expose background title
+            BACKGROUND_TYPES, // NEW: Expose background type constants
+            isDocumentHovered, // NEW: Expose document hover state
             isBeingDragged,
             isDropTarget,
             isDragActive,
             isDragDisabled,
+            handleTitleDoubleClick,
+            handleTitleSave,
+            handleTitleKeydown,
+            handleTitleBlur,
             handleReorderMouseDown,
-            handleMinimize,
             handleClose,
-            handleBackgroundToggle
+            handleBackgroundCycle, // NEW: Updated handler name
+            handleAnimationToggle // NEW: Expose animation toggle handler
         };
     },
     template: `
@@ -437,6 +760,9 @@ export const ViewerControls = {
                 { 
                     selected: isSelected,
                     compact: isCompact,
+                    editing: isEditing,
+                    'energy-active': isEnergyActive,
+                    'document-hovered': isDocumentHovered,
                     'being-dragged': isBeingDragged,
                     'drop-target': isDropTarget,
                     'drag-active': isDragActive,
@@ -451,29 +777,46 @@ export const ViewerControls = {
                     :title="isDragDisabled ? 'Drag operation in progress' : 'Drag to reorder viewers'"
                 >⋮⋮</div>
                 
-                <div class="viewer-title">
+                <div 
+                    v-if="!isEditing"
+                    class="viewer-title"
+                    @dblclick="handleTitleDoubleClick"
+                    :title="'Double-click to edit: ' + viewerTitle"
+                >
                     {{ viewerTitle }}
                 </div>
                 
+                <input
+                    v-if="isEditing"
+                    ref="titleInputRef"
+                    v-model="editingName"
+                    class="viewer-title-input"
+                    @keydown="handleTitleKeydown"
+                    @blur="handleTitleBlur"
+                    @click.stop
+                    placeholder="Document name"
+                />
+                
                 <div class="viewer-buttons">
                     <button 
-                        class="viewer-button background-toggle"
-                        :class="{ active: viewer?.showBackground !== false }"
-                        @click="handleBackgroundToggle"
-                        title="Toggle background image"
-                        :disabled="isDragActive"
-                    >∘</button>
+                        class="viewer-button animation-toggle"
+                        :class="{ active: isAnimationActive }"
+                        @click="handleAnimationToggle"
+                        title="Toggle animation loop"
+                        :disabled="isDragActive || isEditing"
+                    >▶</button>
                     <button 
-                        class="viewer-button minimize"
-                        @click="handleMinimize"
-                        title="Minimize viewer"
-                        :disabled="isDragActive"
-                    >_</button>
+                        class="viewer-button background-toggle"
+                        :class="backgroundType"
+                        @click="handleBackgroundCycle"
+                        :title="backgroundTitle"
+                        :disabled="isDragActive || isEditing"
+                    >{{ backgroundIcon }}</button>
                     <button 
                         class="viewer-button close"
                         @click="handleClose"
                         title="Close viewer"
-                        :disabled="isDragActive"
+                        :disabled="isDragActive || isEditing"
                     >×</button>
                 </div>
             </div>
@@ -487,23 +830,24 @@ export const ViewerControls = {
                 
                 <div class="viewer-buttons">
                     <button 
-                        class="viewer-button background-toggle"
-                        :class="{ active: viewer?.showBackground !== false }"
-                        @click="handleBackgroundToggle"
-                        title="Toggle background image"
-                        :disabled="isDragActive"
-                    >∘</button>
+                        class="viewer-button animation-toggle"
+                        :class="{ active: isAnimationActive }"
+                        @click="handleAnimationToggle"
+                        title="Toggle animation loop"
+                        :disabled="isDragActive || isEditing"
+                    >▶</button>
                     <button 
-                        class="viewer-button minimize"
-                        @click="handleMinimize"
-                        title="Minimize viewer"
-                        :disabled="isDragActive"
-                    >_</button>
+                        class="viewer-button background-toggle"
+                        :class="backgroundType"
+                        @click="handleBackgroundCycle"
+                        :title="backgroundTitle"
+                        :disabled="isDragActive || isEditing"
+                    >{{ backgroundIcon }}</button>
                     <button 
                         class="viewer-button close"
                         @click="handleClose"
                         title="Close viewer"
-                        :disabled="isDragActive"
+                        :disabled="isDragActive || isEditing"
                     >×</button>
                 </div>
             </div>
