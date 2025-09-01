@@ -13,7 +13,7 @@ export class EnergyProximitySystem {
         this.config = {
             maxDistance: 80, // Maximum distance for effect
             minDistance: 50,  // Minimum distance for maximum effect
-            maxScale: 1.01,    // Maximum scale multiplier
+            maxScale: 1.3,    // Maximum scale multiplier
             minScale: 1.0,    // Minimum scale (normal size)
             maxOpacity: 1.0,  // Maximum opacity
             minOpacity: 0.5,  // Minimum opacity when dampener is present
@@ -287,8 +287,7 @@ groupCirclesByViewer() {
  */
 categorizeCirclesByEnergyType(viewerCircles) {
     return {
-        //glowCircles: viewerCircles.filter(data => this.isGlowCircle(data.circle)),
-        glowCircles: viewerCircles,
+        glowCircles: viewerCircles.filter(data => this.isGlowCircle(data.circle)),
         exciterCircles: viewerCircles.filter(data => 
             this.hasEnergyType(data.circle, 'exciter') //&& this.isCircleActivated(data.circle)
         ),
@@ -513,7 +512,7 @@ updateProximityEffects() {
                 const circle = data.circle;
                 
                 // Handle glow circles
-                if (true || this.isGlowCircle(circle)) {
+                if (this.isGlowCircle(circle)) {
                     if (effects.has(circleId)) {
                         // Apply proximity effects
                         const effect = effects.get(circleId);
@@ -534,7 +533,7 @@ updateProximityEffects() {
                     }
                 }
                 // Handle exciter/dampener circles
-                else if (true || this.hasEnergyType(circle, 'exciter') || this.hasEnergyType(circle, 'dampener')) {
+                else if (this.hasEnergyType(circle, 'exciter') || this.hasEnergyType(circle, 'dampener')) {
                     const isActivated = this.isCircleActivated(circle);
                     if (isActivated) {
                         // Activated exciters/dampeners: full opacity
