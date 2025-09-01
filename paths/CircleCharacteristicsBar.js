@@ -180,6 +180,19 @@ export const CircleCharacteristicsBar = {
     const causeEmoji = computed(() => {
       return emojiAttributes.value.find(attr => attr.key === 'cause') || emojiAttributes.value[0];
     });
+
+    // NEW: Get current circle emoji for picker initialization
+    const getCurrentCircleEmoji = computed(() => {
+      if (hasMultipleCirclesSelected.value) {
+        // For multiple selection, use the first circle's emoji as reference
+        if (getSelectedCircleObjects.value.length > 0) {
+          return getSelectedCircleObjects.value[0].emoji || '';
+        }
+      } else if (dataHooks.selectedCircle.value) {
+        return dataHooks.selectedCircle.value.emoji || '';
+      }
+      return '';
+    });
     
     // Check if the selected circle is a reference circle (only applies to single selection)
     const isReferenceCircle = computed(() => {
@@ -492,6 +505,7 @@ export const CircleCharacteristicsBar = {
       
       // Computed values
       causeEmoji,
+      getCurrentCircleEmoji, // NEW
       isReferenceCircle,
       isCircleEmojiPickerVisible,
       isCircleActivated,
@@ -676,6 +690,7 @@ export const CircleCharacteristicsBar = {
             <CircleEmojiPickerModal 
                 v-if="isCircleEmojiPickerOpen"
                 ref="circleEmojiPickerRefTemplate"
+                :currentEmoji="getCurrentCircleEmoji"
                 @selectCircleEmoji="handleCircleEmojiSelect"
                 @close="closePickerAction('circleEmoji')"
             />

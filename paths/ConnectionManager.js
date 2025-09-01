@@ -429,7 +429,6 @@ export class ConnectionManager {
      * Force a full recalculation of connections for specific entity type
      */
     forceUpdate(entities, entityType = 'square') {
-        console.log(`🔄 ConnectionManager: Force update for ${entityType}`);
         this.clearConnections(entityType);
         this.updateConnections(entities, entityType);
     }
