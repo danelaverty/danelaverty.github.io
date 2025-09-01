@@ -137,36 +137,26 @@ createSquare() {
      * Delete a square with proper cleanup
      */
     deleteSquare(id) {
-        console.log(`EntityService.deleteSquare: Attempting to delete square ${id}`);
-        
         // Get the square's document info before deletion
         const square = this.entityStore.getSquare(id);
-        console.log('Square found:', square);
         
         if (!square) {
-            console.log('Square not found, cannot delete');
             return false;
         }
         
         let circleId = null;
-        console.log('Square documentId:', square.documentId);
         const squareDoc = this.documentStore.getSquareDocument(square.documentId);
-        console.log('Square document found:', squareDoc);
         circleId = squareDoc?.circleId;
-        console.log('Circle ID:', circleId);
         
         // Remove from selection first
         this.uiStore.removeFromSelection('square', id);
         
         // Delete the square
         const deleted = this.entityStore.deleteSquare(id);
-        console.log('Square deleted from entity store:', deleted);
         
         // Update connections after deletion - force a full update
         if (deleted) {
-            console.log('Updating connections after square deletion...');
             const squares = this._getCurrentSquares();
-            console.log(`Current squares after deletion: ${squares.length}`);
             // Force a full update to ensure deleted square connections are removed
             this.connectionManager.forceUpdate(squares);
         }

@@ -13,7 +13,7 @@ export class EnergyProximitySystem {
         this.config = {
             maxDistance: 80, // Maximum distance for effect
             minDistance: 50,  // Minimum distance for maximum effect
-            maxScale: 1.3,    // Maximum scale multiplier
+            maxScale: 1.01,    // Maximum scale multiplier
             minScale: 1.0,    // Minimum scale (normal size)
             maxOpacity: 1.0,  // Maximum opacity
             minOpacity: 0.5,  // Minimum opacity when dampener is present
@@ -257,6 +257,7 @@ export class EnergyProximitySystem {
      * Check if a circle is a glow type
      */
     isGlowCircle(circle) {
+        return true;
         return circle.type === 'glow';
     }
 
@@ -405,8 +406,7 @@ processGlowCircle(glowData, exciterCircles, dampenerCircles) {
     const glowPos = this.getEffectivePosition(glowData.circle.id);
     if (!glowPos) return null;
     
-    const isActivated = this.isCircleActivated(glowData.circle);
-    const baseScale = isActivated ? this.config.maxScale : 0.7;
+    const baseScale = this.config.maxScale;
     
     // Calculate energy effects
     const { netExciterEffect, hasNearbyExciter } = this.calculateExciterEffect(
@@ -421,7 +421,7 @@ processGlowCircle(glowData, exciterCircles, dampenerCircles) {
     // Only apply effect if there's a nearby influencer
     if (!hasNearbyInfluencer) return null;
     
-    const finalScale = this.calculateFinalScale(baseScale, netExciterEffect, netDampenerEffect, isActivated);
+    const finalScale = this.calculateFinalScale(baseScale, netExciterEffect, netDampenerEffect, true);
     const { opacity, saturation } = this.calculateOpacityAndSaturation(finalScale);
     
     return {

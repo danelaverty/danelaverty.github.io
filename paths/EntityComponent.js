@@ -289,10 +289,10 @@ export const EntityComponent = {
         ></div>
         
         <!-- Energy indicators for circles -->
-        <EnergyIndicators 
+        <!--EnergyIndicators 
             v-if="entityType === 'circle'"
             :energyTypes="circleEnergyTypes"
-        />
+        /-->
         
         <div 
             ref="nameRef"

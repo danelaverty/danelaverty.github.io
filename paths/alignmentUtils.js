@@ -43,7 +43,6 @@ export function alignEntities(entityType, direction) {
         scaleGroupDistances(entities, entityType, dataStore, 0.8);
     }
     
-    console.log(`Aligned ${entities.length} ${entityType}s ${direction}ly`);
 }
 
 /**
@@ -164,9 +163,6 @@ function alignZigzag(entities, entityType, dataStore) {
 function alignGrid(entities, entityType, dataStore) {
     if (entities.length < 2) return;
 
-    console.log('=== GRID ALIGNMENT DEBUG ===');
-    console.log('Entity count:', entities.length);
-    
     // Calculate current bounding box
     const leftmostX = Math.min(...entities.map(e => e.x));
     const rightmostX = Math.max(...entities.map(e => e.x));
@@ -178,11 +174,9 @@ function alignGrid(entities, entityType, dataStore) {
     
     // Calculate aspect ratio (width / height)
     const aspectRatio = currentHeight > 0 ? currentWidth / currentHeight : 1;
-    console.log('Current dimensions:', { currentWidth, currentHeight, aspectRatio });
     
     // Find the best grid configuration for this number of entities and aspect ratio
     const { cols, rows } = findBestGridConfiguration(entities.length, aspectRatio);
-    console.log('Best grid configuration:', { cols, rows });
     
     // Generate all grid positions
     const gridPositions = [];
@@ -196,8 +190,6 @@ function alignGrid(entities, entityType, dataStore) {
     const horizontalSpacing = cols > 1 ? currentWidth / (cols - 1) : 0;
     const verticalSpacing = rows > 1 ? currentHeight / (rows - 1) : 0;
     
-    console.log('Spacing:', { horizontalSpacing, verticalSpacing });
-    
     // Convert grid positions to actual coordinates
     const targetPositions = gridPositions.slice(0, entities.length).map(pos => ({
         x: leftmostX + (pos.col * horizontalSpacing),
@@ -205,11 +197,8 @@ function alignGrid(entities, entityType, dataStore) {
         gridPos: pos
     }));
     
-    console.log('Target positions:', targetPositions);
-    
     // Assign each entity to the nearest grid position
     const assignments = assignEntitiesToGrid(entities, targetPositions);
-    console.log('Assignments:', assignments);
     
     // Update entity positions
     assignments.forEach(assignment => {
@@ -221,8 +210,6 @@ function alignGrid(entities, entityType, dataStore) {
             dataStore.updateSquare(entity.id, { x: Math.round(targetPos.x), y: Math.round(targetPos.y) });
         }
     });
-    
-    console.log('=== END GRID ALIGNMENT DEBUG ===');
 }
 
 /**
@@ -386,11 +373,6 @@ function alignCircularly(entities, entityType, dataStore) {
 		const angleStep = (2 * Math.PI) / entities.length;
 		const targetStartAngle = Math.PI / 2; // Always start at π/2 (top position)
 
-		console.log('=== CIRCULAR ALIGNMENT DEBUG ===');
-		console.log('Center:', { centerX, centerY });
-		console.log('Radius:', radius);
-		console.log('Angle step:', angleStep);
-
 		// Sort entities by their current angle from center to maintain relative positions
 		const entitiesWithAngles = entities.map(entity => {
 			const dx = entity.x - centerX;
@@ -403,18 +385,8 @@ function alignCircularly(entities, entityType, dataStore) {
 			return { entity, angle: currentAngle };
 		});
 
-		console.log('Before sorting:');
-		entitiesWithAngles.forEach((item, i) => {
-			console.log(`  Entity ${item.entity.id}: pos(${item.entity.x}, ${item.entity.y}) angle=${item.angle.toFixed(3)}rad (${(item.angle * 180 / Math.PI).toFixed(1)}°)`);
-		});
-
 		// Sort by current angle to preserve relative positioning
 		entitiesWithAngles.sort((a, b) => a.angle - b.angle);
-
-		console.log('After sorting:');
-		entitiesWithAngles.forEach((item, i) => {
-			console.log(`  [${i}] Entity ${item.entity.id}: angle=${item.angle.toFixed(3)}rad (${(item.angle * 180 / Math.PI).toFixed(1)}°)`);
-		});
 
 		// Find which entity should be closest to π/2 (90°) to use as anchor
 		let anchorIndex = 0;
@@ -433,8 +405,6 @@ function alignCircularly(entities, entityType, dataStore) {
 			}
 		}
 
-		console.log(`Using entity ${entitiesWithAngles[anchorIndex].entity.id} as anchor (closest to π/2)`);
-
 		// Position entities around the circle, with the anchor entity at π/2
 		entitiesWithAngles.forEach((item, index) => {
 			// Calculate offset from anchor - keep it simple and direct
@@ -446,19 +416,12 @@ function alignCircularly(entities, entityType, dataStore) {
 			const newX = Math.round(centerX + Math.cos(targetAngle) * radius);
 			const newY = Math.round(centerY + Math.sin(targetAngle) * radius); // Add sin for standard math coordinates
 
-			console.log(`  Positioning entity ${item.entity.id} at index ${index} (offset ${offsetFromAnchor} from anchor):`);
-			console.log(`    Target angle: ${targetAngle.toFixed(3)}rad (${(targetAngle * 180 / Math.PI).toFixed(1)}°)`);
-			console.log(`    Old pos: (${item.entity.x}, ${item.entity.y})`);
-			console.log(`    New pos: (${newX}, ${newY})`);
-
 			if (entityType === 'circle') {
 				dataStore.updateCircle(item.entity.id, { x: newX, y: newY });
 			} else {
 				dataStore.updateSquare(item.entity.id, { x: newX, y: newY });
 			}
 		});
-
-		console.log('=== END DEBUG ===');
 	}
 }
 

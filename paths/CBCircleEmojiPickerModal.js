@@ -1,4 +1,4 @@
-// pickers/CircleEmojiPickerModal.js - Updated with "no emoji" option
+// pickers/CircleEmojiPickerModal.js - Updated with auto tab detection for current emoji
 import { emojiCategories } from './emojiFullSet.js';
 import { EmojiVariantService } from './EmojiVariantService.js';
 import { injectComponentStyles } from './styleUtils.js';
@@ -33,6 +33,12 @@ const circleEmojiPickerModalStyles = `
 .no-emoji-button:hover {
   border-color: #999;
   background: #f5f5f5;
+}
+
+.no-emoji-button.selected {
+  border-color: #007acc;
+  background: #e6f3ff;
+  box-shadow: 0 0 0 1px #007acc;
 }
 
 .no-emoji-icon {
@@ -75,16 +81,55 @@ const circleEmojiPickerModalStyles = `
 .close-button:hover {
   color: #000;
 }
+
+.circle-emoji-item {
+  position: relative;
+}
+
+.circle-emoji-item.selected {
+  background: #007acc;
+  color: white;
+  border-radius: 4px;
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(0, 122, 204, 0.3);
+  z-index: 1;
+}
+
+.circle-emoji-item.selected::after {
+  content: '✓';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background: #007acc;
+  color: white;
+  font-size: 10px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
 `;
 
 injectComponentStyles('circle-emoji-picker-modal', circleEmojiPickerModalStyles);
 
 export const CircleEmojiPickerModal = {
+  props: {
+    // NEW: Add prop for current emoji to detect which tab it belongs to
+    currentEmoji: {
+      type: String,
+      default: ''
+    }
+  },
+
   emits: ['selectCircleEmoji', 'selectCategory', 'close'],
   
   data() {
     return {
-      activeTab: 'smileys',
+      activeTab: 'smileys', // Will be overridden in mounted()
       selectedSkinTone: '🏼', // Default medium-light skin tone
       selectedGender: 'neutral', // neutral, male, female
       
@@ -117,6 +162,16 @@ export const CircleEmojiPickerModal = {
       emojiCategories: emojiCategories,
     };
   },
+
+  // NEW: Add mounted lifecycle hook to detect current emoji's tab
+  mounted() {
+    if (this.currentEmoji) {
+      const detectedTab = this.detectEmojiTab(this.currentEmoji);
+      if (detectedTab) {
+        this.activeTab = detectedTab;
+      }
+    }
+  },
   
   computed: {
     currentSkinTone() {
@@ -141,6 +196,84 @@ export const CircleEmojiPickerModal = {
   },
   
   methods: {
+    // NEW: Method to detect which tab contains the current emoji
+    detectEmojiTab(targetEmoji) {
+      if (!targetEmoji) return null;
+      
+      // Clean the emoji - remove skin tone and gender modifiers for comparison
+      const cleanTargetEmoji = this.cleanEmoji(targetEmoji);
+      
+      // Search through all tabs and categories
+      for (const tabId of Object.keys(this.emojiCategories)) {
+        const tabData = this.emojiCategories[tabId];
+        
+        for (const categoryName of Object.keys(tabData)) {
+          const categoryEmojis = tabData[categoryName];
+          
+          if (Array.isArray(categoryEmojis)) {
+            for (const item of categoryEmojis) {
+              let emojiToCheck = '';
+              
+              if (typeof item === 'string') {
+                emojiToCheck = this.cleanEmoji(item);
+              } else if (typeof item === 'object' && item.base) {
+                emojiToCheck = this.cleanEmoji(item.base);
+                
+                // Also check variants if they exist
+                if (item.variants) {
+                  for (const variant of Object.values(item.variants)) {
+                    if (typeof variant === 'object') {
+                      for (const skinToneVariant of Object.values(variant)) {
+                        if (this.cleanEmoji(skinToneVariant) === cleanTargetEmoji) {
+                          return tabId;
+                        }
+                      }
+                    } else if (typeof variant === 'string') {
+                      if (this.cleanEmoji(variant) === cleanTargetEmoji) {
+                        return tabId;
+                      }
+                    }
+                  }
+                }
+              }
+              
+              if (emojiToCheck === cleanTargetEmoji) {
+                return tabId;
+              }
+            }
+          }
+        }
+      }
+      
+      return null; // Emoji not found in any category
+    },
+
+    // NEW: Helper method to clean emoji by removing modifiers
+    cleanEmoji(emoji) {
+      if (!emoji) return '';
+      
+      // Remove common skin tone modifiers
+      const skinTonePattern = /[\u{1F3FB}-\u{1F3FF}]/gu;
+      
+      // Remove zero-width joiners and gender/profession modifiers
+      const modifierPattern = /[\u200D\u2640\u2642\uFE0F]/g;
+      
+      return emoji
+        .replace(skinTonePattern, '')
+        .replace(modifierPattern, '')
+        .trim();
+    },
+
+    // NEW: Check if an emoji is currently selected
+    isEmojiSelected(emoji) {
+      return emoji === this.currentEmoji;
+    },
+
+    // NEW: Check if "no emoji" is selected (empty string)
+    isNoEmojiSelected() {
+      return this.currentEmoji === '';
+    },
+    
     setActiveTab(tabId) {
       this.activeTab = tabId;
     },
@@ -184,7 +317,7 @@ export const CircleEmojiPickerModal = {
       <div class="circle-emoji-header">
         <div class="no-emoji-section">
           <button 
-            class="no-emoji-button"
+            :class="['no-emoji-button', { selected: isNoEmojiSelected() }]"
             @click="selectNoEmoji()"
             title="Remove emoji from circle"
           >
@@ -259,7 +392,7 @@ export const CircleEmojiPickerModal = {
               v-if="Array.isArray(categoryEmojis) && typeof categoryEmojis[0] === 'string'"
               v-for="emoji in categoryEmojis"
               :key="emoji"
-              class="circle-emoji-item"
+              :class="['circle-emoji-item', { selected: isEmojiSelected(emoji) }]"
               @click="selectCircleEmoji(emoji)"
               :title="emoji"
             >
@@ -271,7 +404,7 @@ export const CircleEmojiPickerModal = {
               v-else-if="Array.isArray(categoryEmojis) && typeof categoryEmojis[0] === 'object'"
               v-for="emojiData in categoryEmojis"
               :key="emojiData.base"
-              class="circle-emoji-item"
+              :class="['circle-emoji-item', { selected: isEmojiSelected(getEmojiVariant(emojiData)) }]"
               @click="selectCircleEmoji(getEmojiVariant(emojiData), emojiData.name)"
               :title="emojiData.name"
             >
@@ -283,7 +416,9 @@ export const CircleEmojiPickerModal = {
               <div 
                 v-for="item in categoryEmojis"
                 :key="typeof item === 'string' ? item : item.base"
-                class="circle-emoji-item"
+                :class="['circle-emoji-item', { 
+                  selected: isEmojiSelected(typeof item === 'string' ? item : getEmojiVariant(item))
+                }]"
                 @click="selectCircleEmoji(
                   typeof item === 'string' ? item : getEmojiVariant(item), 
                   typeof item === 'string' ? item : item.name
