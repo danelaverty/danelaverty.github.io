@@ -7,7 +7,7 @@ let zigzagFlipped = false;
 /**
  * Align entities vertically or horizontally
  * @param {string} entityType - 'circle' or 'square'
- * @param {string} direction - 'vertical', 'horizontal', 'zigzag', 'circular', 'expand', or 'contract'
+ * @param {string} direction - 'vertical', 'horizontal', 'zigzag', 'circular', 'grid', 'expand', or 'contract'
  */
 export function alignEntities(entityType, direction) {
     const dataStore = useDataStore();
@@ -35,6 +35,8 @@ export function alignEntities(entityType, direction) {
         alignZigzag(entities, entityType, dataStore);
     } else if (direction === 'circular') {
         alignCircularly(entities, entityType, dataStore);
+    } else if (direction === 'grid') {
+        alignGrid(entities, entityType, dataStore);
     } else if (direction === 'expand') {
         scaleGroupDistances(entities, entityType, dataStore, 1.2);
     } else if (direction === 'contract') {
@@ -156,6 +158,140 @@ function alignZigzag(entities, entityType, dataStore) {
     });
 }
 
+/**
+ * Align entities in a grid pattern based on their aspect ratio
+ */
+function alignGrid(entities, entityType, dataStore) {
+    if (entities.length < 2) return;
+
+    console.log('=== GRID ALIGNMENT DEBUG ===');
+    console.log('Entity count:', entities.length);
+    
+    // Calculate current bounding box
+    const leftmostX = Math.min(...entities.map(e => e.x));
+    const rightmostX = Math.max(...entities.map(e => e.x));
+    const topmostY = Math.min(...entities.map(e => e.y));
+    const bottommostY = Math.max(...entities.map(e => e.y));
+    
+    const currentWidth = rightmostX - leftmostX;
+    const currentHeight = bottommostY - topmostY;
+    
+    // Calculate aspect ratio (width / height)
+    const aspectRatio = currentHeight > 0 ? currentWidth / currentHeight : 1;
+    console.log('Current dimensions:', { currentWidth, currentHeight, aspectRatio });
+    
+    // Find the best grid configuration for this number of entities and aspect ratio
+    const { cols, rows } = findBestGridConfiguration(entities.length, aspectRatio);
+    console.log('Best grid configuration:', { cols, rows });
+    
+    // Generate all grid positions
+    const gridPositions = [];
+    for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+            gridPositions.push({ row, col });
+        }
+    }
+    
+    // Calculate spacing
+    const horizontalSpacing = cols > 1 ? currentWidth / (cols - 1) : 0;
+    const verticalSpacing = rows > 1 ? currentHeight / (rows - 1) : 0;
+    
+    console.log('Spacing:', { horizontalSpacing, verticalSpacing });
+    
+    // Convert grid positions to actual coordinates
+    const targetPositions = gridPositions.slice(0, entities.length).map(pos => ({
+        x: leftmostX + (pos.col * horizontalSpacing),
+        y: topmostY + (pos.row * verticalSpacing),
+        gridPos: pos
+    }));
+    
+    console.log('Target positions:', targetPositions);
+    
+    // Assign each entity to the nearest grid position
+    const assignments = assignEntitiesToGrid(entities, targetPositions);
+    console.log('Assignments:', assignments);
+    
+    // Update entity positions
+    assignments.forEach(assignment => {
+        const { entity, targetPos } = assignment;
+        
+        if (entityType === 'circle') {
+            dataStore.updateCircle(entity.id, { x: Math.round(targetPos.x), y: Math.round(targetPos.y) });
+        } else {
+            dataStore.updateSquare(entity.id, { x: Math.round(targetPos.x), y: Math.round(targetPos.y) });
+        }
+    });
+    
+    console.log('=== END GRID ALIGNMENT DEBUG ===');
+}
+
+/**
+ * Find the best grid configuration (cols x rows) for a given number of entities and aspect ratio
+ */
+function findBestGridConfiguration(entityCount, aspectRatio) {
+    if (entityCount === 1) {
+        return { cols: 1, rows: 1 };
+    }
+    
+    let bestConfig = { cols: 1, rows: entityCount };
+    let bestScore = Math.abs((1 / entityCount) - aspectRatio); // Score for 1xN grid
+    
+    // Try all possible grid configurations
+    for (let cols = 1; cols <= entityCount; cols++) {
+        const rows = Math.ceil(entityCount / cols);
+        
+        // Calculate the aspect ratio of this grid configuration
+        const gridAspectRatio = cols / rows;
+        
+        // Score based on how close this grid's aspect ratio matches the current layout
+        const score = Math.abs(gridAspectRatio - aspectRatio);
+        
+        if (score < bestScore) {
+            bestScore = score;
+            bestConfig = { cols, rows };
+        }
+    }
+    
+    return bestConfig;
+}
+
+/**
+ * Assign each entity to the nearest available grid position
+ */
+function assignEntitiesToGrid(entities, targetPositions) {
+    const assignments = [];
+    const usedPositions = new Set();
+    
+    // For each entity, find the nearest unused grid position
+    entities.forEach(entity => {
+        let bestDistance = Infinity;
+        let bestPositionIndex = -1;
+        
+        targetPositions.forEach((targetPos, index) => {
+            if (usedPositions.has(index)) return; // Position already used
+            
+            const distance = Math.sqrt(
+                Math.pow(entity.x - targetPos.x, 2) + 
+                Math.pow(entity.y - targetPos.y, 2)
+            );
+            
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                bestPositionIndex = index;
+            }
+        });
+        
+        if (bestPositionIndex !== -1) {
+            assignments.push({
+                entity,
+                targetPos: targetPositions[bestPositionIndex]
+            });
+            usedPositions.add(bestPositionIndex);
+        }
+    });
+    
+    return assignments;
+}
 
 /**
  * Check if entities are already arranged in a near-perfect circle

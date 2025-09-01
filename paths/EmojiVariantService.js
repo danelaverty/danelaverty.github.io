@@ -45,6 +45,7 @@ export const EmojiVariantService = {
    * Get skin tone variant
    */
   getSkinVariant(emojiData, selectedSkinTone) {
+    // For default/empty skin tone, return the base emoji
     if (!selectedSkinTone || selectedSkinTone === '') {
       return emojiData.base;
     }
@@ -69,11 +70,12 @@ export const EmojiVariantService = {
     const genderVariants = emojiData.skinAndGenderVariants[selectedGender] || 
                           emojiData.skinAndGenderVariants.neutral;
     
-    if (!genderVariants) {
+    if (!genderVariants || !Array.isArray(genderVariants)) {
       return emojiData.base;
     }
     
-    // If no skin tone selected, return the base for this gender (first variant)
+    // For default/empty skin tone, return the first variant in the gender array
+    // This represents the "default" skin tone for that gender
     if (!selectedSkinTone || selectedSkinTone === '') {
       return genderVariants[0] || emojiData.base;
     }

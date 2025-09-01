@@ -147,6 +147,13 @@ export function createKeyboardHandler(dataStore, onShowIndicatorPicker = null, o
             return;
         }
 
+        // Handle CTRL+SHIFT+G for grid alignment
+        if (e.key === 'G' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
+            e.preventDefault();
+            handleAlignment(dataStore, 'grid');
+            return;
+        }
+
         // Handle CTRL+SHIFT+O for expanding group spacing
         if (e.key === 'O' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
             e.preventDefault();
