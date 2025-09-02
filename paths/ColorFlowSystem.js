@@ -4,6 +4,8 @@ export const ColorFlowSystem = {
      * Start organic color flow for multi-color circles
      */
     start(element, colors) {
+        console.log('element: ', element);
+        console.log('colors: ', colors);
         if (!colors || colors.length <= 1) {
             return;
         }
