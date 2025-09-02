@@ -23,6 +23,7 @@ export const GlowCircleRenderer = {
 
         // Handle multi-color flow if multiple colors
         if (circle.colors && circle.colors.length > 1) {
+            console.log('b');
             ColorFlowSystem.start(element, circle.colors);
         }
     }

@@ -89,6 +89,7 @@ export const CircleTypeRenderer = {
                 // Stop any existing color flow to prevent conflicts
                 ColorFlowSystem.stop(element);
                 // Start the color flow system
+                console.log('a');
                 ColorFlowSystem.start(element, circle.colors);
             }, 50);
         } else {
