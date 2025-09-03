@@ -79,6 +79,33 @@ function parseColor(color) {
     return { r: 0, g: 0, b: 0, a: 1 };
 }
 
+function hslStringToHex(hslString) {
+    if (!hslString || typeof hslString !== 'string') {
+        return hslString;
+    }
+
+    const trimmed = hslString.trim().toLowerCase();
+    
+    // Check if it's an HSL string format
+    const hslMatch = trimmed.match(/hsla?\(\s*(\d+)\s*,\s*(\d+)%\s*,\s*(\d+)%\s*(?:,\s*([0-9.]+))?\s*\)/);
+    
+    if (!hslMatch) {
+        // Not an HSL string, return as-is
+        return hslString;
+    }
+    
+    // Parse HSL values
+    const h = parseInt(hslMatch[1], 10) / 360;
+    const s = parseInt(hslMatch[2], 10) / 100;
+    const l = parseInt(hslMatch[3], 10) / 100;
+    
+    // Convert to RGB using existing function
+    const { r, g, b } = hslToRgb(h, s, l);
+    
+    // Convert to hex using existing function
+    return rgbToHex(r, g, b);
+}
+
 /**
  * Convert HSL to RGB
  */
@@ -342,6 +369,7 @@ export const useColorUtils = () => {
         parseColor,
         rgbToHex,
         hslToRgb,
+        hslStringToHex,
         
         // Color manipulation
         adjustBrightness,
@@ -374,5 +402,6 @@ export {
     adjustSaturation,
     generatePalette,
     rgbToHex,
-    hslToRgb
+    hslToRgb,
+    hslStringToHex
 };

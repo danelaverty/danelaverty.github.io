@@ -19,6 +19,25 @@ export class ExplicitConnectionService {
         return null;
     }
 
+    getConnectionBetweenEntities(entity1Id, entity1Type, entity2Id, entity2Type) {
+        return this.explicitConnectionStore.findConnection(entity1Id, entity2Id, entity1Type, entity2Type);
+    }
+
+    /**
+     * Update properties of an explicit connection
+     */
+    updateConnectionProperty(connectionId, property, value) {
+        const connection = this.explicitConnectionStore.updateConnection(connectionId, {
+            [property]: value
+        });
+        
+        return {
+            action: 'update',
+            connection,
+            message: `Updated connection ${property} to ${value}`
+        };
+    }
+
     /**
      * Handle ctrl-click on entity - either create or delete explicit connection
      */
@@ -158,6 +177,7 @@ export class ExplicitConnectionService {
             entity2: connection.entity2,
             entityType: `explicit-${connection.entity1Type}-${connection.entity2Type}`,
             isExplicit: true, // Flag to distinguish from regular connections
+            directionality: connection.directionality || 'none', // ADDED: Include directionality property
             distance: this.calculateDistance(connection.entity1, connection.entity2),
             connectionDistance: Infinity, // Explicit connections always render regardless of distance
             createdAt: connection.createdAt

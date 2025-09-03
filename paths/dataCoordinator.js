@@ -239,6 +239,18 @@ function createDataCoordinator() {
             return result;
         },
 
+        getExplicitConnectionBetweenEntities: (entity1Id, entity1Type, entity2Id, entity2Type) => {
+    return explicitConnectionService.getConnectionBetweenEntities(entity1Id, entity1Type, entity2Id, entity2Type);
+},
+
+updateExplicitConnectionProperty: (connectionId, property, value) => {
+    const result = explicitConnectionService.updateConnectionProperty(connectionId, property, value);
+    if (result && result.action !== 'error') {
+        saveToStorage();
+    }
+    return result;
+},
+
         // Read operations (no persistence needed)
         getCircle: entityStore.getCircle,
         getSquare: entityStore.getSquare,

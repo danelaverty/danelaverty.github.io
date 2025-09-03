@@ -10,6 +10,7 @@ import { EmojiRenderer } from './EmojiRenderer.js';
 import { EmojiService } from './emojiService.js';
 import { EmojiVariantService } from './EmojiVariantService.js';
 import { getEnergyTypeColor } from './energyTypes.js';
+import { CBConnectionDirectionalityControl } from './CBConnectionDirectionalityControl.js';
 
 // Import styles
 import { baseCharacteristicsStyles, displayStyles, colorStyles, typeStyles, energyStyles, activationStyles, emojiStyles } from './cbBaseStyles.js';
@@ -139,6 +140,28 @@ export const CircleCharacteristicsBar = {
     const hasMultipleCirclesSelected = computed(() => {
       return dataStore.hasMultipleCirclesSelected();
     });
+
+      const selectedExplicitConnection = computed(() => {
+    if (hasMultipleCirclesSelected.value) {
+        const selectedIds = dataStore.getSelectedCircles();
+        if (selectedIds.length === 2) {
+            // Check if there's an explicit connection between these two circles
+            return dataStore.getExplicitConnectionBetweenEntities(
+                selectedIds[0], 'circle',
+                selectedIds[1], 'circle'
+            );
+        }
+    }
+    return null;
+});
+
+      const shouldShowExplicitConnectionControls = computed(() => {
+    return selectedExplicitConnection.value !== null;
+});
+
+const connectionDirectionality = computed(() => {
+    return selectedExplicitConnection.value?.directionality || 'none';
+});
 
     // NEW: Updated visibility logic - show for single OR multiple circle selection
     const isVisible = computed(() => {
@@ -494,6 +517,20 @@ export const CircleCharacteristicsBar = {
       }
     };
 
+const handleDirectionalityCycle = () => {
+    if (selectedExplicitConnection.value) {
+        const cycle = ['none', 'out', 'in', 'both'];
+        const currentIndex = cycle.indexOf(selectedExplicitConnection.value.directionality);
+        const nextValue = cycle[(currentIndex + 1) % cycle.length];
+        
+        dataStore.updateExplicitConnectionProperty(
+            selectedExplicitConnection.value.id, 
+            'directionality', 
+            nextValue
+        );
+    }
+};
+
     const getEmojiDisplayTitle = (emojiData, context) => {
       return EmojiService.getDisplayTitle(emojiData, context);
     };
@@ -505,17 +542,20 @@ export const CircleCharacteristicsBar = {
       
       // Computed values
       causeEmoji,
-      getCurrentCircleEmoji, // NEW
+      getCurrentCircleEmoji,
       isReferenceCircle,
       isCircleEmojiPickerVisible,
       isCircleActivated,
-      isVisible, // Updated visibility logic
-      hasMultipleCirclesSelected, // NEW
-      shouldShowEmojiControls, // NEW
-      shouldShowCircleCharacteristicControls, // NEW
-      shouldShowJumpToReferenceControl, // NEW
-      shouldShowBreakReferenceControl, // NEW
-      getSelectedCircleObjects, // NEW
+      isVisible,
+      hasMultipleCirclesSelected,
+      shouldShowEmojiControls,
+      shouldShowCircleCharacteristicControls,
+      shouldShowJumpToReferenceControl,
+      shouldShowBreakReferenceControl,
+      getSelectedCircleObjects,
+        selectedExplicitConnection,
+    shouldShowExplicitConnectionControls,
+    connectionDirectionality,
       
       // Action handlers
       handleColorSelect,
@@ -527,8 +567,9 @@ export const CircleCharacteristicsBar = {
       handleQuickEmojiSelect,
       handleCategorySelect,
       handleClearRecentEmojis,
-      handleJumpToReference, // NEW
-      handleBreakReference, // NEW
+      handleJumpToReference,
+      handleBreakReference,
+        handleDirectionalityCycle,
       
       // Utilities
       getEmojiDisplayTitle,
@@ -582,10 +623,11 @@ export const CircleCharacteristicsBar = {
     CircleEmojiPickerModal,
     ColorPickerModal,
     EnergyPickerModal,
-    EmojiPickerModal
+    EmojiPickerModal,
+      CBConnectionDirectionalityControl,
   },
   
-  template: `
+    template: `
     <div :class="['circle-characteristics-bar', { hidden: !isVisible }]">
         <!-- Circle Characteristic Controls (Hidden for Reference Circles in Single Selection) -->
         <template v-if="shouldShowCircleCharacteristicControls">
@@ -632,15 +674,16 @@ export const CircleCharacteristicsBar = {
                 @toggle="handleActivationToggle"
             />
 
-	    <CBConnectibleControl 
-		    v-if="shouldShowCircleCharacteristicControls"
-		    :connectible="circleConnectible"
-		    @cycle="handleConnectibleCycle"
-	    />
+            <!-- Connectible Control -->
+            <CBConnectibleControl 
+                v-if="shouldShowCircleCharacteristicControls"
+                :connectible="circleConnectible"
+                @cycle="handleConnectibleCycle"
+            />
         </template>
 
         <!-- Reference Controls (Only shown for reference circles or multi-selection with references) -->
-        <!-- Jump to Reference Control (NEW: positioned before Break Reference Control) -->
+        <!-- Jump to Reference Control -->
         <CBJumpToReferenceControl 
             v-if="shouldShowJumpToReferenceControl"
             @jump-to-reference="handleJumpToReference"
@@ -651,6 +694,18 @@ export const CircleCharacteristicsBar = {
             v-if="shouldShowBreakReferenceControl"
             @break-reference="handleBreakReference"
         />
+
+        <!-- Explicit Connection Controls (Only shown when exactly 2 circles selected with connection) -->
+        <template v-if="shouldShowExplicitConnectionControls">
+            <!-- Visual separator -->
+            <div style="border-left: 1px solid #666; margin: 0 8px; height: 32px;"></div>
+            
+            <!-- Connection Directionality Control -->
+            <CBConnectionDirectionalityControl 
+                :directionality="connectionDirectionality"
+                @cycle="handleDirectionalityCycle"
+            />
+        </template>
 
         <!-- Emoji Controls (Only Visible for Single Circle Selection) -->
         <template v-if="shouldShowEmojiControls">
