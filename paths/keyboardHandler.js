@@ -140,6 +140,12 @@ export function createKeyboardHandler(dataStore, onShowIndicatorPicker = null, o
             return;
         }
 
+        if (e.key === 'M' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
+            e.preventDefault();
+            handleAlignment(dataStore, 'zigzag-horizontal');
+            return;
+        }
+
         // Handle CTRL+SHIFT+C for circular alignment
         if (e.key === 'C' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
             e.preventDefault();

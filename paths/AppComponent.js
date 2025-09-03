@@ -23,7 +23,7 @@ export const App = {
     setup() {
         const dataStore = useDataStore();
         const squareViewerContentRef = ref(null);
-        const proximitySystem = useEnergyProximitySystem();
+	const proximitySystem = useEnergyProximitySystem(dataStore);
         const animationManager = useAnimationLoopManager();
 
         // Document hover state for viewer highlighting

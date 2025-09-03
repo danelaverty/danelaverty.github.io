@@ -1,11 +1,11 @@
 // systems/ColorFlowSystem.js - FIXED Color flow system for multi-color glow circles
+import { hslStringToHex } from './colorUtils.js';
+
 export const ColorFlowSystem = {
     /**
      * Start organic color flow for multi-color circles
      */
     start(element, colors) {
-        console.log('element: ', element);
-        console.log('colors: ', colors);
         if (!colors || colors.length <= 1) {
             return;
         }
@@ -19,7 +19,11 @@ export const ColorFlowSystem = {
         
         // Wait a bit to ensure glow elements are rendered
         setTimeout(() => {
-            this.createColorFlowOverlay(element, colors);
+            var hexColors = [];
+            colors.forEach(function(color) {
+                hexColors.push(hslStringToHex(color));
+            });
+            this.createColorFlowOverlay(element, hexColors);
         }, 100);
     },
 

@@ -26,32 +26,42 @@ function createExplicitConnectionStore() {
      * Create an explicit connection between two entities
      */
     const createConnection = (entity1Id, entity1Type, entity2Id, entity2Type, entity1Ref, entity2Ref) => {
-        // Prevent connecting entity to itself
-        if (entity1Id === entity2Id) {
-            return null;
-        }
+    // Prevent connecting entity to itself
+    if (entity1Id === entity2Id) {
+        return null;
+    }
 
-        const connectionId = generateConnectionId(entity1Id, entity2Id, entity1Type, entity2Type);
-        
-        // Check if connection already exists
-        if (data.connections.has(connectionId)) {
-            return data.connections.get(connectionId);
-        }
+    const connectionId = generateConnectionId(entity1Id, entity2Id, entity1Type, entity2Type);
+    
+    // Check if connection already exists
+    if (data.connections.has(connectionId)) {
+        return data.connections.get(connectionId);
+    }
 
-        const connection = {
-            id: connectionId,
-            entity1Id,
-            entity1Type,
-            entity2Id, 
-            entity2Type,
-            entity1: entity1Ref, // Store reactive reference to entity
-            entity2: entity2Ref, // Store reactive reference to entity
-            createdAt: Date.now()
-        };
-
-        data.connections.set(connectionId, connection);
-        return connection;
+    const connection = {
+        id: connectionId,
+        entity1Id,
+        entity1Type,
+        entity2Id, 
+        entity2Type,
+        entity1: entity1Ref, // Store reactive reference to entity
+        entity2: entity2Ref, // Store reactive reference to entity
+        directionality: 'none', // NEW: Default directionality property
+        createdAt: Date.now()
     };
+
+    data.connections.set(connectionId, connection);
+    return connection;
+};
+
+const updateConnection = (connectionId, updates) => {
+    const connection = data.connections.get(connectionId);
+    if (connection) {
+        Object.assign(connection, updates);
+        return connection;
+    }
+    return null;
+};
 
     /**
      * Delete an explicit connection by ID
@@ -167,48 +177,51 @@ function createExplicitConnectionStore() {
     /**
      * Deserialization from saved data
      */
-    const deserialize = (savedData, getEntityRef) => {
-        if (savedData.connections) {
-            data.connections = new Map();
-            
-            // Reconstruct connections with entity references
-            savedData.connections.forEach(([id, connectionData]) => {
-                // Get fresh entity references
-                const entity1Ref = getEntityRef(connectionData.entity1Type, connectionData.entity1Id);
-                const entity2Ref = getEntityRef(connectionData.entity2Type, connectionData.entity2Id);
-                
-                // Only restore connection if both entities still exist
-                if (entity1Ref && entity2Ref) {
-                    const restoredConnection = {
-                        ...connectionData,
-                        entity1: entity1Ref,
-                        entity2: entity2Ref
-                    };
-                    data.connections.set(id, restoredConnection);
-                }
-            });
-        }
+const deserialize = (savedData, getEntityRef) => {
+    if (savedData.connections) {
+        data.connections = new Map();
         
-        if (savedData.nextConnectionId) {
-            data.nextConnectionId = savedData.nextConnectionId;
-        }
-    };
+        // Reconstruct connections with entity references
+        savedData.connections.forEach(([id, connectionData]) => {
+            // Get fresh entity references
+            const entity1Ref = getEntityRef(connectionData.entity1Type, connectionData.entity1Id);
+            const entity2Ref = getEntityRef(connectionData.entity2Type, connectionData.entity2Id);
+            
+            // Only restore connection if both entities still exist
+            if (entity1Ref && entity2Ref) {
+                const restoredConnection = {
+                    ...connectionData,
+                    entity1: entity1Ref,
+                    entity2: entity2Ref,
+                    // NEW: Ensure directionality exists for backward compatibility
+                    directionality: connectionData.directionality || 'none'
+                };
+                data.connections.set(id, restoredConnection);
+            }
+        });
+    }
+    
+    if (savedData.nextConnectionId) {
+        data.nextConnectionId = savedData.nextConnectionId;
+    }
+};
 
-    return {
-        data,
-        createConnection,
-        deleteConnection,
-        deleteConnectionsForEntity,
-        findConnection,
-        hasConnection,
-        getConnectionsForEntity,
-        getAllConnections,
-        getConnectionsForEntityTypes,
-        clearAll,
-        updateEntityReferences,
-        serialize,
-        deserialize
-    };
+return {
+    data,
+    createConnection,
+    deleteConnection,
+    deleteConnectionsForEntity,
+    findConnection,
+    hasConnection,
+    getConnectionsForEntity,
+    getAllConnections,
+    getConnectionsForEntityTypes,
+    clearAll,
+    updateEntityReferences,
+    updateConnection,
+    serialize,
+    deserialize
+};
 }
 
 export function useExplicitConnectionStore() {

@@ -8,6 +8,7 @@ export class EnergyProximitySystem {
         this.proximityEffects = new Map(); // Map of affected circle ids to their current effects
         this.activeViewers = ref(new Set()); // FIXED: Make this reactive!
         this.animationFrame = null;
+        this.dataStore = null; // NEW: Reference to data store for ignition
         
         // Configuration
         this.config = {
@@ -22,6 +23,13 @@ export class EnergyProximitySystem {
             inactiveOpacity: 0.4, // Opacity for inactive exciters/dampeners
             transitionDuration: '0.3s' // CSS transition duration
         };
+    }
+
+    /**
+     * Set the data store reference for ignition functionality
+     */
+    setDataStore(dataStore) {
+        this.dataStore = dataStore;
     }
 
     /**
@@ -290,10 +298,10 @@ categorizeCirclesByEnergyType(viewerCircles) {
     return {
         glowCircles: viewerCircles.filter(data => this.isGlowCircle(data.circle)),
         exciterCircles: viewerCircles.filter(data => 
-            this.hasEnergyType(data.circle, 'exciter') //&& this.isCircleActivated(data.circle)
+            (this.hasEnergyType(data.circle, 'exciter') || this.hasEnergyType(data.circle, 'igniter')) && this.isCircleActivated(data.circle)
         ),
         dampenerCircles: viewerCircles.filter(data => 
-            this.hasEnergyType(data.circle, 'dampener') //&& this.isCircleActivated(data.circle)
+            this.hasEnergyType(data.circle, 'dampener') && this.isCircleActivated(data.circle)
         )
     };
 }
@@ -311,6 +319,7 @@ hasEnergyInfluencers(exciterCircles, dampenerCircles) {
 calculateExciterEffect(glowPos, exciterCircles, glowCircleId) {
     let netExciterEffect = 0;
     let hasNearbyExciter = false;
+    let hasIgniterAtMaxEffect = false;
 
     exciterCircles.forEach(exciterData => {
         // Skip if it's the same circle
@@ -328,10 +337,16 @@ calculateExciterEffect(glowPos, exciterCircles, glowCircleId) {
             const exciterInfluence = (proximityStrength - this.config.minScale) / 
                                    (this.config.maxScale - this.config.minScale);
             netExciterEffect = Math.max(netExciterEffect, exciterInfluence);
+            
+            // Check if this is an igniter at maximum effect
+            const isIgniter = this.hasEnergyType(exciterData.circle, 'igniter');
+            if (isIgniter && exciterInfluence >= 1.0) {
+                hasIgniterAtMaxEffect = true;
+            }
         }
     });
 
-    return { netExciterEffect, hasNearbyExciter };
+    return { netExciterEffect, hasNearbyExciter, hasIgniterAtMaxEffect };
 }
 
 /**
@@ -406,10 +421,11 @@ processGlowCircle(glowData, exciterCircles, dampenerCircles) {
     const glowPos = this.getEffectivePosition(glowData.circle.id);
     if (!glowPos) return null;
     
-    const baseScale = this.config.maxScale;
+    const isActivated = this.isCircleActivated(glowData.circle);
+    const baseScale = isActivated ? this.config.maxScale : 0.7;
     
     // Calculate energy effects
-    const { netExciterEffect, hasNearbyExciter } = this.calculateExciterEffect(
+    const { netExciterEffect, hasNearbyExciter, hasIgniterAtMaxEffect } = this.calculateExciterEffect(
         glowPos, exciterCircles, glowData.circle.id
     );
     const { netDampenerEffect, hasNearbyDampener } = this.calculateDampenerEffect(
@@ -421,14 +437,21 @@ processGlowCircle(glowData, exciterCircles, dampenerCircles) {
     // Only apply effect if there's a nearby influencer
     if (!hasNearbyInfluencer) return null;
     
-    const finalScale = this.calculateFinalScale(baseScale, netExciterEffect, netDampenerEffect, true);
+    // Check for ignition condition
+    let shouldIgnite = false;
+    if (!isActivated && hasIgniterAtMaxEffect && netExciterEffect >= 1.0) {
+        shouldIgnite = true;
+    }
+    
+    const finalScale = this.calculateFinalScale(baseScale, netExciterEffect, netDampenerEffect, isActivated);
     const { opacity, saturation } = this.calculateOpacityAndSaturation(finalScale);
     
     return {
         circleId: glowData.circle.id,
         scale: finalScale,
         opacity,
-        saturation
+        saturation,
+        shouldIgnite // NEW: Flag for ignition
     };
 }
 
@@ -452,8 +475,14 @@ processViewerCircles(viewerCircles, viewerId, newActiveViewers, newEffects) {
             newEffects.set(effect.circleId, {
                 scale: effect.scale,
                 opacity: effect.opacity,
-                saturation: effect.saturation
+                saturation: effect.saturation,
+                shouldIgnite: effect.shouldIgnite // Pass ignition flag
             });
+            
+            // Handle ignition - activate the circle and trigger animation
+            if (effect.shouldIgnite) {
+                this.handleIgnition(effect.circleId);
+            }
         }
     });
 }
@@ -502,7 +531,7 @@ updateProximityEffects() {
             // Check if this viewer has any energy influencers
             const hasEnergyInfluencers = viewerCircles.some(({ data }) => {
                 const circle = data.circle;
-                return (this.hasEnergyType(circle, 'exciter') || this.hasEnergyType(circle, 'dampener')) 
+                return (this.hasEnergyType(circle, 'exciter') || this.hasEnergyType(circle, 'igniter') || this.hasEnergyType(circle, 'dampener')) 
                        && this.isCircleActivated(circle);
             });
 
@@ -532,19 +561,99 @@ updateProximityEffects() {
                         this.setElementProximityEffects(data.element, this.config.minScale, this.config.maxOpacity, this.config.maxSaturation);
                     }
                 }
-                // Handle exciter/dampener circles
-                else if (this.hasEnergyType(circle, 'exciter') || this.hasEnergyType(circle, 'dampener')) {
+                // Handle exciter/igniter/dampener circles
+                else if (this.hasEnergyType(circle, 'exciter') || this.hasEnergyType(circle, 'igniter') || this.hasEnergyType(circle, 'dampener')) {
                     const isActivated = this.isCircleActivated(circle);
                     if (isActivated) {
-                        // Activated exciters/dampeners: full opacity
+                        // Activated exciters/igniters/dampeners: full opacity
                         this.setElementProximityEffects(data.element, this.config.minScale, this.config.maxOpacity, this.config.maxSaturation);
                     } else {
-                        // Inactive exciters/dampeners: dimmed opacity
+                        // Inactive exciters/igniters/dampeners: dimmed opacity
                         this.setElementProximityEffects(data.element, this.config.minScale, this.config.inactiveOpacity, this.config.maxSaturation);
                     }
                 }
             });
         });
+    }
+
+    /**
+     * Handle ignition - activate a circle and trigger animation
+     */
+    handleIgnition(circleId) {
+        const data = this.circles.get(circleId);
+        if (!data || !data.circle) return;
+        
+        // Only ignite if the circle is currently inactive
+        if (data.circle.activation !== 'inactive') return;
+        
+        // Activate the circle through the data store
+        if (this.dataStore && this.dataStore.updateCircle) {
+            this.dataStore.updateCircle(circleId, { activation: 'activated' });
+        }
+        
+        // Trigger ignition animation
+        this.triggerIgnitionAnimation(circleId, data.element);
+    }
+
+    /**
+     * Trigger ignition blast animation
+     */
+    triggerIgnitionAnimation(circleId, element) {
+        if (!element) return;
+        
+        // Create animation container
+        const animationContainer = document.createElement('div');
+        animationContainer.className = 'ignition-blast';
+        animationContainer.style.cssText = `
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(0, 255, 255, 0.8) 0%, rgba(0, 255, 255, 0.4) 50%, rgba(0, 255, 255, 0) 100%);
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            animation: ignitionBlast 0.4s ease-out forwards;
+        `;
+        
+        // Add animation keyframes if not already present
+        if (!document.querySelector('#ignition-blast-styles')) {
+            const styleSheet = document.createElement('style');
+            styleSheet.id = 'ignition-blast-styles';
+            styleSheet.textContent = `
+                @keyframes ignitionBlast {
+                    0% {
+                        width: 0;
+                        height: 0;
+                        opacity: 1;
+                    }
+                    50% {
+                        width: 40px;
+                        height: 40px;
+                        opacity: 0.8;
+                    }
+                    100% {
+                        width: 100px;
+                        height: 100px;
+                        opacity: 0;
+                    }
+                }
+            `;
+            document.head.appendChild(styleSheet);
+        }
+        
+        // Add animation to the circle element
+        element.style.position = 'relative';
+        element.appendChild(animationContainer);
+        
+        // Remove animation after completion
+        setTimeout(() => {
+            if (animationContainer && animationContainer.parentNode) {
+                animationContainer.parentNode.removeChild(animationContainer);
+            }
+        }, 600);
     }
 
     /**
@@ -584,9 +693,15 @@ updateProximityEffects() {
 // Create singleton instance
 let proximitySystemInstance = null;
 
-export function useEnergyProximitySystem() {
+export function useEnergyProximitySystem(dataStore = null) {
     if (!proximitySystemInstance) {
         proximitySystemInstance = new EnergyProximitySystem();
     }
+    
+    // Set or update the data store reference
+    if (dataStore) {
+        proximitySystemInstance.setDataStore(dataStore);
+    }
+    
     return proximitySystemInstance;
 }
