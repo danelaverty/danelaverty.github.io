@@ -1,4 +1,4 @@
-// EntityState.js - Entity component state management and computed properties
+// EntityState.js - Entity component state management and computed properties (Updated with collapsed group support)
 import { ref, computed, watch } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
 import { EmojiService } from './emojiService.js';
@@ -32,9 +32,14 @@ export const useEntityState = (props) => {
     return 1; // No scaling for non-group members or non-circles
 });
 
-    // New computed property for group shape scaling
+    // NEW: Updated computed property for group shape scaling - considers collapsed state
     const groupShapeScale = computed(() => {
         if (props.entityType === 'circle' && props.entity.type === 'group') {
+            // If the group is collapsed, use normal size (no scaling)
+            if (props.entity.collapsed) {
+                return 1;
+            }
+            
             // Get all circles belonging to this group
             const groupCircles = dataStore.getCirclesBelongingToGroup(props.entity.id);
             const belongingCount = groupCircles.length;
@@ -50,13 +55,36 @@ export const useEntityState = (props) => {
         return 1; // No scaling for non-group circles or other entity types
     });
 
+    // NEW: Updated computed property for belonging circles count - returns 0 when collapsed
     const belongingCirclesCount = computed(() => {
-    if (props.entityType === 'circle' && props.entity.type === 'group') {
-        // This computed will reactively update when any circle's belongsToID changes
-        return dataStore.getCirclesBelongingToGroup(props.entity.id).length;
-    }
-    return 0;
-});
+        if (props.entityType === 'circle' && props.entity.type === 'group') {
+            // If collapsed, return 0 to trigger normal size rendering
+            if (props.entity.collapsed) {
+                return 0;
+            }
+            
+            // This computed will reactively update when any circle's belongsToID changes
+            return dataStore.getCirclesBelongingToGroup(props.entity.id).length;
+        }
+        return 0;
+    });
+
+    // NEW: Check if this circle should be hidden (member of collapsed group)
+    const isHiddenGroupMember = computed(() => {
+        if (props.entityType === 'circle' && props.entity.belongsToID) {
+            const parentGroup = dataStore.getCircle(props.entity.belongsToID);
+            return parentGroup && parentGroup.collapsed === true;
+        }
+        return false;
+    });
+
+    // NEW: Get member count for collapsed groups
+    const collapsedMemberCount = computed(() => {
+        if (props.entityType === 'circle' && props.entity.type === 'group' && props.entity.collapsed) {
+            return dataStore.getCirclesBelongingToGroup(props.entity.id).length;
+        }
+        return 0;
+    });
 
     // Check if this is an animation copy
     const isAnimationCopy = computed(() => {
@@ -229,6 +257,9 @@ export const useEntityState = (props) => {
         enhancedProps,
         belongingCirclesCount,
         groupMemberScale,
-        groupShapeScale, // New property for scaling the clickable shape
+        groupShapeScale,
+        // NEW: Collapsed group properties
+        isHiddenGroupMember,
+        collapsedMemberCount,
     };
 };

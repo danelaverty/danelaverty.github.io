@@ -1,4 +1,4 @@
-// EntityComponent.js - Main entity component shell with template (UPDATED: Add group shape scaling)
+// EntityComponent.js - Main entity component shell with template (UPDATED: Add group shape scaling and collapsed group member count display)
 import { computed } from './vue-composition-api.js';
 import { injectComponentStyles } from './styleUtils.js';
 import { EmojiRenderer } from './EmojiRenderer.js';
@@ -7,7 +7,7 @@ import { useEntityState } from './EntityState.js';
 import { useEntityRendering } from './EntityRendering.js';
 import { useEntityInteractions } from './EntityInteractions.js';
 
-// Component styles - updated to support bold squares, indicator emojis, reference circles, animation copies, and group shape scaling
+// Component styles - updated to support bold squares, indicator emojis, reference circles, animation copies, group shape scaling, and collapsed group member count
 const componentStyles = `
     .entity-container {
         position: absolute;
@@ -204,6 +204,34 @@ const componentStyles = `
     .entity-container.animation-dimmed {
         opacity: 0.2;
     }
+
+    /* NEW: Collapsed group member count overlay */
+    .collapsed-member-count {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 14px;
+        font-weight: bold;
+        color: #AAA;
+        text-shadow: 0 0 3px rgba(0, 0, 0, 0.8);
+        pointer-events: none;
+        z-index: 20;
+        user-select: none;
+        background-color: rgba(0, 0, 0, 0.3);
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+    }
+
+    .entity-container:hover .collapsed-member-count {
+        background-color: rgba(0, 0, 0, 0.5);
+        transform: translate(-50%, -50%) scale(1.1);
+    }
 `;
 
 injectComponentStyles('entity-component', componentStyles);
@@ -244,6 +272,14 @@ export const EntityComponent = {
             return {};
         });
 
+        // NEW: Check if this is a collapsed group with members
+        const shouldShowMemberCount = computed(() => {
+            return props.entityType === 'circle' && 
+                   props.entity.type === 'group' && 
+                   props.entity.collapsed === true &&
+                   state.collapsedMemberCount.value > 0;
+        });
+
         // Cleanup function for external use
         const cleanup = () => {
             rendering.cleanupRendering();
@@ -258,6 +294,8 @@ export const EntityComponent = {
             ...interactions,
             // Shape scaling
             shapeScaleStyles,
+            // NEW: Collapsed group member count
+            shouldShowMemberCount,
             // Cleanup
             cleanup
         };
@@ -305,6 +343,14 @@ export const EntityComponent = {
                 class="square-indicator-emoji"
             >
                 {{ entity.indicatorEmoji }}
+            </div>
+
+            <!-- NEW: Member count display for collapsed groups -->
+            <div 
+                v-if="shouldShowMemberCount"
+                class="collapsed-member-count"
+            >
+                {{ collapsedMemberCount }}
             </div>
         </div>
         <!-- For triangle circles, render a special container with scaling -->
