@@ -3,7 +3,7 @@ import { colorFamilies } from './colorFamilies.js';
 
 /**
  * Parse a color string into RGB components
- * Supports: #RGB, #RRGGBB, rgb(r,g,b), rgba(r,g,b,a), named colors
+ * Supports: #RGB, #RRGGBB, rgb(r,g,b), rgba(r,g,b,a), hsl(h,s,l), hsla(h,s,l,a), named colors
  */
 function parseColor(color) {
     if (!color || typeof color !== 'string') {
@@ -77,6 +77,19 @@ function parseColor(color) {
 
     // Fallback to black
     return { r: 0, g: 0, b: 0, a: 1 };
+}
+
+/**
+ * Add opacity to any color format
+ * @param {string} color - Color in any supported format (hex, rgb, rgba, hsl, hsla, named)
+ * @param {number} opacity - Opacity value between 0 and 1
+ * @returns {string} RGBA color string
+ */
+function getColorWithOpacity(color, opacity) {
+    if (!color) return `rgba(0, 0, 0, ${opacity})`;
+    
+    const { r, g, b } = parseColor(color);
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 }
 
 function hslStringToHex(hslString) {
@@ -370,6 +383,7 @@ export const useColorUtils = () => {
         rgbToHex,
         hslToRgb,
         hslStringToHex,
+        getColorWithOpacity,
         
         // Color manipulation
         adjustBrightness,
@@ -392,6 +406,7 @@ export const useColorUtils = () => {
 export {
     findColorInfo,
     parseColor,
+    getColorWithOpacity,
     adjustBrightness,
     lighten,
     darken,

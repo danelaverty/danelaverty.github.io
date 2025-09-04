@@ -35,4 +35,10 @@ export const circleTypes = [
     description: 'Geometric shapes using CSS clip-path',
     icon: '▶'
   },
+  {
+    id: 'group',
+    name: 'Container',
+    description: 'Rounded rectangle container',
+    icon: '▢'
+  }
 ];

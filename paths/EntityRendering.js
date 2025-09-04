@@ -74,11 +74,14 @@ export const useEntityRendering = (props, state) => {
             props.entity.type, 
             props.entity.color, 
             props.entity.colors, 
-            props.entity.emoji, // Watch for emoji changes in circles
-            props.entity.energyTypes, // Watch for energy type changes
-            props.entity.activation, // Watch for activation changes
-            props.entity.referenceID, // Watch for referenceID changes
+            props.entity.emoji,
+            props.entity.energyTypes,
+            props.entity.activation,
+            props.entity.referenceID,
             state.squareCount.value,
+            state.belongingCirclesCount?.value,
+            state.groupMemberScale?.value,
+            state.groupShapeScale?.value, // Watch for shape scale changes
             props.isSelected
         ],
         (newValues, oldValues) => {
@@ -89,7 +92,7 @@ export const useEntityRendering = (props, state) => {
                 
                 if (hasActualChanges) {
                     nextTick(() => {
-                        CircleTypeRenderer.render(shapeRef.value, props.entity, props.isSelected, state.squareCount.value);
+                        CircleTypeRenderer.render(shapeRef.value, props.entity, props.isSelected, state.squareCount.value, state.belongingCirclesCount?.value);
                         // Update proximity system registration after re-render
                         updateProximityRegistration();
                     });
@@ -135,7 +138,7 @@ export const useEntityRendering = (props, state) => {
         
         if (props.entityType === 'circle') {
             // Render circle type first
-            CircleTypeRenderer.render(shapeRef.value, props.entity, props.isSelected, state.squareCount.value);
+            CircleTypeRenderer.render(shapeRef.value, props.entity, props.isSelected, state.squareCount.value, state.belongingCirclesCount?.value);
             // Register with proximity system
             updateProximityRegistration();
         } else if (props.entityType === 'square') {

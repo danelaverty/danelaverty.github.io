@@ -389,7 +389,11 @@ updateExplicitConnectionProperty: (connectionId, property, value) => {
         hasMultipleSquaresSelected: uiStore.hasMultipleSquaresSelected,
 
         // Direct storage access
-        saveToStorage
+        saveToStorage,
+
+    getCirclesBelongingToGroup: entityStore.getCirclesBelongingToGroup,
+    setCircleBelongsTo: entityStore.setCircleBelongsTo,
+    clearCircleBelongsTo: entityStore.clearCircleBelongsTo,
     };
 }
 

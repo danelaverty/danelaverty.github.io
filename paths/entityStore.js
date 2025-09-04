@@ -53,12 +53,13 @@ function createEntityStore() {
 
         // Add circle-specific properties
         if (entityType === 'circle') {
-            entity.color = '#CCCCCC'; // Default color
-            entity.colors = ['#4CAF50']; // Support for multiple colors
-            entity.energyTypes = []; // Energy types array
-            entity.activation = 'activated'; // Default activation state
-	    entity.connectible = 'receives'; // NEW: Default connectible state
-            entity.referenceID = null; // NEW: Reference ID for referenced circles
+            entity.color = '#CCCCCC'; 
+            entity.colors = ['#4CAF50']; 
+            entity.energyTypes = []; 
+            entity.activation = 'activated'; 
+	    entity.connectible = 'receives'; 
+            entity.referenceID = null; 
+            entity.belongsToID = null; 
             
             // Set circle type based on document's mostRecentlySetCircleType
             let defaultType = 'basic'; // Fallback default
@@ -103,6 +104,28 @@ function createEntityStore() {
         const store = entityType === 'circle' ? data.circles : data.squares;
         return Array.from(store.values()).filter(entity => entity.documentId === documentId);
     };
+
+    const getCirclesBelongingToGroup = (groupId) => {
+    return Array.from(data.circles.values()).filter(circle => circle.belongsToID === groupId);
+};
+
+const setCircleBelongsTo = (circleId, groupId) => {
+    const circle = data.circles.get(circleId);
+    if (circle) {
+        circle.belongsToID = groupId;
+        return circle;
+    }
+    return null;
+};
+
+const clearCircleBelongsTo = (circleId) => {
+    const circle = data.circles.get(circleId);
+    if (circle) {
+        circle.belongsToID = null;
+        return circle;
+    }
+    return null;
+};
 
     const updateEntity = (entityType, id, updates) => {
         const store = entityType === 'circle' ? data.circles : data.squares;
@@ -346,6 +369,10 @@ function createEntityStore() {
                 if (circle.referenceID === undefined) {
                     circle.referenceID = null; // Default for existing circles
                 }
+
+                if (circle.belongsToID === undefined) {
+                circle.belongsToID = null;
+            }
             });
         }
         if (savedData.squares) {
@@ -409,7 +436,11 @@ function createEntityStore() {
         generateRandomPosition,
         // Serialization
         serialize,
-        deserialize
+        deserialize,
+
+        getCirclesBelongingToGroup,
+        setCircleBelongsTo,
+        clearCircleBelongsTo,
     };
 }
 

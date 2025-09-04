@@ -1,4 +1,5 @@
-// EntityComponent.js - Main entity component shell with template (UPDATED: Add drag state events)
+// EntityComponent.js - Main entity component shell with template (UPDATED: Add group shape scaling)
+import { computed } from './vue-composition-api.js';
 import { injectComponentStyles } from './styleUtils.js';
 import { EmojiRenderer } from './EmojiRenderer.js';
 import { EnergyIndicators } from './EnergyIndicators.js';
@@ -6,7 +7,7 @@ import { useEntityState } from './EntityState.js';
 import { useEntityRendering } from './EntityRendering.js';
 import { useEntityInteractions } from './EntityInteractions.js';
 
-// Component styles - updated to support bold squares, indicator emojis, reference circles, and animation copies
+// Component styles - updated to support bold squares, indicator emojis, reference circles, animation copies, and group shape scaling
 const componentStyles = `
     .entity-container {
         position: absolute;
@@ -15,14 +16,23 @@ const componentStyles = `
         align-items: center;
         cursor: move;
         user-select: none;
+        transition: transform 0.3s ease;
+        transform-origin: center center;
+    }
+
+    .entity-container.group-member {
+        z-index: 10;
     }
 
     .entity-shape {
         width: 32px;
         height: 32px;
         margin-bottom: 5px;
-        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, width 0.3s ease, height 0.3s ease;
         position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .circle-shape {
@@ -55,7 +65,7 @@ const componentStyles = `
 
     .square-shape.indicator-done {
         border-color: #4caf50 !important;
-	border-width: 3px;
+        border-width: 3px;
     }
 
     .square-shape.indicator-star {
@@ -135,6 +145,12 @@ const componentStyles = `
         position: absolute;
         top: 85%;
         background-color: rgba(0, 0, 0, .1);
+        z-index: 1;
+        text-shadow: 1px 1px 1px black;
+    }
+
+    .circle-type-group + .entity-name {
+        top: -20px;
     }
 
     .square-name {
@@ -215,6 +231,19 @@ export const EntityComponent = {
         // Use interactions composable
         const interactions = useEntityInteractions(props, emit, state);
 
+        // Computed style for shape scaling (group circles only)
+        const shapeScaleStyles = computed(() => {
+            if (state.groupShapeScale.value !== 1) {
+                const scale = state.groupShapeScale.value;
+                const scaledSize = Math.round(32 * scale);
+                return {
+                    width: `${scaledSize}px`,
+                    height: `${scaledSize}px`,
+                };
+            }
+            return {};
+        });
+
         // Cleanup function for external use
         const cleanup = () => {
             rendering.cleanupRendering();
@@ -227,6 +256,8 @@ export const EntityComponent = {
             ...rendering,
             // Interactions
             ...interactions,
+            // Shape scaling
+            shapeScaleStyles,
             // Cleanup
             cleanup
         };
@@ -238,11 +269,13 @@ export const EntityComponent = {
         :style="{ 
             ...positionStyles,
             ...circleStyles,
-            ...squareStyles
+            ...squareStyles,
+            transform: groupMemberScale !== 1 ? 'scale(' + groupMemberScale + ')' : undefined
         }"
         :class="{
             'animation-copy': isAnimationCopy,
-            'animation-dimmed': isAnimationDimmed
+            'animation-dimmed': isAnimationDimmed,
+            'group-member': groupMemberScale !== 1
         }"
         :data-entity-id="entity.id"
         @click="handleClick"
@@ -256,6 +289,7 @@ export const EntityComponent = {
             v-if="entityType === 'square' || (entityType === 'circle' && entity.type !== 'triangle' && entity.type !== 'emoji')"
             ref="shapeRef"
             :class="shapeClasses"
+            :style="shapeScaleStyles"
         >
             <!-- Use centralized EmojiRenderer for squares -->
             <EmojiRenderer
@@ -273,19 +307,25 @@ export const EntityComponent = {
                 {{ entity.indicatorEmoji }}
             </div>
         </div>
-        <!-- For triangle circles, render a special container -->
+        <!-- For triangle circles, render a special container with scaling -->
         <div 
             v-else-if="entityType === 'circle' && entity.type === 'triangle'"
             ref="shapeRef"
             class="triangle-container"
-            :style="{ width: '32px', height: '32px', position: 'relative' }"
+            :style="{ 
+                ...shapeScaleStyles,
+                position: 'relative' 
+            }"
         ></div>
-        <!-- For emoji circles, render a special container -->
+        <!-- For emoji circles, render a special container with scaling -->
         <div 
             v-else-if="entityType === 'circle' && entity.type === 'emoji'"
             ref="shapeRef"
             class="emoji-circle-container"
-            :style="{ width: '32px', height: '32px', position: 'relative' }"
+            :style="{ 
+                ...shapeScaleStyles,
+                position: 'relative' 
+            }"
         ></div>
         
         <!-- Energy indicators for circles -->
