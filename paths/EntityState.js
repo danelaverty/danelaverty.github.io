@@ -16,6 +16,48 @@ export const useEntityState = (props) => {
         return props.entityType === 'circle' && props.entity.referenceID !== null;
     });
 
+    const groupMemberScale = computed(() => {
+    if (props.entityType === 'circle' && props.entity.belongsToID) {
+        // Get all circles belonging to the same group
+        const groupCircles = dataStore.getCirclesBelongingToGroup(props.entity.belongsToID);
+        const groupSize = groupCircles.length;
+        
+        // Calculate scale using sqrt for diminishing returns
+        const baseScale = 0.9;
+        const scaleFactor = Math.sqrt(groupSize) * 0.1; // Adjust 0.1 to control how much smaller circles get
+        const scale = Math.max(0.6, baseScale - scaleFactor); // Min scale of 0.6 (60%)
+        
+        return scale;
+    }
+    return 1; // No scaling for non-group members or non-circles
+});
+
+    // New computed property for group shape scaling
+    const groupShapeScale = computed(() => {
+        if (props.entityType === 'circle' && props.entity.type === 'group') {
+            // Get all circles belonging to this group
+            const groupCircles = dataStore.getCirclesBelongingToGroup(props.entity.id);
+            const belongingCount = groupCircles.length;
+            
+            // Use the same scaling logic as GroupCircleRenderer
+            const baseSize = 32;
+            const scaleFactor = Math.sqrt(Math.max(1, belongingCount + 1)) * 1.3; // +1 to include the group itself
+            const scaledSize = Math.max(baseSize, baseSize * scaleFactor * 0.8);
+            
+            // Return the scale ratio
+            return scaledSize / baseSize;
+        }
+        return 1; // No scaling for non-group circles or other entity types
+    });
+
+    const belongingCirclesCount = computed(() => {
+    if (props.entityType === 'circle' && props.entity.type === 'group') {
+        // This computed will reactively update when any circle's belongsToID changes
+        return dataStore.getCirclesBelongingToGroup(props.entity.id).length;
+    }
+    return 0;
+});
+
     // Check if this is an animation copy
     const isAnimationCopy = computed(() => {
         return props.entity.isAnimationCopy === true;
@@ -184,6 +226,9 @@ export const useEntityState = (props) => {
         positionStyles,
         squareCount,
         actualViewerId,
-        enhancedProps
+        enhancedProps,
+        belongingCirclesCount,
+        groupMemberScale,
+        groupShapeScale, // New property for scaling the clickable shape
     };
 };

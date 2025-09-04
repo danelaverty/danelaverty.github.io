@@ -1,4 +1,4 @@
-// EntityDragHandler.js - UPDATED: Pass both ctrlKey and shiftKey states in select emission
+// EntityDragHandler.js - UPDATED: Add visual group member dragging during drag operations
 import { onMounted } from './vue-composition-api.js';
 import { useDraggable } from './useDraggable.js';
 import { useConnectionDragUpdater } from './useConnections.js';
@@ -23,6 +23,9 @@ export class EntityDragHandler {
         // Flag to prevent connection updates during position transition
         this.isUpdatingPositions = false;
         
+        // NEW: Track group member elements for visual dragging
+        this.groupMemberElements = new Map(); // Map of circleId -> element
+        
         // Initialize type-specific handler
         this.entityTypeHandler = this.createEntityTypeHandler();
         
@@ -42,6 +45,17 @@ export class EntityDragHandler {
         // Set up event handlers
         this.setupDragging();
         this.setupMouseTracking();
+
+        this.lastMouseX = 0;
+        this.lastMouseY = 0;
+    
+        // Track mouse position for group detection
+        this.trackMousePosition = (e) => {
+            this.lastMouseX = e.clientX;
+            this.lastMouseY = e.clientY;
+        };
+    
+        document.addEventListener('mousemove', this.trackMousePosition);
     }
 
     createEntityTypeHandler() {
@@ -68,6 +82,100 @@ export class EntityDragHandler {
         );
         
         this.updateConnectionsForDrag = updateConnectionsForDrag;
+    }
+
+    detectGroupCircleUnderMouse(x, y, viewerId) {
+        const circles = this.dataStore.getCirclesForViewer ? this.dataStore.getCirclesForViewer(viewerId) : [];
+    
+        for (const circle of circles) {
+            if (circle.type === 'group' && circle.id !== this.props.entity.id) {
+                const circleElement = document.querySelector(`[data-entity-id="${circle.id}"]`);
+                if (circleElement) {
+                    const rect = circleElement.getBoundingClientRect();
+                    const groupScale = circleElement.querySelector('.circle-shape')?._groupScale || { width: 32, height: 32 };
+                
+                    // Expand hit detection area based on group scale
+                    const padding = Math.max(0, (groupScale.width - 32) / 2, (groupScale.height - 32) / 2);
+                    const expandedRect = {
+                        left: rect.left - padding,
+                        right: rect.right + padding,
+                        top: rect.top - padding,
+                        bottom: rect.bottom + padding
+                    };
+                
+                    if (x >= expandedRect.left && x <= expandedRect.right &&
+                        y >= expandedRect.top && y <= expandedRect.bottom) {
+                        return circle;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    // NEW: Find and cache group member elements for visual dragging
+    findGroupMemberElements() {
+        if (this.props.entityType === 'circle' && this.props.entity.type === 'group') {
+            const belongingCircles = this.dataStore.getCirclesBelongingToGroup(this.props.entity.id);
+            
+            this.groupMemberElements.clear();
+            
+            belongingCircles.forEach(circle => {
+                if (circle.id !== this.props.entity.id) { // Don't include the group itself
+                    const element = document.querySelector(`[data-entity-id="${circle.id}"]`);
+                    if (element) {
+                        this.groupMemberElements.set(circle.id, element);
+                    }
+                }
+            });
+        }
+    }
+
+    // NEW: Apply visual transform to group members during drag
+    updateGroupMemberVisuals(deltaX, deltaY) {
+        if (this.props.entityType === 'circle' && this.props.entity.type === 'group') {
+            this.groupMemberElements.forEach((element, circleId) => {
+                if (element && element.style) {
+                    // Disable transitions for smooth dragging
+                    element.style.transition = 'none';
+                    
+                    // Apply transform to show visual dragging
+                    const existingTransform = element.style.transform || '';
+                    const scaleMatch = existingTransform.match(/scale\([^)]+\)/);
+                    const scaleTransform = scaleMatch ? scaleMatch[0] : '';
+                    
+                    element.style.transform = `translate(${deltaX}px, ${deltaY}px) ${scaleTransform}`;
+                    element.classList.add('dragging');
+                }
+            });
+        }
+    }
+
+    // NEW: Reset visual transforms for group members
+    resetGroupMemberVisuals() {
+        if (this.props.entityType === 'circle' && this.props.entity.type === 'group') {
+            this.groupMemberElements.forEach((element, circleId) => {
+                if (element && element.style) {
+                    // Reset transform to original state (keep scale if it exists)
+                    const existingTransform = element.style.transform || '';
+                    const scaleMatch = existingTransform.match(/scale\([^)]+\)/);
+                    const scaleTransform = scaleMatch ? scaleMatch[0] : '';
+                    
+                    element.style.transform = scaleTransform;
+                    element.classList.remove('dragging');
+                    
+                    // Re-enable transitions after a brief delay to allow position to settle
+                    setTimeout(() => {
+                        if (element && element.style) {
+                            element.style.transition = '';
+                        }
+                    }, 10);
+                }
+            });
+            
+            // Clear the cache
+            this.groupMemberElements.clear();
+        }
     }
 
     /**
@@ -150,6 +258,9 @@ export class EntityDragHandler {
         // Initialize drag state
         this.currentDragState = { deltaX: 0, deltaY: 0, isDragging: true };
         
+        // NEW: Find group member elements for visual dragging
+        this.findGroupMemberElements();
+        
         // Emit drag start event
         this.emit('drag-start', {
             entityId: this.props.entity.id,
@@ -171,6 +282,10 @@ export class EntityDragHandler {
         this.proximityCallbacks.onDragMove?.(deltaX, deltaY);
         
         this.updateVisualsDuringDrag(deltaX, deltaY);
+        
+        // NEW: Update group member visuals during drag
+        this.updateGroupMemberVisuals(deltaX, deltaY);
+        
         this.updateConnectionsDuringDrag();
         
         // Emit drag move event with current state
@@ -228,6 +343,41 @@ export class EntityDragHandler {
     }
 
     onDragEnd(x, y, deltaX, deltaY) {
+        // Check for group drop (only for non-group circles)
+        if (this.props.entityType === 'circle' && this.props.entity.type !== 'group') {
+            const mouseX = this.lastMouseX || (window.innerWidth / 2);
+            const mouseY = this.lastMouseY || (window.innerHeight / 2);
+        
+            const groupCircle = this.detectGroupCircleUnderMouse(mouseX, mouseY, this.props.viewerId);
+        
+            if (groupCircle) {
+                // Drop onto group circle
+                this.dataStore.setCircleBelongsTo(this.props.entity.id, groupCircle.id);
+                console.log(`Circle ${this.props.entity.id} now belongs to group ${groupCircle.id}`);
+            } else if (this.props.entity.belongsToID) {
+                // Dropped outside of any group, clear belonging
+                this.dataStore.clearCircleBelongsTo(this.props.entity.id);
+                console.log(`Circle ${this.props.entity.id} no longer belongs to any group`);
+            }
+        }
+    
+        // Handle group dragging - move all belonging circles
+        if (this.props.entityType === 'circle' && this.props.entity.type === 'group') {
+            const belongingCircles = this.dataStore.getCirclesBelongingToGroup(this.props.entity.id);
+        
+            if (belongingCircles.length > 0) {
+                belongingCircles.forEach(belongingCircle => {
+                    if (belongingCircle.id !== this.props.entity.id) {
+                        this.emit('update-position', {
+                            id: belongingCircle.id,
+                            x: belongingCircle.x + deltaX,
+                            y: belongingCircle.y + deltaY
+                        });
+                    }
+                });
+            }
+        }
+        
         // Set flag to prevent connection updates during position transition
         this.isUpdatingPositions = true;
         
@@ -239,6 +389,9 @@ export class EntityDragHandler {
         
         const selectedIds = this.entityTypeHandler.getSelectedIds();
         this.dragStateManager.resetEntityVisuals(selectedIds);
+        
+        // NEW: Reset group member visuals
+        this.resetGroupMemberVisuals();
         
         // Update positions if there was actual movement
         if (this.dragStateManager.shouldUpdatePosition(deltaX, deltaY)) {
@@ -360,7 +513,10 @@ export class EntityDragHandler {
     // Cleanup method
     cleanup() {
         this.radiusIndicatorManager.cleanup();
+        // NEW: Reset any group member visuals on cleanup
+        this.resetGroupMemberVisuals();
         // Remove mouse move listener if needed
         document.removeEventListener('mousemove', this.handleMouseMove);
+        document.removeEventListener('mousemove', this.trackMousePosition);
     }
 }

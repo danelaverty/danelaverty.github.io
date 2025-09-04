@@ -1,13 +1,10 @@
-// styles/circleTypeStyles.js - Enhanced CSS styles for all circle types including emoji circles and shape circles
 export const circleTypeStyles = `
-    /* Basic circle type (default) */
     .circle-type-basic {
         border-radius: 50%;
         background-color: var(--circle-color);
         border: 3px solid var(--circle-border-color, #45a049);
     }
 
-    /* Glow circle type - no circle background, just effects */
     .circle-type-glow {
         background-color: transparent !important;
         border: 3px solid transparent !important;
@@ -34,7 +31,6 @@ export const circleTypeStyles = `
         100% { filter: blur(6px); }
     }
 
-    /* Triangle circle type - NO CIRCLE BACKGROUND */
     .circle-type-triangle {
         border-radius: 0;
         background-color: transparent;
@@ -45,7 +41,6 @@ export const circleTypeStyles = `
         justify-content: center;
     }
 
-    /* Triangle container */
     .triangle-container {
         background-color: transparent;
         border: none;
@@ -55,7 +50,6 @@ export const circleTypeStyles = `
         justify-content: center;
     }
 
-    /* Triangle shape wrapper */
     .triangle-wrap {
         position: absolute;
         width: 32px;
@@ -68,7 +62,6 @@ export const circleTypeStyles = `
         transform: translate(-50%, -50%);
     }
 
-    /* Triangle completion levels */
     .triangle-wrap.completion-level0 .triangle-shape {
         background-color: transparent;
         border: 2px dashed rgba(255, 255, 255, 0.4);
@@ -120,7 +113,6 @@ export const circleTypeStyles = `
         pointer-events: none;
     }
 
-    /* Emoji circle type - transparent background, just the emoji */
     .circle-type-emoji {
         background-color: transparent !important;
         border: none !important;
@@ -129,7 +121,6 @@ export const circleTypeStyles = `
         overflow: visible;
     }
 
-    /* Emoji container styling */
     .emoji-circle-container {
         position: absolute;
         top: 0;
@@ -144,7 +135,6 @@ export const circleTypeStyles = `
         z-index: 1;
     }
 
-    /* Shape circle type - transparent background, just the shapes */
     .circle-type-shape {
         background-color: transparent !important;
         border: none !important;
@@ -156,7 +146,6 @@ export const circleTypeStyles = `
         justify-content: center;
     }
 
-    /* Shape wrapper styling */
     .shape-wrap,
     .right-triangle-wrap,
     .diamond-wrap,
@@ -172,7 +161,6 @@ export const circleTypeStyles = `
         transform: translate(-50%, -50%);
     }
 
-    /* Shape element styling */
     .right-triangle-shape,
     .diamond-shape,
     .oval-shape {
@@ -186,17 +174,14 @@ export const circleTypeStyles = `
         filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.3));
     }
 
-    /* Right-pointing triangle specific styling */
     .right-triangle-shape {
         clip-path: polygon(10% 10%, 90% 50%, 10% 90%);
     }
 
-    /* Diamond specific styling */
     .diamond-shape {
         clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
     }
 
-    /* Oval specific styling */
     .oval-shape {
         width: 30px;
         height: 20px;
@@ -204,14 +189,12 @@ export const circleTypeStyles = `
         clip-path: none;
     }
 
-    /* Shape hover effects */
     .shape-wrap:hover .right-triangle-shape,
     .shape-wrap:hover .diamond-shape,
     .shape-wrap:hover .oval-shape {
         transform: scale(1.1);
     }
 
-    /* Enhanced Gem circle type with multi-facet animation support */
     .circle-type-gem {
         background-color: transparent !important;
         border: none !important;
@@ -226,7 +209,6 @@ export const circleTypeStyles = `
         filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.3));
     }
 
-    /* Individual facet styling with enhanced sheen effects */
     .circle-type-gem .gem-facet {
         transition: fill 1s ease-in-out;
         position: relative;
@@ -242,7 +224,6 @@ export const circleTypeStyles = `
         animation-delay: var(--sheen-delay, 1s);
     }
 
-    /* Sheen animations for facets */
     @keyframes facetSheen {
         0%, 100% { 
             filter: brightness(1) saturate(1);
@@ -281,7 +262,6 @@ export const circleTypeStyles = `
         }
     }
 
-    /* Center table styling */
     .circle-type-gem .gem-table {
         transition: fill 1s ease-in-out;
         animation: tableShimmer 8s ease-in-out infinite;
@@ -298,7 +278,6 @@ export const circleTypeStyles = `
         }
     }
 
-    /* Outline styling */
     .circle-type-gem .gem-outline {
         animation: outlineGlow 12s ease-in-out infinite;
     }
@@ -314,7 +293,6 @@ export const circleTypeStyles = `
         }
     }
 
-    /* Enhanced sparkle animations */
     .circle-type-gem .gem-sparkle {
         animation: sparkleFloat var(--duration, 6s) ease-in-out infinite;
         animation-delay: var(--delay, 0s);
@@ -340,7 +318,6 @@ export const circleTypeStyles = `
         }
     }
 
-    /* Additional sparkle variation for some sparkles */
     .circle-type-gem .gem-sparkle:nth-child(even) {
         animation-name: sparkleFloatAlt;
     }
@@ -364,7 +341,6 @@ export const circleTypeStyles = `
         }
     }
 
-    /* Multi-color gem specific enhancements */
     .circle-type-gem.multi-color .gem-svg {
         filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.4)) 
                 drop-shadow(0 0 8px rgba(255, 255, 255, 0.2));
@@ -378,12 +354,10 @@ export const circleTypeStyles = `
         animation-duration: calc(var(--duration, 6s) * 1.2);
     }
 
-    /* Existing glow circle styles */
     .circle-type-glow {
         /* Add your existing glow styles here */
     }
 
-    /* Existing triangle circle styles */
     .circle-type-triangle {
         /* Add your existing triangle styles here */
     }
@@ -399,7 +373,6 @@ export const circleTypeStyles = `
         will-change: transform, opacity, filter;
     }
 
-/* Particles for glow type */
     .particles {
         position: absolute;
         top: 100%;
@@ -453,7 +426,6 @@ export const circleTypeStyles = `
         100% { transform: scale(.5); }
     }
 
-    /* Chakra Form (Polygon Shapes) for glow type */
     .outer-polygon-container {
         position: absolute;
         transform: scale(.8);
@@ -476,7 +448,6 @@ export const circleTypeStyles = `
         transform: translate(-50%, -50%);
     }
 
-    /* Animation classes for chakra forms */
     .angle-animation {
         animation: angle 16s linear infinite;
     }
@@ -491,7 +462,6 @@ export const circleTypeStyles = `
     }
 
 
-    /* Reduced motion support */
     @media (prefers-reduced-motion: reduce) {
         .circle-type-gem .gem-svg, 
         .circle-type-gem .gem-facet, 
@@ -506,7 +476,6 @@ export const circleTypeStyles = `
         }
     }
 
-    /* Responsive sizing adjustments */
     @media (max-width: 768px) {
         .circle-type-gem .gem-svg {
             filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.4));
@@ -523,57 +492,130 @@ export const circleTypeStyles = `
         }
     }
 
-/* FIXED: Ensure ALL gem circles never show basic background */
 .circle-shape.circle-type-gem {
     background: none !important;
     background-color: transparent !important;
 }
 
-/* FIXED: Override any multi-color styling for gem circles */
 .circle-shape.circle-type-gem.multi-color {
     background: none !important;
     background-color: transparent !important;
 }
 
-/* FIXED: Override single-color styling for gem circles */
 .circle-shape.circle-type-gem.single-color {
     background: none !important;
     background-color: transparent !important;
 }
 
-/* FIXED: Ensure ALL emoji circles never show basic background */
 .circle-shape.circle-type-emoji {
     background: none !important;
     background-color: transparent !important;
 }
 
-/* FIXED: Override any multi-color styling for emoji circles */
 .circle-shape.circle-type-emoji.multi-color {
     background: none !important;
     background-color: transparent !important;
 }
 
-/* FIXED: Override single-color styling for emoji circles */
 .circle-shape.circle-type-emoji.single-color {
     background: none !important;
     background-color: transparent !important;
 }
 
-/* FIXED: Ensure ALL shape circles never show basic background */
 .circle-shape.circle-type-shape {
     background: none !important;
     background-color: transparent !important;
 }
 
-/* FIXED: Override any multi-color styling for shape circles */
 .circle-shape.circle-type-shape.multi-color {
     background: none !important;
     background-color: transparent !important;
 }
 
-/* FIXED: Override single-color styling for shape circles */
 .circle-shape.circle-type-shape.single-color {
     background: none !important;
     background-color: transparent !important;
+}
+
+.circle-shape.circle-type-shape.single-color {
+    background: none !important;
+    background-color: transparent !important;
+}
+
+    .circle-type-group {
+        background-color: transparent !important;
+        border: none !important;
+        border-radius: 0 !important;
+        position: relative;
+        overflow: visible;
+        z-index: 1;
+    }
+
+    .group-circle-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        border: 2px solid var(--circle-color);
+        border-radius: 8px;
+        background-color: color-mix(in srgb, var(--circle-color) 10%, transparent);
+        pointer-events: none;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1;
+    }
+
+.circle-shape.circle-type-group {
+    background: none !important;
+    background-color: transparent !important;
+        z-index: 1;
+}
+
+.circle-shape.circle-type-group.multi-color {
+    background: none !important;
+    background-color: transparent !important;
+        z-index: 1;
+}
+
+.circle-shape.circle-type-group.single-color {
+    background: none !important;
+    background-color: transparent !important;
+        z-index: 1;
+}
+
+.group-circle-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    min-width: 32px;
+    min-height: 32px;
+    border: 2px solid var(--circle-color);
+    border-radius: 8px;
+    background-color: color-mix(in srgb, var(--circle-color) 15%, transparent);
+    pointer-events: none;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: width 0.3s ease, height 0.3s ease;
+    box-shadow: 0 0 8px color-mix(in srgb, var(--circle-color) 20%, transparent);
+}
+
+.group-circle-container:hover {
+    background-color: color-mix(in srgb, var(--circle-color) 25%, transparent);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--circle-color) 30%, transparent);
+}
+
+/* Ensure all other circle types have higher z-index than groups */
+.circle-type-basic,
+.circle-type-glow, 
+.circle-type-triangle,
+.circle-type-gem,
+.circle-type-emoji,
+.circle-type-shape {
+    z-index: 10;
 }
 `;
