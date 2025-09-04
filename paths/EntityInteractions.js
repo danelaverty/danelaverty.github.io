@@ -1,4 +1,5 @@
-// EntityInteractions.js - Entity component interaction handlers and user input
+// EntityInteractions.js - Entity component interaction handlers and user input (Updated with group collapse double-click)
+import { ref } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
 import { useEnergyProximitySystem } from './EnergyProximitySystem.js';
 import { EntityDragHandler } from './EntityDragHandler.js';
@@ -8,6 +9,10 @@ export const useEntityInteractions = (props, emit, state) => {
     const dataStore = useDataStore();
     const proximitySystem = useEnergyProximitySystem();
     const { elementRef, nameRef, isReferencedCircle, isAnimationCopy, enhancedProps } = state;
+
+    // Track last click time for double-click detection
+    const lastClickTime = ref(0);
+    const doubleClickThreshold = 300; // milliseconds
 
     // Create a drag move handler for proximity system updates
     const handleProximityDragMove = (deltaX, deltaY) => {
@@ -76,6 +81,52 @@ export const useEntityInteractions = (props, emit, state) => {
         }
     );
 
+    // NEW: Handle double-click for group circle collapse/expand
+    const handleDoubleClick = (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        
+        // Only handle double-click for group-type circles
+        if (props.entityType === 'circle' && props.entity.type === 'group') {
+            // Don't allow double-click on referenced circles or animation copies
+            if (isReferencedCircle.value || isAnimationCopy.value) {
+                return;
+            }
+            
+            // Toggle the collapsed state
+            const result = dataStore.toggleGroupCollapsed(props.entity.id);
+        }
+    };
+
+    // Enhanced click handler with double-click detection
+    const handleClick = (e) => {
+        const currentTime = Date.now();
+        const timeSinceLastClick = currentTime - lastClickTime.value;
+        
+        // Check for double-click
+        if (timeSinceLastClick < doubleClickThreshold) {
+            // This is a double-click
+            handleDoubleClick(e);
+            // Reset the click time to prevent triple-clicks from being processed
+            lastClickTime.value = 0;
+            return;
+        }
+        
+        // Update last click time
+        lastClickTime.value = currentTime;
+        
+        // Delay the single-click handler to allow for potential double-click
+        setTimeout(() => {
+            const finalTimeSinceClick = Date.now() - lastClickTime.value;
+            
+            // Only process single-click if no double-click occurred
+            if (finalTimeSinceClick >= doubleClickThreshold - 50) {
+                // Call the original drag handler click method
+                dragHandler.handleClick(e);
+            }
+        }, doubleClickThreshold);
+    };
+
     // Create a modified name editor that respects referenced circles and animation copies
     const createNameEditor = () => {
         const baseEditor = new EntityNameEditor(nameRef, emit);
@@ -96,9 +147,11 @@ export const useEntityInteractions = (props, emit, state) => {
     const nameEditor = createNameEditor();
 
     return {
-        // Expose methods from drag handler
-        handleClick: dragHandler.handleClick,
+        // Expose methods from drag handler (with enhanced click handling)
+        handleClick, // NEW: Enhanced with double-click detection
         handleMouseDown: dragHandler.handleMouseDown,
+        // NEW: Expose double-click handler directly
+        handleDoubleClick,
         // Expose methods from name editor
         handleNameClick: nameEditor.handleNameClick,
         handleNameKeydown: nameEditor.handleNameKeydown,

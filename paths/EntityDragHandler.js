@@ -353,11 +353,9 @@ export class EntityDragHandler {
             if (groupCircle) {
                 // Drop onto group circle
                 this.dataStore.setCircleBelongsTo(this.props.entity.id, groupCircle.id);
-                console.log(`Circle ${this.props.entity.id} now belongs to group ${groupCircle.id}`);
             } else if (this.props.entity.belongsToID) {
                 // Dropped outside of any group, clear belonging
                 this.dataStore.clearCircleBelongsTo(this.props.entity.id);
-                console.log(`Circle ${this.props.entity.id} no longer belongs to any group`);
             }
         }
     

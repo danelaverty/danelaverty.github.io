@@ -1,4 +1,4 @@
-// dataCoordinator.js - Pure data access layer that coordinates between stores (Updated with ExplicitConnection support)
+// dataCoordinator.js - Pure data access layer that coordinates between stores (Updated with ExplicitConnection support and collapsed groups)
 import { useEntityStore } from './entityStore.js';
 import { useDocumentStore } from './documentStore.js';
 import { useUIStore } from './uiStore.js';
@@ -250,6 +250,13 @@ updateExplicitConnectionProperty: (connectionId, property, value) => {
     }
     return result;
 },
+
+        // NEW: Group collapsed operations
+        toggleGroupCollapsed: (id) => {
+            const result = entityStore.toggleGroupCollapsed(id);
+            if (result) saveToStorage();
+            return result;
+        },
 
         // Read operations (no persistence needed)
         getCircle: entityStore.getCircle,

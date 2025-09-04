@@ -1,4 +1,4 @@
-// CircleViewer.js - Updated with ctrl+click multi-select and ctrl+shift+click explicit connections
+// CircleViewer.js - Updated with ctrl+click multi-select, ctrl+shift+click explicit connections, and collapsed group filtering
 import { onMounted, onUnmounted, computed, ref } from './vue-composition-api.js';
 import { useCircleViewerDragResize } from './CircleViewerDragResize.js';
 import { useCircleViewerSelection } from './CircleViewerSelection.js';
@@ -92,6 +92,43 @@ export const CircleViewer = {
         const selection = useCircleViewerSelection(props, state.dataStore, state.viewerContentRef, state.currentCircles, state.viewerWidth);
         const animations = useCircleViewerAnimations(props.viewerId, state.dataStore);
 
+        // NEW: Filter circles to hide members of collapsed groups
+        const visibleCircles = computed(() => {
+            return state.currentCircles.value.filter(circle => {
+                // Show all circles that are not members of collapsed groups
+                if (circle.belongsToID) {
+                    const parentGroup = state.dataStore.getCircle(circle.belongsToID);
+                    // Hide this circle if its parent group is collapsed
+                    return !(parentGroup && parentGroup.collapsed === true);
+                }
+                // Show all non-member circles (including groups themselves)
+                return true;
+            });
+        });
+
+        // NEW: Enhanced allCircles that includes animation copies but filters collapsed group members
+        const allCircles = computed(() => {
+            const visible = visibleCircles.value;
+            
+            // Safety check for animation copies
+            if (!state.animationCopies || !state.animationCopies.value) {
+                return visible;
+            }
+            
+            const animationCopies = state.animationCopies.value;
+            
+            // Filter animation copies to also respect collapsed groups
+            const visibleAnimationCopies = animationCopies.filter(copy => {
+                if (copy.belongsToID) {
+                    const parentGroup = state.dataStore.getCircle(copy.belongsToID);
+                    return !(parentGroup && parentGroup.collapsed === true);
+                }
+                return true;
+            });
+            
+            return [...visible, ...visibleAnimationCopies];
+        });
+
         // Get explicit connections for this viewer
         const explicitConnections = computed(() => {
             // Get explicit connections for circles in this viewer
@@ -160,6 +197,9 @@ export const CircleViewer = {
             ...dragResize,
             ...selection,
             ...animations,
+            // NEW: Filtered circle lists
+            visibleCircles,
+            allCircles, // Updated to use filtered version
             // Explicit connections
             explicitConnections,
             allConnections,
@@ -234,7 +274,7 @@ export const CircleViewer = {
                     :entity-drag-state="entityDragState"
                 />
                 
-                <!-- Render all circles (original + animation copies) -->
+                <!-- Render filtered circles (original + animation copies, excluding hidden group members) -->
                 <EntityComponent
                     v-for="circle in allCircles"
                     :key="circle.id"

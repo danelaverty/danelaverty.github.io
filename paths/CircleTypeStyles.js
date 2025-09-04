@@ -558,7 +558,7 @@ export const circleTypeStyles = `
         width: 100%;
         height: 100%;
         border: 2px solid var(--circle-color);
-        border-radius: 8px;
+        border-radius: 25%;
         background-color: color-mix(in srgb, var(--circle-color) 10%, transparent);
         pointer-events: none;
         z-index: 1;
@@ -593,7 +593,7 @@ export const circleTypeStyles = `
     min-width: 32px;
     min-height: 32px;
     border: 2px solid var(--circle-color);
-    border-radius: 8px;
+    border-radius: 25%;
     background-color: color-mix(in srgb, var(--circle-color) 15%, transparent);
     pointer-events: none;
     z-index: 1;
@@ -609,6 +609,63 @@ export const circleTypeStyles = `
     box-shadow: 0 0 12px color-mix(in srgb, var(--circle-color) 30%, transparent);
 }
 
+/* NEW: Collapsed group styles */
+.group-circle-container.collapsed {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 25%;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background-color: color-mix(in srgb, var(--circle-color) 20%, transparent);
+    border-width: 2px;
+}
+
+.group-circle-container.expanded {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.group-circle-container.collapsed:hover {
+    background-color: color-mix(in srgb, var(--circle-color) 35%, transparent);
+    transform: scale(1.05);
+    box-shadow: 0 0 15px color-mix(in srgb, var(--circle-color) 40%, transparent);
+}
+
+/* Member count display for collapsed groups */
+.group-member-count {
+    font-family: Arial, sans-serif;
+    user-select: none;
+    opacity: 0.9;
+    transition: opacity 0.2s ease;
+}
+
+.group-circle-container.collapsed:hover .group-member-count {
+    opacity: 1;
+}
+
+/* Visual indicator that collapsed groups are interactive */
+.group-circle-container.collapsed {
+    position: relative;
+}
+
+.group-circle-container.collapsed::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    border: 1px dashed rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.group-circle-container.collapsed:hover::before {
+    opacity: 1;
+}
+
 /* Ensure all other circle types have higher z-index than groups */
 .circle-type-basic,
 .circle-type-glow, 
@@ -617,5 +674,65 @@ export const circleTypeStyles = `
 .circle-type-emoji,
 .circle-type-shape {
     z-index: 10;
+}
+
+/* Smooth transitions for group state changes */
+@keyframes groupCollapse {
+    from {
+        transform: scale(1);
+        opacity: 1;
+    }
+    to {
+        transform: scale(0.95);
+        opacity: 0.8;
+    }
+}
+
+@keyframes groupExpand {
+    from {
+        transform: scale(0.95);
+        opacity: 0.8;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.group-circle-container.collapsed {
+    animation: groupCollapse 0.3s ease forwards;
+}
+
+.group-circle-container.expanded {
+    animation: groupExpand 0.3s ease forwards;
+}
+
+/* Animation for member count appearing/disappearing */
+.group-member-count {
+    animation: memberCountFadeIn 0.3s ease forwards;
+}
+
+@keyframes memberCountFadeIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.5);
+    }
+    to {
+        opacity: 0.9;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+    .group-circle-container,
+    .group-member-count {
+        animation: none !important;
+        transition: none !important;
+    }
+    
+    .group-circle-container.collapsed:hover {
+        transform: none;
+    }
 }
 `;

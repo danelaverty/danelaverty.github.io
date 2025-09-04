@@ -1,4 +1,4 @@
-// entityStore.js - Unified entity management for circles and squares with bold, indicator emoji, circle emoji, energy support, activation, and referenceID
+// entityStore.js - Unified entity management for circles and squares with bold, indicator emoji, circle emoji, energy support, activation, referenceID, and collapsed groups
 import { reactive } from './vue-composition-api.js';
 
 let entityStoreInstance = null;
@@ -60,6 +60,7 @@ function createEntityStore() {
 	    entity.connectible = 'receives'; 
             entity.referenceID = null; 
             entity.belongsToID = null; 
+            entity.collapsed = false; // NEW: Default to expanded
             
             // Set circle type based on document's mostRecentlySetCircleType
             let defaultType = 'basic'; // Fallback default
@@ -133,7 +134,7 @@ const clearCircleBelongsTo = (circleId) => {
         if (entity) {
             Object.assign(entity, updates);
             
-            // For circles, ensure color consistency, emoji handling, energy types, activation, and referenceID
+            // For circles, ensure color consistency, emoji handling, energy types, activation, referenceID, and collapsed state
             if (entityType === 'circle') {
                 // If colors array is updated but color is not, update primary color
                 if (updates.colors && !updates.color && updates.colors.length > 0) {
@@ -162,9 +163,14 @@ const clearCircleBelongsTo = (circleId) => {
                     entity.activation = 'activated';
                 }
                 
-                // NEW: Ensure referenceID property always exists
+                // Ensure referenceID property always exists
                 if (entity.referenceID === undefined) {
                     entity.referenceID = null;
+                }
+                
+                // NEW: Ensure collapsed property always exists
+                if (entity.collapsed === undefined) {
+                    entity.collapsed = false;
                 }
                 
                 // Handle activation state changes
@@ -175,6 +181,11 @@ const clearCircleBelongsTo = (circleId) => {
                 // Handle referenceID changes
                 if (updates.referenceID !== undefined) {
                     entity.referenceID = updates.referenceID;
+                }
+                
+                // NEW: Handle collapsed state changes
+                if (updates.collapsed !== undefined) {
+                    entity.collapsed = updates.collapsed;
                 }
                 
                 // Handle emoji when type changes to/from 'emoji'
@@ -234,6 +245,11 @@ const clearCircleBelongsTo = (circleId) => {
 						refCircle.connectible = entity.connectible;
 					}
 
+					// NEW: Cascade collapsed changes
+					if (updates.collapsed !== undefined) {
+						refCircle.collapsed = entity.collapsed;
+					}
+
 					// Ensure referenced circles have all required properties
 					if (!refCircle.energyTypes) {
 						refCircle.energyTypes = [];
@@ -248,6 +264,11 @@ const clearCircleBelongsTo = (circleId) => {
 
 					if (!refCircle.colors) {
 						refCircle.colors = [refCircle.color || '#4CAF50'];
+					}
+
+					// NEW: Ensure referenced circles have collapsed property
+					if (refCircle.collapsed === undefined) {
+						refCircle.collapsed = false;
 					}
 				});
 			}
@@ -307,6 +328,16 @@ const clearCircleBelongsTo = (circleId) => {
         return Array.from(data.circles.values()).filter(circle => circle.referenceID === originalCircleId);
     };
 
+    // NEW: Utility function to toggle group collapsed state
+    const toggleGroupCollapsed = (id) => {
+        const circle = getCircle(id);
+        if (circle && circle.type === 'group') {
+            circle.collapsed = !circle.collapsed;
+            return circle;
+        }
+        return null;
+    };
+
     // Bulk operations
     const moveEntities = (entityType, entityIds, deltaX, deltaY) => {
         const store = entityType === 'circle' ? data.circles : data.squares;
@@ -336,7 +367,7 @@ const clearCircleBelongsTo = (circleId) => {
         if (savedData.circles) {
             data.circles = new Map(savedData.circles);
             
-            // Ensure all circles have the new color, emoji, energy, activation, and referenceID properties
+            // Ensure all circles have the new color, emoji, energy, activation, referenceID, and collapsed properties
             data.circles.forEach((circle, id) => {
                 if (!circle.colors) {
                     circle.colors = circle.color ? [circle.color] : ['#CCCCCC'];
@@ -365,7 +396,7 @@ const clearCircleBelongsTo = (circleId) => {
                 if (circle.activation === undefined) {
                     circle.activation = 'activated'; // Default for existing circles
                 }
-                // NEW: Ensure referenceID property exists for circles
+                // Ensure referenceID property exists for circles
                 if (circle.referenceID === undefined) {
                     circle.referenceID = null; // Default for existing circles
                 }
@@ -373,6 +404,11 @@ const clearCircleBelongsTo = (circleId) => {
                 if (circle.belongsToID === undefined) {
                 circle.belongsToID = null;
             }
+
+                // NEW: Ensure collapsed property exists for circles
+                if (circle.collapsed === undefined) {
+                    circle.collapsed = false; // Default for existing circles
+                }
             });
         }
         if (savedData.squares) {
@@ -432,6 +468,8 @@ const clearCircleBelongsTo = (circleId) => {
         // Reference ID utilities
         isReferencedCircle,
         getReferencedCircles,
+        // NEW: Group collapsed utilities
+        toggleGroupCollapsed,
         // Utilities
         generateRandomPosition,
         // Serialization
