@@ -240,20 +240,32 @@ function createDataCoordinator() {
         },
 
         getExplicitConnectionBetweenEntities: (entity1Id, entity1Type, entity2Id, entity2Type) => {
-    return explicitConnectionService.getConnectionBetweenEntities(entity1Id, entity1Type, entity2Id, entity2Type);
-},
+            return explicitConnectionService.getConnectionBetweenEntities(entity1Id, entity1Type, entity2Id, entity2Type);
+        },
 
-updateExplicitConnectionProperty: (connectionId, property, value) => {
-    const result = explicitConnectionService.updateConnectionProperty(connectionId, property, value);
-    if (result && result.action !== 'error') {
-        saveToStorage();
-    }
-    return result;
-},
+        updateExplicitConnectionProperty: (connectionId, property, value) => {
+            const result = explicitConnectionService.updateConnectionProperty(connectionId, property, value);
+            if (result && result.action !== 'error') {
+                saveToStorage();
+            }
+            return result;
+        },
 
         // NEW: Group collapsed operations
         toggleGroupCollapsed: (id) => {
             const result = entityStore.toggleGroupCollapsed(id);
+            if (result) saveToStorage();
+            return result;
+        },
+
+        // NEW: Activation and connectible cycling operations (with persistence)
+        cycleCircleActivation: (id) => {
+            const result = entityStore.cycleCircleActivation(id);
+            if (result) saveToStorage();
+            return result;
+        },
+        cycleCircleConnectible: (id) => {
+            const result = entityStore.cycleCircleConnectible(id);
             if (result) saveToStorage();
             return result;
         },
@@ -398,9 +410,9 @@ updateExplicitConnectionProperty: (connectionId, property, value) => {
         // Direct storage access
         saveToStorage,
 
-    getCirclesBelongingToGroup: entityStore.getCirclesBelongingToGroup,
-    setCircleBelongsTo: entityStore.setCircleBelongsTo,
-    clearCircleBelongsTo: entityStore.clearCircleBelongsTo,
+        getCirclesBelongingToGroup: entityStore.getCirclesBelongingToGroup,
+        setCircleBelongsTo: entityStore.setCircleBelongsTo,
+        clearCircleBelongsTo: entityStore.clearCircleBelongsTo,
     };
 }
 

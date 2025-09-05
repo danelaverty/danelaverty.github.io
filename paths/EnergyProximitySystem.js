@@ -274,6 +274,11 @@ export class EnergyProximitySystem {
         return isActivated;
     }
 
+    isCircleInactive(circle) {
+        const isInactive = circle.activation === 'inactive';
+        return isInactive;
+    }
+
     /**
  * Group circles by their viewer ID for isolated processing
  */
@@ -418,6 +423,7 @@ calculateOpacityAndSaturation(finalScale) {
  * Process a single glow circle and calculate its proximity effects
  */
 processGlowCircle(glowData, exciterCircles, dampenerCircles) {
+    if (glowData.circle.activation == 'inert') return;
     const glowPos = this.getEffectivePosition(glowData.circle.id);
     if (!glowPos) return null;
     
@@ -564,10 +570,11 @@ updateProximityEffects() {
                 // Handle exciter/igniter/dampener circles
                 else if (this.hasEnergyType(circle, 'exciter') || this.hasEnergyType(circle, 'igniter') || this.hasEnergyType(circle, 'dampener')) {
                     const isActivated = this.isCircleActivated(circle);
+                    const isInactive = this.isCircleInactive(circle);
                     if (isActivated) {
                         // Activated exciters/igniters/dampeners: full opacity
                         this.setElementProximityEffects(data.element, this.config.minScale, this.config.maxOpacity, this.config.maxSaturation);
-                    } else {
+                    } else if (isInactive) {
                         // Inactive exciters/igniters/dampeners: dimmed opacity
                         this.setElementProximityEffects(data.element, this.config.minScale, this.config.inactiveOpacity, this.config.maxSaturation);
                     }
