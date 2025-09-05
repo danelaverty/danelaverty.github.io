@@ -76,7 +76,7 @@ export class EntityNameEditor {
             this.globalClickHandler = null;
         }
         
-        const newName = this.nameRef.value.textContent.trim() || '???';
+        const newName = this.nameRef.value.textContent.trim() || '';
         const entityId = this.nameRef.value.closest('.entity-container')?.getAttribute('data-entity-id');
         
         if (newName !== this.originalName.value && entityId) {

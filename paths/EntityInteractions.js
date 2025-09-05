@@ -12,7 +12,7 @@ export const useEntityInteractions = (props, emit, state) => {
 
     // Track last click time for double-click detection
     const lastClickTime = ref(0);
-    const doubleClickThreshold = 300; // milliseconds
+    const doubleClickThreshold = 100; // milliseconds
 
     // Create a drag move handler for proximity system updates
     const handleProximityDragMove = (deltaX, deltaY) => {

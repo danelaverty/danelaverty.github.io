@@ -141,6 +141,28 @@ export const CircleCharacteristicsBar = {
       return dataStore.hasMultipleCirclesSelected();
     });
 
+      const circleActivation = computed(() => {
+    if (hasMultipleCirclesSelected.value) {
+        // For multiple selection, show the most common activation state or default to 'activated'
+        const selectedIds = dataStore.getSelectedCircles();
+        const activationValues = selectedIds.map(id => {
+            const circle = dataStore.getCircle(id);
+            return circle ? circle.activation : 'activated';
+        });
+
+        // Count occurrences and return most common
+        const counts = activationValues.reduce((acc, val) => {
+            acc[val] = (acc[val] || 0) + 1;
+            return acc;
+        }, {});
+
+        return Object.entries(counts).reduce((a, b) => counts[a[0]] > counts[b[0]] ? a : b)[0];
+    } else if (dataHooks.selectedCircle.value) {
+        return dataHooks.selectedCircle.value.activation || 'activated';
+    }
+    return 'activated';
+});
+
       const selectedExplicitConnection = computed(() => {
     if (hasMultipleCirclesSelected.value) {
         const selectedIds = dataStore.getSelectedCircles();
@@ -277,21 +299,6 @@ const connectionDirectionality = computed(() => {
       return isReferenceCircle.value;
     });
 
-    // Compute activation state from selected circle(s)
-    const isCircleActivated = computed(() => {
-      if (hasMultipleCirclesSelected.value) {
-        // For multiple circles, show activated if ANY circle is activated
-        const selectedIds = dataStore.getSelectedCircles();
-        return selectedIds.some(id => {
-          const circle = dataStore.getCircle(id);
-          return circle && circle.activation === 'activated';
-        });
-      } else if (dataHooks.selectedCircle.value) {
-        return dataHooks.selectedCircle.value.activation === 'activated';
-      }
-      return false;
-    });
-
     // Create action handlers with proper context for multiple selection
     const handleColorSelect = (colorValue, isCtrlClick) => {
       if (hasMultipleCirclesSelected.value) {
@@ -370,20 +377,18 @@ const connectionDirectionality = computed(() => {
       }
     };
 
-    const handleActivationToggle = () => {
-      if (hasMultipleCirclesSelected.value) {
+const handleActivationCycle = () => {
+    if (hasMultipleCirclesSelected.value) {
         // Apply to all selected circles
         const selectedIds = dataStore.getSelectedCircles();
         selectedIds.forEach(circleId => {
-          const circle = dataStore.getCircle(circleId);
-          if (circle) {
-            actionHooks.toggleActivation(circle);
-          }
+            dataStore.cycleCircleActivation(circleId);
         });
-      } else {
-        actionHooks.toggleActivation(dataHooks.selectedCircle.value);
-      }
-    };
+    } else if (dataHooks.selectedCircle.value) {
+        // Apply to single selected circle
+        dataStore.cycleCircleActivation(dataHooks.selectedCircle.value.id);
+    }
+};
 
     const handleCircleEmojiSelect = (emoji) => {
       if (hasMultipleCirclesSelected.value) {
@@ -545,8 +550,8 @@ const handleDirectionalityCycle = () => {
       getCurrentCircleEmoji,
       isReferenceCircle,
       isCircleEmojiPickerVisible,
-      isCircleActivated,
       isVisible,
+        circleActivation,
       hasMultipleCirclesSelected,
       shouldShowEmojiControls,
       shouldShowCircleCharacteristicControls,
@@ -561,7 +566,7 @@ const handleDirectionalityCycle = () => {
       handleColorSelect,
       handleTypeSelect,
       handleEnergySelect,
-      handleActivationToggle,
+      handleActivationCycle,
       handleEmojiSelect,
       handleCircleEmojiSelect,
       handleQuickEmojiSelect,
@@ -670,8 +675,8 @@ const handleDirectionalityCycle = () => {
             <!-- Activation Control -->
             <ActivationControl 
                 ref="activationDisplayRefTemplate"
-                :isActivated="isCircleActivated"
-                @toggle="handleActivationToggle"
+                :activation="circleActivation"
+                @cycle="handleActivationCycle"
             />
 
             <!-- Connectible Control -->

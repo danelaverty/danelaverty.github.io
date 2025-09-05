@@ -29,6 +29,20 @@ function createEntityStore() {
         };
     };
 
+    // NEW: Activation cycling utility
+    const cycleActivation = (currentActivation) => {
+        const activationCycle = ['activated', 'inactive', 'inert'];
+        const currentIndex = activationCycle.indexOf(currentActivation);
+        return activationCycle[(currentIndex + 1) % activationCycle.length];
+    };
+
+    // NEW: Connectible cycling utility (for consistency)
+    const cycleConnectible = (currentConnectible) => {
+        const connectibleCycle = ['receives', 'gives', 'refuses'];
+        const currentIndex = connectibleCycle.indexOf(currentConnectible);
+        return connectibleCycle[(currentIndex + 1) % connectibleCycle.length];
+    };
+
     // Generic entity operations
     const createEntity = (entityType, documentId, containerWidth, containerHeight, viewerWidths = [], documentStore = null) => {
         const id = `${entityType}_${entityType === 'circle' ? data.nextCircleId++ : data.nextSquareId++}`;
@@ -56,7 +70,7 @@ function createEntityStore() {
             entity.color = '#CCCCCC'; 
             entity.colors = ['#4CAF50']; 
             entity.energyTypes = []; 
-            entity.activation = 'activated'; 
+            entity.activation = 'activated'; // UPDATED: Default to 'activated' (first in cycle)
 	    entity.connectible = 'receives'; 
             entity.referenceID = null; 
             entity.belongsToID = null; 
@@ -77,7 +91,7 @@ function createEntityStore() {
             
             // Set default emoji for emoji-type circles
             if (entity.type === 'emoji') {
-                entity.emoji = '🧑🏼'; // Default emoji for emoji circles
+                entity.emoji = 'A'; // Default emoji for emoji circles
             }
         }
 
@@ -128,6 +142,40 @@ const clearCircleBelongsTo = (circleId) => {
     return null;
 };
 
+    // NEW: Cycle activation for a circle
+    const cycleCircleActivation = (id) => {
+        const circle = data.circles.get(id);
+        if (circle) {
+            circle.activation = cycleActivation(circle.activation);
+            
+            // Cascade to referenced circles
+            const referencedCircles = getReferencedCircles(id);
+            referencedCircles.forEach(refCircle => {
+                refCircle.activation = circle.activation;
+            });
+            
+            return circle;
+        }
+        return null;
+    };
+
+    // NEW: Cycle connectible for a circle
+    const cycleCircleConnectible = (id) => {
+        const circle = data.circles.get(id);
+        if (circle) {
+            circle.connectible = cycleConnectible(circle.connectible);
+            
+            // Cascade to referenced circles
+            const referencedCircles = getReferencedCircles(id);
+            referencedCircles.forEach(refCircle => {
+                refCircle.connectible = circle.connectible;
+            });
+            
+            return circle;
+        }
+        return null;
+    };
+
     const updateEntity = (entityType, id, updates) => {
         const store = entityType === 'circle' ? data.circles : data.squares;
         const entity = store.get(id);
@@ -158,9 +206,9 @@ const clearCircleBelongsTo = (circleId) => {
                     entity.energyTypes = [];
                 }
                 
-                // Ensure activation property always exists
-                if (!entity.activation) {
-                    entity.activation = 'activated';
+                // UPDATED: Ensure activation property always exists and is valid
+                if (!entity.activation || !['activated', 'inactive', 'inert'].includes(entity.activation)) {
+                    entity.activation = 'activated'; // Default to first state in cycle
                 }
                 
                 // Ensure referenceID property always exists
@@ -190,7 +238,7 @@ const clearCircleBelongsTo = (circleId) => {
                 
                 // Handle emoji when type changes to/from 'emoji'
                 if (updates.type === 'emoji' && !entity.emoji) {
-                    entity.emoji = '🧑🏼'; // Set default emoji for emoji circles
+                    entity.emoji = 'A'; // Set default emoji for emoji circles
                 } else if (updates.type && updates.type !== 'emoji') {
                     // Don't clear emoji when changing away from emoji type - keep it for future use
                     // entity.emoji = null; // Commented out to preserve emoji
@@ -218,7 +266,7 @@ const clearCircleBelongsTo = (circleId) => {
 						refCircle.type = entity.type;
 						// Handle emoji for type changes
 						if (entity.type === 'emoji' && !refCircle.emoji) {
-							refCircle.emoji = entity.emoji || '🧑🏼';
+							refCircle.emoji = entity.emoji || 'A';
 						}
 					}
 
@@ -254,7 +302,8 @@ const clearCircleBelongsTo = (circleId) => {
 					if (!refCircle.energyTypes) {
 						refCircle.energyTypes = [];
 					}
-					if (!refCircle.activation) {
+					// UPDATED: Ensure activation is valid for referenced circles
+					if (!refCircle.activation || !['activated', 'inactive', 'inert'].includes(refCircle.activation)) {
 						refCircle.activation = 'activated';
 					}
 
@@ -386,15 +435,15 @@ const clearCircleBelongsTo = (circleId) => {
 
                 // Set default emoji for existing emoji-type circles that don't have one
                 if (circle.type === 'emoji' && !circle.emoji) {
-                    circle.emoji = '🧑🏼';
+                    circle.emoji = 'A';
                 }
                 // Ensure energyTypes property exists for circles
                 if (!circle.energyTypes) {
                     circle.energyTypes = [];
                 }
-                // Ensure activation property exists for circles
-                if (circle.activation === undefined) {
-                    circle.activation = 'activated'; // Default for existing circles
+                // UPDATED: Ensure activation property exists and is valid for circles
+                if (!circle.activation || !['activated', 'inactive', 'inert'].includes(circle.activation)) {
+                    circle.activation = 'activated'; // Default for existing circles (backward compatibility)
                 }
                 // Ensure referenceID property exists for circles
                 if (circle.referenceID === undefined) {
@@ -470,6 +519,9 @@ const clearCircleBelongsTo = (circleId) => {
         getReferencedCircles,
         // NEW: Group collapsed utilities
         toggleGroupCollapsed,
+        // NEW: Activation and connectible cycling utilities
+        cycleCircleActivation,
+        cycleCircleConnectible,
         // Utilities
         generateRandomPosition,
         // Serialization
