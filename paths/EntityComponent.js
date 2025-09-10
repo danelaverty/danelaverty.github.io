@@ -15,7 +15,7 @@ const componentStyles = `
         display: flex;
         flex-direction: column;
         align-items: center;
-        cursor: url(black-dot.png);
+        cursor: url(black-dot.png), auto;
         user-select: none;
         transition: transform 0.3s ease;
         transform-origin: center center;
