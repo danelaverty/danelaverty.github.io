@@ -1,4 +1,4 @@
-// dataCoordinator.js - Pure data access layer that coordinates between stores (Updated with ExplicitConnection support and collapsed groups)
+// dataCoordinator.js - OPTIMIZED: Added cache invalidation for energy proximity system and persistence callback for member activation
 import { useEntityStore } from './entityStore.js';
 import { useDocumentStore } from './documentStore.js';
 import { useUIStore } from './uiStore.js';
@@ -6,6 +6,7 @@ import { EntityService } from './entityService.js';
 import { ExplicitConnectionService } from './ExplicitConnectionService.js';
 import { getRecentEmojisStoreInstance } from './useRecentEmojis.js';
 import { useClipboardStore } from './clipboardStore.js';
+import { useEnergyProximitySystem } from './EnergyProximitySystem.js';
 
 let dataCoordinatorInstance = null;
 
@@ -18,6 +19,7 @@ function createDataCoordinator() {
     const documentStore = useDocumentStore();
     const uiStore = useUIStore();
     const entityService = new EntityService();
+    const proximitySystem = useEnergyProximitySystem();
 
     const storageKey = `circleApp_${window.location.pathname}`;
     
@@ -43,7 +45,6 @@ function createDataCoordinator() {
                 ...documentStore.serialize(),
                 ...uiStore.serialize(),
                 ...recentEmojisStore.serialize(),
-                // NEW: Add explicit connections to persistence
                 explicitConnections: explicitConnectionService.serialize()
             };
             localStorage.setItem(storageKey, JSON.stringify(dataToSave));
@@ -65,7 +66,7 @@ function createDataCoordinator() {
                 uiStore.deserialize(savedData);
                 recentEmojisStore.deserialize(savedData);
                 
-                // NEW: Load explicit connections after entities are loaded
+                // Load explicit connections after entities are loaded
                 if (savedData.explicitConnections) {
                     explicitConnectionService.deserialize(savedData.explicitConnections);
                 }
@@ -105,19 +106,59 @@ function createDataCoordinator() {
         };
     };
 
-    // NEW: Create wrapper for explicit connection operations
-    const withPersistenceExplicit = (serviceMethod) => {
-        return (...args) => {
-            const result = serviceMethod.apply(explicitConnectionService, args);
-            if (result && result.action !== 'error' && result.action !== 'none') {
-                saveToStorage();
+    // NEW: Create wrapper for explicit connection operations with cache invalidation
+	const withPersistenceExplicit = (serviceMethod) => {
+		return (...args) => {
+			const result = serviceMethod.apply(explicitConnectionService, args);
+			if (result && result.action !== 'error' && result.action !== 'none') {
+				if (result.action === 'create' || result.action === 'delete') {
+					const viewerId = result.viewerId || (args[4] ? args[4] : null);
+					proximitySystem.invalidateExplicitEffects(viewerId); // Now triggers immediate update
+				}
+				saveToStorage();
+			}
+			return result;
+		};
+	};
+
+    // NEW: Enhanced entity update wrapper that invalidates cache when energy properties change
+    const updateCircleWithCacheInvalidation = (id, updates) => {
+        const result = entityStore.updateCircle(id, updates);
+        if (result) {
+            // Check if energy-related properties changed
+            const energyProps = ['energyTypes', 'activation', 'connectible'];
+            const hasEnergyChanges = energyProps.some(prop => updates.hasOwnProperty(prop));
+            
+            if (hasEnergyChanges) {
+                // Find which viewer this circle belongs to and invalidate cache
+                const viewers = uiStore.getVisibleCircleViewers();
+                for (const viewer of viewers) {
+                    const circles = dataCoordinatorRef.getCirclesForViewer(viewer.id);
+                    if (circles.some(circle => circle.id === id)) {
+                        proximitySystem.invalidateExplicitEffects(viewer.id);
+                        break;
+                    }
+                }
             }
-            return result;
-        };
+            
+            saveToStorage();
+        }
+        return result;
     };
 
     // Enhanced delete methods that also clean up explicit connections
     const deleteCircleWithConnections = (id) => {
+        // Get viewer info before deletion for cache invalidation
+        const viewers = uiStore.getVisibleCircleViewers();
+        let affectedViewerId = null;
+        for (const viewer of viewers) {
+            const circles = dataCoordinatorRef.getCirclesForViewer(viewer.id);
+            if (circles.some(circle => circle.id === id)) {
+                affectedViewerId = viewer.id;
+                break;
+            }
+        }
+        
         // Delete explicit connections first
         const connectionResult = explicitConnectionService.deleteConnectionsForEntity(id, 'circle');
         
@@ -125,6 +166,10 @@ function createDataCoordinator() {
         const deleteResult = entityService.deleteCircle(id);
         
         if (deleteResult) {
+            // Invalidate cache for the affected viewer
+            if (affectedViewerId) {
+                proximitySystem.invalidateExplicitEffects(affectedViewerId);
+            }
             saveToStorage();
         }
         
@@ -151,7 +196,20 @@ function createDataCoordinator() {
         let deletedCount = 0;
         let connectionsDeletedCount = 0;
         
+        // Get affected viewers before deletion for cache invalidation
+        const affectedViewers = new Set();
+        const viewers = uiStore.getVisibleCircleViewers();
+        
         circleIds.forEach(id => {
+            // Find which viewer this circle belongs to
+            for (const viewer of viewers) {
+                const circles = dataCoordinatorRef.getCirclesForViewer(viewer.id);
+                if (circles.some(circle => circle.id === id)) {
+                    affectedViewers.add(viewer.id);
+                    break;
+                }
+            }
+            
             // Clean up connections first
             const connResult = explicitConnectionService.deleteConnectionsForEntity(id, 'circle');
             connectionsDeletedCount += connResult.count;
@@ -163,6 +221,11 @@ function createDataCoordinator() {
         });
         
         if (deletedCount > 0) {
+            // Invalidate cache for all affected viewers
+            affectedViewers.forEach(viewerId => {
+                proximitySystem.invalidateExplicitEffects(viewerId);
+            });
+            
             saveToStorage();
         }
         
@@ -207,19 +270,19 @@ function createDataCoordinator() {
         // Business operations (with persistence) - UPDATED: Use enhanced delete methods
         createCircleInViewer: withPersistence(entityService.createCircleInViewer.bind(entityService)),
         createSquare: withPersistence(entityService.createSquare.bind(entityService)),
-        deleteCircle: deleteCircleWithConnections, // UPDATED: Use enhanced version
-        deleteSquare: deleteSquareWithConnections, // UPDATED: Use enhanced version
+        deleteCircle: deleteCircleWithConnections, // Use enhanced version
+        deleteSquare: deleteSquareWithConnections, // Use enhanced version
         selectCircle: withPersistence(entityService.selectCircle.bind(entityService)),
         selectSquare: withPersistence(entityService.selectSquare.bind(entityService)),
         deleteCircleDocument: withPersistence(entityService.deleteCircleDocument.bind(entityService)),
         selectAllCirclesInViewer: withPersistence(entityService.selectAllCirclesInViewer.bind(entityService)),
         selectAllSquaresInDocument: withPersistence(entityService.selectAllSquaresInDocument.bind(entityService)),
-        deleteSelectedCircles: deleteSelectedCirclesWithConnections, // UPDATED: Use enhanced version
-        deleteSelectedSquares: deleteSelectedSquaresWithConnections, // UPDATED: Use enhanced version
+        deleteSelectedCircles: deleteSelectedCirclesWithConnections, // Use enhanced version
+        deleteSelectedSquares: deleteSelectedSquaresWithConnections, // Use enhanced version
         moveSelectedCircles: withPersistence(entityService.moveSelectedCircles.bind(entityService)),
         moveSelectedSquares: withPersistence(entityService.moveSelectedSquares.bind(entityService)),
 
-        // NEW: Explicit connection operations
+        // Explicit connection operations with cache invalidation
         handleEntityCtrlClick: withPersistenceExplicit(explicitConnectionService.handleEntityCtrlClick.bind(explicitConnectionService)),
         getExplicitConnections: explicitConnectionService.getVisualConnections.bind(explicitConnectionService),
         getExplicitConnectionsForEntityType: explicitConnectionService.getVisualConnectionsForEntityType.bind(explicitConnectionService),
@@ -227,12 +290,8 @@ function createDataCoordinator() {
         getExplicitConnectionCount: explicitConnectionService.getConnectionCount.bind(explicitConnectionService),
         hasExplicitConnections: explicitConnectionService.hasConnections.bind(explicitConnectionService),
 
-        // Simple entity operations (direct store access with persistence)
-        updateCircle: (id, updates) => {
-            const result = entityStore.updateCircle(id, updates);
-            if (result) saveToStorage();
-            return result;
-        },
+        // Simple entity operations (direct store access with persistence and cache invalidation)
+        updateCircle: updateCircleWithCacheInvalidation, // NEW: Use cache-invalidating version
         updateSquare: (id, updates) => {
             const result = entityStore.updateSquare(id, updates);
             if (result) saveToStorage();
@@ -246,27 +305,58 @@ function createDataCoordinator() {
         updateExplicitConnectionProperty: (connectionId, property, value) => {
             const result = explicitConnectionService.updateConnectionProperty(connectionId, property, value);
             if (result && result.action !== 'error') {
+                // OPTIMIZATION: Invalidate cache when connection properties change
+                if (result.viewerId) {
+                    proximitySystem.invalidateExplicitEffects(result.viewerId);
+                }
                 saveToStorage();
             }
             return result;
         },
 
-        // NEW: Group collapsed operations
+        // Group collapsed operations
         toggleGroupCollapsed: (id) => {
             const result = entityStore.toggleGroupCollapsed(id);
             if (result) saveToStorage();
             return result;
         },
 
-        // NEW: Activation and connectible cycling operations (with persistence)
+        // Activation, activationTriggers, and connectible cycling operations (with cache invalidation)
         cycleCircleActivation: (id) => {
             const result = entityStore.cycleCircleActivation(id);
+            if (result) {
+                // Find which viewer this circle belongs to and invalidate cache
+                const viewers = uiStore.getVisibleCircleViewers();
+                for (const viewer of viewers) {
+                    const circles = dataCoordinatorRef.getCirclesForViewer(viewer.id);
+                    if (circles.some(circle => circle.id === id)) {
+                        proximitySystem.invalidateExplicitEffects(viewer.id);
+                        break;
+                    }
+                }
+                saveToStorage();
+            }
+            return result;
+        },
+        cycleCircleActivationTriggers: (id) => {
+            const result = entityStore.cycleCircleActivationTriggers(id);
             if (result) saveToStorage();
             return result;
         },
         cycleCircleConnectible: (id) => {
             const result = entityStore.cycleCircleConnectible(id);
-            if (result) saveToStorage();
+            if (result) {
+                // Find which viewer this circle belongs to and invalidate cache
+                const viewers = uiStore.getVisibleCircleViewers();
+                for (const viewer of viewers) {
+                    const circles = dataCoordinatorRef.getCirclesForViewer(viewer.id);
+                    if (circles.some(circle => circle.id === id)) {
+                        proximitySystem.invalidateExplicitEffects(viewer.id);
+                        break;
+                    }
+                }
+                saveToStorage();
+            }
             return result;
         },
 
@@ -316,11 +406,15 @@ function createDataCoordinator() {
             if (result) saveToStorage();
             return result;
         },
-        // FIXED: Use EntityService method for square document switching to prevent connection flash
+        // Use EntityService method for square document switching to prevent connection flash
         setCurrentSquareDocument: withPersistence(entityService.setCurrentSquareDocument.bind(entityService)),
         setCircleDocumentForViewer: (viewerId, documentId) => {
             const success = uiStore.setCircleDocumentForViewer(viewerId, documentId, documentStore);
-            if (success) saveToStorage();
+            if (success) {
+                // OPTIMIZATION: Invalidate cache when viewer document changes
+                proximitySystem.invalidateExplicitEffects(viewerId);
+                saveToStorage();
+            }
             return success;
         },
         
@@ -345,7 +439,7 @@ function createDataCoordinator() {
             return documentId ? documentStore.getCircleDocument(documentId) : null;
         },
 
-        // NEW: Viewer properties operations (with persistence)
+        // Viewer properties operations (with persistence)
         updateCircleDocumentViewerProperties: (id, properties) => {
             const result = documentStore.updateCircleDocumentViewerProperties(id, properties);
             if (result) saveToStorage();
@@ -359,7 +453,7 @@ function createDataCoordinator() {
             saveToStorage();
             return viewer;
         },
-        // UPDATED: Now passes documentStore to handle property persistence
+        // Now passes documentStore to handle property persistence
         updateCircleViewer: (id, updates) => {
             const result = uiStore.updateCircleViewer(id, updates, documentStore);
             if (result) saveToStorage();
@@ -367,7 +461,11 @@ function createDataCoordinator() {
         },
         deleteCircleViewer: (id) => {
             const deleted = uiStore.deleteCircleViewer(id);
-            if (deleted) saveToStorage();
+            if (deleted) {
+                // OPTIMIZATION: Invalidate cache when viewer is deleted
+                proximitySystem.invalidateExplicitEffects(id);
+                saveToStorage();
+            }
             return deleted;
         },
         reorderViewers: (fromIndex, toIndex) => {
@@ -381,7 +479,7 @@ function createDataCoordinator() {
             return result;
         },
 
-        // NEW: Enhanced viewer read operations that include properties from documents
+        // Enhanced viewer read operations that include properties from documents
         getVisibleCircleViewers: () => {
             const viewers = uiStore.getVisibleCircleViewers();
             // Enhance each viewer with properties from its document
@@ -396,7 +494,7 @@ function createDataCoordinator() {
         },
         getViewerTitle: (viewerId) => uiStore.getViewerTitle(viewerId, documentStore),
         isViewerSelected: uiStore.isViewerSelected,
-        // NEW: Get viewer properties from document
+        // Get viewer properties from document
         getViewerProperties: (viewerId) => uiStore.getViewerProperties(viewerId, documentStore),
 
         // Selection read operations
@@ -411,8 +509,40 @@ function createDataCoordinator() {
         saveToStorage,
 
         getCirclesBelongingToGroup: entityStore.getCirclesBelongingToGroup,
-        setCircleBelongsTo: entityStore.setCircleBelongsTo,
-        clearCircleBelongsTo: entityStore.clearCircleBelongsTo,
+        // NEW: Enhanced setCircleBelongsTo that passes persistence callback for delayed activation checks
+        setCircleBelongsTo: (circleId, groupId) => {
+            const result = entityStore.setCircleBelongsTo(circleId, groupId, updateCircleWithCacheInvalidation);
+            if (result) {
+                // OPTIMIZATION: Invalidate cache when group membership changes
+                const viewers = uiStore.getVisibleCircleViewers();
+                for (const viewer of viewers) {
+                    const circles = dataCoordinatorRef.getCirclesForViewer(viewer.id);
+                    if (circles.some(circle => circle.id === circleId || circle.id === groupId)) {
+                        proximitySystem.invalidateExplicitEffects(viewer.id);
+                        break;
+                    }
+                }
+                saveToStorage();
+            }
+            return result;
+        },
+        // NEW: Enhanced clearCircleBelongsTo that passes persistence callback for delayed activation checks
+        clearCircleBelongsTo: (circleId) => {
+            const result = entityStore.clearCircleBelongsTo(circleId, updateCircleWithCacheInvalidation);
+            if (result) {
+                // OPTIMIZATION: Invalidate cache when group membership changes
+                const viewers = uiStore.getVisibleCircleViewers();
+                for (const viewer of viewers) {
+                    const circles = dataCoordinatorRef.getCirclesForViewer(viewer.id);
+                    if (circles.some(circle => circle.id === circleId)) {
+                        proximitySystem.invalidateExplicitEffects(viewer.id);
+                        break;
+                    }
+                }
+                saveToStorage();
+            }
+            return result;
+        },
     };
 }
 

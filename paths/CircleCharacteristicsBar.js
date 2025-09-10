@@ -1,4 +1,4 @@
-// CircleCharacteristicsBar.js - Updated to support multiple circle selection and break reference control
+// CircleCharacteristicsBar.js - Updated to support multiple circle selection, break reference control, and activationTriggers
 import { computed, ref, watchEffect } from './vue-composition-api.js';
 import { injectComponentStyles } from './styleUtils.js';
 import { useCharacteristicsBarData } from './useCharacteristicsBarData.js';
@@ -23,7 +23,8 @@ import { CircleEmojiControl } from './CBCircleEmojiControl.js';
 import { ColorControl } from './CBColorControl.js';
 import { EnergyControl } from './CBEnergyControl.js';
 import { ActivationControl } from './CBActivationControl.js';
-import { CBJumpToReferenceControl } from './CBJumpToReferenceControl.js'; // NEW: Import jump to reference control
+import { CBActivationTriggersControl } from './CBActivationTriggersControl.js'; // NEW: Import activation triggers control
+import { CBJumpToReferenceControl } from './CBJumpToReferenceControl.js';
 import { CBConnectibleControl } from './CBConnectibleControl.js';
 import { BreakReferenceControl } from './CBBreakReferenceControl.js';
 import { EmojiControl } from './CBEmojiControl.js';
@@ -141,49 +142,72 @@ export const CircleCharacteristicsBar = {
       return dataStore.hasMultipleCirclesSelected();
     });
 
-      const circleActivation = computed(() => {
-    if (hasMultipleCirclesSelected.value) {
-        // For multiple selection, show the most common activation state or default to 'activated'
-        const selectedIds = dataStore.getSelectedCircles();
-        const activationValues = selectedIds.map(id => {
-            const circle = dataStore.getCircle(id);
-            return circle ? circle.activation : 'activated';
-        });
+    const circleActivation = computed(() => {
+        if (hasMultipleCirclesSelected.value) {
+            // For multiple selection, show the most common activation state or default to 'activated'
+            const selectedIds = dataStore.getSelectedCircles();
+            const activationValues = selectedIds.map(id => {
+                const circle = dataStore.getCircle(id);
+                return circle ? circle.activation : 'activated';
+            });
 
-        // Count occurrences and return most common
-        const counts = activationValues.reduce((acc, val) => {
-            acc[val] = (acc[val] || 0) + 1;
-            return acc;
-        }, {});
+            // Count occurrences and return most common
+            const counts = activationValues.reduce((acc, val) => {
+                acc[val] = (acc[val] || 0) + 1;
+                return acc;
+            }, {});
 
-        return Object.entries(counts).reduce((a, b) => counts[a[0]] > counts[b[0]] ? a : b)[0];
-    } else if (dataHooks.selectedCircle.value) {
-        return dataHooks.selectedCircle.value.activation || 'activated';
-    }
-    return 'activated';
-});
-
-      const selectedExplicitConnection = computed(() => {
-    if (hasMultipleCirclesSelected.value) {
-        const selectedIds = dataStore.getSelectedCircles();
-        if (selectedIds.length === 2) {
-            // Check if there's an explicit connection between these two circles
-            return dataStore.getExplicitConnectionBetweenEntities(
-                selectedIds[0], 'circle',
-                selectedIds[1], 'circle'
-            );
+            return Object.entries(counts).reduce((a, b) => counts[a[0]] > counts[b[0]] ? a : b)[0];
+        } else if (dataHooks.selectedCircle.value) {
+            return dataHooks.selectedCircle.value.activation || 'activated';
         }
-    }
-    return null;
-});
+        return 'activated';
+    });
 
-      const shouldShowExplicitConnectionControls = computed(() => {
-    return selectedExplicitConnection.value !== null;
-});
+    // NEW: Computed for activationTriggers
+    const circleActivationTriggers = computed(() => {
+        if (hasMultipleCirclesSelected.value) {
+            // For multiple selection, show the most common activationTriggers state or default to 'none'
+            const selectedIds = dataStore.getSelectedCircles();
+            const activationTriggersValues = selectedIds.map(id => {
+                const circle = dataStore.getCircle(id);
+                return circle ? circle.activationTriggers : 'none';
+            });
 
-const connectionDirectionality = computed(() => {
-    return selectedExplicitConnection.value?.directionality || 'none';
-});
+            // Count occurrences and return most common
+            const counts = activationTriggersValues.reduce((acc, val) => {
+                acc[val] = (acc[val] || 0) + 1;
+                return acc;
+            }, {});
+
+            return Object.entries(counts).reduce((a, b) => counts[a[0]] > counts[b[0]] ? a : b)[0];
+        } else if (dataHooks.selectedCircle.value) {
+            return dataHooks.selectedCircle.value.activationTriggers || 'none';
+        }
+        return 'none';
+    });
+
+    const selectedExplicitConnection = computed(() => {
+        if (hasMultipleCirclesSelected.value) {
+            const selectedIds = dataStore.getSelectedCircles();
+            if (selectedIds.length === 2) {
+                // Check if there's an explicit connection between these two circles
+                return dataStore.getExplicitConnectionBetweenEntities(
+                    selectedIds[0], 'circle',
+                    selectedIds[1], 'circle'
+                );
+            }
+        }
+        return null;
+    });
+
+    const shouldShowExplicitConnectionControls = computed(() => {
+        return selectedExplicitConnection.value !== null;
+    });
+
+    const connectionDirectionality = computed(() => {
+        return selectedExplicitConnection.value?.directionality || 'none';
+    });
 
     // NEW: Updated visibility logic - show for single OR multiple circle selection
     const isVisible = computed(() => {
@@ -377,18 +401,32 @@ const connectionDirectionality = computed(() => {
       }
     };
 
-const handleActivationCycle = () => {
-    if (hasMultipleCirclesSelected.value) {
-        // Apply to all selected circles
-        const selectedIds = dataStore.getSelectedCircles();
-        selectedIds.forEach(circleId => {
-            dataStore.cycleCircleActivation(circleId);
-        });
-    } else if (dataHooks.selectedCircle.value) {
-        // Apply to single selected circle
-        dataStore.cycleCircleActivation(dataHooks.selectedCircle.value.id);
-    }
-};
+    const handleActivationCycle = () => {
+        if (hasMultipleCirclesSelected.value) {
+            // Apply to all selected circles
+            const selectedIds = dataStore.getSelectedCircles();
+            selectedIds.forEach(circleId => {
+                dataStore.cycleCircleActivation(circleId);
+            });
+        } else if (dataHooks.selectedCircle.value) {
+            // Apply to single selected circle
+            dataStore.cycleCircleActivation(dataHooks.selectedCircle.value.id);
+        }
+    };
+
+    // NEW: Handle activationTriggers cycling
+    const handleActivationTriggersCycle = () => {
+        if (hasMultipleCirclesSelected.value) {
+            // Apply to all selected circles
+            const selectedIds = dataStore.getSelectedCircles();
+            selectedIds.forEach(circleId => {
+                dataStore.cycleCircleActivationTriggers(circleId);
+            });
+        } else if (dataHooks.selectedCircle.value) {
+            // Apply to single selected circle
+            dataStore.cycleCircleActivationTriggers(dataHooks.selectedCircle.value.id);
+        }
+    };
 
     const handleCircleEmojiSelect = (emoji) => {
       if (hasMultipleCirclesSelected.value) {
@@ -522,19 +560,19 @@ const handleActivationCycle = () => {
       }
     };
 
-const handleDirectionalityCycle = () => {
-    if (selectedExplicitConnection.value) {
-        const cycle = ['none', 'out', 'in', 'both'];
-        const currentIndex = cycle.indexOf(selectedExplicitConnection.value.directionality);
-        const nextValue = cycle[(currentIndex + 1) % cycle.length];
-        
-        dataStore.updateExplicitConnectionProperty(
-            selectedExplicitConnection.value.id, 
-            'directionality', 
-            nextValue
-        );
-    }
-};
+    const handleDirectionalityCycle = () => {
+        if (selectedExplicitConnection.value) {
+            const cycle = ['none', 'out', 'in', 'both'];
+            const currentIndex = cycle.indexOf(selectedExplicitConnection.value.directionality);
+            const nextValue = cycle[(currentIndex + 1) % cycle.length];
+            
+            dataStore.updateExplicitConnectionProperty(
+                selectedExplicitConnection.value.id, 
+                'directionality', 
+                nextValue
+            );
+        }
+    };
 
     const getEmojiDisplayTitle = (emojiData, context) => {
       return EmojiService.getDisplayTitle(emojiData, context);
@@ -551,22 +589,24 @@ const handleDirectionalityCycle = () => {
       isReferenceCircle,
       isCircleEmojiPickerVisible,
       isVisible,
-        circleActivation,
+      circleActivation,
+      circleActivationTriggers, // NEW: Add activationTriggers computed
       hasMultipleCirclesSelected,
       shouldShowEmojiControls,
       shouldShowCircleCharacteristicControls,
       shouldShowJumpToReferenceControl,
       shouldShowBreakReferenceControl,
       getSelectedCircleObjects,
-        selectedExplicitConnection,
-    shouldShowExplicitConnectionControls,
-    connectionDirectionality,
+      selectedExplicitConnection,
+      shouldShowExplicitConnectionControls,
+      connectionDirectionality,
       
       // Action handlers
       handleColorSelect,
       handleTypeSelect,
       handleEnergySelect,
       handleActivationCycle,
+      handleActivationTriggersCycle, // NEW: Add activationTriggers handler
       handleEmojiSelect,
       handleCircleEmojiSelect,
       handleQuickEmojiSelect,
@@ -574,7 +614,7 @@ const handleDirectionalityCycle = () => {
       handleClearRecentEmojis,
       handleJumpToReference,
       handleBreakReference,
-        handleDirectionalityCycle,
+      handleDirectionalityCycle,
       
       // Utilities
       getEmojiDisplayTitle,
@@ -619,7 +659,8 @@ const handleDirectionalityCycle = () => {
     ColorControl,
     EnergyControl,
     ActivationControl,
-    CBJumpToReferenceControl, // NEW: Add jump to reference control component
+    CBActivationTriggersControl, // NEW: Add activation triggers control component
+    CBJumpToReferenceControl,
     CBConnectibleControl,
     BreakReferenceControl,
     EmojiControl,
@@ -629,7 +670,7 @@ const handleDirectionalityCycle = () => {
     ColorPickerModal,
     EnergyPickerModal,
     EmojiPickerModal,
-      CBConnectionDirectionalityControl,
+    CBConnectionDirectionalityControl,
   },
   
     template: `
@@ -677,6 +718,12 @@ const handleDirectionalityCycle = () => {
                 ref="activationDisplayRefTemplate"
                 :activation="circleActivation"
                 @cycle="handleActivationCycle"
+            />
+
+            <!-- NEW: Activation Triggers Control -->
+            <CBActivationTriggersControl 
+                :activationTriggers="circleActivationTriggers"
+                @cycle="handleActivationTriggersCycle"
             />
 
             <!-- Connectible Control -->

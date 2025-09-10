@@ -26,7 +26,8 @@ export const GroupCircleRenderer = {
         
         if (!isCollapsed && actualBelongingCount > 0) {
             // Only scale when expanded and has members
-            const scaleFactor = Math.sqrt(Math.max(1, actualBelongingCount + 1)) * 1.3; // +1 to include the group itself
+            //const scaleFactor = Math.sqrt(Math.max(1, actualBelongingCount + 1)) * 1.3 * 0.8;
+            const scaleFactor = 1;
             scaledWidth = Math.max(baseSize, baseSize * scaleFactor);
             scaledHeight = Math.max(baseSize, baseSize * scaleFactor);
         }

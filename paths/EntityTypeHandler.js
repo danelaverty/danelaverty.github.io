@@ -202,8 +202,8 @@ export class CircleHandler extends EntityTypeHandler {
     getCenterPosition(entity, deltaX, deltaY) {
         const viewerCenterX = this.props.viewerWidth ? this.props.viewerWidth / 2 : 200;
         return {
-            x: viewerCenterX + entity.x + deltaX + 16,
-            y: entity.y + deltaY + 16
+            x: viewerCenterX + entity.x + deltaX,
+            y: entity.y + deltaY
         };
     }
 

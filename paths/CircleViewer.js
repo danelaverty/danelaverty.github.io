@@ -281,6 +281,7 @@ export const CircleViewer = {
                     :entity="circle"
                     entity-type="circle"
                     :is-selected="dataStore.isCircleSelected(circle.id)"
+                    :data-store="dataStore"
                     :viewer-width="viewerWidth"
                     :viewer-id="viewerId"
                     :class="{

@@ -1,4 +1,4 @@
-// entityStore.js - Unified entity management for circles and squares with bold, indicator emoji, circle emoji, energy support, activation, referenceID, and collapsed groups
+// entityStore.js - Unified entity management for circles and squares with bold, indicator emoji, circle emoji, energy support, activation, activationTriggers, referenceID, collapsed groups, and member activation with debounced queue
 import { reactive } from './vue-composition-api.js';
 
 let entityStoreInstance = null;
@@ -10,6 +10,10 @@ function createEntityStore() {
         nextCircleId: 1,
         nextSquareId: 1
     });
+
+    // NEW: Debounced activation check queue
+    const activationCheckQueue = new Map(); // circleId -> true
+    let activationCheckTimeout = null;
 
     // Position utilities
     const generateRandomPosition = (containerWidth, containerHeight, padding = 50) => {
@@ -29,14 +33,83 @@ function createEntityStore() {
         };
     };
 
-    // NEW: Activation cycling utility
+    // NEW: Process queued activation checks with callback
+    const processQueuedActivationChecks = (updateCallback = null) => {
+        const circlesToCheck = Array.from(activationCheckQueue.keys());
+        activationCheckQueue.clear();
+        activationCheckTimeout = null;
+
+        // Use provided callback or fallback to internal updateCircle
+        const updateFn = updateCallback || updateCircle;
+
+        circlesToCheck.forEach(circleId => {
+            const circle = getCircle(circleId);
+            if (!circle || circle.activationTriggers !== 'members') return;
+            
+            if (circle.type === 'group') {
+                const memberCount = getCirclesBelongingToGroup(circleId).length;
+                const shouldBeActivated = memberCount > 0;
+                
+                if (shouldBeActivated && circle.activation === 'inactive') {
+                    updateFn(circleId, { activation: 'activated' });
+                } else if (!shouldBeActivated && circle.activation === 'activated') {
+                    updateFn(circleId, { activation: 'inactive' });
+                }
+            } else {
+                // Member activation logic (immediate, no delay)
+                const isGroupMember = circle.belongsToID !== null;
+                
+                if (isGroupMember && circle.activation === 'inactive') {
+                    updateFn(circleId, { activation: 'activated' });
+                } else if (!isGroupMember && circle.activation === 'activated') {
+                    // updateFn(circleId, { activation: 'inactive' });
+                }
+            }
+        });
+    };
+
+    // NEW: Schedule activation check with debouncing
+    const scheduleActivationCheck = (circleId, updateCallback = null) => {
+        // Add to queue (automatically deduplicates)
+        activationCheckQueue.set(circleId, true);
+        
+        // Reset the timeout
+        if (activationCheckTimeout) {
+            clearTimeout(activationCheckTimeout);
+        }
+        
+        activationCheckTimeout = setTimeout(() => processQueuedActivationChecks(updateCallback), 500);
+    };
+
+    const checkAndUpdateMemberActivation = (circleId, updateCallback = null) => {
+        const circle = getCircle(circleId);
+        if (!circle || circle.activationTriggers !== 'members') return;
+        
+        // For non-member activation triggers, execute immediately
+        if (circle.activationTriggers !== 'members') {
+            // Handle other activation trigger types immediately if needed
+            return;
+        }
+        
+        // For member-based activation, use debounced queue
+        scheduleActivationCheck(circleId, updateCallback);
+    };
+
+    // Activation cycling utility
     const cycleActivation = (currentActivation) => {
         const activationCycle = ['activated', 'inactive', 'inert'];
         const currentIndex = activationCycle.indexOf(currentActivation);
         return activationCycle[(currentIndex + 1) % activationCycle.length];
     };
 
-    // NEW: Connectible cycling utility (for consistency)
+    // ActivationTriggers cycling utility
+    const cycleActivationTriggers = (currentActivationTriggers) => {
+        const activationTriggersCycle = ['none', 'members'];
+        const currentIndex = activationTriggersCycle.indexOf(currentActivationTriggers);
+        return activationTriggersCycle[(currentIndex + 1) % activationTriggersCycle.length];
+    };
+
+    // Connectible cycling utility (for consistency)
     const cycleConnectible = (currentConnectible) => {
         const connectibleCycle = ['receives', 'gives', 'refuses'];
         const currentIndex = connectibleCycle.indexOf(currentConnectible);
@@ -71,6 +144,7 @@ function createEntityStore() {
             entity.colors = ['#4CAF50']; 
             entity.energyTypes = []; 
             entity.activation = 'activated'; // UPDATED: Default to 'activated' (first in cycle)
+            entity.activationTriggers = 'none'; // NEW: Default to 'none' (first in cycle)
 	    entity.connectible = 'receives'; 
             entity.referenceID = null; 
             entity.belongsToID = null; 
@@ -121,28 +195,49 @@ function createEntityStore() {
     };
 
     const getCirclesBelongingToGroup = (groupId) => {
-    return Array.from(data.circles.values()).filter(circle => circle.belongsToID === groupId);
-};
+        return Array.from(data.circles.values()).filter(circle => circle.belongsToID === groupId);
+    };
 
-const setCircleBelongsTo = (circleId, groupId) => {
-    const circle = data.circles.get(circleId);
-    if (circle) {
-        circle.belongsToID = groupId;
-        return circle;
-    }
-    return null;
-};
+    // UPDATED: Enhanced with member activation logic and callback parameter
+    const setCircleBelongsTo = (circleId, groupId, updateCallback = null) => {
+        const circle = data.circles.get(circleId);
+        if (circle) {
+            circle.belongsToID = groupId;
+            
+            // NEW: Check member activation for the circle that joined the group
+            checkAndUpdateMemberActivation(circleId, updateCallback);
+            
+            // NEW: Check member activation for the group that gained a member
+            if (groupId) {
+                checkAndUpdateMemberActivation(groupId, updateCallback);
+            }
+            
+            return circle;
+        }
+        return null;
+    };
 
-const clearCircleBelongsTo = (circleId) => {
-    const circle = data.circles.get(circleId);
-    if (circle) {
-        circle.belongsToID = null;
-        return circle;
-    }
-    return null;
-};
+    // UPDATED: Enhanced with member activation logic and callback parameter
+    const clearCircleBelongsTo = (circleId, updateCallback = null) => {
+        const circle = data.circles.get(circleId);
+        if (circle) {
+            const formerGroupId = circle.belongsToID;
+            circle.belongsToID = null;
+            
+            // NEW: Check member activation for the circle that left the group
+            checkAndUpdateMemberActivation(circleId, updateCallback);
+            
+            // NEW: Check member activation for the group that lost a member
+            if (formerGroupId) {
+                checkAndUpdateMemberActivation(formerGroupId, updateCallback);
+            }
+            
+            return circle;
+        }
+        return null;
+    };
 
-    // NEW: Cycle activation for a circle
+    // Cycle activation for a circle
     const cycleCircleActivation = (id) => {
         const circle = data.circles.get(id);
         if (circle) {
@@ -159,7 +254,24 @@ const clearCircleBelongsTo = (circleId) => {
         return null;
     };
 
-    // NEW: Cycle connectible for a circle
+    // Cycle activationTriggers for a circle
+    const cycleCircleActivationTriggers = (id) => {
+        const circle = data.circles.get(id);
+        if (circle) {
+            circle.activationTriggers = cycleActivationTriggers(circle.activationTriggers);
+            
+            // Cascade to referenced circles
+            const referencedCircles = getReferencedCircles(id);
+            referencedCircles.forEach(refCircle => {
+                refCircle.activationTriggers = circle.activationTriggers;
+            });
+            
+            return circle;
+        }
+        return null;
+    };
+
+    // Cycle connectible for a circle
     const cycleCircleConnectible = (id) => {
         const circle = data.circles.get(id);
         if (circle) {
@@ -182,7 +294,7 @@ const clearCircleBelongsTo = (circleId) => {
         if (entity) {
             Object.assign(entity, updates);
             
-            // For circles, ensure color consistency, emoji handling, energy types, activation, referenceID, and collapsed state
+            // For circles, ensure color consistency, emoji handling, energy types, activation, activationTriggers, referenceID, and collapsed state
             if (entityType === 'circle') {
                 // If colors array is updated but color is not, update primary color
                 if (updates.colors && !updates.color && updates.colors.length > 0) {
@@ -211,6 +323,11 @@ const clearCircleBelongsTo = (circleId) => {
                     entity.activation = 'activated'; // Default to first state in cycle
                 }
                 
+                // NEW: Ensure activationTriggers property always exists and is valid
+                if (!entity.activationTriggers || !['none', 'members'].includes(entity.activationTriggers)) {
+                    entity.activationTriggers = 'none'; // Default to first state in cycle
+                }
+                
                 // Ensure referenceID property always exists
                 if (entity.referenceID === undefined) {
                     entity.referenceID = null;
@@ -224,6 +341,11 @@ const clearCircleBelongsTo = (circleId) => {
                 // Handle activation state changes
                 if (updates.activation !== undefined) {
                     entity.activation = updates.activation;
+                }
+                
+                // NEW: Handle activationTriggers state changes
+                if (updates.activationTriggers !== undefined) {
+                    entity.activationTriggers = updates.activationTriggers;
                 }
                 
                 // Handle referenceID changes
@@ -289,6 +411,11 @@ const clearCircleBelongsTo = (circleId) => {
 						refCircle.activation = entity.activation;
 					}
 
+                    // NEW: Cascade activationTriggers changes
+                    if (updates.activationTriggers !== undefined) {
+                        refCircle.activationTriggers = entity.activationTriggers;
+                    }
+
 					if (updates.connectible !== undefined) {
 						refCircle.connectible = entity.connectible;
 					}
@@ -306,6 +433,11 @@ const clearCircleBelongsTo = (circleId) => {
 					if (!refCircle.activation || !['activated', 'inactive', 'inert'].includes(refCircle.activation)) {
 						refCircle.activation = 'activated';
 					}
+
+                    // NEW: Ensure activationTriggers is valid for referenced circles
+                    if (!refCircle.activationTriggers || !['none', 'members'].includes(refCircle.activationTriggers)) {
+                        refCircle.activationTriggers = 'none';
+                    }
 
 					if (!refCircle.connectible) {
 						refCircle.connectible = 'receives';
@@ -349,22 +481,55 @@ const clearCircleBelongsTo = (circleId) => {
     const getSquaresForDocument = (documentId) => getEntitiesForDocument('square', documentId);
     const updateCircle = (id, updates) => updateEntity('circle', id, updates);
     const updateSquare = (id, updates) => updateEntity('square', id, updates);
-    const deleteCircle = (id) => {
-    const circle = getCircle(id);
-    if (!circle) return false;
     
-    // If this is an original circle (not a reference), convert all its references to normal circles
-    if (circle.referenceID === null) {
-        const referencedCircles = getReferencedCircles(id);
-        referencedCircles.forEach(refCircle => {
-            // Convert referenced circle to normal circle by clearing its referenceID
-            refCircle.referenceID = null;
-        });
-    }
+    // UPDATED: Enhanced with member activation logic
+    const deleteCircle = (id, updateCallback = null) => {
+        const circle = getCircle(id);
+        if (!circle) return false;
+        
+        // NEW: Track group membership before deletion for activation logic
+        const formerGroupId = circle.belongsToID;
+        const wasGroup = circle.type === 'group';
+        let formerMembers = [];
+        
+        if (wasGroup) {
+            formerMembers = getCirclesBelongingToGroup(id);
+        }
+        
+        // If this is an original circle (not a reference), convert all its references to normal circles
+        if (circle.referenceID === null) {
+            const referencedCircles = getReferencedCircles(id);
+            referencedCircles.forEach(refCircle => {
+                // Convert referenced circle to normal circle by clearing its referenceID
+                refCircle.referenceID = null;
+            });
+        }
+        
+        // Now delete the circle
+        const deleted = data.circles.delete(id);
+        
+        if (deleted) {
+            // NEW: Handle member activation after deletion
+            
+            // If deleted circle was a member of a group, check the group's activation
+            if (formerGroupId) {
+                checkAndUpdateMemberActivation(formerGroupId, updateCallback);
+            }
+            
+            // If deleted circle was a group, check all former members' activation
+            if (wasGroup && formerMembers.length > 0) {
+                formerMembers.forEach(member => {
+                    // Clear the belongsToID since the group is gone
+                    member.belongsToID = null;
+                    // Check member activation
+                    checkAndUpdateMemberActivation(member.id, updateCallback);
+                });
+            }
+        }
+        
+        return deleted;
+    };
     
-    // Now delete the circle
-    return data.circles.delete(id);
-};
     const deleteSquare = (id) => deleteEntity('square', id);
 
     // Utility functions for referenceID
@@ -377,7 +542,7 @@ const clearCircleBelongsTo = (circleId) => {
         return Array.from(data.circles.values()).filter(circle => circle.referenceID === originalCircleId);
     };
 
-    // NEW: Utility function to toggle group collapsed state
+    // Utility function to toggle group collapsed state
     const toggleGroupCollapsed = (id) => {
         const circle = getCircle(id);
         if (circle && circle.type === 'group') {
@@ -416,7 +581,7 @@ const clearCircleBelongsTo = (circleId) => {
         if (savedData.circles) {
             data.circles = new Map(savedData.circles);
             
-            // Ensure all circles have the new color, emoji, energy, activation, referenceID, and collapsed properties
+            // Ensure all circles have the new color, emoji, energy, activation, activationTriggers, referenceID, and collapsed properties
             data.circles.forEach((circle, id) => {
                 if (!circle.colors) {
                     circle.colors = circle.color ? [circle.color] : ['#CCCCCC'];
@@ -444,6 +609,10 @@ const clearCircleBelongsTo = (circleId) => {
                 // UPDATED: Ensure activation property exists and is valid for circles
                 if (!circle.activation || !['activated', 'inactive', 'inert'].includes(circle.activation)) {
                     circle.activation = 'activated'; // Default for existing circles (backward compatibility)
+                }
+                // NEW: Ensure activationTriggers property exists and is valid for circles
+                if (!circle.activationTriggers || !['none', 'members'].includes(circle.activationTriggers)) {
+                    circle.activationTriggers = 'none'; // Default for existing circles (backward compatibility)
                 }
                 // Ensure referenceID property exists for circles
                 if (circle.referenceID === undefined) {
@@ -517,10 +686,11 @@ const clearCircleBelongsTo = (circleId) => {
         // Reference ID utilities
         isReferencedCircle,
         getReferencedCircles,
-        // NEW: Group collapsed utilities
+        // Group collapsed utilities
         toggleGroupCollapsed,
-        // NEW: Activation and connectible cycling utilities
+        // Activation, activationTriggers, and connectible cycling utilities
         cycleCircleActivation,
+        cycleCircleActivationTriggers,
         cycleCircleConnectible,
         // Utilities
         generateRandomPosition,
@@ -531,6 +701,9 @@ const clearCircleBelongsTo = (circleId) => {
         getCirclesBelongingToGroup,
         setCircleBelongsTo,
         clearCircleBelongsTo,
+        
+        // NEW: Expose member activation function for potential external use
+        checkAndUpdateMemberActivation,
     };
 }
 

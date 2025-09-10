@@ -3,6 +3,7 @@ import { useDataStore } from './dataCoordinator.js';
 
 // Simple state to track zigzag alternation
 let zigzagFlipped = false;
+let zigzagHorizontalFlipped = false;
 
 /**
  * Align entities vertically or horizontally
@@ -33,6 +34,8 @@ export function alignEntities(entityType, direction) {
         alignHorizontally(entities, entityType, dataStore);
     } else if (direction === 'zigzag') {
         alignZigzag(entities, entityType, dataStore);
+    } else if (direction === 'zigzag-horizontal') {
+        alignZigzagHorizontal(entities, entityType, dataStore);
     } else if (direction === 'circular') {
         alignCircularly(entities, entityType, dataStore);
     } else if (direction === 'grid') {
@@ -42,7 +45,6 @@ export function alignEntities(entityType, direction) {
     } else if (direction === 'contract') {
         scaleGroupDistances(entities, entityType, dataStore, 0.8);
     }
-    
 }
 
 /**
@@ -148,6 +150,48 @@ function alignZigzag(entities, entityType, dataStore) {
         
         const newX = leftColumn ? leftmostX : rightmostX;
         const newY = topmostY + (spacing * index);
+        
+        if (entityType === 'circle') {
+            dataStore.updateCircle(entity.id, { x: newX, y: newY });
+        } else {
+            dataStore.updateSquare(entity.id, { x: newX, y: newY });
+        }
+    });
+}
+
+function alignZigzagHorizontal(entities, entityType, dataStore) {
+    // Toggle the horizontal zigzag flip state
+    zigzagHorizontalFlipped = !zigzagHorizontalFlipped;
+    
+    // Find the topmost and bottommost Y positions for the two rows
+    const topmostY = Math.min(...entities.map(e => e.y));
+    const bottommostY = Math.max(...entities.map(e => e.y));
+    
+    // Find the leftmost and rightmost X positions for horizontal distribution
+    const leftmostX = Math.min(...entities.map(e => e.x));
+    const rightmostX = Math.max(...entities.map(e => e.x));
+    
+    // Sort entities by their current X position to maintain relative order
+    entities.sort((a, b) => a.x - b.x);
+    
+    // Calculate equal horizontal spacing
+    const totalWidth = rightmostX - leftmostX;
+    const spacing = entities.length > 1 ? totalWidth / (entities.length - 1) : 0;
+    
+    // Update positions in horizontal zigzag pattern
+    entities.forEach((entity, index) => {
+        // Determine row assignment based on flip state
+        let topRow;
+        if (zigzagHorizontalFlipped) {
+            // Flipped: odd indices go bottom, even indices go top
+            topRow = index % 2 === 0;
+        } else {
+            // Normal: odd indices go top, even indices go bottom
+            topRow = index % 2 === 1;
+        }
+        
+        const newX = leftmostX + (spacing * index);
+        const newY = topRow ? topmostY : bottommostY;
         
         if (entityType === 'circle') {
             dataStore.updateCircle(entity.id, { x: newX, y: newY });
