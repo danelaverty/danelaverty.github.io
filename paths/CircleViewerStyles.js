@@ -12,7 +12,7 @@ const componentStyles = `
         overflow: hidden;
         display: flex;
         flex-direction: column;
-        cursor: pointer;
+        cursor: auto;
         transition: all 0.3s ease;
     }
 
