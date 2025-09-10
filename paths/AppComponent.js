@@ -421,6 +421,7 @@ export const App = {
                             :entity="square"
                             entity-type="square"
                             :is-selected="dataStore.isSquareSelected(square.id)"
+                            :data-store="dataStore"
                             @select="handleSquareSelect"
                             @update-position="handleSquarePositionUpdate"
                             @update-name="handleSquareNameUpdate"

@@ -3,6 +3,7 @@ import { computed } from './vue-composition-api.js';
 import { injectComponentStyles } from './styleUtils.js';
 import { EmojiRenderer } from './EmojiRenderer.js';
 import { EnergyIndicators } from './EnergyIndicators.js';
+import { EnergyReceivedIndicator } from './EnergyReceivedIndicator.js';
 import { useEntityState } from './EntityState.js';
 import { useEntityRendering } from './EntityRendering.js';
 import { useEntityInteractions } from './EntityInteractions.js';
@@ -18,6 +19,7 @@ const componentStyles = `
         user-select: none;
         transition: transform 0.3s ease;
         transform-origin: center center;
+        transform: translate(-50%, -50%);
     }
 
     .entity-container.group-member {
@@ -27,7 +29,6 @@ const componentStyles = `
     .entity-shape {
         width: 32px;
         height: 32px;
-        margin-bottom: 5px;
         transition: border-color 0.2s ease, box-shadow 0.2s ease, width 0.3s ease, height 0.3s ease;
         position: relative;
         display: flex;
@@ -149,8 +150,10 @@ const componentStyles = `
         text-shadow: 1px 1px 1px black;
     }
 
-    .circle-type-group + .entity-name {
+    .circle-type-group ~ .entity-name {
         top: -20px;
+        font-size: 12px;
+        color: #CCC;
     }
 
     .square-name {
@@ -188,7 +191,7 @@ const componentStyles = `
 
     .dragging {
         z-index: 999;
-        transform: scale(1.05);
+        transform: translate(-50%, -50%) scale(1.05);
         /* Only disable position transitions, keep transform transitions for proximity effects */
         transition: left 0s, top 0s, transform 0.15s ease-out;
     }
@@ -242,11 +245,13 @@ export const EntityComponent = {
         entityType: String,
         isSelected: Boolean,
         viewerWidth: Number,
-        viewerId: String
+        viewerId: String,
+        dataStore: Object
     },
     components: {
         EmojiRenderer,
-        EnergyIndicators
+        EnergyIndicators,
+        EnergyReceivedIndicator
     },
     emits: ['select', 'update-position', 'update-name', 'move-multiple', 'drag-start', 'drag-move', 'drag-end'],
     setup(props, { emit }) {
@@ -262,7 +267,8 @@ export const EntityComponent = {
         // Computed style for shape scaling (group circles only)
         const shapeScaleStyles = computed(() => {
             if (state.groupShapeScale.value !== 1) {
-                const scale = state.groupShapeScale.value;
+                //const scale = state.groupShapeScale.value;
+                const scale = 1;
                 const scaledSize = Math.round(32 * scale);
                 return {
                     width: `${scaledSize}px`,
@@ -308,7 +314,7 @@ export const EntityComponent = {
             ...positionStyles,
             ...circleStyles,
             ...squareStyles,
-            transform: groupMemberScale !== 1 ? 'scale(' + groupMemberScale + ')' : undefined
+            transform: groupMemberScale !== 1 ? 'translate(-50%, -50%) scale(' + groupMemberScale + ')' : undefined
         }"
         :class="{
             'animation-copy': isAnimationCopy,
@@ -375,10 +381,6 @@ export const EntityComponent = {
         ></div>
         
         <!-- Energy indicators for circles -->
-        <EnergyIndicators 
-            v-if="entityType === 'circle'"
-            :energyTypes="circleEnergyTypes"
-        />
         
         <div 
             ref="nameRef"
@@ -386,7 +388,20 @@ export const EntityComponent = {
             @click="handleNameClick"
             @blur="handleBlur"
             @keydown="handleNameKeydown"
-        >{{ entity.name }}</div>
+        >
+        {{ entity.name }}
+        <!--EnergyIndicators 
+            v-if="entityType === 'circle'"
+            :energyTypes="circleEnergyTypes"
+        /-->
+<!--EnergyReceivedIndicator 
+    v-if="entityType === 'circle'"
+    :entity="entity"
+    :entityType="entityType"
+    :viewerId="viewerId"
+    :dataStore="dataStore"
+/-->
+        </div>
     </div>
 `
 };

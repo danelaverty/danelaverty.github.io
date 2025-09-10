@@ -5,11 +5,11 @@ import { injectComponentStyles } from './styleUtils.js';
 
 const componentStyles = `
     .energy-indicators {
+        display: flex;
         position: absolute;
-        top: calc(100% + 13px);
+        top: 100%;
         left: 50%;
         transform: translateX(-50%);
-        display: flex;
         gap: 4px;
         z-index: 10;
         pointer-events: none;
@@ -24,92 +24,33 @@ const componentStyles = `
         transition: all 0.3s ease;
     }
 
+    .energy-dot.noenergy {
+        background-color: #000000;
+        width: 4px;
+        height: 4px;
+        border: 1px solid #AAA;
+    }
+
     .energy-dot.exciter {
         background-color: #FFD700;
-        animation: exciterPulse 2s ease-in-out infinite;
     }
 
     .energy-dot.igniter {
         background-color: #FF8C00;
-        animation: igniterPulse 1.8s ease-in-out infinite;
     }
 
     .energy-dot.dampener {
         background-color: #9966FF;
-        animation: dampenerPulse 2.2s ease-in-out infinite;
     }
 
     .energy-dot.attractor {
         background-color: #FF4444;
-        animation: attractorPulse 2.5s ease-in-out infinite;
     }
 
     .energy-dot.attractee {
         background-color: #4488FF;
-        animation: attracteePulse 3s ease-in-out infinite;
     }
 
-    @keyframes exciterPulse {
-        0%, 100% { 
-            transform: scale(1);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 0 rgba(255, 215, 0, 0.7);
-        }
-        50% { 
-            transform: scale(1.2);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 4px rgba(255, 215, 0, 0);
-        }
-    }
-
-    @keyframes igniterPulse {
-        0%, 100% { 
-            transform: scale(1);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 0 rgba(255, 140, 0, 0.7);
-        }
-        50% { 
-            transform: scale(1.2);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 4px rgba(255, 140, 0, 0);
-        }
-    }
-
-    @keyframes dampenerPulse {
-        0%, 100% { 
-            transform: scale(1);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 0 rgba(153, 102, 255, 0.7);
-        }
-        50% { 
-            transform: scale(1.2);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 4px rgba(153, 102, 255, 0);
-        }
-    }
-
-    @keyframes attractorPulse {
-        0%, 100% { 
-            transform: scale(1);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 0 rgba(255, 68, 68, 0.7);
-        }
-        50% { 
-            transform: scale(1.2);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 4px rgba(255, 68, 68, 0);
-        }
-    }
-
-    @keyframes attracteePulse {
-        0%, 100% { 
-            transform: scale(1);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 0 rgba(68, 136, 255, 0.7);
-        }
-        50% { 
-            transform: scale(1.2);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 4px rgba(68, 136, 255, 0);
-        }
-    }
-
-    /* Reduced motion support */
-    @media (prefers-reduced-motion: reduce) {
-        .energy-dot {
-            animation: none !important;
-        }
-    }
 `;
 
 injectComponentStyles('energy-indicators', componentStyles);
@@ -123,6 +64,9 @@ export const EnergyIndicators = {
     },
     setup(props) {
         const sortedEnergyTypes = computed(() => {
+            if (props.energyTypes.length == 0) {
+                return ['noenergy'];
+            }
             // Sort energy types for consistent display order
             const order = ['exciter', 'igniter', 'dampener', 'attractor', 'attractee'];
             return props.energyTypes.sort((a, b) => 
@@ -136,7 +80,7 @@ export const EnergyIndicators = {
         };
     },
     template: `
-        <div v-if="energyTypes.length > 0" class="energy-indicators">
+        <div v-if="energyTypes.length >= 0" class="energy-indicators">
             <div 
                 v-for="energyType in sortedEnergyTypes"
                 :key="energyType"

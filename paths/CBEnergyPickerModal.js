@@ -14,8 +14,6 @@ export const EnergyPickerModal = {
   emits: ['selectEnergy', 'close'],
   
   mounted() {
-    console.log('EnergyPickerModal mounted - using template ref approach');
-    console.log('  - this.$el:', this.$el);
   },
   
   template: `
