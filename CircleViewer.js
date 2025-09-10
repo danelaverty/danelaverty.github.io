@@ -1,4 +1,4 @@
-// CircleViewer.js - Pure Vue component shell and template (Updated with drag state management and ExplicitConnection support)
+// CircleViewer.js - Updated with ctrl+click multi-select, ctrl+shift+click explicit connections, and collapsed group filtering
 import { onMounted, onUnmounted, computed, ref } from './vue-composition-api.js';
 import { useCircleViewerDragResize } from './CircleViewerDragResize.js';
 import { useCircleViewerSelection } from './CircleViewerSelection.js';
@@ -44,7 +44,7 @@ export const CircleViewer = {
         // Get state and computed properties
         const state = useCircleViewerState(props);
         
-        // NEW: Entity drag state management
+        // Entity drag state management
         const entityDragState = ref({
             isDragging: false,
             draggedEntityIds: [],
@@ -53,7 +53,7 @@ export const CircleViewer = {
             viewerId: null
         });
 
-        // NEW: Handle entity drag events
+        // Handle entity drag events
         const handleEntityDragStart = (event) => {
             entityDragState.value = {
                 isDragging: true,
@@ -92,14 +92,51 @@ export const CircleViewer = {
         const selection = useCircleViewerSelection(props, state.dataStore, state.viewerContentRef, state.currentCircles, state.viewerWidth);
         const animations = useCircleViewerAnimations(props.viewerId, state.dataStore);
 
-        // NEW: Get explicit connections for this viewer
+        // NEW: Filter circles to hide members of collapsed groups
+        const visibleCircles = computed(() => {
+            return state.currentCircles.value.filter(circle => {
+                // Show all circles that are not members of collapsed groups
+                if (circle.belongsToID) {
+                    const parentGroup = state.dataStore.getCircle(circle.belongsToID);
+                    // Hide this circle if its parent group is collapsed
+                    return !(parentGroup && parentGroup.collapsed === true);
+                }
+                // Show all non-member circles (including groups themselves)
+                return true;
+            });
+        });
+
+        // NEW: Enhanced allCircles that includes animation copies but filters collapsed group members
+        const allCircles = computed(() => {
+            const visible = visibleCircles.value;
+            
+            // Safety check for animation copies
+            if (!state.animationCopies || !state.animationCopies.value) {
+                return visible;
+            }
+            
+            const animationCopies = state.animationCopies.value;
+            
+            // Filter animation copies to also respect collapsed groups
+            const visibleAnimationCopies = animationCopies.filter(copy => {
+                if (copy.belongsToID) {
+                    const parentGroup = state.dataStore.getCircle(copy.belongsToID);
+                    return !(parentGroup && parentGroup.collapsed === true);
+                }
+                return true;
+            });
+            
+            return [...visible, ...visibleAnimationCopies];
+        });
+
+        // Get explicit connections for this viewer
         const explicitConnections = computed(() => {
             // Get explicit connections for circles in this viewer
             const entityType = `circle-${props.viewerId}`;
             return state.dataStore.getExplicitConnectionsForEntityType(entityType);
         });
 
-        // NEW: Combine regular connections with explicit connections
+        // Combine regular connections with explicit connections
         const allConnections = computed(() => {
             // Get regular proximity-based connections
             const regularConnections = state.viewerConnections.value;
@@ -111,9 +148,10 @@ export const CircleViewer = {
             return [...regularConnections, ...explicitConns];
         });
 
-        // NEW: Enhanced circle select handler that supports ctrl-click for explicit connections
-        const handleCircleSelectWithExplicitConnections = (id, isCtrlClick = false) => {
-            if (isCtrlClick) {
+        // UPDATED: Enhanced circle select handler with ctrl+click multi-select and ctrl+shift+click explicit connections
+        const handleCircleSelectWithMultiSelect = (id, isCtrlClick = false, isShiftClick = false) => {
+            // Check for explicit connection creation (ctrl+shift+click)
+            if (isCtrlClick && isShiftClick) {
                 // Handle explicit connection creation/deletion
                 const selectedCircleIds = state.dataStore.getSelectedCircles();
                 const selectedEntityType = 'circle';
@@ -122,14 +160,18 @@ export const CircleViewer = {
                     id, 'circle', selectedCircleIds, selectedEntityType, props.viewerId
                 );
                 
-                console.log('Explicit connection result:', result);
-                
-                // Don't change selection when ctrl-clicking for connections
+                // Don't change selection when ctrl+shift-clicking for connections
                 return;
+            } else if (isCtrlClick || isShiftClick) {
+                const isCurrentlySelected = state.dataStore.isCircleSelected(id);
+                
+                state.dataStore.selectCircle(id, props.viewerId, true);
+                
+                return;
+            } else {
+                // Regular selection behavior (no modifier keys)
+                eventHandlers.handleCircleSelect(id, false); // Force non-ctrl behavior for regular selection
             }
-            
-            // Regular selection behavior (non-ctrl click)
-            eventHandlers.handleCircleSelect(id, false); // Force non-ctrl behavior
         };
 
         // Create concrete event handlers that depend on selection state
@@ -149,19 +191,22 @@ export const CircleViewer = {
         return {
             // State
             ...state,
-            // NEW: Entity drag state
+            // Entity drag state
             entityDragState,
             // Composable functionality
             ...dragResize,
             ...selection,
             ...animations,
-            // NEW: Explicit connections
+            // NEW: Filtered circle lists
+            visibleCircles,
+            allCircles, // Updated to use filtered version
+            // Explicit connections
             explicitConnections,
             allConnections,
             // Event handlers (both factory-created and direct)
             handleViewerClick,
             handleViewerContainerClick,
-            handleCircleSelect: handleCircleSelectWithExplicitConnections, // UPDATED: Use explicit connection version
+            handleCircleSelect: handleCircleSelectWithMultiSelect, // UPDATED: Use new multi-select version
             handleCirclePositionUpdate: eventHandlers.handleCirclePositionUpdate,
             handleCircleNameUpdate: eventHandlers.handleCircleNameUpdate,
             handleMoveMultiple: eventHandlers.handleMoveMultiple,
@@ -170,7 +215,7 @@ export const CircleViewer = {
             handleShowDropdown: eventHandlers.handleShowDropdown,
             handleStartReorder: eventHandlers.handleStartReorder,
             handleCloseViewer: eventHandlers.handleCloseViewer,
-            // NEW: Entity drag event handlers
+            // Entity drag event handlers
             handleEntityDragStart,
             handleEntityDragMove,
             handleEntityDragEnd
@@ -220,7 +265,7 @@ export const CircleViewer = {
                 class="viewer-content" 
                 @click="handleViewerClick"
             >
-                <!-- Connection Rendering - UPDATED: Use combined connections (regular + explicit) with drag state -->
+                <!-- Connection Rendering - Use combined connections (regular + explicit) with drag state -->
                 <ConnectionComponent
                     v-for="connection in allConnections"
                     :key="connection.id"
@@ -229,13 +274,14 @@ export const CircleViewer = {
                     :entity-drag-state="entityDragState"
                 />
                 
-                <!-- Render all circles (original + animation copies) -->
+                <!-- Render filtered circles (original + animation copies, excluding hidden group members) -->
                 <EntityComponent
                     v-for="circle in allCircles"
                     :key="circle.id"
                     :entity="circle"
                     entity-type="circle"
                     :is-selected="dataStore.isCircleSelected(circle.id)"
+                    :data-store="dataStore"
                     :viewer-width="viewerWidth"
                     :viewer-id="viewerId"
                     :class="{

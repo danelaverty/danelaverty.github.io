@@ -2,9 +2,10 @@ import { ConnectionUtils } from './ConnectionUtils.js';
 
 // EntityTypeHandler.js - Fixed to ensure circles use correct viewer containers
 export class EntityTypeHandler {
-    constructor(dataStore, props) {
+    constructor(dataStore, props, connectionManager = null) {
         this.dataStore = dataStore;
         this.props = props;
+        this.connectionManager = connectionManager; // NEW: Reference to ConnectionManager for distance constants
     }
 
     // Abstract methods to be implemented by subclasses
@@ -184,15 +185,25 @@ export class CircleHandler extends EntityTypeHandler {
         }
     }
 
+    // UPDATED: Use ConnectionManager constants for accurate radius indicators
     getConnectionDistance(entity) {
-        return 100; // Base circle connection distance
+        if (this.connectionManager) {
+            // Use ConnectionManager constants for consistency
+            if (entity.bold === true) {
+                return this.connectionManager.CIRCLE_BOLD_CONNECTION_DISTANCE;
+            }
+            return this.connectionManager.CIRCLE_CONNECTION_DISTANCE;
+        }
+        
+        // Fallback to hardcoded values if ConnectionManager not available
+        return entity.bold === true ? 130 : 80;
     }
 
     getCenterPosition(entity, deltaX, deltaY) {
         const viewerCenterX = this.props.viewerWidth ? this.props.viewerWidth / 2 : 200;
         return {
-            x: viewerCenterX + entity.x + deltaX + 16,
-            y: entity.y + deltaY + 16
+            x: viewerCenterX + entity.x + deltaX,
+            y: entity.y + deltaY
         };
     }
 
@@ -292,8 +303,18 @@ export class SquareHandler extends EntityTypeHandler {
         entityElement.style.top = entity.y + 'px';
     }
 
+    // UPDATED: Use ConnectionManager constants for accurate radius indicators
     getConnectionDistance(entity) {
-        return entity.bold ? 165 : 130;
+        if (this.connectionManager) {
+            // Use ConnectionManager constants for consistency
+            if (entity.bold === true) {
+                return this.connectionManager.SQUARE_BOLD_CONNECTION_DISTANCE;
+            }
+            return this.connectionManager.SQUARE_CONNECTION_DISTANCE;
+        }
+        
+        // Fallback to hardcoded values if ConnectionManager not available
+        return entity.bold === true ? 165 : 130;
     }
 
     getCenterPosition(entity, deltaX, deltaY) {

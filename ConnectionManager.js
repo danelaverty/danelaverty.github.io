@@ -1,4 +1,3 @@
-// ConnectionManager.js - FIXED: Only create connections between glow and non-glow circles + DEBUG
 import { reactive, computed } from './vue-composition-api.js';
 
 export class ConnectionManager {
@@ -48,16 +47,13 @@ export class ConnectionManager {
         return this.SQUARE_CONNECTION_DISTANCE;
     }
 
-    /**
-     * NEW: Check if two circles should be connected based on glow type rule
-     * Only connect if one is glow-type and the other is non-glow-type
-     */
     shouldConnectCircles(entity1, entity2) {
-        const entity1IsGlow = entity1.type === 'glow';
-        const entity2IsGlow = entity2.type === 'glow';
+        const entity1Gives = entity1.connectible === 'gives';
+        const entity2Gives = entity2.connectible === 'gives';
+        const entity1Refuses = entity1.connectible === 'refuses';
+        const entity2Refuses = entity2.connectible === 'refuses';
         
-        // Only connect if exactly one is glow type (XOR logic)
-        return entity1IsGlow !== entity2IsGlow;
+        return (entity1Gives || entity2Gives) && !(entity1Refuses || entity2Refuses);
     }
 
     /**
@@ -433,7 +429,6 @@ export class ConnectionManager {
      * Force a full recalculation of connections for specific entity type
      */
     forceUpdate(entities, entityType = 'square') {
-        console.log(`🔄 ConnectionManager: Force update for ${entityType}`);
         this.clearConnections(entityType);
         this.updateConnections(entities, entityType);
     }

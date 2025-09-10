@@ -1,4 +1,4 @@
-// AppComponent.js - Updated with document hover state for viewer highlighting
+// AppComponent.js - Updated with square multi-select and ctrl+shift+click explicit connections
 import { ref, computed, onMounted, onUnmounted } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
 import { useRectangleSelection } from './useRectangleSelection.js';
@@ -23,13 +23,13 @@ export const App = {
     setup() {
         const dataStore = useDataStore();
         const squareViewerContentRef = ref(null);
-        const proximitySystem = useEnergyProximitySystem();
-        const animationManager = useAnimationLoopManager(); // NEW: Get animation manager
+	const proximitySystem = useEnergyProximitySystem(dataStore);
+        const animationManager = useAnimationLoopManager();
 
-        // NEW: Document hover state for viewer highlighting
+        // Document hover state for viewer highlighting
         const hoveredDocumentId = ref(null);
 
-        // NEW: Square drag state management
+        // Square drag state management
         const squareDragState = ref({
             isDragging: false,
             draggedEntityIds: [],
@@ -38,7 +38,7 @@ export const App = {
             viewerId: null
         });
 
-        // NEW: Handle square drag events
+        // Handle square drag events
         const handleSquareDragStart = (event) => {
             squareDragState.value = {
                 isDragging: true,
@@ -69,7 +69,7 @@ export const App = {
             };
         };
 
-        // NEW: Document hover handlers
+        // Document hover handlers
         const handleDocumentHover = (documentId) => {
             hoveredDocumentId.value = documentId;
         };
@@ -92,7 +92,7 @@ export const App = {
             return dataStore.getSelectedCircles().length === 1;
         });
 
-        // NEW: Check if SquareDocumentTabs should be visible - only when exactly one circle is selected
+        // Check if SquareDocumentTabs should be visible - only when exactly one circle is selected
         const shouldShowSquareDocumentTabs = computed(() => {
             return dataStore.getSelectedCircles().length === 1;
         });
@@ -107,12 +107,12 @@ export const App = {
             });
         });
 
-        // NEW: Get explicit connections for squares
+        // Get explicit connections for squares
         const squareExplicitConnections = computed(() => {
             return dataStore.getExplicitConnectionsForEntityType('square');
         });
 
-        // NEW: Combine regular and explicit connections for squares
+        // Combine regular and explicit connections for squares
         const allSquareConnections = computed(() => {
             return [...squareConnections.value, ...squareExplicitConnections.value];
         });
@@ -178,9 +178,10 @@ export const App = {
         const viewerManager = createViewerManager(dataStore); // This now includes dragState
         const entityHandlers = createEntityHandlers(dataStore);
 
-        // NEW: Enhanced square select handler that supports ctrl-click for explicit connections
-        const handleSquareSelectWithExplicitConnections = (id, isCtrlClick = false) => {
-            if (isCtrlClick) {
+        // UPDATED: Enhanced square select handler with ctrl+click multi-select and ctrl+shift+click explicit connections
+        const handleSquareSelectWithMultiSelect = (id, isCtrlClick = false, isShiftClick = false) => {
+            // Check for explicit connection creation (ctrl+shift+click)
+            if (isCtrlClick && isShiftClick) {
                 // Handle explicit connection creation/deletion
                 const selectedSquareIds = dataStore.getSelectedSquares();
                 const selectedEntityType = 'square';
@@ -191,12 +192,27 @@ export const App = {
                 
                 console.log('Square explicit connection result:', result);
                 
-                // Don't change selection when ctrl-clicking for connections
+                // Don't change selection when ctrl+shift-clicking for connections
                 return;
             }
             
-            // Regular selection behavior (non-ctrl click)
-            entityHandlers.handleSquareSelect(id, false); // Force non-ctrl behavior
+            // Handle multi-select/deselect (ctrl+click only)
+            if (isCtrlClick && !isShiftClick) {
+                const isCurrentlySelected = dataStore.isSquareSelected(id);
+                
+                if (isCurrentlySelected) {
+                    // Deselect this square while keeping others selected
+                    dataStore.selectSquare(id, false, true); // true for deselect
+                } else {
+                    // Add this square to selection
+                    dataStore.selectSquare(id, true); // true for additive
+                }
+                
+                return;
+            }
+            
+            // Regular selection behavior (no modifier keys)
+            entityHandlers.handleSquareSelect(id, false); // Force non-ctrl behavior for regular selection
         };
 
         // Keyboard viewer reordering handler
@@ -299,7 +315,7 @@ export const App = {
             // Stop the energy proximity system
             proximitySystem.stop();
             
-            // NEW: Cleanup animation loops
+            // Cleanup animation loops
             animationManager.cleanup();
         });
 
@@ -308,8 +324,8 @@ export const App = {
             visibleCircleViewers,
             currentSquares,
             hasSelectedCircle,
-            shouldShowSquareDocumentTabs, // NEW: Expose the computed property
-            allSquareConnections, // UPDATED: Use combined connections
+            shouldShowSquareDocumentTabs,
+            allSquareConnections, // Use combined connections
             squareViewerContentRef,
             sharedDropdownRef,
             isIndicatorPickerVisible,
@@ -323,19 +339,19 @@ export const App = {
             handleShowDropdown,
             handleIndicatorPickerClose,
             handleIndicatorPickerSelect,
-            // NEW: Expose hover state and handlers
+            // Expose hover state and handlers
             hoveredDocumentId,
             handleDocumentHover,
             handleDocumentHoverEnd,
-            // NEW: Square drag state
+            // Square drag state
             squareDragState,
             handleSquareDragStart,
             handleSquareDragMove,
             handleSquareDragEnd,
-            // Expose handlers from modules - UPDATED: Use explicit connection square handler
+            // Expose handlers from modules - UPDATED: Use multi-select square handler
             ...{
                 ...entityHandlers,
-                handleSquareSelect: handleSquareSelectWithExplicitConnections // Override with explicit connection version
+                handleSquareSelect: handleSquareSelectWithMultiSelect // Override with multi-select version
             },
             ...viewerManager // This now includes dragState and new drag handlers
         };
@@ -391,7 +407,7 @@ export const App = {
                         :class="['square-viewer-content', { 'no-characteristics-bar': !hasSelectedCircle }]"
                         @click="handleSquareViewerClick"
                     >
-                        <!-- Connection Rendering - UPDATED: Use combined connections (regular + explicit) with drag state -->
+                        <!-- Connection Rendering - Use combined connections (regular + explicit) with drag state -->
                         <ConnectionComponent
                             v-for="connection in allSquareConnections"
                             :key="connection.id"
@@ -405,6 +421,7 @@ export const App = {
                             :entity="square"
                             entity-type="square"
                             :is-selected="dataStore.isSquareSelected(square.id)"
+                            :data-store="dataStore"
                             @select="handleSquareSelect"
                             @update-position="handleSquarePositionUpdate"
                             @update-name="handleSquareNameUpdate"
