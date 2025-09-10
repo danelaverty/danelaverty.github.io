@@ -3,11 +3,12 @@ import { useDataStore } from './dataCoordinator.js';
 
 // Simple state to track zigzag alternation
 let zigzagFlipped = false;
+let zigzagHorizontalFlipped = false;
 
 /**
  * Align entities vertically or horizontally
  * @param {string} entityType - 'circle' or 'square'
- * @param {string} direction - 'vertical', 'horizontal', 'zigzag', 'circular', 'expand', or 'contract'
+ * @param {string} direction - 'vertical', 'horizontal', 'zigzag', 'circular', 'grid', 'expand', or 'contract'
  */
 export function alignEntities(entityType, direction) {
     const dataStore = useDataStore();
@@ -33,15 +34,17 @@ export function alignEntities(entityType, direction) {
         alignHorizontally(entities, entityType, dataStore);
     } else if (direction === 'zigzag') {
         alignZigzag(entities, entityType, dataStore);
+    } else if (direction === 'zigzag-horizontal') {
+        alignZigzagHorizontal(entities, entityType, dataStore);
     } else if (direction === 'circular') {
         alignCircularly(entities, entityType, dataStore);
+    } else if (direction === 'grid') {
+        alignGrid(entities, entityType, dataStore);
     } else if (direction === 'expand') {
         scaleGroupDistances(entities, entityType, dataStore, 1.2);
     } else if (direction === 'contract') {
         scaleGroupDistances(entities, entityType, dataStore, 0.8);
     }
-    
-    console.log(`Aligned ${entities.length} ${entityType}s ${direction}ly`);
 }
 
 /**
@@ -156,6 +159,170 @@ function alignZigzag(entities, entityType, dataStore) {
     });
 }
 
+function alignZigzagHorizontal(entities, entityType, dataStore) {
+    // Toggle the horizontal zigzag flip state
+    zigzagHorizontalFlipped = !zigzagHorizontalFlipped;
+    
+    // Find the topmost and bottommost Y positions for the two rows
+    const topmostY = Math.min(...entities.map(e => e.y));
+    const bottommostY = Math.max(...entities.map(e => e.y));
+    
+    // Find the leftmost and rightmost X positions for horizontal distribution
+    const leftmostX = Math.min(...entities.map(e => e.x));
+    const rightmostX = Math.max(...entities.map(e => e.x));
+    
+    // Sort entities by their current X position to maintain relative order
+    entities.sort((a, b) => a.x - b.x);
+    
+    // Calculate equal horizontal spacing
+    const totalWidth = rightmostX - leftmostX;
+    const spacing = entities.length > 1 ? totalWidth / (entities.length - 1) : 0;
+    
+    // Update positions in horizontal zigzag pattern
+    entities.forEach((entity, index) => {
+        // Determine row assignment based on flip state
+        let topRow;
+        if (zigzagHorizontalFlipped) {
+            // Flipped: odd indices go bottom, even indices go top
+            topRow = index % 2 === 0;
+        } else {
+            // Normal: odd indices go top, even indices go bottom
+            topRow = index % 2 === 1;
+        }
+        
+        const newX = leftmostX + (spacing * index);
+        const newY = topRow ? topmostY : bottommostY;
+        
+        if (entityType === 'circle') {
+            dataStore.updateCircle(entity.id, { x: newX, y: newY });
+        } else {
+            dataStore.updateSquare(entity.id, { x: newX, y: newY });
+        }
+    });
+}
+
+/**
+ * Align entities in a grid pattern based on their aspect ratio
+ */
+function alignGrid(entities, entityType, dataStore) {
+    if (entities.length < 2) return;
+
+    // Calculate current bounding box
+    const leftmostX = Math.min(...entities.map(e => e.x));
+    const rightmostX = Math.max(...entities.map(e => e.x));
+    const topmostY = Math.min(...entities.map(e => e.y));
+    const bottommostY = Math.max(...entities.map(e => e.y));
+    
+    const currentWidth = rightmostX - leftmostX;
+    const currentHeight = bottommostY - topmostY;
+    
+    // Calculate aspect ratio (width / height)
+    const aspectRatio = currentHeight > 0 ? currentWidth / currentHeight : 1;
+    
+    // Find the best grid configuration for this number of entities and aspect ratio
+    const { cols, rows } = findBestGridConfiguration(entities.length, aspectRatio);
+    
+    // Generate all grid positions
+    const gridPositions = [];
+    for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+            gridPositions.push({ row, col });
+        }
+    }
+    
+    // Calculate spacing
+    const horizontalSpacing = cols > 1 ? currentWidth / (cols - 1) : 0;
+    const verticalSpacing = rows > 1 ? currentHeight / (rows - 1) : 0;
+    
+    // Convert grid positions to actual coordinates
+    const targetPositions = gridPositions.slice(0, entities.length).map(pos => ({
+        x: leftmostX + (pos.col * horizontalSpacing),
+        y: topmostY + (pos.row * verticalSpacing),
+        gridPos: pos
+    }));
+    
+    // Assign each entity to the nearest grid position
+    const assignments = assignEntitiesToGrid(entities, targetPositions);
+    
+    // Update entity positions
+    assignments.forEach(assignment => {
+        const { entity, targetPos } = assignment;
+        
+        if (entityType === 'circle') {
+            dataStore.updateCircle(entity.id, { x: Math.round(targetPos.x), y: Math.round(targetPos.y) });
+        } else {
+            dataStore.updateSquare(entity.id, { x: Math.round(targetPos.x), y: Math.round(targetPos.y) });
+        }
+    });
+}
+
+/**
+ * Find the best grid configuration (cols x rows) for a given number of entities and aspect ratio
+ */
+function findBestGridConfiguration(entityCount, aspectRatio) {
+    if (entityCount === 1) {
+        return { cols: 1, rows: 1 };
+    }
+    
+    let bestConfig = { cols: 1, rows: entityCount };
+    let bestScore = Math.abs((1 / entityCount) - aspectRatio); // Score for 1xN grid
+    
+    // Try all possible grid configurations
+    for (let cols = 1; cols <= entityCount; cols++) {
+        const rows = Math.ceil(entityCount / cols);
+        
+        // Calculate the aspect ratio of this grid configuration
+        const gridAspectRatio = cols / rows;
+        
+        // Score based on how close this grid's aspect ratio matches the current layout
+        const score = Math.abs(gridAspectRatio - aspectRatio);
+        
+        if (score < bestScore) {
+            bestScore = score;
+            bestConfig = { cols, rows };
+        }
+    }
+    
+    return bestConfig;
+}
+
+/**
+ * Assign each entity to the nearest available grid position
+ */
+function assignEntitiesToGrid(entities, targetPositions) {
+    const assignments = [];
+    const usedPositions = new Set();
+    
+    // For each entity, find the nearest unused grid position
+    entities.forEach(entity => {
+        let bestDistance = Infinity;
+        let bestPositionIndex = -1;
+        
+        targetPositions.forEach((targetPos, index) => {
+            if (usedPositions.has(index)) return; // Position already used
+            
+            const distance = Math.sqrt(
+                Math.pow(entity.x - targetPos.x, 2) + 
+                Math.pow(entity.y - targetPos.y, 2)
+            );
+            
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                bestPositionIndex = index;
+            }
+        });
+        
+        if (bestPositionIndex !== -1) {
+            assignments.push({
+                entity,
+                targetPos: targetPositions[bestPositionIndex]
+            });
+            usedPositions.add(bestPositionIndex);
+        }
+    });
+    
+    return assignments;
+}
 
 /**
  * Check if entities are already arranged in a near-perfect circle
@@ -250,11 +417,6 @@ function alignCircularly(entities, entityType, dataStore) {
 		const angleStep = (2 * Math.PI) / entities.length;
 		const targetStartAngle = Math.PI / 2; // Always start at π/2 (top position)
 
-		console.log('=== CIRCULAR ALIGNMENT DEBUG ===');
-		console.log('Center:', { centerX, centerY });
-		console.log('Radius:', radius);
-		console.log('Angle step:', angleStep);
-
 		// Sort entities by their current angle from center to maintain relative positions
 		const entitiesWithAngles = entities.map(entity => {
 			const dx = entity.x - centerX;
@@ -267,18 +429,8 @@ function alignCircularly(entities, entityType, dataStore) {
 			return { entity, angle: currentAngle };
 		});
 
-		console.log('Before sorting:');
-		entitiesWithAngles.forEach((item, i) => {
-			console.log(`  Entity ${item.entity.id}: pos(${item.entity.x}, ${item.entity.y}) angle=${item.angle.toFixed(3)}rad (${(item.angle * 180 / Math.PI).toFixed(1)}°)`);
-		});
-
 		// Sort by current angle to preserve relative positioning
 		entitiesWithAngles.sort((a, b) => a.angle - b.angle);
-
-		console.log('After sorting:');
-		entitiesWithAngles.forEach((item, i) => {
-			console.log(`  [${i}] Entity ${item.entity.id}: angle=${item.angle.toFixed(3)}rad (${(item.angle * 180 / Math.PI).toFixed(1)}°)`);
-		});
 
 		// Find which entity should be closest to π/2 (90°) to use as anchor
 		let anchorIndex = 0;
@@ -297,8 +449,6 @@ function alignCircularly(entities, entityType, dataStore) {
 			}
 		}
 
-		console.log(`Using entity ${entitiesWithAngles[anchorIndex].entity.id} as anchor (closest to π/2)`);
-
 		// Position entities around the circle, with the anchor entity at π/2
 		entitiesWithAngles.forEach((item, index) => {
 			// Calculate offset from anchor - keep it simple and direct
@@ -310,19 +460,12 @@ function alignCircularly(entities, entityType, dataStore) {
 			const newX = Math.round(centerX + Math.cos(targetAngle) * radius);
 			const newY = Math.round(centerY + Math.sin(targetAngle) * radius); // Add sin for standard math coordinates
 
-			console.log(`  Positioning entity ${item.entity.id} at index ${index} (offset ${offsetFromAnchor} from anchor):`);
-			console.log(`    Target angle: ${targetAngle.toFixed(3)}rad (${(targetAngle * 180 / Math.PI).toFixed(1)}°)`);
-			console.log(`    Old pos: (${item.entity.x}, ${item.entity.y})`);
-			console.log(`    New pos: (${newX}, ${newY})`);
-
 			if (entityType === 'circle') {
 				dataStore.updateCircle(item.entity.id, { x: newX, y: newY });
 			} else {
 				dataStore.updateSquare(item.entity.id, { x: newX, y: newY });
 			}
 		});
-
-		console.log('=== END DEBUG ===');
 	}
 }
 

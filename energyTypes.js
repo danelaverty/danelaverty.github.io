@@ -8,6 +8,13 @@ export const energyTypes = [
     icon: '⚡'
   },
   {
+    id: 'igniter',
+    name: 'Igniter',
+    description: 'Generates and emits energy to influence inactive circles',
+    color: '#FF8C00', // Orange
+    icon: '🔥'
+  },
+  {
     id: 'dampener',
     name: 'Dampener',
     description: 'Dampens and reduces energy from activated circles',

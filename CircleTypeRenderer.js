@@ -7,8 +7,11 @@ import { GlowCircleRenderer } from './CRGlowCircleRenderer.js';
 import { TriangleCircleRenderer } from './CRTriangleCircleRenderer.js';
 import { GemCircleRenderer } from './CRGemCircleRenderer.js';
 import { EmojiCircleRenderer } from './CREmojiCircleRenderer.js';
+import { GroupCircleRenderer } from './CRGroupCircleRenderer.js';
+import { ShapeRenderer } from './CRShapeRenderer.js';
 import { circleTypeStyles } from './CircleTypeStyles.js';
 import { ColorFlowSystem } from './ColorFlowSystem.js';
+import { useDataStore } from './dataCoordinator.js';
 
 // Inject main component styles
 injectComponentStyles('circle-type-renderer', circleTypeStyles);
@@ -20,10 +23,10 @@ export const CircleTypeRenderer = {
      * @param {Object} circle - The circle data object
      * @param {boolean} isSelected - Whether the circle is selected
      * @param {number} squareCount - Number of squares for this circle
+     * @param {number} belongingCount - Number of circles belonging to this group (for group circles)
      */
-    render(element, circle, isSelected = false, squareCount = null) {
+    render(element, circle, isSelected = false, squareCount = null, belongingCount = null) {
         if (!element) {
-            console.warn('CircleTypeRenderer.render called with null element');
             return;
         }
         
@@ -44,7 +47,7 @@ export const CircleTypeRenderer = {
         
         // Set the appropriate type class
         if (element && element.classList) {
-            element.classList.remove('circle-type-basic', 'circle-type-glow', 'circle-type-triangle', 'circle-type-gem', 'circle-type-emoji');
+            element.classList.remove('circle-type-basic', 'circle-type-glow', 'circle-type-triangle', 'circle-type-gem', 'circle-type-emoji', 'circle-type-shape', 'circle-type-group');
             element.classList.add(`circle-type-${currentType}`);
         }
         
@@ -63,6 +66,16 @@ export const CircleTypeRenderer = {
                 break;
             case 'emoji':
                 EmojiCircleRenderer.render(element, circle);
+                break;
+            case 'shape':
+                ShapeRenderer.render(element, circle);
+                break;
+            case 'group':
+                // Use provided belonging count or fall back to direct lookup
+                const actualBelongingCount = belongingCount !== null && belongingCount !== undefined ? 
+                    belongingCount : 
+                    useDataStore().getCirclesBelongingToGroup(circle.id).length;
+                GroupCircleRenderer.render(element, circle, actualBelongingCount);
                 break;
             default:
                 BasicCircleRenderer.render(element, circle);
@@ -122,9 +135,17 @@ export const CircleTypeRenderer = {
             '.color-flow-overlay',
             '.outer-polygon-container',
             '.gem-container',
-            '.emoji-circle-container'
+            '.emoji-circle-container',
+            '.shape-wrap',
+            '.right-triangle-wrap',
+            '.diamond-wrap',
+            '.oval-wrap',
+            '.right-triangle-shape',
+            '.diamond-shape',
+            '.oval-shape',
+            '.group-circle-container'
         ];
-        
+
         elementsToRemove.forEach(selector => {
             try {
                 const elements = element.querySelectorAll(selector);
