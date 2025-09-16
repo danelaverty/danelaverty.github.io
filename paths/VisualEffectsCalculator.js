@@ -3,7 +3,7 @@ export class VisualEffectsCalculator {
     constructor(config = {}) {
         this.config = {
             // Visual effect ranges
-            maxScale: 1.3,
+            maxScale: 3.3,
             minScale: 0.7,
             maxOpacity: 1.0,
             minOpacity: 0.5,
@@ -23,6 +23,7 @@ export class VisualEffectsCalculator {
             
             // Circle types that should not receive scale effects
             noScaleCircleTypes: ['emoji', 'group'],
+            //noScaleCircleTypes: ['group'],
             
             ...config
         };

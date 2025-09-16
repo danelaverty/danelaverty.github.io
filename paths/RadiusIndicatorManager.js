@@ -117,8 +117,8 @@ export class RadiusIndicatorManager {
     applyIndicatorStyles(indicator, centerPos, radius, diameter, entity) {
         Object.assign(indicator.style, {
             position: 'absolute',
-            left: (centerPos.x - radius) + 'px',
-            top: (centerPos.y - radius) + 'px',
+            left: (centerPos.x - radius - 20) + 'px',
+            top: (centerPos.y - radius - 20) + 'px',
             width: diameter + 'px',
             height: diameter + 'px',
             borderRadius: '50%',
@@ -156,8 +156,8 @@ export class RadiusIndicatorManager {
             const connectionDistance = this.entityTypeHandler.getConnectionDistance(entity);
             const radius = connectionDistance;
 
-            indicator.style.left = (centerPos.x - radius) + 'px';
-            indicator.style.top = (centerPos.y - radius) + 'px';
+            indicator.style.left = (centerPos.x - radius - 20) + 'px';
+            indicator.style.top = (centerPos.y - radius - 20) + 'px';
         });
     }
 

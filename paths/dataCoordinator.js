@@ -343,6 +343,11 @@ function createDataCoordinator() {
             if (result) saveToStorage();
             return result;
         },
+        cycleShinynessReceiveMode: (id) => {
+            const result = entityStore.cycleCircleShinynessReceiveMode(id);
+            if (result) { saveToStorage(); }
+            return result;
+        },
         cycleCircleConnectible: (id) => {
             const result = entityStore.cycleCircleConnectible(id);
             if (result) {

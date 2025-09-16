@@ -1,4 +1,4 @@
-// EnergyReceivedIndicator.js - Component for displaying energy received from other entities with shinyness calculation
+// EnergyReceivedIndicator.js - Component for displaying energy received from other entities with accurate shinyness calculation
 import { computed, ref, onMounted, onUnmounted } from './vue-composition-api.js';
 import { getEnergyTypeColor } from './energyTypes.js';
 import { injectComponentStyles } from './styleUtils.js';
@@ -101,6 +101,15 @@ const componentStyles = `
     .shinyness-neutral {
         color: #AAA;
     }
+
+    /* Receive mode indicators */
+    .receive-mode-and {
+        border-left: 2px solid #FFA500;
+    }
+
+    .receive-mode-explosive-and {
+        border-left: 2px solid #FF4500;
+    }
 `;
 
 injectComponentStyles('energy-received-indicator', componentStyles);
@@ -131,79 +140,6 @@ export const EnergyReceivedIndicator = {
         const proximitySystem = useEnergyProximitySystem();
 
         /**
-         * Calculate base shinyness from activation status
-         */
-        const calculateBaseShinyness = () => {
-            const activationMap = {
-                'activated': 1,
-                'inactive': -1,
-                'inert': 0
-            };
-            return activationMap[props.entity.activation] || 0;
-        };
-
-        /**
-         * Calculate energy effect on shinyness
-         */
-        const calculateEnergyEffect = () => {
-            let energyEffect = 0;
-            
-            energyData.value.forEach(effect => {
-                if (effect.energyType === 'exciter' || effect.energyType === 'igniter') {
-                    energyEffect += effect.amount * 2;
-                } else if (effect.energyType === 'dampener') {
-                    energyEffect -= effect.amount * 2;
-                }
-            });
-            
-            return energyEffect;
-        };
-
-        /**
-         * Get CSS class for shinyness value styling
-         */
-        const getShinynessClass = (value) => {
-            if (value > 0) return 'shinyness-positive';
-            if (value < 0) return 'shinyness-negative';
-            return 'shinyness-neutral';
-        };
-
-        /**
-         * Format shinyness value for display
-         */
-        const formatShinynessValue = (value) => {
-            return value >= 0 ? `+${value.toFixed(2)}` : value.toFixed(2);
-        };
-
-        /**
-         * Calculate shinyness contribution for an energy effect
-         * Dampeners contribute negative shinyness, others contribute positive
-         */
-        const calculateShinynessContribution = (effect) => {
-            if (effect.energyType === 'dampener') {
-                return -2 * effect.amount;
-            }
-            return 2 * effect.amount;
-        };
-
-        const calculateShinynessData = () => {
-            const energyEffectsForShinyness = energyData.value.map(effect => ({
-                energyType: effect.energyType,
-                amount: effect.amount
-            }));
-            
-            return shinynessCalculator.calculateNetShinyness(
-                props.entity.activation, 
-                energyEffectsForShinyness
-            );
-        };
-
-        const shinynessData = computed(() => calculateShinynessData());
-        const baseShinyness = computed(() => shinynessData.value.base);
-        const energyEffect = computed(() => shinynessData.value.energy);
-        const netShinyness = computed(() => shinynessData.value.net);
-
-        /**
          * Get the name of an entity by its ID
          */
         const getEntityName = (entityId) => {
@@ -229,30 +165,6 @@ export const EnergyReceivedIndicator = {
                     }
                 }
                 
-                // Try alternative methods if they exist
-                if (props.dataStore.circles && props.dataStore.circles.has) {
-                    const circle = props.dataStore.circles.get(entityId);
-                    if (circle && circle.name) {
-                        return circle.name;
-                    }
-                }
-                
-                if (props.dataStore.squares && props.dataStore.squares.has) {
-                    const square = props.dataStore.squares.get(entityId);
-                    if (square && square.name) {
-                        return square.name;
-                    }
-                }
-                
-                // If we have access to all entities, search through them
-                if (props.dataStore.getAllEntities) {
-                    const entities = props.dataStore.getAllEntities();
-                    const entity = entities.find(e => e.id === entityId);
-                    if (entity && entity.name) {
-                        return entity.name;
-                    }
-                }
-                
                 // Last resort: check if the proximity system has cached circle data
                 if (proximitySystem.circles.has(entityId)) {
                     const circleData = proximitySystem.circles.get(entityId);
@@ -269,7 +181,7 @@ export const EnergyReceivedIndicator = {
         };
 
         /**
-         * Get proximity-based energy effects for this entity
+         * Get proximity-based energy effects for this entity with connection metadata
          */
         const getProximityEnergyEffects = () => {
             const effects = [];
@@ -325,6 +237,7 @@ export const EnergyReceivedIndicator = {
                         energyType,
                         amount: Math.max(0, Math.min(1, influence)),
                         connectionType: 'proximity'
+                        // Note: proximity effects don't have connection metadata for receive modes
                     });
                 }
             });
@@ -333,9 +246,9 @@ export const EnergyReceivedIndicator = {
         };
 
         /**
-         * Get explicit connection-based energy effects for this entity
+         * Get explicit connection-based energy effects for this entity with metadata
          */
-const getExplicitEnergyEffects = () => {
+        const getExplicitEnergyEffects = () => {
             const effects = [];
             
             if (!proximitySystem || !props.dataStore) {
@@ -356,7 +269,8 @@ const getExplicitEnergyEffects = () => {
                             sourceName: getEntityName(effect.sourceCircleId),
                             energyType: effect.isIgniter ? 'igniter' : 'exciter',
                             amount: effect.influence,
-                            connectionType: 'explicit'
+                            connectionType: 'explicit',
+                            connectionMeta: effect.connectionMeta // Include metadata for receive mode calculations
                         });
                     }
                 });
@@ -369,7 +283,8 @@ const getExplicitEnergyEffects = () => {
                             sourceName: getEntityName(effect.sourceCircleId),
                             energyType: 'dampener',
                             amount: effect.influence,
-                            connectionType: 'explicit'
+                            connectionType: 'explicit',
+                            connectionMeta: effect.connectionMeta // Include metadata for receive mode calculations
                         });
                     }
                 });
@@ -382,6 +297,7 @@ const getExplicitEnergyEffects = () => {
 
         /**
          * Update energy data by combining proximity and explicit effects
+         * Then calculate accurate shinyness using the actual ShinynessCalculator
          */
         const updateEnergyData = () => {
             if (props.entityType !== 'circle' || props.entity.activation === 'inert') {
@@ -407,11 +323,84 @@ const getExplicitEnergyEffects = () => {
                 combinedEffects.set(key, effect);
             });
 
-            // Convert to array and sort by source name
-            energyData.value = Array.from(combinedEffects.values())
-                .filter(effect => effect.amount > 0.01) // Filter out very small effects
-                .sort((a, b) => a.sourceName.localeCompare(b.sourceName));
+            // Convert to array for ShinynessCalculator
+            const allEffects = Array.from(combinedEffects.values())
+                .filter(effect => effect.amount > 0.01); // Filter out very small effects
+
+            // Use ShinynessCalculator to get accurate shinyness with receive mode support
+            const shinynessReceiveMode = props.entity.shinynessReceiveMode || 'or';
+            const shinynessResult = shinynessCalculator.calculateNetShinyness(
+                props.entity.activation,
+                allEffects, // Pass the effects with metadata
+                shinynessReceiveMode
+            );
+
+            // Create display data using the breakdown from ShinynessCalculator
+            const displayData = [];
+            
+            // Map breakdown back to original effects for display
+            if (shinynessResult.effectBreakdown) {
+                shinynessResult.effectBreakdown.forEach((breakdown, index) => {
+                    // Find the corresponding original effect
+                    const originalEffect = allEffects[index];
+                    if (originalEffect) {
+                        displayData.push({
+                            sourceId: originalEffect.sourceId,
+                            sourceName: originalEffect.sourceName,
+                            energyType: breakdown.energyType,
+                            amount: breakdown.originalAmount,
+                            connectionType: originalEffect.connectionType,
+                            actualShinynessContribution: breakdown.modifiedAmount,
+                            receiveModifier: breakdown.receiveModifier
+                        });
+                    }
+                });
+            }
+
+            // Sort by source name and store
+            energyData.value = displayData.sort((a, b) => a.sourceName.localeCompare(b.sourceName));
         };
+
+        /**
+         * Calculate actual shinyness data using ShinynessCalculator
+         */
+        const calculateShinynessData = () => {
+            if (props.entityType !== 'circle' || props.entity.activation === 'inert') {
+                return { base: 0, energy: 0, net: 0, receiveMode: 'or' };
+            }
+
+            // Get all current energy effects
+            const proximityEffects = getProximityEnergyEffects();
+            const explicitEffects = getExplicitEnergyEffects();
+            
+            // Combine effects
+            const combinedEffects = new Map();
+            proximityEffects.forEach(effect => {
+                const key = `${effect.sourceId}_${effect.energyType}`;
+                combinedEffects.set(key, effect);
+            });
+            explicitEffects.forEach(effect => {
+                const key = `${effect.sourceId}_${effect.energyType}`;
+                combinedEffects.set(key, effect);
+            });
+
+            const allEffects = Array.from(combinedEffects.values())
+                .filter(effect => effect.amount > 0.01);
+
+            // Calculate with ShinynessCalculator
+            const shinynessReceiveMode = props.entity.shinynessReceiveMode || 'or';
+            return shinynessCalculator.calculateNetShinyness(
+                props.entity.activation,
+                allEffects,
+                shinynessReceiveMode
+            );
+        };
+
+        const shinynessData = computed(() => calculateShinynessData());
+        const baseShinyness = computed(() => shinynessData.value.base);
+        const energyEffect = computed(() => shinynessData.value.energy);
+        const netShinyness = computed(() => shinynessData.value.net);
+        const receiveMode = computed(() => shinynessData.value.receiveMode || 'or');
 
         /**
          * Start periodic updates
@@ -458,21 +447,19 @@ const getExplicitEnergyEffects = () => {
             baseShinyness,
             energyEffect,
             netShinyness,
-            getShinynessClass,
-            formatShinynessValue,
-            calculateShinynessContribution,
-            baseShinyness,
-            energyEffect,
-            netShinyness,
+            receiveMode,
             getShinynessClass: shinynessCalculator.getShinynessClass.bind(shinynessCalculator),
-            formatShinynessValue: shinynessCalculator.formatShinynessValue.bind(shinynessCalculator),
-            calculateShinynessContribution: (effect) => shinynessCalculator.calculateEnergyShinyness([effect])
+            formatShinynessValue: shinynessCalculator.formatShinynessValue.bind(shinynessCalculator)
         };
     },
     template: `
         <div 
             v-if="shouldShow" 
             class="energy-received-indicator"
+            :class="{
+                'receive-mode-and': receiveMode === 'and',
+                'receive-mode-explosive-and': receiveMode === 'explosiveAnd'
+            }"
         >
             <table class="energy-received-table">
                 <tbody>
@@ -506,8 +493,8 @@ const getExplicitEnergyEffects = () => {
                         <td class="energy-received-cell energy-received-amount">
                             {{ effect.amount.toFixed(2) }}
                         </td>
-                        <td class="energy-received-cell shinyness-contribution" :class="getShinynessClass(calculateShinynessContribution(effect))">
-                            {{ formatShinynessValue(calculateShinynessContribution(effect)) }}
+                        <td class="energy-received-cell shinyness-contribution" :class="getShinynessClass(effect.actualShinynessContribution)">
+                            {{ formatShinynessValue(effect.actualShinynessContribution) }}
                         </td>
                     </tr>
                     
