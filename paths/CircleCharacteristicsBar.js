@@ -23,7 +23,8 @@ import { CircleEmojiControl } from './CBCircleEmojiControl.js';
 import { ColorControl } from './CBColorControl.js';
 import { EnergyControl } from './CBEnergyControl.js';
 import { ActivationControl } from './CBActivationControl.js';
-import { CBActivationTriggersControl } from './CBActivationTriggersControl.js'; // NEW: Import activation triggers control
+import { CBActivationTriggersControl } from './CBActivationTriggersControl.js';
+import { CBShinynessReceiveModeControl } from './CBShinynessReceiveModeControl.js';
 import { CBJumpToReferenceControl } from './CBJumpToReferenceControl.js';
 import { CBConnectibleControl } from './CBConnectibleControl.js';
 import { BreakReferenceControl } from './CBBreakReferenceControl.js';
@@ -137,7 +138,6 @@ export const CircleCharacteristicsBar = {
       }
     });
 
-    // NEW: Check if multiple circles are selected
     const hasMultipleCirclesSelected = computed(() => {
       return dataStore.hasMultipleCirclesSelected();
     });
@@ -164,7 +164,6 @@ export const CircleCharacteristicsBar = {
         return 'activated';
     });
 
-    // NEW: Computed for activationTriggers
     const circleActivationTriggers = computed(() => {
         if (hasMultipleCirclesSelected.value) {
             // For multiple selection, show the most common activationTriggers state or default to 'none'
@@ -186,6 +185,28 @@ export const CircleCharacteristicsBar = {
         }
         return 'none';
     });
+
+      const circleShinynessReceiveMode = computed(() => {
+          if (hasMultipleCirclesSelected.value) {
+              // For multiple selection, show the most common 
+              const selectedIds = dataStore.getSelectedCircles();
+              const shinynessReceiveModeValues = selectedIds.map(id => {
+                  const circle = dataStore.getCircle(id);
+                  return circle ? circle.shinynessReceiveMode : 'or';
+              });
+
+              // Count occurrences and return most common
+              const counts = shinynessReceiveModeValues.reduce((acc, val) => {
+                  acc[val] = (acc[val] || 0) + 1;
+                  return acc;
+              }, {});
+
+              return Object.entries(counts).reduce((a, b) => counts[a[0]] > counts[b[0]] ? a : b)[0];
+          } else if (dataHooks.selectedCircle.value) {
+              return dataHooks.selectedCircle.value.shinynessReceiveMode || 'or';
+          }
+          return 'or';
+      });
 
     const selectedExplicitConnection = computed(() => {
         if (hasMultipleCirclesSelected.value) {
@@ -209,7 +230,6 @@ export const CircleCharacteristicsBar = {
         return selectedExplicitConnection.value?.directionality || 'none';
     });
 
-    // NEW: Updated visibility logic - show for single OR multiple circle selection
     const isVisible = computed(() => {
       const selectedCircles = dataStore.getSelectedCircles();
       return selectedCircles.length >= 1; // Changed from === 1 to >= 1
@@ -237,7 +257,6 @@ export const CircleCharacteristicsBar = {
 	    return 'receives';
     });
 
-    // NEW: Get selected circle objects for multiple selection
     const getSelectedCircleObjects = computed(() => {
       const selectedIds = dataStore.getSelectedCircles();
       return selectedIds.map(id => dataStore.getCircle(id)).filter(Boolean);
@@ -250,7 +269,6 @@ export const CircleCharacteristicsBar = {
       return emojiAttributes.value.find(attr => attr.key === 'cause') || emojiAttributes.value[0];
     });
 
-    // NEW: Get current circle emoji for picker initialization
     const getCurrentCircleEmoji = computed(() => {
       if (hasMultipleCirclesSelected.value) {
         // For multiple selection, use the first circle's emoji as reference
@@ -281,12 +299,10 @@ export const CircleCharacteristicsBar = {
              !isReferenceCircle.value;
     });
 
-    // NEW: Should show emoji controls (only for single circle selection)
     const shouldShowEmojiControls = computed(() => {
       return !hasMultipleCirclesSelected.value;
     });
 
-    // NEW: Should show circle characteristic controls (hidden for reference circles in single selection)
     const shouldShowCircleCharacteristicControls = computed(() => {
       if (hasMultipleCirclesSelected.value) {
         return true; // Always show for multiple selection
@@ -295,7 +311,6 @@ export const CircleCharacteristicsBar = {
       return !isReferenceCircle.value;
     });
 
-    // NEW: Should show jump to reference control - same logic as break reference but separate for clarity
     const shouldShowJumpToReferenceControl = computed(() => {
       if (hasMultipleCirclesSelected.value) {
         // For multiple selection, check if ANY selected circle is a reference
@@ -309,7 +324,6 @@ export const CircleCharacteristicsBar = {
       return isReferenceCircle.value;
     });
 
-    // NEW: Should show break reference control - opposite of shouldShowCircleCharacteristicControls
     const shouldShowBreakReferenceControl = computed(() => {
       if (hasMultipleCirclesSelected.value) {
         // For multiple selection, check if ANY selected circle is a reference
@@ -414,7 +428,6 @@ export const CircleCharacteristicsBar = {
         }
     };
 
-    // NEW: Handle activationTriggers cycling
     const handleActivationTriggersCycle = () => {
         if (hasMultipleCirclesSelected.value) {
             // Apply to all selected circles
@@ -427,6 +440,20 @@ export const CircleCharacteristicsBar = {
             dataStore.cycleCircleActivationTriggers(dataHooks.selectedCircle.value.id);
         }
     };
+
+
+      const handleShinynessReceiveModeCycle = () => {
+          if (hasMultipleCirclesSelected.value) {
+              // Apply to all selected circles
+              const selectedIds = dataStore.getSelectedCircles();
+              selectedIds.forEach(circleId => {
+                  dataStore.cycleShinynessReceiveMode(circleId);
+              });
+          } else if (dataHooks.selectedCircle.value) {
+              // Apply to single selected circle
+              dataStore.cycleShinynessReceiveMode(dataHooks.selectedCircle.value.id);
+          }
+      };
 
     const handleCircleEmojiSelect = (emoji) => {
       if (hasMultipleCirclesSelected.value) {
@@ -444,7 +471,6 @@ export const CircleCharacteristicsBar = {
       pickerHooks.closePickerAction('circleEmoji');
     };
 
-    // NEW: Handle jumping to referenced circle (same logic as ctrl+click in CircleViewer)
     const handleJumpToReference = () => {
       // This function implements the same logic as ctrl+click in CircleViewer.handleCircleSelect
       if (hasMultipleCirclesSelected.value) {
@@ -462,7 +488,6 @@ export const CircleCharacteristicsBar = {
       }
     };
 
-    // NEW: Helper function to perform the actual jump to reference
     const performJumpToReference = (referencedCircleId) => {
       // Find which document contains the referenced circle
       const allCircleDocuments = dataStore.getAllCircleDocuments();
@@ -508,7 +533,6 @@ export const CircleCharacteristicsBar = {
       }
     };
 
-    // NEW: Handle breaking references for selected circles
     const handleBreakReference = () => {
       if (hasMultipleCirclesSelected.value) {
         // Break reference for all selected circles that have one
@@ -590,7 +614,8 @@ export const CircleCharacteristicsBar = {
       isCircleEmojiPickerVisible,
       isVisible,
       circleActivation,
-      circleActivationTriggers, // NEW: Add activationTriggers computed
+      circleActivationTriggers,
+        circleShinynessReceiveMode,
       hasMultipleCirclesSelected,
       shouldShowEmojiControls,
       shouldShowCircleCharacteristicControls,
@@ -606,7 +631,8 @@ export const CircleCharacteristicsBar = {
       handleTypeSelect,
       handleEnergySelect,
       handleActivationCycle,
-      handleActivationTriggersCycle, // NEW: Add activationTriggers handler
+      handleActivationTriggersCycle,
+        handleShinynessReceiveModeCycle,
       handleEmojiSelect,
       handleCircleEmojiSelect,
       handleQuickEmojiSelect,
@@ -659,7 +685,8 @@ export const CircleCharacteristicsBar = {
     ColorControl,
     EnergyControl,
     ActivationControl,
-    CBActivationTriggersControl, // NEW: Add activation triggers control component
+    CBActivationTriggersControl,
+CBShinynessReceiveModeControl,
     CBJumpToReferenceControl,
     CBConnectibleControl,
     BreakReferenceControl,
@@ -720,10 +747,15 @@ export const CircleCharacteristicsBar = {
                 @cycle="handleActivationCycle"
             />
 
-            <!-- NEW: Activation Triggers Control -->
             <CBActivationTriggersControl 
                 :activationTriggers="circleActivationTriggers"
                 @cycle="handleActivationTriggersCycle"
+            />
+
+            <CBShinynessReceiveModeControl 
+                v-if="shouldShowCircleCharacteristicControls"
+                :shinynessReceiveMode="circleShinynessReceiveMode"
+                @cycle="handleShinynessReceiveModeCycle"
             />
 
             <!-- Connectible Control -->

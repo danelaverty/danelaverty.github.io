@@ -31,10 +31,10 @@ export class EntityDragHandler {
         
         // Initialize managers
         this.dragStateManager = new DragStateManager(this.entityTypeHandler);
-        this.radiusIndicatorManager = new RadiusIndicatorManager(
+        /*this.radiusIndicatorManager = new RadiusIndicatorManager(
             this.entityTypeHandler, 
             this.entityTypeHandler.getContainer()
-        );
+        );*/
         
         // Set up connection drag updater
         this.setupConnectionUpdater();
@@ -303,11 +303,11 @@ export class EntityDragHandler {
         const selectedIds = this.entityTypeHandler.getSelectedEntityIds();
 
         // Create radius indicators on first drag move
-        if (!this.radiusIndicatorManager.isActive) {
+        /*if (!this.radiusIndicatorManager.isActive) {
             if (selectedIds && selectedIds.length > 0) {
                 this.radiusIndicatorManager.createIndicators(selectedIds, deltaX, deltaY);
             }
-        }
+        }*/
 
         // Update entity visuals
         if (this.entityTypeHandler.isMultiSelected(this.props.entity.id)) {
@@ -320,9 +320,9 @@ export class EntityDragHandler {
         }
 
         // Update radius indicators
-        if (this.radiusIndicatorManager.isActive) {
+        /*if (this.radiusIndicatorManager.isActive) {
             this.radiusIndicatorManager.updateIndicators(selectedIds, deltaX, deltaY);
-        }
+        }*/
     }
 
     updateConnectionsDuringDrag() {
@@ -383,7 +383,7 @@ export class EntityDragHandler {
         this.proximityCallbacks.onDragEnd?.();
         
         // Clean up visuals
-        this.radiusIndicatorManager.removeIndicators();
+        //this.radiusIndicatorManager.removeIndicators();
         
         const selectedIds = this.entityTypeHandler.getSelectedIds();
         this.dragStateManager.resetEntityVisuals(selectedIds);
@@ -510,7 +510,7 @@ export class EntityDragHandler {
 
     // Cleanup method
     cleanup() {
-        this.radiusIndicatorManager.cleanup();
+        //this.radiusIndicatorManager.cleanup();
         // NEW: Reset any group member visuals on cleanup
         this.resetGroupMemberVisuals();
         // Remove mouse move listener if needed

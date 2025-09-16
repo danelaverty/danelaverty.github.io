@@ -239,7 +239,7 @@ export class EnergyProximitySystem {
      */
     initializeElementTransition(element) {
         const transitionDuration = '1s';
-        element.style.transition = `transform ${transitionDuration} ease-out, opacity ${transitionDuration} ease-out, filter ${transitionDuration} ease-out`;
+        element.style.transition = `transform ${transitionDuration} cubic-bezier(0.2,-2,0.8,2), opacity ${transitionDuration} cubic-bezier(0.2,-2,0.8,2), filter ${transitionDuration} cubic-bezier(0.2,-2,0.8,2)`;
     }
 
     /**
@@ -619,7 +619,7 @@ applyProximityEffects(effects) {
                 this.setElementProximityEffects(data.element, visualEffects.scale, visualEffects.opacity, visualEffects.saturation);
             } else {
                 // No energy influencers - use basic visual effects
-                this.setElementProximityEffects(data.element, config.minScale, config.maxOpacity, config.maxSaturation);
+                this.setElementProximityEffects(data.element, 1, 1, 1);
             }
         });
     });

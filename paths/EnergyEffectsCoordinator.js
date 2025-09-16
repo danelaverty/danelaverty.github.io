@@ -1,4 +1,4 @@
-// EnergyEffectsCoordinator.js - Orchestrates the three systems with circle type awareness
+// EnergyEffectsCoordinator.js - Orchestrates the three systems with circle type awareness and shinynessReceiveMode support
 import { EnergyAggregator } from './EnergyAggregator.js';
 import { EnergyIgnitionStateManager } from './EnergyIgnitionStateManager.js';
 import { ShinynessCalculator } from './ShinynessCalculator.js';
@@ -14,10 +14,10 @@ export class EnergyEffectsCoordinator {
     }
 
     /**
-     * Convert energy effects to shinyness format
+     * Convert energy effects to shinyness format with connection metadata
      * @param {Array} exciterEffects - Array of exciter effects from aggregator
      * @param {Array} dampenerEffects - Array of dampener effects from aggregator
-     * @returns {Array} Combined effects in shinyness format
+     * @returns {Array} Combined effects in shinyness format with metadata
      */
     convertToShinynessFormat(exciterEffects, dampenerEffects) {
         const shinynessEffects = [];
@@ -27,7 +27,8 @@ export class EnergyEffectsCoordinator {
             const energyType = effect.isIgniter ? 'igniter' : 'exciter';
             shinynessEffects.push({
                 energyType: energyType,
-                amount: effect.influence
+                amount: effect.influence,
+                connectionMeta: effect.connectionMeta // Pass through metadata for receive mode calculations
             });
         });
         
@@ -35,7 +36,8 @@ export class EnergyEffectsCoordinator {
         dampenerEffects.forEach(effect => {
             shinynessEffects.push({
                 energyType: 'dampener',
-                amount: effect.influence
+                amount: effect.influence,
+                connectionMeta: effect.connectionMeta // Pass through metadata for receive mode calculations
             });
         });
         
@@ -55,13 +57,19 @@ export class EnergyEffectsCoordinator {
             return null;
         }
 
-        // Convert energy effects to shinyness format
+        // Convert energy effects to shinyness format with metadata
         const energyEffectsForShinyness = this.convertToShinynessFormat(exciterEffects, dampenerEffects);
         
-        // Calculate shinyness
-        const shinynessResult = this.shinynessCalculator.calculateNetShinyness(targetCircle.activation, energyEffectsForShinyness);
+        // Get the target circle's shinynessReceiveMode (default to 'or')
+        const shinynessReceiveMode = targetCircle.shinynessReceiveMode || 'or';
         
-        console.log(targetCircle);
+        // Calculate shinyness with receive mode support
+        const shinynessResult = this.shinynessCalculator.calculateNetShinyness(
+            targetCircle.activation, 
+            energyEffectsForShinyness,
+            shinynessReceiveMode
+        );
+        
         // Calculate visual effects from shinyness, passing circle type to respect scaling rules
         const visualEffects = this.visualEffectsCalculator.calculateVisualEffects(
             shinynessResult.net, 

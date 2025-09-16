@@ -1,4 +1,4 @@
-// ExplicitEnergyDetector.js - OPTIMIZED: High-performance energy effects from explicit connections
+// ExplicitEnergyDetector.js - OPTIMIZED: High-performance energy effects from explicit connections with shinynessReceiveMode support
 import { EnergyEffectsCoordinator } from './EnergyEffectsCoordinator.js';
 
 export class ExplicitEnergyDetector {
@@ -16,6 +16,9 @@ export class ExplicitEnergyDetector {
         // Track which viewers have been indexed
         this.indexedViewers = new Set();
         this.viewerConnectionCounts = new Map(); // viewerId -> connection count for change detection
+        
+        // NEW: Connection metadata cache for shinynessReceiveMode calculations
+        this.connectionMetadataCache = new Map(); // circleId -> { exciterCount, dampenerCount }
     }
 
     /**
@@ -67,6 +70,9 @@ export class ExplicitEnergyDetector {
         
         this.indexedViewers.add(viewerId);
         this.viewerConnectionCounts.set(viewerId, allConnections.length);
+        
+        // Clear connection metadata cache since connections changed
+        this.connectionMetadataCache.clear();
     }
 
     /**
@@ -80,6 +86,7 @@ export class ExplicitEnergyDetector {
             this.connectionsByCircle.delete(circle.id);
             this.energyEffectsByCircle.delete(circle.id);
             this.circleDataCache.delete(circle.id);
+            this.connectionMetadataCache.delete(circle.id);
         });
         
         this.indexedViewers.delete(viewerId);
@@ -129,10 +136,53 @@ export class ExplicitEnergyDetector {
     }
 
     /**
-     * OPTIMIZED: Find all active exciters/igniters connected to a target circle
+     * NEW: Calculate connection metadata for shinynessReceiveMode
+     * @param {string} targetCircleId - The circle receiving energy
+     * @param {string} energyType - 'exciter', 'igniter', or 'dampener'
+     * @returns {Object} { totalConnected, activeCount }
+     */
+    calculateConnectionMetadata(targetCircleId, energyType) {
+        const cacheKey = `${targetCircleId}_${energyType}`;
+        
+        if (this.connectionMetadataCache.has(cacheKey)) {
+            return this.connectionMetadataCache.get(cacheKey);
+        }
+
+        const connections = this.getConnectionsForCircle(targetCircleId);
+        let totalConnected = 0;
+        let activeCount = 0;
+
+        connections.forEach(connection => {
+            const otherCircleId = connection.entity1Id === targetCircleId ? 
+                connection.entity2Id : connection.entity1Id;
+            
+            const cachedData = this.getCachedCircleData(otherCircleId);
+            if (!cachedData) return;
+
+            const { energyTypes, isActivated } = cachedData;
+
+            // Check if this connection involves the specified energy type
+            const hasEnergyType = energyTypes.includes(energyType) || 
+                (energyType === 'exciter' && energyTypes.includes('igniter'));
+
+            if (hasEnergyType) {
+                totalConnected++;
+                if (isActivated) {
+                    activeCount++;
+                }
+            }
+        });
+
+        const metadata = { totalConnected, activeCount };
+        this.connectionMetadataCache.set(cacheKey, metadata);
+        return metadata;
+    }
+
+    /**
+     * OPTIMIZED: Find all active exciters/igniters connected to a target circle with metadata
      * @param {string} targetCircleId - The circle being affected
      * @param {string} viewerId - The viewer ID
-     * @returns {Array} Array of exciter effect objects
+     * @returns {Array} Array of exciter effect objects with connection metadata
      */
     findConnectedExciters(targetCircleId, viewerId) {
         // Ensure index is up to date
@@ -142,6 +192,16 @@ export class ExplicitEnergyDetector {
 
         const connections = this.getConnectionsForCircle(targetCircleId);
         const exciterEffects = [];
+
+        // Get metadata for all exciter/igniter connections
+        const exciterMetadata = this.calculateConnectionMetadata(targetCircleId, 'exciter');
+        const igniterMetadata = this.calculateConnectionMetadata(targetCircleId, 'igniter');
+        
+        // Combine metadata (since exciters and igniters are treated as the same group)
+        const combinedMetadata = {
+            totalConnected: exciterMetadata.totalConnected + igniterMetadata.totalConnected,
+            activeCount: exciterMetadata.activeCount + igniterMetadata.activeCount
+        };
 
         connections.forEach(connection => {
             // Determine which circle is the potential exciter
@@ -161,6 +221,7 @@ export class ExplicitEnergyDetector {
                 const effect = this.calculator.createExciterEffectFromConnection(isIgniter);
                 effect.sourceCircleId = otherCircleId;
                 effect.connectionId = connection.id;
+                effect.connectionMeta = combinedMetadata; // Add metadata for receive mode calculation
                 exciterEffects.push(effect);
             }
         });
@@ -169,10 +230,10 @@ export class ExplicitEnergyDetector {
     }
 
     /**
-     * OPTIMIZED: Find all active dampeners connected to a target circle
+     * OPTIMIZED: Find all active dampeners connected to a target circle with metadata
      * @param {string} targetCircleId - The circle being affected
      * @param {string} viewerId - The viewer ID
-     * @returns {Array} Array of dampener effect objects
+     * @returns {Array} Array of dampener effect objects with connection metadata
      */
     findConnectedDampeners(targetCircleId, viewerId) {
         // Ensure index is up to date
@@ -182,6 +243,9 @@ export class ExplicitEnergyDetector {
 
         const connections = this.getConnectionsForCircle(targetCircleId);
         const dampenerEffects = [];
+
+        // Get metadata for dampener connections
+        const dampenerMetadata = this.calculateConnectionMetadata(targetCircleId, 'dampener');
 
         connections.forEach(connection => {
             // Determine which circle is the potential dampener
@@ -200,6 +264,7 @@ export class ExplicitEnergyDetector {
                 const effect = this.calculator.createDampenerEffectFromConnection();
                 effect.sourceCircleId = otherCircleId;
                 effect.connectionId = connection.id;
+                effect.connectionMeta = dampenerMetadata; // Add metadata for receive mode calculation
                 dampenerEffects.push(effect);
             }
         });
@@ -229,7 +294,7 @@ export class ExplicitEnergyDetector {
             return this.energyEffectsByCircle.get(cacheKey);
         }
 
-        // Find connected energy sources
+        // Find connected energy sources with metadata
         const exciterEffects = this.findConnectedExciters(targetCircle.id, viewerId);
         const dampenerEffects = this.findConnectedDampeners(targetCircle.id, viewerId);
 
@@ -239,7 +304,7 @@ export class ExplicitEnergyDetector {
             return null;
         }
 
-        // Use the shared calculator to determine final effects
+        // Use the shared calculator to determine final effects with receive mode support
         const isActivated = this.isCircleActivated(targetCircle);
         const baseScale = isActivated ? 1.01 : 0.7; // Match proximity system defaults
 
@@ -357,6 +422,7 @@ export class ExplicitEnergyDetector {
             this.circleDataCache.clear();
             this.indexedViewers.clear();
             this.viewerConnectionCounts.clear();
+            this.connectionMetadataCache.clear(); // Clear metadata cache too
         }
     }
 
@@ -378,16 +444,25 @@ export class ExplicitEnergyDetector {
         const exciterEffects = this.findConnectedExciters(circleId, viewerId);
         const dampenerEffects = this.findConnectedDampeners(circleId, viewerId);
         
+        // Get connection metadata
+        const exciterMetadata = this.calculateConnectionMetadata(circleId, 'exciter');
+        const dampenerMetadata = this.calculateConnectionMetadata(circleId, 'dampener');
+        
         return {
             circleId,
             viewerId,
             totalConnections: connections.length,
             exciterConnections: exciterEffects.length,
             dampenerConnections: dampenerEffects.length,
+            connectionMetadata: {
+                exciter: exciterMetadata,
+                dampener: dampenerMetadata
+            },
             cacheStats: {
                 indexedViewers: Array.from(this.indexedViewers),
                 cachedCircles: this.circleDataCache.size,
                 cachedEffects: this.energyEffectsByCircle.size,
+                cachedMetadata: this.connectionMetadataCache.size,
                 isDirty: this.isDirty,
                 lastUpdate: this.lastUpdateTimestamp
             },

@@ -40,9 +40,27 @@ const connectionStyles = `
         background-color: transparent;
     }
 
-    /*.connection-line.exciter-connection.solid,
+@keyframes barber-pole {
+    0% {
+        background-position: 20px 0px;
+    }
+    100% {
+        background-position: 0px 0px;
+    }
+}
+
+    .connection-line.exciter-connection.solid,
     .connection-line.exciter-connection.explicit-solid {
-        background-color: #00DDDD !important;
+        background: repeating-linear-gradient(
+            90deg,
+            #00AAAA 0px,
+            #00AAAA 4px,
+            #00FFFF 8px,
+            #00FFFF 12px,
+            #00AAAA 16px,
+            #00AAAA 20px
+        );
+        animation: barber-pole 1s linear infinite;
     }
 
     .connection-line.exciter-connection.dashed,
@@ -53,120 +71,24 @@ const connectionStyles = `
 
     .connection-line.dampener-connection.solid,
     .connection-line.dampener-connection.explicit-solid {
-        background-color: #00DDDD !important;
+        background: repeating-linear-gradient(
+            90deg,
+            #00AAAA 0px,
+            #00AAAA 4px,
+            #00FFFF 8px,
+            #00FFFF 12px,
+            #00AAAA 16px,
+            #00AAAA 20px
+        );
+        animation: barber-pole 1s linear infinite;
     }
 
     .connection-line.dampener-connection.dashed,
     .connection-line.dampener-connection.explicit-dashed {
         border-top-color: #00DDDD !important;
         background-color: transparent;
-    }*/
-
-
-/*
-.connection-line:not(.exciter-connection):not(.dampener-connection) {
-    transition: background-color 0.5s ease;
-}
-
-.connection-line.exciter-connection.solid,
-.connection-line.exciter-connection.explicit-solid {
-    border-top: 3px solid #00DDDD !important;
-    background-color: transparent;
-    position: relative;
-}
-
-.connection-line.exciter-connection.solid::before,
-.connection-line.exciter-connection.explicit-solid::before {
-    content: '';
-    position: absolute;
-    top: -3px;
-    left: 0;
-    right: 0;
-    height: 3px;
-    width: 100%;
-    background: linear-gradient(
-        90deg,
-        transparent 0%,
-        transparent 40%,
-        #00AAAA 40%,
-        #00AAAA 60%,
-        transparent 60%,
-        transparent 100%
-    );
-    background-size: 20px 3px;
-    animation: dash-flow 2s linear infinite;
-}
-
-.connection-line.dampener-connection.solid,
-.connection-line.dampener-connection.explicit-solid {
-    border-top: 3px solid #00DDDD !important;
-    background-color: transparent;
-    position: relative;
-}
-
-.connection-line.dampener-connection.solid::before,
-.connection-line.dampener-connection.explicit-solid::before {
-    content: '';
-    position: absolute;
-    top: -3px;
-    left: 0;
-    right: 0;
-    height: 3px;
-    width: 100%;
-    background: linear-gradient(
-        90deg,
-        transparent 0%,
-        transparent 40%,
-        #006666 40%,
-        #006666 60%,
-        transparent 60%,
-        transparent 100%
-    );
-    background-size: 20px 3px;
-    animation: dash-flow 2s linear infinite;
-}
-*/
-
-/* Keyframe animations */
-@keyframes barber-pole-flow {
-    0% {
-        background-position: 0 0;
     }
-    100% {
-        background-position: 20px 0;
-    }
-}
 
-@keyframes dash-flow {
-    0% {
-        background-position: 0 0;
-    }
-    100% {
-        background-position: 20px 0;
-    }
-}
-
-/* Alternative: Pulsing energy effect for variety */
-.connection-line.exciter-connection.pulse {
-    background: #00DDDD !important;
-    animation: energy-pulse 1s ease-in-out infinite alternate;
-}
-
-.connection-line.dampener-connection.pulse {
-    background: #00DDDD !important;
-    animation: energy-pulse 1s ease-in-out infinite alternate;
-}
-
-@keyframes energy-pulse {
-    0% {
-        opacity: 0.6;
-        filter: brightness(0.8);
-    }
-    100% {
-        opacity: 1;
-        filter: brightness(1.2) drop-shadow(0 0 4px #00DDDD);
-    }
-}
 
     /* CSS-based arrow styles */
     .connection-line::before,
@@ -404,10 +326,10 @@ const lineStyle = computed(() => {
         y2 = pos2.y;
         
     } else {
-        x1 = pos1.x + 21;
-        y1 = pos1.y + 21;
-        x2 = pos2.x + 21;
-        y2 = pos2.y + 21;
+        x1 = pos1.x;
+        y1 = pos1.y;
+        x2 = pos2.x;
+        y2 = pos2.y;
     }
     
     const dx = x2 - x1;

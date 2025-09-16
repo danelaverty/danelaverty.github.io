@@ -144,9 +144,9 @@ const componentStyles = `
         cursor: text;
         transition: background-color 0.2s ease;
         position: absolute;
-        top: 85%;
-        background-color: rgba(0, 0, 0, .1);
-        z-index: 1;
+        top: 95%;
+        background-color: rgba(0, 0, 0, .05);
+        z-index: 10;
         text-shadow: 1px 1px 1px black;
     }
 
@@ -192,7 +192,6 @@ const componentStyles = `
     .dragging {
         z-index: 999;
         transform: translate(-50%, -50%) scale(1.05);
-        /* Only disable position transitions, keep transform transitions for proximity effects */
         transition: left 0s, top 0s, transform 0.15s ease-out;
     }
 
@@ -393,8 +392,8 @@ export const EntityComponent = {
         <!--EnergyIndicators 
             v-if="entityType === 'circle'"
             :energyTypes="circleEnergyTypes"
-        /-->
-<!--EnergyReceivedIndicator 
+        />
+<EnergyReceivedIndicator 
     v-if="entityType === 'circle'"
     :entity="entity"
     :entityType="entityType"
