@@ -358,23 +358,6 @@ export const CircleCharacteristicsBar = {
       }
     };
 
-    const handleConnectibleCycle = () => {
-	    if (hasMultipleCirclesSelected.value) {
-		    // Apply to all selected circles
-		    const selectedIds = dataStore.getSelectedCircles();
-		    selectedIds.forEach(circleId => {
-			    const circle = dataStore.getCircle(circleId);
-			    if (circle) {
-				    const nextConnectible = getNextConnectibleValue(circle.connectible);
-				    actionHooks.updateCircleConnectible(nextConnectible, circle);
-			    }
-		    });
-	    } else {
-		    const nextConnectible = getNextConnectibleValue(dataHooks.selectedCircle.value.connectible);
-		    actionHooks.updateCircleConnectible(nextConnectible, dataHooks.selectedCircle.value);
-	    }
-    };
-
     const getNextConnectibleValue = (currentValue) => {
 	    const cycle = ['receives', 'gives', 'refuses'];
 	    const currentIndex = cycle.indexOf(currentValue);
@@ -415,45 +398,93 @@ export const CircleCharacteristicsBar = {
       }
     };
 
-    const handleActivationCycle = () => {
-        if (hasMultipleCirclesSelected.value) {
-            // Apply to all selected circles
-            const selectedIds = dataStore.getSelectedCircles();
-            selectedIds.forEach(circleId => {
-                dataStore.cycleCircleActivation(circleId);
-            });
-        } else if (dataHooks.selectedCircle.value) {
-            // Apply to single selected circle
-            dataStore.cycleCircleActivation(dataHooks.selectedCircle.value.id);
+
+const handleUnifiedCycle = (propertyName, cycleArray, storeMethodName = null) => {
+      if (hasMultipleCirclesSelected.value) {
+        const selectedIds = dataStore.getSelectedCircles();
+        const currentValues = selectedIds.map(id => {
+          const circle = dataStore.getCircle(id);
+          return circle ? circle[propertyName] : cycleArray[0];
+        });
+
+        // Check if all values are the same
+        const uniqueValues = [...new Set(currentValues)];
+        
+        if (uniqueValues.length > 1) {
+          // Different values - set all to first value in cycle
+          const targetValue = cycleArray[0];
+          selectedIds.forEach(circleId => {
+            if (storeMethodName) {
+              dataStore[storeMethodName](circleId);
+              // For store methods, we need to manually set to first value
+              // since they cycle from current position
+              const circle = dataStore.getCircle(circleId);
+              if (circle && circle[propertyName] !== targetValue) {
+                dataStore.updateCircle(circleId, { [propertyName]: targetValue });
+              }
+            } else {
+              dataStore.updateCircle(circleId, { [propertyName]: targetValue });
+            }
+          });
+        } else {
+          // All same value - cycle to next value for all
+          selectedIds.forEach(circleId => {
+            if (storeMethodName) {
+              dataStore[storeMethodName](circleId);
+            } else {
+              const circle = dataStore.getCircle(circleId);
+              if (circle) {
+                const currentIndex = cycleArray.indexOf(circle[propertyName]);
+                const nextValue = cycleArray[(currentIndex + 1) % cycleArray.length];
+                dataStore.updateCircle(circleId, { [propertyName]: nextValue });
+              }
+            }
+          });
         }
+      } else if (dataHooks.selectedCircle.value) {
+        // Single selection - use store method if available, otherwise manual cycle
+        if (storeMethodName) {
+          dataStore[storeMethodName](dataHooks.selectedCircle.value.id);
+        } else {
+          const circle = dataHooks.selectedCircle.value;
+          const currentIndex = cycleArray.indexOf(circle[propertyName]);
+          const nextValue = cycleArray[(currentIndex + 1) % cycleArray.length];
+          dataStore.updateCircle(circle.id, { [propertyName]: nextValue });
+        }
+      }
+    };
+
+    // Updated cycle handlers using the unified approach
+    const handleActivationCycle = () => {
+      handleUnifiedCycle('activation', ['activated', 'inactive', 'inert'], 'cycleCircleActivation');
     };
 
     const handleActivationTriggersCycle = () => {
-        if (hasMultipleCirclesSelected.value) {
-            // Apply to all selected circles
-            const selectedIds = dataStore.getSelectedCircles();
-            selectedIds.forEach(circleId => {
-                dataStore.cycleCircleActivationTriggers(circleId);
-            });
-        } else if (dataHooks.selectedCircle.value) {
-            // Apply to single selected circle
-            dataStore.cycleCircleActivationTriggers(dataHooks.selectedCircle.value.id);
-        }
+      handleUnifiedCycle('activationTriggers', ['none', 'members'], 'cycleCircleActivationTriggers');
     };
 
+    const handleShinynessReceiveModeCycle = () => {
+      handleUnifiedCycle('shinynessReceiveMode', ['or', 'and', 'explosiveAnd'], 'cycleShinynessReceiveMode');
+    };
 
-      const handleShinynessReceiveModeCycle = () => {
-          if (hasMultipleCirclesSelected.value) {
-              // Apply to all selected circles
-              const selectedIds = dataStore.getSelectedCircles();
-              selectedIds.forEach(circleId => {
-                  dataStore.cycleShinynessReceiveMode(circleId);
-              });
-          } else if (dataHooks.selectedCircle.value) {
-              // Apply to single selected circle
-              dataStore.cycleShinynessReceiveMode(dataHooks.selectedCircle.value.id);
-          }
-      };
+    const handleConnectibleCycle = () => {
+      handleUnifiedCycle('connectible', ['receives', 'gives', 'refuses'], 'cycleCircleConnectible');
+    };
+
+    const handleDirectionalityCycle = () => {
+      if (selectedExplicitConnection.value) {
+        // This one is different since it operates on connections, not circles
+        const cycle = ['none', 'out', 'in', 'both'];
+        const currentIndex = cycle.indexOf(selectedExplicitConnection.value.directionality);
+        const nextValue = cycle[(currentIndex + 1) % cycle.length];
+        
+        dataStore.updateExplicitConnectionProperty(
+          selectedExplicitConnection.value.id, 
+          'directionality', 
+          nextValue
+        );
+      }
+    };
 
     const handleCircleEmojiSelect = (emoji) => {
       if (hasMultipleCirclesSelected.value) {
@@ -582,20 +613,6 @@ export const CircleCharacteristicsBar = {
       if (dataStore && dataStore.saveToStorage) {
         dataStore.saveToStorage();
       }
-    };
-
-    const handleDirectionalityCycle = () => {
-        if (selectedExplicitConnection.value) {
-            const cycle = ['none', 'out', 'in', 'both'];
-            const currentIndex = cycle.indexOf(selectedExplicitConnection.value.directionality);
-            const nextValue = cycle[(currentIndex + 1) % cycle.length];
-            
-            dataStore.updateExplicitConnectionProperty(
-                selectedExplicitConnection.value.id, 
-                'directionality', 
-                nextValue
-            );
-        }
     };
 
     const getEmojiDisplayTitle = (emojiData, context) => {

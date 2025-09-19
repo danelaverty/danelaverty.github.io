@@ -3,7 +3,7 @@ export class VisualEffectsCalculator {
     constructor(config = {}) {
         this.config = {
             // Visual effect ranges
-            maxScale: 3.3,
+            maxScale: 1.3,
             minScale: 0.7,
             maxOpacity: 1.0,
             minOpacity: 0.5,
