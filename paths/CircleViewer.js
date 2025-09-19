@@ -9,6 +9,7 @@ import { EntityComponent } from './EntityComponent.js';
 import { EntityControls } from './EntityControls.js';
 import { ViewerControls } from './ViewerControls.js';
 import { ConnectionComponent } from './ConnectionComponent.js';
+import { useEnergyProximitySystem } from './EnergyProximitySystem.js';
 import './CircleViewerStyles.js'; // Import styles
 
 export const CircleViewer = {
@@ -43,6 +44,8 @@ export const CircleViewer = {
     setup(props, { emit }) {
         // Get state and computed properties
         const state = useCircleViewerState(props);
+
+        const energyProximitySystem = useEnergyProximitySystem(state.dataStore);
         
         // Entity drag state management
         const entityDragState = ref({
@@ -191,6 +194,7 @@ export const CircleViewer = {
         return {
             // State
             ...state,
+            energyProximitySystem,
             // Entity drag state
             entityDragState,
             // Composable functionality
@@ -269,6 +273,7 @@ export const CircleViewer = {
                 <ConnectionComponent
                     v-for="connection in allConnections"
                     :key="connection.id"
+                    :energySystem="energyProximitySystem"
                     :connection="connection"
                     :viewer-width="viewerWidth"
                     :entity-drag-state="entityDragState"
