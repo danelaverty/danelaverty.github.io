@@ -1,4 +1,4 @@
-// ConnectionComponent.js - UPDATED: Add energy connection visual indicators
+// ConnectionComponent.js - ENHANCED: Add energy connection visual indicators with cascade support
 import { computed, watch } from './vue-composition-api.js';
 import { injectComponentStyles } from './styleUtils.js';
 
@@ -9,7 +9,7 @@ const connectionStyles = `
         pointer-events: none;
         z-index: 0;
         transform-origin: left center;
-    transition: background-color 1.5s ease;
+        transition: background-color 1.5s ease;
     }
 
     .connection-line.solid {
@@ -40,14 +40,14 @@ const connectionStyles = `
         background-color: transparent;
     }
 
-@keyframes barber-pole {
-    0% {
-        background-position: 20px 0px;
+    @keyframes barber-pole {
+        0% {
+            background-position: 20px 0px;
+        }
+        100% {
+            background-position: 0px 0px;
+        }
     }
-    100% {
-        background-position: 0px 0px;
-    }
-}
 
     .connection-line.exciter-connection.solid,
     .connection-line.exciter-connection.explicit-solid {
@@ -73,22 +73,21 @@ const connectionStyles = `
     .connection-line.dampener-connection.explicit-solid {
         background: repeating-linear-gradient(
             90deg,
-            #00AAAA 0px,
-            #00AAAA 4px,
-            #00FFFF 8px,
-            #00FFFF 12px,
-            #00AAAA 16px,
-            #00AAAA 20px
+            #AA0000 0px,
+            #AA0000 4px,
+            #FF0000 8px,
+            #FF0000 12px,
+            #AA0000 16px,
+            #AA0000 20px
         );
         animation: barber-pole 1s linear infinite;
     }
 
     .connection-line.dampener-connection.dashed,
     .connection-line.dampener-connection.explicit-dashed {
-        border-top-color: #00DDDD !important;
+        border-top-color: #DD0000 !important;
         background-color: transparent;
     }
-
 
     /* CSS-based arrow styles */
     .connection-line::before,
@@ -211,6 +210,16 @@ export const ConnectionComponent = {
                 entityType: null,
                 viewerId: null
             })
+        },
+        // NEW: Energy system reference for cascade state
+        energySystem: {
+            type: Object,
+            default: null
+        },
+        // NEW: Viewer ID for cascade state lookup
+        viewerId: {
+            type: String,
+            default: null
         }
     },
     setup(props) {
@@ -232,9 +241,29 @@ export const ConnectionComponent = {
                    entity.activation === 'activated';
         };
 
-        // NEW: Detect energy connection type
+        // NEW: Get cascade state for this connection
+        const cascadeState = computed(() => {
+            if (!props.energySystem || !props.viewerId || !props.connection.id) {
+                return null;
+            }
+
+            // Try to get cascade state from the energy system
+            if (props.energySystem.explicitDetector && 
+                props.energySystem.explicitDetector.getConnectionCascadeState) {
+                return props.energySystem.explicitDetector.getConnectionCascadeState(props.connection.id);
+            }
+
+            return null;
+        });
+
+        // ENHANCED: Detect energy connection type including cascade state
         const energyConnectionType = computed(() => {
-            // Only check for energy connections on explicit connections
+            // Check cascade state first (highest priority)
+            if (cascadeState.value && cascadeState.value.isActive) {
+                return cascadeState.value.energyType; // 'exciter' or 'dampener'
+            }
+
+            // Fall back to original logic for direct energy connections
             if (!isExplicitConnection.value) {
                 return null;
             }
@@ -289,11 +318,11 @@ export const ConnectionComponent = {
             const { entityType } = props.connection;
             const isCircleType = entityType === 'circle' || entityType.startsWith('circle-') || entityType.startsWith('explicit-circle');
             
-            // NEW: Energy connection colors take priority
+            // NEW: Energy connection colors take priority (including cascade state)
             if (energyConnectionType.value === 'exciter') {
-                return '#DD00DD';
+                return '#00DDDD';
             } else if (energyConnectionType.value === 'dampener') {
-                return '#663333';
+                return '#DD0000';
             }
             
             // Original color logic
@@ -306,100 +335,99 @@ export const ConnectionComponent = {
             }
         });
 
+        const lineStyle = computed(() => {
+            const { entity1, entity2, entityType } = props.connection;
+            
+            const pos1 = getEntityPosition(entity1, entityType);
+            const pos2 = getEntityPosition(entity2, entityType);
+            
+            let x1, y1, x2, y2;
+            
+            const isCircleType = entityType === 'circle' || entityType.startsWith('circle-') || entityType.startsWith('explicit-circle');
+            
+            if (isCircleType) {
+                const centerX = props.viewerWidth ? props.viewerWidth / 2 : 200;
+                
+                x1 = centerX + pos1.x;
+                y1 = pos1.y;
+                x2 = centerX + pos2.x;
+                y2 = pos2.y;
+                
+            } else {
+                x1 = pos1.x;
+                y1 = pos1.y;
+                x2 = pos2.x;
+                y2 = pos2.y;
+            }
+            
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const length = Math.sqrt(dx * dx + dy * dy);
+            const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+            
+            const isDashed = shouldBeDashed.value;
+            const isExplicit = isExplicitConnection.value;
+            const hasEnergyConnection = energyConnectionType.value !== null;
+            
+            let strokeColor, opacity, strokeWidth;
+            
+            // Set default values
+            if (hasEnergyConnection) {
+                // For energy connections, don't set backgroundColor - let CSS handle it
+                strokeColor = null; // This will prevent backgroundColor from being set
+                opacity = 0.8;
+                strokeWidth = '2.5px';
+            } else if (isExplicit) {
+                strokeColor = 'rgba(70, 70, 70, 1)';
+                opacity = 0.8;
+                strokeWidth = '2.5px';
+            } else if (isCircleType) {
+                strokeColor = '#4CAF50';
+                opacity = 1;
+                strokeWidth = '1.5px';
+            } else {
+                strokeColor = '#ffffff';
+                opacity = 0.6;
+                strokeWidth = '2px';
+            }
+            
+            const baseStyle = {
+                left: x1 + 'px',
+                top: y1 + 'px',
+                width: length + 'px',
+                height: strokeWidth,
+                transform: `rotate(${angle}deg)`,
+                opacity: opacity,
+                '--arrow-color': getArrowColor.value
+            };
 
-const lineStyle = computed(() => {
-    const { entity1, entity2, entityType } = props.connection;
-    
-    const pos1 = getEntityPosition(entity1, entityType);
-    const pos2 = getEntityPosition(entity2, entityType);
-    
-    let x1, y1, x2, y2;
-    
-    const isCircleType = entityType === 'circle' || entityType.startsWith('circle-') || entityType.startsWith('explicit-circle');
-    
-    if (isCircleType) {
-        const centerX = props.viewerWidth ? props.viewerWidth / 2 : 200;
-        
-        x1 = centerX + pos1.x;
-        y1 = pos1.y;
-        x2 = centerX + pos2.x;
-        y2 = pos2.y;
-        
-    } else {
-        x1 = pos1.x;
-        y1 = pos1.y;
-        x2 = pos2.x;
-        y2 = pos2.y;
-    }
-    
-    const dx = x2 - x1;
-    const dy = y2 - y1;
-    const length = Math.sqrt(dx * dx + dy * dy);
-    const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-    
-    const isDashed = shouldBeDashed.value;
-    const isExplicit = isExplicitConnection.value;
-    const hasEnergyConnection = energyConnectionType.value !== null;
-    
-    let strokeColor, opacity, strokeWidth;
-    
-    // Set default values
-    if (hasEnergyConnection) {
-        // For energy connections, don't set backgroundColor - let CSS handle it
-        strokeColor = null; // This will prevent backgroundColor from being set
-        opacity = 0.8;
-        strokeWidth = '2.5px';
-    } else if (isExplicit) {
-        strokeColor = 'rgba(70, 70, 70, 1)';
-        opacity = 0.8;
-        strokeWidth = '2.5px';
-    } else if (isCircleType) {
-        strokeColor = '#4CAF50';
-        opacity = 1;
-        strokeWidth = '1.5px';
-    } else {
-        strokeColor = '#ffffff';
-        opacity = 0.6;
-        strokeWidth = '2px';
-    }
-    
-    const baseStyle = {
-        left: x1 + 'px',
-        top: y1 + 'px',
-        width: length + 'px',
-        height: strokeWidth,
-        transform: `rotate(${angle}deg)`,
-        opacity: opacity,
-        '--arrow-color': getArrowColor.value
-    };
-
-    if (isDashed) {
-        const style = {
-            ...baseStyle,
-            backgroundColor: 'transparent',
-            height: '0px'
-        };
-        
-        // Only set border-top for non-energy connections or when strokeColor is defined
-        if (!hasEnergyConnection && strokeColor) {
-            style.borderTop = `${strokeWidth} dashed ${strokeColor}`;
-        }
-        
-        return style;
-    } else {
-        const style = {
-            ...baseStyle,
-            border: 'none'
-        };
-        
-        // Only set backgroundColor for non-energy connections
-        if (!hasEnergyConnection && strokeColor) {
-            style.backgroundColor = strokeColor;
-        }
-        
-        return style;
-    }
-});
+            if (isDashed) {
+                const style = {
+                    ...baseStyle,
+                    backgroundColor: 'transparent',
+                    height: '0px'
+                };
+                
+                // Only set border-top for non-energy connections or when strokeColor is defined
+                if (!hasEnergyConnection && strokeColor) {
+                    style.borderTop = `${strokeWidth} dashed ${strokeColor}`;
+                }
+                
+                return style;
+            } else {
+                const style = {
+                    ...baseStyle,
+                    border: 'none'
+                };
+                
+                // Only set backgroundColor for non-energy connections
+                if (!hasEnergyConnection && strokeColor) {
+                    style.backgroundColor = strokeColor;
+                }
+                
+                return style;
+            }
+        });
 
         // Calculate CSS classes for the connection line including arrow classes - UPDATED with energy classes
         const lineClasses = computed(() => {
@@ -410,7 +438,7 @@ const lineStyle = computed(() => {
             
             const classes = ['connection-line'];
             
-            // NEW: Add energy connection classes first (highest priority)
+            // NEW: Add energy connection classes first (highest priority) - including cascade state
             if (energyConnectionType.value) {
                 classes.push(`${energyConnectionType.value}-connection`);
             }
@@ -436,16 +464,21 @@ const lineStyle = computed(() => {
             return classes;
         });
 
-        // Generate connection title with directionality and energy info
+        // Generate connection title with directionality and energy info - ENHANCED with cascade info
         const getConnectionTitle = () => {
             let title = isExplicitConnection.value ? 
                 'Explicit Connection (Ctrl+click to delete)' : 
                 'Proximity Connection';
             
-            // NEW: Add energy type information
+            // NEW: Add energy type information including cascade state
             if (energyConnectionType.value) {
                 const energyLabel = energyConnectionType.value === 'exciter' ? 'Exciter/Igniter' : 'Dampener';
                 title += ` - ${energyLabel} Energy Connection`;
+                
+                // Add cascade information if available
+                if (cascadeState.value && cascadeState.value.isActive) {
+                    title += ` (Cascade Depth: ${cascadeState.value.cascadeDepth})`;
+                }
             }
             
             if (isExplicitConnection.value && props.connection.directionality && props.connection.directionality !== 'none') {
@@ -460,7 +493,7 @@ const lineStyle = computed(() => {
             return title;
         };
 
-        // Watch for changes in entity activation status, explicit connection status, energy types, and drag state
+        // Watch for changes in entity activation status, explicit connection status, energy types, drag state, and cascade state
         watch(
             () => [
                 props.connection.entity1?.activation,
@@ -473,7 +506,10 @@ const lineStyle = computed(() => {
                 props.entityDragState.isDragging,
                 props.entityDragState.currentDeltas.deltaX,
                 props.entityDragState.currentDeltas.deltaY,
-                props.entityDragState.draggedEntityIds?.join(',') || ''
+                props.entityDragState.draggedEntityIds?.join(',') || '',
+                cascadeState.value?.isActive, // NEW: Watch cascade state
+                cascadeState.value?.energyType,
+                cascadeState.value?.cascadeDepth
             ],
             () => {
                 // Computed properties will automatically recalculate
@@ -485,7 +521,8 @@ const lineStyle = computed(() => {
             lineStyle,
             lineClasses,
             isExplicitConnection,
-            energyConnectionType, // NEW: Expose energy type for debugging
+            energyConnectionType,
+            cascadeState, // NEW: Expose cascade state for debugging
             getConnectionTitle
         };
     },

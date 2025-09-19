@@ -165,10 +165,10 @@ export const EnergyReceivedIndicator = {
                     }
                 }
                 
-                // Last resort: check if the proximity system has cached circle data
-                if (proximitySystem.circles.has(entityId)) {
-                    const circleData = proximitySystem.circles.get(entityId);
-                    if (circleData.circle && circleData.circle.name) {
+                // FIXED: Use the correct API to check circle data from the refactored proximity system
+                if (proximitySystem.circleManager && proximitySystem.circleManager.getCircleData) {
+                    const circleData = proximitySystem.circleManager.getCircleData(entityId);
+                    if (circleData && circleData.circle && circleData.circle.name) {
                         return circleData.circle.name;
                     }
                 }
@@ -186,13 +186,20 @@ export const EnergyReceivedIndicator = {
         const getProximityEnergyEffects = () => {
             const effects = [];
             
-            if (!proximitySystem.circles.has(props.entity.id)) {
+            // FIXED: Use the correct API to check if circle is registered
+            if (!proximitySystem.circleManager || !proximitySystem.circleManager.getCircleData(props.entity.id)) {
                 return effects;
             }
 
-            // Get all circles in the same viewer
-            const viewerCircles = Array.from(proximitySystem.circles.values())
-                .filter(data => data.viewerId === props.viewerId);
+            // FIXED: Get all circles in the same viewer using the correct API
+            const allCircles = proximitySystem.circleManager.getAllCircles();
+            const viewerCircles = [];
+            
+            for (const [circleId, circleData] of allCircles) {
+                if (circleData.viewerId === props.viewerId) {
+                    viewerCircles.push(circleData);
+                }
+            }
             
             // Find circles that can affect this entity (exciters/igniters/dampeners)
             const influencerCircles = viewerCircles.filter(data => {
@@ -207,16 +214,19 @@ export const EnergyReceivedIndicator = {
             });
 
             // Calculate proximity effects from each influencer
-            const thisPos = proximitySystem.getEffectivePosition(props.entity.id);
+            const thisPos = proximitySystem.circleManager.getEffectivePosition(props.entity.id);
             if (!thisPos) return effects;
 
             influencerCircles.forEach(influencerData => {
-                const influencerPos = proximitySystem.getEffectivePosition(influencerData.circle.id);
+                const influencerPos = proximitySystem.circleManager.getEffectivePosition(influencerData.circle.id);
                 if (!influencerPos) return;
 
-                const distance = proximitySystem.calculateDistance(thisPos, influencerPos);
-                if (distance <= proximitySystem.calculator.visualEffectsCalculator.config.maxDistance) {
-                    const proximityStrength = proximitySystem.calculateProximityStrength(distance);
+                // FIXED: Use the correct API for distance calculation
+                const distance = proximitySystem.proximityCalculator.calculateDistance(thisPos, influencerPos);
+                const maxDistance = proximitySystem.calculator.visualEffectsCalculator.config.maxDistance;
+                
+                if (distance <= maxDistance) {
+                    const proximityStrength = proximitySystem.proximityCalculator.calculateProximityStrength(distance);
                     
                     // Convert proximity strength to 0-1 influence
                     const config = proximitySystem.calculator.visualEffectsCalculator.config;
@@ -251,24 +261,39 @@ export const EnergyReceivedIndicator = {
         const getExplicitEnergyEffects = () => {
             const effects = [];
             
-            if (!proximitySystem || !props.dataStore) {
+            if (!proximitySystem || !props.dataStore || !proximitySystem.explicitDetector) {
                 return effects;
             }
 
             try {
-                const explicitEffects = proximitySystem.getExplicitEffectsForCircle(
+                // FIXED: Use the correct method to get explicit effects
+                const explicitEffectsData = proximitySystem.explicitDetector.calculateExplicitEnergyEffects(
+                    props.entity, 
+                    props.viewerId
+                );
+
+                if (!explicitEffectsData) {
+                    return effects;
+                }
+
+                // Get the raw effects using the cascade calculator for detailed breakdown
+                const exciterEffects = proximitySystem.explicitDetector.cascadeEffectCalculator.findConnectedExciters(
+                    props.entity.id, 
+                    props.viewerId
+                );
+                const dampenerEffects = proximitySystem.explicitDetector.cascadeEffectCalculator.findConnectedDampeners(
                     props.entity.id, 
                     props.viewerId
                 );
 
                 // Process exciter effects
-                explicitEffects.exciterEffects.forEach(effect => {
+                exciterEffects.forEach(effect => {
                     if (effect.sourceCircleId) {
                         effects.push({
                             sourceId: effect.sourceCircleId,
                             sourceName: getEntityName(effect.sourceCircleId),
                             energyType: effect.isIgniter ? 'igniter' : 'exciter',
-                            amount: effect.influence,
+                            amount: effect.influence || 0.5, // Default influence if not specified
                             connectionType: 'explicit',
                             connectionMeta: effect.connectionMeta // Include metadata for receive mode calculations
                         });
@@ -276,13 +301,13 @@ export const EnergyReceivedIndicator = {
                 });
 
                 // Process dampener effects
-                explicitEffects.dampenerEffects.forEach(effect => {
+                dampenerEffects.forEach(effect => {
                     if (effect.sourceCircleId) {
                         effects.push({
                             sourceId: effect.sourceCircleId,
                             sourceName: getEntityName(effect.sourceCircleId),
                             energyType: 'dampener',
-                            amount: effect.influence,
+                            amount: effect.influence || 0.5, // Default influence if not specified
                             connectionType: 'explicit',
                             connectionMeta: effect.connectionMeta // Include metadata for receive mode calculations
                         });

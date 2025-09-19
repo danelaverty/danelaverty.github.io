@@ -389,7 +389,7 @@ export const EntityComponent = {
             @keydown="handleNameKeydown"
         >
         {{ entity.name }}
-        <!--EnergyIndicators 
+        <EnergyIndicators 
             v-if="entityType === 'circle'"
             :energyTypes="circleEnergyTypes"
         />
@@ -399,7 +399,7 @@ export const EntityComponent = {
     :entityType="entityType"
     :viewerId="viewerId"
     :dataStore="dataStore"
-/-->
+/>
         </div>
     </div>
 `

@@ -302,6 +302,8 @@ export const App = {
             keyboardCleanup = setupKeyboardListeners(keyboardHandler);
             document.addEventListener('mousemove', viewerManager.handleReorderMove);
             document.addEventListener('mouseup', viewerManager.handleReorderEnd);
+
+window.debugProximitySystem = proximitySystem;
             
             // Start the energy proximity system
             proximitySystem.start();
