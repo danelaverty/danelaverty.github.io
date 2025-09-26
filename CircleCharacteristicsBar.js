@@ -1,4 +1,4 @@
-// CircleCharacteristicsBar.js - Updated to support multiple circle selection, break reference control, and activationTriggers
+// CircleCharacteristicsBar.js - Updated to support multiple circle selection, break reference control, and dynamic cycleable properties
 import { computed, ref, watchEffect } from './vue-composition-api.js';
 import { injectComponentStyles } from './styleUtils.js';
 import { useCharacteristicsBarData } from './useCharacteristicsBarData.js';
@@ -11,6 +11,7 @@ import { EmojiService } from './emojiService.js';
 import { EmojiVariantService } from './EmojiVariantService.js';
 import { getEnergyTypeColor } from './energyTypes.js';
 import { CBConnectionDirectionalityControl } from './CBConnectionDirectionalityControl.js';
+import { CYCLE_PROPERTY_CONFIGS, getPropertyValues, getPropertyConfig } from './CBCyclePropertyConfigs.js';
 
 // Import styles
 import { baseCharacteristicsStyles, displayStyles, colorStyles, typeStyles, energyStyles, activationStyles, emojiStyles } from './cbBaseStyles.js';
@@ -22,10 +23,8 @@ import { TypeControl } from './CBTypeControl.js';
 import { CircleEmojiControl } from './CBCircleEmojiControl.js';
 import { ColorControl } from './CBColorControl.js';
 import { EnergyControl } from './CBEnergyControl.js';
-import { ActivationControl } from './CBActivationControl.js';
-import { CBActivationTriggersControl } from './CBActivationTriggersControl.js'; // NEW: Import activation triggers control
+import { CBCyclePropertyControl } from './CBCyclePropertyControl.js';
 import { CBJumpToReferenceControl } from './CBJumpToReferenceControl.js';
-import { CBConnectibleControl } from './CBConnectibleControl.js';
 import { BreakReferenceControl } from './CBBreakReferenceControl.js';
 import { EmojiControl } from './CBEmojiControl.js';
 import { RecentEmojisControl } from './CBRecentEmojisControl.js';
@@ -68,7 +67,6 @@ export const CircleCharacteristicsBar = {
     const circleEmojiDisplayRefTemplate = ref(null);
     const colorDisplayRefTemplate = ref(null);
     const energyDisplayRefTemplate = ref(null);
-    const activationDisplayRefTemplate = ref(null);
     const emojiDisplayRefTemplate = ref(null);
     const typePickerRefTemplate = ref(null);
     const circleEmojiPickerRefTemplate = ref(null);
@@ -137,55 +135,35 @@ export const CircleCharacteristicsBar = {
       }
     });
 
-    // NEW: Check if multiple circles are selected
     const hasMultipleCirclesSelected = computed(() => {
       return dataStore.hasMultipleCirclesSelected();
     });
 
-    const circleActivation = computed(() => {
-        if (hasMultipleCirclesSelected.value) {
-            // For multiple selection, show the most common activation state or default to 'activated'
-            const selectedIds = dataStore.getSelectedCircles();
-            const activationValues = selectedIds.map(id => {
-                const circle = dataStore.getCircle(id);
-                return circle ? circle.activation : 'activated';
-            });
+    // Define which properties should show cycleable controls
+    const cycleableProperties = Object.keys(CYCLE_PROPERTY_CONFIGS);
 
-            // Count occurrences and return most common
-            const counts = activationValues.reduce((acc, val) => {
-                acc[val] = (acc[val] || 0) + 1;
-                return acc;
-            }, {});
+    // Create computed properties for each cycleable property
+    const getPropertyValue = (propertyName) => {
+      if (hasMultipleCirclesSelected.value) {
+        // For multiple selection, show the most common value
+        const selectedIds = dataStore.getSelectedCircles();
+        const values = selectedIds.map(id => {
+          const circle = dataStore.getCircle(id);
+          return circle ? circle[propertyName] : getPropertyValues(propertyName)[0];
+        });
 
-            return Object.entries(counts).reduce((a, b) => counts[a[0]] > counts[b[0]] ? a : b)[0];
-        } else if (dataHooks.selectedCircle.value) {
-            return dataHooks.selectedCircle.value.activation || 'activated';
-        }
-        return 'activated';
-    });
+        // Count occurrences and return most common
+        const counts = values.reduce((acc, val) => {
+          acc[val] = (acc[val] || 0) + 1;
+          return acc;
+        }, {});
 
-    // NEW: Computed for activationTriggers
-    const circleActivationTriggers = computed(() => {
-        if (hasMultipleCirclesSelected.value) {
-            // For multiple selection, show the most common activationTriggers state or default to 'none'
-            const selectedIds = dataStore.getSelectedCircles();
-            const activationTriggersValues = selectedIds.map(id => {
-                const circle = dataStore.getCircle(id);
-                return circle ? circle.activationTriggers : 'none';
-            });
-
-            // Count occurrences and return most common
-            const counts = activationTriggersValues.reduce((acc, val) => {
-                acc[val] = (acc[val] || 0) + 1;
-                return acc;
-            }, {});
-
-            return Object.entries(counts).reduce((a, b) => counts[a[0]] > counts[b[0]] ? a : b)[0];
-        } else if (dataHooks.selectedCircle.value) {
-            return dataHooks.selectedCircle.value.activationTriggers || 'none';
-        }
-        return 'none';
-    });
+        return Object.entries(counts).reduce((a, b) => counts[a[0]] > counts[b[0]] ? a : b)[0];
+      } else if (dataHooks.selectedCircle.value) {
+        return dataHooks.selectedCircle.value[propertyName] || getPropertyValues(propertyName)[0];
+      }
+      return getPropertyValues(propertyName)[0];
+    };
 
     const selectedExplicitConnection = computed(() => {
         if (hasMultipleCirclesSelected.value) {
@@ -209,35 +187,11 @@ export const CircleCharacteristicsBar = {
         return selectedExplicitConnection.value?.directionality || 'none';
     });
 
-    // NEW: Updated visibility logic - show for single OR multiple circle selection
     const isVisible = computed(() => {
       const selectedCircles = dataStore.getSelectedCircles();
-      return selectedCircles.length >= 1; // Changed from === 1 to >= 1
+      return selectedCircles.length >= 1;
     });
 
-    const circleConnectible = computed(() => {
-	    if (hasMultipleCirclesSelected.value) {
-		    // For multiple selection, show the most common value or 'receives' as default
-		    const selectedIds = dataStore.getSelectedCircles();
-		    const connectibleValues = selectedIds.map(id => {
-			    const circle = dataStore.getCircle(id);
-			    return circle ? circle.connectible : 'receives';
-		    });
-
-		    // Count occurrences and return most common
-		    const counts = connectibleValues.reduce((acc, val) => {
-			    acc[val] = (acc[val] || 0) + 1;
-			    return acc;
-		    }, {});
-
-		    return Object.entries(counts).reduce((a, b) => counts[a[0]] > counts[b[0]] ? a : b)[0];
-	    } else if (dataHooks.selectedCircle.value) {
-		    return dataHooks.selectedCircle.value.connectible || 'receives';
-	    }
-	    return 'receives';
-    });
-
-    // NEW: Get selected circle objects for multiple selection
     const getSelectedCircleObjects = computed(() => {
       const selectedIds = dataStore.getSelectedCircles();
       return selectedIds.map(id => dataStore.getCircle(id)).filter(Boolean);
@@ -250,7 +204,6 @@ export const CircleCharacteristicsBar = {
       return emojiAttributes.value.find(attr => attr.key === 'cause') || emojiAttributes.value[0];
     });
 
-    // NEW: Get current circle emoji for picker initialization
     const getCurrentCircleEmoji = computed(() => {
       if (hasMultipleCirclesSelected.value) {
         // For multiple selection, use the first circle's emoji as reference
@@ -281,12 +234,10 @@ export const CircleCharacteristicsBar = {
              !isReferenceCircle.value;
     });
 
-    // NEW: Should show emoji controls (only for single circle selection)
     const shouldShowEmojiControls = computed(() => {
       return !hasMultipleCirclesSelected.value;
     });
 
-    // NEW: Should show circle characteristic controls (hidden for reference circles in single selection)
     const shouldShowCircleCharacteristicControls = computed(() => {
       if (hasMultipleCirclesSelected.value) {
         return true; // Always show for multiple selection
@@ -295,7 +246,6 @@ export const CircleCharacteristicsBar = {
       return !isReferenceCircle.value;
     });
 
-    // NEW: Should show jump to reference control - same logic as break reference but separate for clarity
     const shouldShowJumpToReferenceControl = computed(() => {
       if (hasMultipleCirclesSelected.value) {
         // For multiple selection, check if ANY selected circle is a reference
@@ -309,7 +259,6 @@ export const CircleCharacteristicsBar = {
       return isReferenceCircle.value;
     });
 
-    // NEW: Should show break reference control - opposite of shouldShowCircleCharacteristicControls
     const shouldShowBreakReferenceControl = computed(() => {
       if (hasMultipleCirclesSelected.value) {
         // For multiple selection, check if ANY selected circle is a reference
@@ -342,29 +291,6 @@ export const CircleCharacteristicsBar = {
       if (!isCtrlClick) {
         pickerHooks.closePickerAction('color');
       }
-    };
-
-    const handleConnectibleCycle = () => {
-	    if (hasMultipleCirclesSelected.value) {
-		    // Apply to all selected circles
-		    const selectedIds = dataStore.getSelectedCircles();
-		    selectedIds.forEach(circleId => {
-			    const circle = dataStore.getCircle(circleId);
-			    if (circle) {
-				    const nextConnectible = getNextConnectibleValue(circle.connectible);
-				    actionHooks.updateCircleConnectible(nextConnectible, circle);
-			    }
-		    });
-	    } else {
-		    const nextConnectible = getNextConnectibleValue(dataHooks.selectedCircle.value.connectible);
-		    actionHooks.updateCircleConnectible(nextConnectible, dataHooks.selectedCircle.value);
-	    }
-    };
-
-    const getNextConnectibleValue = (currentValue) => {
-	    const cycle = ['receives', 'gives', 'refuses'];
-	    const currentIndex = cycle.indexOf(currentValue);
-	    return cycle[(currentIndex + 1) % cycle.length];
     };
 
     const handleTypeSelect = (typeInfo) => {
@@ -401,31 +327,55 @@ export const CircleCharacteristicsBar = {
       }
     };
 
-    const handleActivationCycle = () => {
-        if (hasMultipleCirclesSelected.value) {
-            // Apply to all selected circles
-            const selectedIds = dataStore.getSelectedCircles();
-            selectedIds.forEach(circleId => {
-                dataStore.cycleCircleActivation(circleId);
-            });
-        } else if (dataHooks.selectedCircle.value) {
-            // Apply to single selected circle
-            dataStore.cycleCircleActivation(dataHooks.selectedCircle.value.id);
-        }
-    };
+    // Generic property cycle handler
+      const handlePropertyCycle = (propertyName) => {
+          if (hasMultipleCirclesSelected.value) {
+              const selectedIds = dataStore.getSelectedCircles();
+              const currentValues = selectedIds.map(id => {
+                  const circle = dataStore.getCircle(id);
+                  return circle ? circle[propertyName] : getPropertyValues(propertyName)[0];
+              });
 
-    // NEW: Handle activationTriggers cycling
-    const handleActivationTriggersCycle = () => {
-        if (hasMultipleCirclesSelected.value) {
-            // Apply to all selected circles
-            const selectedIds = dataStore.getSelectedCircles();
-            selectedIds.forEach(circleId => {
-                dataStore.cycleCircleActivationTriggers(circleId);
-            });
-        } else if (dataHooks.selectedCircle.value) {
-            // Apply to single selected circle
-            dataStore.cycleCircleActivationTriggers(dataHooks.selectedCircle.value.id);
-        }
+              // Check if all values are the same
+              const uniqueValues = [...new Set(currentValues)];
+              const values = getPropertyValues(propertyName);
+
+              if (uniqueValues.length > 1) {
+                  // Different values - set all to first value in cycle
+                  const targetValue = values[0];
+                  selectedIds.forEach(circleId => {
+                      dataStore.updateCircle(circleId, { [propertyName]: targetValue });
+                  });
+              } else {
+                  // All same value - cycle to next value for all
+                  selectedIds.forEach(circleId => {
+                      dataStore.cycleCircleProperty(circleId, propertyName);
+                  });
+              }
+          } else if (dataHooks.selectedCircle.value) {
+              // Single selection - use store method
+              dataStore.cycleCircleProperty(dataHooks.selectedCircle.value.id, propertyName);
+          }
+
+          // ADD THIS: Force energy effects recalculation for activation changes
+          if (propertyName === 'activation') {
+              dataStore.triggerEnergyEffectsUpdate?.();
+          }
+      };
+
+    const handleDirectionalityCycle = () => {
+      if (selectedExplicitConnection.value) {
+        // This one is different since it operates on connections, not circles
+        const cycle = ['none', 'out', 'in', 'both'];
+        const currentIndex = cycle.indexOf(selectedExplicitConnection.value.directionality);
+        const nextValue = cycle[(currentIndex + 1) % cycle.length];
+        
+        dataStore.updateExplicitConnectionProperty(
+          selectedExplicitConnection.value.id, 
+          'directionality', 
+          nextValue
+        );
+      }
     };
 
     const handleCircleEmojiSelect = (emoji) => {
@@ -444,7 +394,6 @@ export const CircleCharacteristicsBar = {
       pickerHooks.closePickerAction('circleEmoji');
     };
 
-    // NEW: Handle jumping to referenced circle (same logic as ctrl+click in CircleViewer)
     const handleJumpToReference = () => {
       // This function implements the same logic as ctrl+click in CircleViewer.handleCircleSelect
       if (hasMultipleCirclesSelected.value) {
@@ -462,7 +411,6 @@ export const CircleCharacteristicsBar = {
       }
     };
 
-    // NEW: Helper function to perform the actual jump to reference
     const performJumpToReference = (referencedCircleId) => {
       // Find which document contains the referenced circle
       const allCircleDocuments = dataStore.getAllCircleDocuments();
@@ -508,7 +456,6 @@ export const CircleCharacteristicsBar = {
       }
     };
 
-    // NEW: Handle breaking references for selected circles
     const handleBreakReference = () => {
       if (hasMultipleCirclesSelected.value) {
         // Break reference for all selected circles that have one
@@ -560,20 +507,6 @@ export const CircleCharacteristicsBar = {
       }
     };
 
-    const handleDirectionalityCycle = () => {
-        if (selectedExplicitConnection.value) {
-            const cycle = ['none', 'out', 'in', 'both'];
-            const currentIndex = cycle.indexOf(selectedExplicitConnection.value.directionality);
-            const nextValue = cycle[(currentIndex + 1) % cycle.length];
-            
-            dataStore.updateExplicitConnectionProperty(
-                selectedExplicitConnection.value.id, 
-                'directionality', 
-                nextValue
-            );
-        }
-    };
-
     const getEmojiDisplayTitle = (emojiData, context) => {
       return EmojiService.getDisplayTitle(emojiData, context);
     };
@@ -589,8 +522,6 @@ export const CircleCharacteristicsBar = {
       isReferenceCircle,
       isCircleEmojiPickerVisible,
       isVisible,
-      circleActivation,
-      circleActivationTriggers, // NEW: Add activationTriggers computed
       hasMultipleCirclesSelected,
       shouldShowEmojiControls,
       shouldShowCircleCharacteristicControls,
@@ -601,12 +532,16 @@ export const CircleCharacteristicsBar = {
       shouldShowExplicitConnectionControls,
       connectionDirectionality,
       
+      // Cycleable properties
+      cycleableProperties,
+      getPropertyValue,
+      getPropertyConfig,
+      
       // Action handlers
       handleColorSelect,
       handleTypeSelect,
       handleEnergySelect,
-      handleActivationCycle,
-      handleActivationTriggersCycle, // NEW: Add activationTriggers handler
+      handlePropertyCycle,
       handleEmojiSelect,
       handleCircleEmojiSelect,
       handleQuickEmojiSelect,
@@ -639,16 +574,12 @@ export const CircleCharacteristicsBar = {
       circleEmojiDisplayRefTemplate,
       colorDisplayRefTemplate,
       energyDisplayRefTemplate,
-      activationDisplayRefTemplate,
       emojiDisplayRefTemplate,
       typePickerRefTemplate,
       circleEmojiPickerRefTemplate,
       colorPickerRefTemplate,
       energyPickerRefTemplate,
       emojiPickerRefTemplate,
-
-      circleConnectible,
-      handleConnectibleCycle,
     };
   },
   
@@ -658,10 +589,8 @@ export const CircleCharacteristicsBar = {
     CircleEmojiControl,
     ColorControl,
     EnergyControl,
-    ActivationControl,
-    CBActivationTriggersControl, // NEW: Add activation triggers control component
+    CBCyclePropertyControl,
     CBJumpToReferenceControl,
-    CBConnectibleControl,
     BreakReferenceControl,
     EmojiControl,
     RecentEmojisControl,
@@ -713,24 +642,13 @@ export const CircleCharacteristicsBar = {
                 @toggle="toggleEnergyPicker"
             />
 
-            <!-- Activation Control -->
-            <ActivationControl 
-                ref="activationDisplayRefTemplate"
-                :activation="circleActivation"
-                @cycle="handleActivationCycle"
-            />
-
-            <!-- NEW: Activation Triggers Control -->
-            <CBActivationTriggersControl 
-                :activationTriggers="circleActivationTriggers"
-                @cycle="handleActivationTriggersCycle"
-            />
-
-            <!-- Connectible Control -->
-            <CBConnectibleControl 
-                v-if="shouldShowCircleCharacteristicControls"
-                :connectible="circleConnectible"
-                @cycle="handleConnectibleCycle"
+            <!-- Dynamic Cycleable Property Controls -->
+            <CBCyclePropertyControl 
+                v-for="propertyName in cycleableProperties"
+                :key="propertyName"
+                :property-name="propertyName"
+                :property-value="getPropertyValue(propertyName)"
+                @cycle="handlePropertyCycle(propertyName)"
             />
         </template>
 

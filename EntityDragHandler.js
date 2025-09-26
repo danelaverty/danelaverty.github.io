@@ -182,52 +182,37 @@ export class EntityDragHandler {
      * Get reactive entities with current drag positions applied
      * This preserves reactivity while using current positions for connection calculations
      */
-    getReactiveEntitiesWithCurrentPositions() {
-        const originalEntities = this.entityTypeHandler.getCurrentEntities();
-        
-        if (!this.currentDragState.isDragging || (!this.currentDragState.deltaX && !this.currentDragState.deltaY)) {
-            // No drag in progress, return original entities
-            return originalEntities;
-        }
-        
-        // During drag: create temporary position-updated entities while preserving reactivity
-        return originalEntities.map(entity => {
-            const isDragged = this.entityTypeHandler.getSelectedEntityIds().includes(entity.id);
-            
-            if (isDragged) {
-                // Capture current drag state for the proxy closure
-                const currentDeltaX = this.currentDragState.deltaX;
-                const currentDeltaY = this.currentDragState.deltaY;
-                
-                // Create a temporary proxy that maintains reactivity but shows updated positions
-                return new Proxy(entity, {
-                    get(target, prop) {
-                        if (prop === 'x') {
-                            return target.x + currentDeltaX;
-                        }
-                        if (prop === 'y') {
-                            return target.y + currentDeltaY;
-                        }
-                        // For all other properties (including activation), return original value
-                        // This preserves Vue reactivity for non-position properties
-                        return target[prop];
-                    },
-                    // Ensure the proxy appears reactive to Vue
-                    has(target, prop) {
-                        return prop in target;
-                    },
-                    ownKeys(target) {
-                        return Object.keys(target);
-                    },
-                    getOwnPropertyDescriptor(target, prop) {
-                        return Object.getOwnPropertyDescriptor(target, prop);
-                    }
-                });
-            }
-            
-            return entity; // Non-dragged entities unchanged
-        });
+getReactiveEntitiesWithCurrentPositions() {
+    const originalEntities = this.entityTypeHandler.getCurrentEntities();
+    
+    if (!this.currentDragState.isDragging || (!this.currentDragState.deltaX && !this.currentDragState.deltaY)) {
+        // No drag in progress, return original entities
+        return originalEntities;
     }
+    
+    const selectedEntityIds = this.entityTypeHandler.getSelectedEntityIds();
+    
+    const result = originalEntities.map(entity => {
+        const isDragged = selectedEntityIds.includes(entity.id);
+
+        if (isDragged) {
+            const newPos = {
+                x: entity.x + this.currentDragState.deltaX,
+                y: entity.y + this.currentDragState.deltaY
+            };
+
+            return {
+                ...entity,
+                x: newPos.x,
+                y: newPos.y
+            };
+        }
+
+        return entity;
+    });
+
+    return result;
+}
 
     bindMethods() {
         this.handleClick = this.handleClick.bind(this);
@@ -251,24 +236,28 @@ export class EntityDragHandler {
         });
     }
 
-    onDragStart() {
-        // Reset the drag flag when drag starts
-        this.hasActuallyDragged = false;
-        
-        // Initialize drag state
-        this.currentDragState = { deltaX: 0, deltaY: 0, isDragging: true };
-        
-        // NEW: Find group member elements for visual dragging
-        this.findGroupMemberElements();
-        
-        // Emit drag start event
-        this.emit('drag-start', {
-            entityId: this.props.entity.id,
-            entityType: this.props.entityType,
-            viewerId: this.props.viewerId
-        });
-    }
+onDragStart(e) {
 
+if (e && ((e.ctrlKey || e.metaKey) && e.shiftKey)) {
+        return;
+    }
+    
+    // Reset the drag flag when drag starts
+    this.hasActuallyDragged = false;
+    
+    // Initialize drag state
+    this.currentDragState = { deltaX: 0, deltaY: 0, isDragging: true };
+    
+    // NEW: Find group member elements for visual dragging
+    this.findGroupMemberElements();
+    
+    // Emit drag start event
+    this.emit('drag-start', {
+        entityId: this.props.entity.id,
+        entityType: this.props.entityType,
+        viewerId: this.props.viewerId
+    });
+}
     onDragMove(deltaX, deltaY) {
         // Mark that actual dragging has occurred
         this.hasActuallyDragged = true;
@@ -471,42 +460,53 @@ export class EntityDragHandler {
         }
     }
 
-    handleMouseDown(e) {
-        // Don't interfere with name editing
-        if (e.target.hasAttribute('contenteditable')) return;
-        
-        // Don't start drag on shift-click for squares (used for connection selection)
-        if (e.shiftKey && this.props.entityType === 'square') {
-            return;
-        }
-        
-        // Reset the drag flag on mouse down
-        this.hasActuallyDragged = false;
-        
-        this.dragStateManager.handleMouseDown(e);
+handleMouseDown(e) {
+    // Don't interfere with name editing
+    if (e.target.hasAttribute('contenteditable')) {
+        return;
     }
-
+    
+    // ADDED: Don't start drag on ctrl+shift+click (explicit connection creation)
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
+        return; // Let the connection creation logic handle this
+    }
+    
+    // Don't start drag on shift-click for squares (used for connection selection)
+    if (e.shiftKey && this.props.entityType === 'square') {
+        return;
+    }
+    
+    // Reset the drag flag on mouse down
+    this.hasActuallyDragged = false;
+    
+    this.dragStateManager.handleMouseDown(e);
+}
     handleMouseMove(e) {
         this.dragStateManager.handleMouseMove(e);
     }
 
-    // UPDATED: Pass both ctrlKey and shiftKey states in the select emission
-    handleClick(e) {
-        // Handle special clicks (e.g., shift-click for squares)
-        if (this.entityTypeHandler.handleSpecialClick(this.props.entity.id, e)) {
-            return;
-        }
-        
-        // Only select if no actual dragging occurred AND normal click conditions are met
-        if (!this.hasActuallyDragged && this.dragStateManager.shouldProcessClick()) {
-            // UPDATED: Pass both modifier keys to the select handler
-            this.emit('select', this.props.entity.id, e.ctrlKey || e.metaKey, e.shiftKey);
-        } 
-        
-        // Reset drag state and flag
-        this.dragStateManager.reset();
-        this.hasActuallyDragged = false;
+handleClick(e) {
+    // ADDED: Handle connection creation before any drag logic
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
+        // Pass through to connection creation - don't process as drag/select
+        this.emit('select', this.props.entity.id, e.ctrlKey || e.metaKey, e.shiftKey);
+        return;
     }
+    
+    // Handle special clicks (e.g., shift-click for squares)
+    if (this.entityTypeHandler.handleSpecialClick(this.props.entity.id, e)) {
+        return;
+    }
+    
+    // Only select if no actual dragging occurred AND normal click conditions are met
+    if (!this.hasActuallyDragged && this.dragStateManager.shouldProcessClick()) {
+        this.emit('select', this.props.entity.id, e.ctrlKey || e.metaKey, e.shiftKey);
+    } 
+    
+    // Reset drag state and flag
+    this.dragStateManager.reset();
+    this.hasActuallyDragged = false;
+}
 
     // Cleanup method
     cleanup() {
