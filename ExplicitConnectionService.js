@@ -5,6 +5,7 @@ export class ExplicitConnectionService {
     constructor(dataStore) {
         this.dataStore = dataStore;
         this.explicitConnectionStore = useExplicitConnectionStore();
+        this.saveToStorage = dataStore.saveToStorage;
     }
 
     /**
@@ -30,6 +31,8 @@ export class ExplicitConnectionService {
         const connection = this.explicitConnectionStore.updateConnection(connectionId, {
             [property]: value
         });
+
+        this.saveToStorage();
         
         return {
             action: 'update',
@@ -50,13 +53,18 @@ export class ExplicitConnectionService {
         // Check if clicked entity is in an explicit connection with any selected entity
         const existingConnections = this.findExistingConnections(clickedEntityId, clickedEntityType, selectedEntityIds, selectedEntityType);
         
+        var result;
         if (existingConnections.length > 0) {
             // Delete existing connections
-            return this.deleteConnections(existingConnections);
+            result = this.deleteConnections(existingConnections);
         } else {
             // Create new connections
-            return this.createConnections(clickedEntityId, clickedEntityType, selectedEntityIds, selectedEntityType, viewerId);
+            result = this.createConnections(clickedEntityId, clickedEntityType, selectedEntityIds, selectedEntityType, viewerId);
         }
+        if (result && result.action !== 'error' && result.action !== 'none') {
+            this.saveToStorage();
+        }
+        return result;
     }
 
     /**
@@ -99,54 +107,59 @@ export class ExplicitConnectionService {
     /**
      * Create new explicit connections
      */
-    createConnections(clickedEntityId, clickedEntityType, selectedEntityIds, selectedEntityType, viewerId = null) {
-        const clickedEntityRef = this.getEntityReference(clickedEntityType, clickedEntityId);
-        
-        if (!clickedEntityRef) {
-            return { action: 'error', message: 'Clicked entity not found' };
+createConnections(clickedEntityId, clickedEntityType, selectedEntityIds, selectedEntityType, viewerId = null) {
+    const clickedEntityRef = this.getEntityReference(clickedEntityType, clickedEntityId);
+    
+    if (!clickedEntityRef) {
+        return { action: 'error', message: 'Clicked entity not found' };
+    }
+
+    let createdCount = 0;
+    const createdConnections = [];
+
+    selectedEntityIds.forEach(selectedId => {
+        // Don't create connection to itself
+        if (selectedId === clickedEntityId) {
+            return;
         }
 
-        let createdCount = 0;
-        const createdConnections = [];
-
-        selectedEntityIds.forEach(selectedId => {
-            // Don't create connection to itself
-            if (selectedId === clickedEntityId) {
-                return;
-            }
-
-            const selectedEntityRef = this.getEntityReference(selectedEntityType, selectedId);
-            
-            if (selectedEntityRef) {
-                // Check if connection already exists (shouldn't, but safety check)
-                if (!this.explicitConnectionStore.hasConnection(clickedEntityId, selectedId, clickedEntityType, selectedEntityType)) {
-                    const connection = this.explicitConnectionStore.createConnection(
-                        clickedEntityId, clickedEntityType,
-                        selectedId, selectedEntityType,
-                        clickedEntityRef, selectedEntityRef
-                    );
-                    
-                    if (connection) {
-                        createdConnections.push(connection);
-                        createdCount++;
-                    }
+        const selectedEntityRef = this.getEntityReference(selectedEntityType, selectedId);
+        
+        if (selectedEntityRef) {
+            // Check if connection already exists (shouldn't, but safety check)
+            if (!this.explicitConnectionStore.hasConnection(clickedEntityId, selectedId, clickedEntityType, selectedEntityType)) {
+                const connection = this.explicitConnectionStore.createConnection(
+                    clickedEntityId, clickedEntityType,
+                    selectedId, selectedEntityType,
+                    clickedEntityRef, selectedEntityRef
+                );
+                
+                if (connection) {
+                    createdConnections.push(connection);
+                    createdCount++;
                 }
             }
-        });
+        }
+    });
 
-        return {
-            action: 'create',
-            count: createdCount,
-            connections: createdConnections,
-            message: `Created ${createdCount} explicit connection${createdCount !== 1 ? 's' : ''}`
-        };
-    }
+    const result = {
+        action: 'create',
+        count: createdCount,
+        connections: createdConnections,
+        message: `Created ${createdCount} explicit connection${createdCount !== 1 ? 's' : ''}`
+    };
+    
+    return result;
+}
 
     /**
      * Delete all explicit connections involving an entity (called when entity is deleted)
      */
     deleteConnectionsForEntity(entityId, entityType = null) {
         const deletedCount = this.explicitConnectionStore.deleteConnectionsForEntity(entityId);
+        if (deletedCount > 0) {
+            this.saveToStorage();
+        }
         
         return {
             action: 'cleanup',
