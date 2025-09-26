@@ -42,22 +42,16 @@ const connectionStyles = `
         }
     }
 
-    .connection-line.exciter-connection::before {
-        content: "";
-        background: repeating-linear-gradient(
-            270deg,
-            #00AAAA 0px,
-            #00AAAA 4px,
-            #00FFFF 8px,
-            #00FFFF 12px,
-            #00AAAA 16px,
-            #00AAAA 20px
-        );
-        animation: barber-pole 1s linear infinite;
-        opacity: 1;
+    @keyframes barber-pole-rev {
+        0% {
+            background-position: 0px 0px;
+        }
+        100% {
+            background-position: 20px 0px;
+        }
     }
 
-    .connection-line.exciter-connection.explicit-solid::before {
+    .connection-line.exciter-connection::before {
         content: "";
         background: repeating-linear-gradient(
             90deg,
@@ -68,26 +62,15 @@ const connectionStyles = `
             #00AAAA 16px,
             #00AAAA 20px
         );
-        animation: barber-pole 1s linear infinite;
+        animation: barber-pole-rev 1s linear infinite;
         opacity: 1;
+    }
+
+    .connection-line.exciter-connection.explicit-solid::before {
+        animation: barber-pole 1s linear infinite;
     }
 
     .connection-line.dampener-connection::before {
-        content: "";
-        background: repeating-linear-gradient(
-            270deg,
-            #AA0000 0px,
-            #AA0000 4px,
-            #FF0000 8px,
-            #FF0000 12px,
-            #AA0000 16px,
-            #AA0000 20px
-        );
-        animation: barber-pole 1s linear infinite;
-        opacity: 1;
-    }
-
-    .connection-line.dampener-connection.explicit-solid::before {
         content: "";
         background: repeating-linear-gradient(
             90deg,
