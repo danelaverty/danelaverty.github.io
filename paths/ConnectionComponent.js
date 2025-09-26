@@ -14,7 +14,7 @@ const connectionStyles = `
     }
 
     .connection-line.circle-solid {
-        background-color: #4CAF50;
+        background-color: #505050;
     }
 
     /* Explicit connection styles */
@@ -126,7 +126,7 @@ const connectionStyles = `
     }
 
     .connection-path.circle-connection {
-        stroke: #4CAF50;
+        stroke: #505050;
         stroke-width: 1.5;
         opacity: 1;
     }
@@ -243,7 +243,7 @@ const energyClasses = computed(() => props.connectionEnergyClasses);
             if (isExplicitConnection.value) {
                 return 'rgba(70, 70, 70, 1)';
             } else if (isCircleType) {
-                return '#4CAF50';
+                return '#505050';
             } else {
                 return '#ffffff';
             }
@@ -289,7 +289,7 @@ const energyClasses = computed(() => props.connectionEnergyClasses);
                 opacity = 0.8;
                 strokeWidth = '2.5px';
             } else if (isCircleType) {
-                strokeColor = '#4CAF50';
+                strokeColor = '#505050';
                 opacity = 1;
                 strokeWidth = '1.5px';
             } else {
