@@ -11,7 +11,7 @@ const selectionStyles = `
         z-index: 9 !important; /* Higher z-index to ensure visibility */
         border: 3px solid transparent;
         box-sizing: border-box !important; /* Ensure consistent sizing */
-        opacity: 1 !important; /* Force opacity */
+        opacity: 0 !important; /* Force opacity */
         visibility: visible !important; /* Force visibility */
     }
 
@@ -118,7 +118,7 @@ export const SelectionRenderer = {
         
         // Force display to be visible
         indicator.style.display = 'block';
-        indicator.style.opacity = '1';
+        indicator.style.opacity = '0';
         indicator.style.visibility = 'visible';
         
         element.appendChild(indicator);

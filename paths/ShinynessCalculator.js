@@ -1,312 +1,167 @@
-// ShinynessCalculator.js - Pure shinyness calculation logic with shinynessReceiveMode support
 export class ShinynessCalculator {
-    constructor(config = {}) {
-        this.config = {
-            // Base shinyness values for activation states
-            activatedBase: 1,
-            inactiveBase: -1,
-            inertBase: 0,
-            
-            // Energy type multipliers for shinyness contribution
-            exciterMultiplier: 2,
-            igniterMultiplier: 2,
-            dampenerMultiplier: -2,
-            
-            ...config
+    constructor() {
+        this.activationRules = {
+            activated: 1.0,
+            inactive: 0.0,
+            inert: null
         };
+        this.delayedShinyStates = new Map(); // circleId -> { shinyness, timeoutId }
+        this.animationDelay = 900; // ms per hop
+        this.triggerReactivityUpdate = null; // Will be set by CircleViewer
+        this.delayedConnectionEnergy = new Map(); // connectionId -> Set of active energy types
+        this.connectionTimeouts = new Map(); // connectionId-energyType -> timeoutId
     }
 
-    /**
-     * Calculate base shinyness from activation status
-     * @param {string} activation - 'activated', 'inactive', or 'inert'
-     * @returns {number} Base shinyness value
-     */
-    calculateBaseShinyness(activation) {
-        const activationMap = {
-            'activated': this.config.activatedBase,
-            'inactive': this.config.inactiveBase,
-            'inert': this.config.inertBase
-        };
-        return activationMap[activation] || 0;
+scheduleConnectionEnergy(connectionId, energyType, distance) {
+    const key = `${connectionId}-${energyType}`;
+    
+    // Clear existing timeout for this connection-energy combo
+    if (this.connectionTimeouts.has(key)) {
+        clearTimeout(this.connectionTimeouts.get(key));
     }
-
-    /**
-     * Calculate energy contribution to shinyness from energy effects
-     * @param {Array} energyEffects - Array of {energyType, amount} objects
-     * @returns {number} Energy contribution to shinyness
-     */
-    calculateEnergyShinyness(energyEffects) {
-        let energyContribution = 0;
+    
+    const delay = this.animationDelay * Math.max(0, distance / 2);
+    
+    const timeoutId = setTimeout(() => {
+        // Add energy type to active set
+        if (!this.delayedConnectionEnergy.has(connectionId)) {
+            this.delayedConnectionEnergy.set(connectionId, new Set());
+        }
+        this.delayedConnectionEnergy.get(connectionId).add(energyType);
         
-        energyEffects.forEach(effect => {
-            switch (effect.energyType) {
-                case 'exciter':
-                    energyContribution += effect.amount * this.config.exciterMultiplier;
-                    break;
-                case 'igniter':
-                    energyContribution += effect.amount * this.config.igniterMultiplier;
-                    break;
-                case 'dampener':
-                    energyContribution += effect.amount * this.config.dampenerMultiplier;
-                    break;
+        // Clean up timeout reference
+        this.connectionTimeouts.delete(key);
+        
+        // Trigger reactivity
+        if (this.triggerReactivityUpdate) {
+            this.triggerReactivityUpdate();
+        }
+    }, delay);
+    
+    this.connectionTimeouts.set(key, timeoutId);
+}
+
+getActiveConnectionEnergyTypes(connectionId) {
+    return this.delayedConnectionEnergy.get(connectionId) || new Set();
+}
+
+    calculateShinyness(circle, energyDistanceMap = null) {
+        if (!circle) return 0.0;
+        
+        if (circle.activation === 'inert') return null;
+        if (circle.activation === 'activated') return 1.0;
+        
+        // For inactive circles, check both immediate and delayed shiny states
+        if (circle.activation === 'inactive') {
+            // Check if we have a delayed shiny state active
+            const delayedState = this.delayedShinyStates.get(circle.id);
+            if (delayedState && delayedState.shinyness === 1.0) {
+                return 1.0;
             }
-        });
-        
-        return energyContribution;
-    }
-
-    /**
-     * NEW: Calculate modified energy contribution based on shinynessReceiveMode
-     * @param {Array} energyEffects - Array of {energyType, amount, connectionMeta} objects
-     * @param {string} shinynessReceiveMode - 'or', 'and', or 'explosiveAnd'
-     * @returns {number} Modified energy contribution to shinyness
-     */
-    calculateModifiedEnergyShinyness(energyEffects, shinynessReceiveMode = 'or') {
-        if (shinynessReceiveMode === 'or') {
-            // Default behavior - use existing logic
-            return this.calculateEnergyShinyness(energyEffects);
-        }
-
-        // Group effects by energy type and calculate modified amounts
-        const exciterEffects = energyEffects.filter(e => e.energyType === 'exciter' || e.energyType === 'igniter');
-        const dampenerEffects = energyEffects.filter(e => e.energyType === 'dampener');
-
-        let totalContribution = 0;
-
-        // Process exciter/igniter effects
-        if (exciterEffects.length > 0) {
-            const exciterContribution = this.calculateReceiveModeContribution(
-                exciterEffects, 
-                shinynessReceiveMode,
-                this.config.exciterMultiplier,
-                this.config.igniterMultiplier
-            );
-            totalContribution += exciterContribution;
-        }
-
-        // Process dampener effects
-        if (dampenerEffects.length > 0) {
-            const dampenerContribution = this.calculateReceiveModeContribution(
-                dampenerEffects,
-                shinynessReceiveMode,
-                this.config.dampenerMultiplier
-            );
-            totalContribution += dampenerContribution;
-        }
-
-        return totalContribution;
-    }
-
-    /**
-     * Calculate contribution for a specific energy type group based on receive mode
-     * @param {Array} effects - Effects of the same energy type
-     * @param {string} receiveMode - 'and' or 'explosiveAnd'
-     * @param {number} baseMultiplier - Base multiplier for this energy type
-     * @param {number} igniterMultiplier - Optional separate multiplier for igniters
-     * @returns {number} Modified contribution
-     */
-    calculateReceiveModeContribution(effects, receiveMode, baseMultiplier, igniterMultiplier = null) {
-        if (effects.length === 0) return 0;
-
-        // Get total connected count from metadata (should be the same for all effects of this type)
-        const totalConnected = effects.length > 0 ? (effects[0].connectionMeta?.totalConnected || effects.length) : 0;
-        
-        if (totalConnected === 0) return 0;
-
-        // Calculate contribution per active effect
-        let totalContribution = 0;
-        let activeCount = 0;
-
-        effects.forEach(effect => {
-            if (effect.amount > 0) {
-                activeCount++;
-                const multiplier = (effect.energyType === 'igniter' && igniterMultiplier !== null) 
-                    ? igniterMultiplier 
-                    : baseMultiplier;
-                
-                // Each active effect contributes its scaled amount
-                const effectContribution = effect.amount * multiplier;
-                
-                if (receiveMode === 'and') {
-                    // Each active effect contributes 1/totalConnected of its normal amount
-                    totalContribution += effectContribution / totalConnected;
-                } else if (receiveMode === 'explosiveAnd') {
-                    if (activeCount === totalConnected) {
-                        // All connected circles are active - this effect contributes full amount
-                        totalContribution += effectContribution;
-                    } else {
-                        // Partial effect - this effect contributes 1/(2*totalConnected) of normal
-                        totalContribution += effectContribution / (2 * totalConnected);
-                    }
-                } else {
-                    // Default 'or' behavior
-                    totalContribution += effectContribution;
+            
+            // Check if we should schedule a delayed shiny effect
+            if (energyDistanceMap) {
+                const distances = energyDistanceMap.get(circle.id);
+                if (distances && distances.exciter !== undefined && distances.exciter > 0) {
+                    this.scheduleDelayedShinyness(circle.id, distances.exciter);
                 }
             }
+        }
+        
+        return 0.0;
+    }
+
+    scheduleDelayedShinyness(circleId, distance) {
+        // Don't reschedule if already scheduled for this distance
+        const existing = this.delayedShinyStates.get(circleId);
+        if (existing && existing.scheduledForDistance === distance) {
+            return;
+        }
+        
+        // Clear any existing timeout for this circle
+        this.clearDelayedState(circleId);
+        
+        const delay = this.animationDelay * Math.max(0, distance / 2);
+        
+        const timeoutId = setTimeout(() => {
+            this.delayedShinyStates.set(circleId, { 
+                shinyness: 1.0, 
+                timeoutId: null,
+                scheduledForDistance: distance
+            });
+            
+            // Trigger Vue reactivity update
+            if (this.triggerReactivityUpdate) {
+                this.triggerReactivityUpdate();
+            }
+        }, delay);
+        
+        this.delayedShinyStates.set(circleId, { 
+            shinyness: 0.0, 
+            timeoutId: timeoutId,
+            scheduledForDistance: distance
+        });
+    }
+
+    clearDelayedState(circleId) {
+        const existing = this.delayedShinyStates.get(circleId);
+        if (existing && existing.timeoutId) {
+            clearTimeout(existing.timeoutId);
+        }
+        this.delayedShinyStates.delete(circleId);
+    }
+
+clearAllDelayedStates() {
+    // Clear existing circle logic (keep this part)
+    this.delayedShinyStates.forEach((state, circleId) => {
+        this.clearDelayedState(circleId);
+    });
+    
+    // Clear completed connection energy states (so cascades end when connections break)
+    this.delayedConnectionEnergy.clear();
+}
+
+    setReactivityTrigger(triggerFn) {
+        this.triggerReactivityUpdate = triggerFn;
+    }
+
+    // Keep existing methods for compatibility
+    calculateShinynessForCircles(circles, energizedConnectionsData = null) {
+        const shinynessMap = new Map();
+        
+        for (const circle of circles) {
+            const shinyness = this.calculateShinyness(circle, null); // energyDistanceMap passed separately now
+            shinynessMap.set(circle.id, shinyness);
+        }
+
+        return shinynessMap;
+    }
+
+    getAdditiveOrConnectionMultiplier(circle, energizedConnectionsData) {
+        // Only apply to circles with additiveOr receive mode
+        if (circle.shinynessReceiveMode !== 'additiveOr') {
+            return 1;
+        }
+
+        if (!energizedConnectionsData || !energizedConnectionsData.has(circle.id)) {
+            return 1;
+        }
+
+        const connectionCounts = energizedConnectionsData.get(circle.id);
+        if (!connectionCounts) {
+            return 1;
+        }
+
+        // Count total energized connections across all energy types
+        let totalEnergizedConnections = 0;
+        Object.entries(connectionCounts).forEach(([key, count]) => {
+            if (key.endsWith('-connections')) {
+                totalEnergizedConnections += count;
+            }
         });
 
-        // For explosiveAnd, we need to check if ALL are active after processing
-        if (receiveMode === 'explosiveAnd' && activeCount === totalConnected && activeCount > 0) {
-            // Recalculate with full contribution for all effects
-            totalContribution = 0;
-            effects.forEach(effect => {
-                if (effect.amount > 0) {
-                    const multiplier = (effect.energyType === 'igniter' && igniterMultiplier !== null) 
-                        ? igniterMultiplier 
-                        : baseMultiplier;
-                    totalContribution += effect.amount * multiplier;
-                }
-            });
-        }
-
-        return totalContribution;
-    }
-
-    /**
-     * Calculate net shinyness from activation and energy effects with receive mode support
-     * @param {string} activation - Entity activation state
-     * @param {Array} energyEffects - Array of energy effects
-     * @param {string} shinynessReceiveMode - How the entity receives shinyness ('or', 'and', 'explosiveAnd')
-     * @returns {Object} {base, energy, net, effectBreakdown} shinyness values
-     */
-    calculateNetShinyness(activation, energyEffects = [], shinynessReceiveMode = 'or') {
-        const base = this.calculateBaseShinyness(activation);
-        const energy = this.calculateModifiedEnergyShinyness(energyEffects, shinynessReceiveMode);
-        const net = base + energy;
-        
-        // Calculate individual effect contributions for display purposes
-        const effectBreakdown = this.calculateEffectBreakdown(energyEffects, shinynessReceiveMode);
-        
-        return { 
-            base, 
-            energy, 
-            net,
-            receiveMode: shinynessReceiveMode,
-            receiveModeApplied: shinynessReceiveMode !== 'or' && energyEffects.length > 0,
-            effectBreakdown
-        };
-    }
-
-    /**
-     * Calculate individual effect contributions for display purposes
-     * @param {Array} energyEffects - Array of {energyType, amount, connectionMeta} objects
-     * @param {string} shinynessReceiveMode - 'or', 'and', or 'explosiveAnd'
-     * @returns {Array} Array of {energyType, originalAmount, modifiedAmount, multiplier} objects
-     */
-    calculateEffectBreakdown(energyEffects, shinynessReceiveMode = 'or') {
-        if (shinynessReceiveMode === 'or') {
-            // Default behavior - use existing logic
-            return energyEffects.map(effect => ({
-                energyType: effect.energyType,
-                originalAmount: effect.amount,
-                modifiedAmount: this.getBaseMultiplier(effect.energyType) * effect.amount,
-                multiplier: this.getBaseMultiplier(effect.energyType),
-                receiveModifier: 1.0
-            }));
-        }
-
-        // Group effects by energy type
-        const exciterEffects = energyEffects.filter(e => e.energyType === 'exciter' || e.energyType === 'igniter');
-        const dampenerEffects = energyEffects.filter(e => e.energyType === 'dampener');
-
-        const breakdown = [];
-
-        // Process exciter/igniter effects
-        if (exciterEffects.length > 0) {
-            const totalConnected = exciterEffects.length > 0 ? 
-                (exciterEffects[0].connectionMeta?.totalConnected || exciterEffects.length) : 0;
-            const activeCount = exciterEffects.filter(e => e.amount > 0).length;
-            
-            exciterEffects.forEach(effect => {
-                if (effect.amount > 0) {
-                    const baseMultiplier = this.getBaseMultiplier(effect.energyType);
-                    const originalContribution = effect.amount * baseMultiplier;
-                    
-                    let receiveModifier = 1.0;
-                    if (shinynessReceiveMode === 'and') {
-                        receiveModifier = 1.0 / totalConnected;
-                    } else if (shinynessReceiveMode === 'explosiveAnd') {
-                        receiveModifier = (activeCount === totalConnected) ? 1.0 : (1.0 / (2 * totalConnected));
-                    }
-                    
-                    breakdown.push({
-                        energyType: effect.energyType,
-                        originalAmount: effect.amount,
-                        modifiedAmount: originalContribution * receiveModifier,
-                        multiplier: baseMultiplier,
-                        receiveModifier
-                    });
-                }
-            });
-        }
-
-        // Process dampener effects
-        if (dampenerEffects.length > 0) {
-            const totalConnected = dampenerEffects.length > 0 ? 
-                (dampenerEffects[0].connectionMeta?.totalConnected || dampenerEffects.length) : 0;
-            const activeCount = dampenerEffects.filter(e => e.amount > 0).length;
-            
-            dampenerEffects.forEach(effect => {
-                if (effect.amount > 0) {
-                    const baseMultiplier = this.getBaseMultiplier(effect.energyType);
-                    const originalContribution = effect.amount * baseMultiplier;
-                    
-                    let receiveModifier = 1.0;
-                    if (shinynessReceiveMode === 'and') {
-                        receiveModifier = 1.0 / totalConnected;
-                    } else if (shinynessReceiveMode === 'explosiveAnd') {
-                        receiveModifier = (activeCount === totalConnected) ? 1.0 : (1.0 / (2 * totalConnected));
-                    }
-                    
-                    breakdown.push({
-                        energyType: effect.energyType,
-                        originalAmount: effect.amount,
-                        modifiedAmount: originalContribution * receiveModifier,
-                        multiplier: baseMultiplier,
-                        receiveModifier
-                    });
-                }
-            });
-        }
-
-        return breakdown;
-    }
-
-    /**
-     * Get base multiplier for an energy type
-     * @param {string} energyType - 'exciter', 'igniter', or 'dampener'
-     * @returns {number} Base multiplier
-     */
-    getBaseMultiplier(energyType) {
-        switch (energyType) {
-            case 'exciter':
-                return this.config.exciterMultiplier;
-            case 'igniter':
-                return this.config.igniterMultiplier;
-            case 'dampener':
-                return this.config.dampenerMultiplier;
-            default:
-                return 1;
-        }
-    }
-
-    /**
-     * Format shinyness value for display
-     * @param {number} value - Shinyness value
-     * @returns {string} Formatted display string
-     */
-    formatShinynessValue(value) {
-        return value >= 0 ? `+${value.toFixed(2)}` : value.toFixed(2);
-    }
-
-    /**
-     * Get CSS class for shinyness value styling
-     * @param {number} value - Shinyness value
-     * @returns {string} CSS class name
-     */
-    getShinynessClass(value) {
-        if (value > 0) return 'shinyness-positive';
-        if (value < 0) return 'shinyness-negative';
-        return 'shinyness-neutral';
+        // If 0 or 1 connection, use base multiplier (1)
+        // If 2+ connections, use connection count as multiplier
+        return Math.max(1, totalEnergizedConnections);
     }
 }

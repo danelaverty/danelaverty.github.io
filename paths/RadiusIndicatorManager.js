@@ -115,10 +115,12 @@ export class RadiusIndicatorManager {
     }
 
     applyIndicatorStyles(indicator, centerPos, radius, diameter, entity) {
+const isSquare = this.entityTypeHandler.constructor.name === 'SquareHandler';
+const offset = isSquare ? 20 : 0;
         Object.assign(indicator.style, {
             position: 'absolute',
-            left: (centerPos.x - radius - 20) + 'px',
-            top: (centerPos.y - radius - 20) + 'px',
+            left: (centerPos.x - radius - offset) + 'px',
+            top: (centerPos.y - radius - offset) + 'px',
             width: diameter + 'px',
             height: diameter + 'px',
             borderRadius: '50%',
@@ -156,8 +158,10 @@ export class RadiusIndicatorManager {
             const connectionDistance = this.entityTypeHandler.getConnectionDistance(entity);
             const radius = connectionDistance;
 
-            indicator.style.left = (centerPos.x - radius - 20) + 'px';
-            indicator.style.top = (centerPos.y - radius - 20) + 'px';
+const isSquare = this.entityTypeHandler.constructor.name === 'SquareHandler';
+const offset = isSquare ? 20 : 0;
+            indicator.style.left = (centerPos.x - radius - offset) + 'px';
+            indicator.style.top = (centerPos.y - radius - offset) + 'px';
         });
     }
 

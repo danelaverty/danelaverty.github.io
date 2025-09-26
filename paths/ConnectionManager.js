@@ -255,21 +255,10 @@ export class ConnectionManager {
                 if (distance <= connectionDistance) {
                     const connectionId = this.getConnectionId(entity1.id, entity2.id, entityType);
                     
-                    // DEBUG: Log entity references in new connections
-                    if (isCircleType) {
-                        // CRITICAL FIX: Check if entities are reactive, warn if not
-                        if (!entity1.__v_isReactive && !entity1.__v_isProxy) {
-                            console.warn(`⚠️ Entity ${entity1.id} is NOT REACTIVE! This will break connection updates.`);
-                        }
-                        if (!entity2.__v_isReactive && !entity2.__v_isProxy) {
-                            console.warn(`⚠️ Entity ${entity2.id} is NOT REACTIVE! This will break connection updates.`);
-                        }
-                    }
-                    
                     newConnections.set(connectionId, {
                         id: connectionId,
-                        entity1Id: entity1.id,
-                        entity2Id: entity2.id,
+                        entity1Id: entity2.id,
+                        entity2Id: entity1.id,
                         entity1: entity1, // These MUST be reactive references
                         entity2: entity2, // These MUST be reactive references
                         distance: distance,
@@ -338,14 +327,6 @@ export class ConnectionManager {
                 const connectionId = this.getConnectionId(draggedEntity.id, otherEntity.id, entityType);
                 
                 if (distance <= connectionDistance) {
-                    
-                    // CRITICAL FIX: Check reactivity of dragged entities
-                    if (!draggedEntity.__v_isReactive && !draggedEntity.__v_isProxy) {
-                        console.warn(`⚠️ Dragged entity ${draggedEntity.id} is NOT REACTIVE!`);
-                    }
-                    if (!otherEntity.__v_isReactive && !otherEntity.__v_isProxy) {
-                        console.warn(`⚠️ Other entity ${otherEntity.id} is NOT REACTIVE!`);
-                    }
                     
                     newConnections.set(connectionId, {
                         id: connectionId,

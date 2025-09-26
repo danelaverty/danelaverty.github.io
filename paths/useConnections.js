@@ -90,14 +90,6 @@ export function useConnectionDragUpdater(getEntities, getSelectedEntityIds, enti
         const selectedIds = getSelectedEntityIds();
         
         if (entities && entities.length > 0) {
-            // DEBUG: Check entity reactivity before passing to ConnectionManager
-            entities.forEach(entity => {
-                const isReactive = entity.__v_isReactive || entity.__v_isProxy;
-                if (!isReactive) {
-                    console.warn(`⚠️ useConnections.js: Entity ${entity.id} is NOT REACTIVE at line 93!`);
-                }
-            });
-            
             const draggedEntityIds = new Set(selectedIds);
             
             // EXPERIMENTAL FIX: Try to get fresh reactive entities if possible

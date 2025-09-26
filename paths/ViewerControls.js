@@ -1,11 +1,8 @@
-// ViewerControls.js - Enhanced with drag state handling, document-based properties, energy system indicator, animation loop toggle, and background cycling
+// ViewerControls.js
 import { ref, computed, nextTick, onMounted, onUnmounted } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
-import { useEnergyProximitySystem } from './EnergyProximitySystem.js';
-import { useAnimationLoopManager } from './AnimationLoopManager.js';
 import { injectComponentStyles } from './styleUtils.js';
 
-// Enhanced component styles with drag state support, editing styles, energy system indicator, animation toggle, and background cycling
 const componentStyles = `
     .viewer-controls {
         position: absolute;
@@ -22,16 +19,44 @@ const componentStyles = `
         transition: background-color 0.2s ease, height 0.2s ease;
     }
 
-    /* NEW: Energy system active styling */
-    .viewer-controls.energy-active {
-        background-color: #442222;
-        border-bottom-color: #555;
-    }
+.viewer-controls.shiny {
+    background-color: #442222;
+    border-bottom-color: #664444;
+}
 
-    .viewer-controls.energy-active.selected {
-        background-color: #553333;
-        border-bottom-color: #666;
-    }
+.viewer-controls.selected.shiny {
+    background-color: #553333;
+    border-bottom-color: #775555;
+}
+
+.viewer-button.shinyness-toggle {
+    position: relative;
+}
+
+.viewer-button.shinyness-toggle.active {
+    background-color: rgba(255, 215, 0, 0.2);
+    color: #FFD700;
+}
+
+.viewer-button.shinyness-toggle.inactive {
+    background-color: transparent;
+    color: #666;
+}
+
+.viewer-button.shinyness-toggle:hover {
+    background-color: #666;
+    color: #fff;
+}
+
+.viewer-button.shinyness-toggle.active:hover {
+    background-color: rgba(255, 215, 0, 0.3);
+    color: #FFED4E;
+}
+
+.viewer-button.shinyness-toggle.inactive:hover {
+    background-color: #555;
+    color: #aaa;
+}
 
     /* Compact layout for narrow viewers - only expand on hover */
     .viewer-controls.compact {
@@ -133,12 +158,6 @@ const componentStyles = `
         transition: all 0.2s ease;
     }
 
-    /* Energy system active reorder handle */
-    .viewer-controls.energy-active .reorder-handle {
-        background-color: #553333;
-        border-right-color: #555;
-    }
-
     /* Show reorder handle on hover or during drag operations */
     .viewer-controls:hover .reorder-handle,
     .viewer-controls.drag-active .reorder-handle {
@@ -173,12 +192,6 @@ const componentStyles = `
         color: #aaa;
     }
 
-    /* Energy system active reorder handle hover */
-    .viewer-controls.energy-active .reorder-handle:hover {
-        background-color: #664444;
-        color: #aaa;
-    }
-
     .reorder-handle:active {
         cursor: grabbing;
     }
@@ -187,12 +200,6 @@ const componentStyles = `
     .viewer-controls.selected .reorder-handle {
         background-color: #3a3a3a;
         border-right-color: #555;
-    }
-
-    /* Energy system active + selected reorder handle */
-    .viewer-controls.energy-active.selected .reorder-handle {
-        background-color: #664444;
-        border-right-color: #666;
     }
 
     .viewer-title {
@@ -227,11 +234,6 @@ const componentStyles = `
 
     .viewer-title:hover {
         background-color: rgba(255, 255, 255, 0.05);
-    }
-
-    /* Energy system active title hover */
-    .viewer-controls.energy-active .viewer-title:hover {
-        background-color: rgba(255, 255, 255, 0.08);
     }
 
     /* Disable title editing during drag operations */
@@ -319,12 +321,6 @@ const componentStyles = `
         color: #fff;
     }
 
-    /* Energy system active button hover */
-    .viewer-controls.energy-active .viewer-button:hover {
-        background-color: #555;
-        color: #fff;
-    }
-
     .viewer-button.close:hover {
         background-color: #f44336;
     }
@@ -369,41 +365,6 @@ const componentStyles = `
         color: #aaa;
     }
 
-    /* Energy system active background toggle */
-    .viewer-controls.energy-active .viewer-button.background-toggle:hover {
-        background-color: #777;
-    }
-
-    .viewer-controls.energy-active .viewer-button.background-toggle.silhouette:hover {
-        background-color: rgba(255, 255, 255, .2);
-    }
-
-    .viewer-controls.energy-active .viewer-button.background-toggle.cycle:hover {
-        background-color: rgba(76, 175, 80, 0.4);
-    }
-
-    .viewer-button.animation-toggle.active {
-        background-color: #4CAF50;
-        color: white;
-    }
-
-    .viewer-button.animation-toggle:hover {
-        background-color: #666;
-    }
-
-    .viewer-button.animation-toggle.active:hover {
-        background-color: #66BB6A;
-    }
-
-    /* Energy system active animation toggle */
-    .viewer-controls.energy-active .viewer-button.animation-toggle:hover {
-        background-color: #777;
-    }
-
-    .viewer-controls.energy-active .viewer-button.animation-toggle.active:hover {
-        background-color: #77CC7A;
-    }
-
     .viewer-controls.document-hovered {
         background-color: #6C6F50;
         color: white;
@@ -437,7 +398,6 @@ export const ViewerControls = {
                 dropTarget: null
             })
         },
-        // NEW: Prop for document hover highlighting
         hoveredDocumentId: {
             type: String,
             default: null
@@ -446,8 +406,6 @@ export const ViewerControls = {
     emits: ['start-reorder', 'close'],
     setup(props, { emit }) {
         const dataStore = useDataStore();
-        const proximitySystem = useEnergyProximitySystem(); // NEW: Get proximity system instance
-        const animationManager = useAnimationLoopManager(); // NEW: Get animation manager instance
         const controlsRef = ref(null);
         const titleInputRef = ref(null);
         const isCompact = ref(false);
@@ -466,8 +424,21 @@ export const ViewerControls = {
 
         const viewer = computed(() => dataStore.data.circleViewers.get(props.viewerId));
         const viewerTitle = computed(() => dataStore.getViewerTitle(props.viewerId));
+
+const shinynessMode = computed(() => {
+    return viewerProperties.value.shinynessMode || false;
+});
+
+const shinynessIcon = computed(() => {
+    return shinynessMode.value ? '✨' : '◇';
+});
+
+const shinynessTitle = computed(() => {
+    return shinynessMode.value ? 
+        'Shinyness: ON (click to turn off)' : 
+        'Shinyness: OFF (click to turn on)';
+});
         
-        // NEW: Get viewer properties from document
         const viewerProperties = computed(() => {
             return dataStore.getViewerProperties(props.viewerId);
         });
@@ -475,24 +446,11 @@ export const ViewerControls = {
         // Check if this viewer is selected
         const isSelected = computed(() => dataStore.isViewerSelected(props.viewerId));
 
-        // NEW: Check if this viewer's document is being hovered in the dock
         const isDocumentHovered = computed(() => {
             if (!props.hoveredDocumentId) return false;
             const currentDoc = dataStore.getCircleDocumentForViewer(props.viewerId);
             return currentDoc && currentDoc.id === props.hoveredDocumentId;
         });
-
-        // NEW: Check if energy proximity system is active for this viewer
-        const isEnergyActive = computed(() => {
-            // Force reactivity by calling both methods
-            const activeViewers = proximitySystem.getActiveViewers();
-            const isActive = proximitySystem.isViewerActive(props.viewerId);
-            
-            return isActive;
-        });
-
-        // NEW: Check if animation loop is active for this viewer
-        const isAnimationActive = ref(false);
 
         // Background state computed properties
         const backgroundType = computed(() => {
@@ -521,23 +479,6 @@ export const ViewerControls = {
                 default:
                     return 'Background: None (click to cycle)';
             }
-        });
-
-        // Watch for animation loop status changes
-        const updateAnimationStatus = () => {
-            isAnimationActive.value = animationManager.isLoopActive(props.viewerId);
-        };
-
-        // Listen for animation loop events
-        onMounted(() => {
-            updateAnimationStatus();
-            window.addEventListener('animationLoopUpdate', updateAnimationStatus);
-            window.addEventListener('animationLoopStopped', updateAnimationStatus);
-        });
-
-        onUnmounted(() => {
-            window.removeEventListener('animationLoopUpdate', updateAnimationStatus);
-            window.removeEventListener('animationLoopStopped', updateAnimationStatus);
         });
 
         // Drag state computed properties
@@ -689,37 +630,18 @@ export const ViewerControls = {
             });
         };
 
-        const handleAnimationToggle = () => {
-            // Prevent actions during drag operations or editing
-            if (isDragActive.value || isEditing.value) return;
-            
-            if (isAnimationActive.value) {
-                // Stop animation
-                animationManager.stopLoop(props.viewerId);
-            } else {
-                // Start animation - get circles for this viewer
-                const doc = dataStore.getCircleDocumentForViewer(props.viewerId);
-                if (!doc) return;
-                const documentId = doc.id;
-                if (!documentId) return;
-                
-                const circles = dataStore.getCirclesForDocument(documentId);
-                const viewerProps = viewerProperties.value;
-                
-                const started = animationManager.startLoop(
-                    props.viewerId, 
-                    circles, 
-                    viewerProps.width
-                );
-                
-                if (!started) {
-                    console.log('Cannot start animation: no valid attractor/attractee pairs found');
-                }
-            }
-            
-            // Update status
-            updateAnimationStatus();
-        };
+const handleShinynessToggle = () => {
+    // Prevent actions during drag operations or editing
+    if (isDragActive.value || isEditing.value) return;
+    
+    const currentShinyness = shinynessMode.value;
+    const newShinyness = !currentShinyness;
+    
+    // Update the viewer properties, which will be persisted to the document
+    dataStore.updateCircleViewer(props.viewerId, { 
+        shinynessMode: newShinyness
+    });
+};
 
         return {
             viewer,
@@ -731,13 +653,11 @@ export const ViewerControls = {
             isCompact,
             isEditing,
             editingName,
-            isEnergyActive, // NEW: Expose energy active state
-            isAnimationActive, // NEW: Expose animation active state
-            backgroundType, // NEW: Expose background type
-            backgroundIcon, // NEW: Expose background icon
-            backgroundTitle, // NEW: Expose background title
-            BACKGROUND_TYPES, // NEW: Expose background type constants
-            isDocumentHovered, // NEW: Expose document hover state
+            backgroundType,
+            backgroundIcon,
+            backgroundTitle,
+            BACKGROUND_TYPES,
+            isDocumentHovered,
             isBeingDragged,
             isDropTarget,
             isDragActive,
@@ -748,8 +668,11 @@ export const ViewerControls = {
             handleTitleBlur,
             handleReorderMouseDown,
             handleClose,
-            handleBackgroundCycle, // NEW: Updated handler name
-            handleAnimationToggle // NEW: Expose animation toggle handler
+            handleBackgroundCycle,
+shinynessMode,
+shinynessIcon,
+shinynessTitle,
+handleShinynessToggle,
         };
     },
     template: `
@@ -761,7 +684,7 @@ export const ViewerControls = {
                     selected: isSelected,
                     compact: isCompact,
                     editing: isEditing,
-                    'energy-active': isEnergyActive,
+                    shiny: shinynessMode,
                     'document-hovered': isDocumentHovered,
                     'being-dragged': isBeingDragged,
                     'drop-target': isDropTarget,
@@ -799,19 +722,19 @@ export const ViewerControls = {
                 
                 <div class="viewer-buttons">
                     <button 
-                        class="viewer-button animation-toggle"
-                        :class="{ active: isAnimationActive }"
-                        @click="handleAnimationToggle"
-                        title="Toggle animation loop"
-                        :disabled="isDragActive || isEditing"
-                    >▶</button>
-                    <button 
                         class="viewer-button background-toggle"
                         :class="backgroundType"
                         @click="handleBackgroundCycle"
                         :title="backgroundTitle"
                         :disabled="isDragActive || isEditing"
                     >{{ backgroundIcon }}</button>
+                    <button 
+                        class="viewer-button shinyness-toggle"
+                        :class="shinynessMode ? 'active' : 'inactive'"
+                        @click="handleShinynessToggle"
+                        :title="shinynessTitle"
+                        :disabled="isDragActive || isEditing"
+                    >{{ shinynessIcon }}</button>
                     <button 
                         class="viewer-button close"
                         @click="handleClose"
@@ -829,13 +752,6 @@ export const ViewerControls = {
                 >⋮⋮</div>
                 
                 <div class="viewer-buttons">
-                    <button 
-                        class="viewer-button animation-toggle"
-                        :class="{ active: isAnimationActive }"
-                        @click="handleAnimationToggle"
-                        title="Toggle animation loop"
-                        :disabled="isDragActive || isEditing"
-                    >▶</button>
                     <button 
                         class="viewer-button background-toggle"
                         :class="backgroundType"

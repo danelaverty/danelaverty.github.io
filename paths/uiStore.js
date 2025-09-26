@@ -1,4 +1,4 @@
-// uiStore.js - UI state management: viewers, selections, and layout (Updated to use document properties with background type support)
+// uiStore.js - UI state management: viewers, selections, and layout (Updated with shinynessMode support)
 import { reactive } from './vue-composition-api.js';
 
 let uiStoreInstance = null;
@@ -31,7 +31,7 @@ function createUIStore() {
         const viewer = {
             id,
             currentCircleDocumentId: documentId
-            // NOTE: width, showBackground, and backgroundType are now stored in the document, not here
+            // NOTE: width, showBackground, backgroundType, and shinynessMode are now stored in the document, not here
         };
         
         data.circleViewers.set(id, viewer);
@@ -53,7 +53,7 @@ function createUIStore() {
         return getCircleViewers();
     };
 
-    // UPDATED: Now syncs viewer properties to the associated document with background type support
+    // UPDATED: Now syncs viewer properties to the associated document with shinynessMode support
     const updateCircleViewer = (id, updates, documentStore = null) => {
         const viewer = data.circleViewers.get(id);
         if (!viewer) return null;
@@ -69,9 +69,12 @@ function createUIStore() {
             if (updates.showBackground !== undefined) {
                 viewerPropertyUpdates.showBackground = updates.showBackground;
             }
-            // NEW: Handle backgroundType updates
             if (updates.backgroundType !== undefined) {
                 viewerPropertyUpdates.backgroundType = updates.backgroundType;
+            }
+            // NEW: Handle shinynessMode updates
+            if (updates.shinynessMode !== undefined) {
+                viewerPropertyUpdates.shinynessMode = updates.shinynessMode;
             }
             
             // Update the document's viewer properties
@@ -157,7 +160,7 @@ function createUIStore() {
         return 'No Document';
     };
 
-    // UPDATED: Get viewer properties from the associated document with background type migration
+    // UPDATED: Get viewer properties from the associated document with shinynessMode support
     const getViewerProperties = (viewerId, documentStore) => {
         const viewer = data.circleViewers.get(viewerId);
         if (!viewer || !viewer.currentCircleDocumentId || !documentStore) {
@@ -165,7 +168,8 @@ function createUIStore() {
             return {
                 width: 270,
                 showBackground: true,
-                backgroundType: BACKGROUND_TYPES.SILHOUETTE
+                backgroundType: BACKGROUND_TYPES.SILHOUETTE,
+                shinynessMode: false
             };
         }
         
@@ -175,7 +179,8 @@ function createUIStore() {
         return {
             width: properties.width || 270,
             showBackground: properties.showBackground !== undefined ? properties.showBackground : true,
-            backgroundType: properties.backgroundType || BACKGROUND_TYPES.SILHOUETTE
+            backgroundType: properties.backgroundType || BACKGROUND_TYPES.SILHOUETTE,
+            shinynessMode: properties.shinynessMode || false
         };
     };
 
@@ -286,7 +291,7 @@ function createUIStore() {
         selectedViewerId: data.selectedViewerId,
         nextViewerId: data.nextViewerId
         // Selections are intentionally not serialized - they should reset on page load
-        // Viewer properties are now stored in documents, not here
+        // Viewer properties (including shinynessMode) are now stored in documents, not here
     });
 
     const deserialize = (savedData) => {
@@ -310,7 +315,7 @@ function createUIStore() {
     return {
         data,
         // Constants
-        BACKGROUND_TYPES, // NEW: Expose background type constants
+        BACKGROUND_TYPES,
         // Viewer management
         createCircleViewer,
         getCircleViewers,
@@ -322,7 +327,7 @@ function createUIStore() {
         ensureSelectedViewer,
         isViewerSelected,
         getViewerTitle,
-        getViewerProperties, // UPDATED: Get properties from document with background type support
+        getViewerProperties, // UPDATED: Get properties from document with shinynessMode support
         getCircleDocumentForViewer,
         setCircleDocumentForViewer,
         // Selection management
