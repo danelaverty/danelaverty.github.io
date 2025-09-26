@@ -3,7 +3,6 @@ import { computed } from './vue-composition-api.js';
 import { injectComponentStyles } from './styleUtils.js';
 import { EmojiRenderer } from './EmojiRenderer.js';
 import { EnergyIndicators } from './EnergyIndicators.js';
-import { EnergyReceivedIndicator } from './EnergyReceivedIndicator.js';
 import { useEntityState } from './EntityState.js';
 import { useEntityRendering } from './EntityRendering.js';
 import { useEntityInteractions } from './EntityInteractions.js';
@@ -36,9 +35,14 @@ const componentStyles = `
         justify-content: center;
     }
 
-    .circle-shape {
+    .entity-shape.circle-shape {
         border-radius: 50%;
         border: 3px solid #45a049;
+        transition: transform 1.0s cubic-bezier(0.2,-2,0.8,2), opacity 1.0s cubic-bezier(0.2,-2,0.8,2), filter 1.0s cubic-bezier(0.2,-2,0.8,2);
+    }
+
+    .emoji-circle-container {
+        transition: transform 1.0s cubic-bezier(0.2,-2,0.8,2), opacity 1.0s cubic-bezier(0.2,-2,0.8,2), filter 1.0s cubic-bezier(0.2,-2,0.8,2);
     }
 
     .square-shape {
@@ -245,18 +249,29 @@ export const EntityComponent = {
         isSelected: Boolean,
         viewerWidth: Number,
         viewerId: String,
-        dataStore: Object
+        dataStore: Object,
+        shinynessEffects: {
+            type: Object,
+            default: () => ({ scale: 1.0, opacity: 1.0, saturation: 1.0 })
+        },
+        energyDistance: {
+            type: Object,
+            default: () => ({})
+        },
+        energizedConnections: {
+            type: Object,
+            default: () => ({})
+        }
     },
     components: {
         EmojiRenderer,
         EnergyIndicators,
-        EnergyReceivedIndicator
     },
     emits: ['select', 'update-position', 'update-name', 'move-multiple', 'drag-start', 'drag-move', 'drag-end'],
     setup(props, { emit }) {
         // Use state management composable
         const state = useEntityState(props);
-        
+
         // Use rendering composable
         const rendering = useEntityRendering(props, state);
         
@@ -332,7 +347,12 @@ export const EntityComponent = {
             v-if="entityType === 'square' || (entityType === 'circle' && entity.type !== 'triangle' && entity.type !== 'emoji')"
             ref="shapeRef"
             :class="shapeClasses"
-            :style="shapeScaleStyles"
+            :style="{
+                ...shapeScaleStyles,
+                transform: shinynessEffects.transform || 'scale(1.0)',
+                opacity: shinynessEffects.opacity || 1.0,
+                filter: shinynessEffects.filter || 'saturate(1.0)'
+            }"
         >
             <!-- Use centralized EmojiRenderer for squares -->
             <EmojiRenderer
@@ -375,6 +395,9 @@ export const EntityComponent = {
             class="emoji-circle-container"
             :style="{ 
                 ...shapeScaleStyles,
+                transform: shinynessEffects.transform || 'scale(1.0)',
+                opacity: shinynessEffects.opacity || 1.0,
+                filter: shinynessEffects.filter || 'saturate(1.0)',
                 position: 'relative' 
             }"
         ></div>
@@ -389,17 +412,13 @@ export const EntityComponent = {
             @keydown="handleNameKeydown"
         >
         {{ entity.name }}
-        <EnergyIndicators 
+        <!--span v-if="Object.keys(energizedConnections).length > 0" style="color: #888; font-size: 12px;">
+            {{ JSON.stringify(energizedConnections) }}
+        </span-->
+        <!--EnergyIndicators 
             v-if="entityType === 'circle'"
             :energyTypes="circleEnergyTypes"
-        />
-<EnergyReceivedIndicator 
-    v-if="entityType === 'circle'"
-    :entity="entity"
-    :entityType="entityType"
-    :viewerId="viewerId"
-    :dataStore="dataStore"
-/>
+/-->
         </div>
     </div>
 `

@@ -1,5 +1,6 @@
 // entityStore.js - Unified entity management for circles and squares with bold, indicator emoji, circle emoji, energy support, activation, activationTriggers, referenceID, collapsed groups, and member activation with debounced queue
 import { reactive } from './vue-composition-api.js';
+import { getPropertyDefault, cycleProperty, validatePropertyValue } from './CBCyclePropertyConfigs.js';
 
 let entityStoreInstance = null;
 
@@ -95,33 +96,6 @@ function createEntityStore() {
         scheduleActivationCheck(circleId, updateCallback);
     };
 
-    // Activation cycling utility
-    const cycleActivation = (currentActivation) => {
-        const activationCycle = ['activated', 'inactive', 'inert'];
-        const currentIndex = activationCycle.indexOf(currentActivation);
-        return activationCycle[(currentIndex + 1) % activationCycle.length];
-    };
-
-    // ActivationTriggers cycling utility
-    const cycleActivationTriggers = (currentActivationTriggers) => {
-        const activationTriggersCycle = ['none', 'members'];
-        const currentIndex = activationTriggersCycle.indexOf(currentActivationTriggers);
-        return activationTriggersCycle[(currentIndex + 1) % activationTriggersCycle.length];
-    };
-
-    const cycleShinynessReceiveMode = (currentShinynessReceiveMode) => {
-            const shinynessReceiveModeCycle = ['or', 'and', 'explosiveAnd'];
-            const currentIndex = shinynessReceiveModeCycle.indexOf(currentShinynessReceiveMode);
-            return shinynessReceiveModeCycle[(currentIndex + 1) % shinynessReceiveModeCycle.length];
-    };
-
-    // Connectible cycling utility (for consistency)
-    const cycleConnectible = (currentConnectible) => {
-        const connectibleCycle = ['receives', 'gives', 'refuses'];
-        const currentIndex = connectibleCycle.indexOf(currentConnectible);
-        return connectibleCycle[(currentIndex + 1) % connectibleCycle.length];
-    };
-
     // Generic entity operations
     const createEntity = (entityType, documentId, containerWidth, containerHeight, viewerWidths = [], documentStore = null) => {
         const id = `${entityType}_${entityType === 'circle' ? data.nextCircleId++ : data.nextSquareId++}`;
@@ -149,10 +123,10 @@ function createEntityStore() {
             entity.color = '#CCCCCC'; 
             entity.colors = ['#4CAF50']; 
             entity.energyTypes = []; 
-            entity.activation = 'activated'; // UPDATED: Default to 'activated' (first in cycle)
-            entity.activationTriggers = 'none'; // NEW: Default to 'none' (first in cycle)
-            entity.shinynessReceiveMode = 'or';
-	    entity.connectible = 'receives'; 
+            entity.activation = getPropertyDefault('activation');
+            entity.activationTriggers = getPropertyDefault('activationTriggers');
+            entity.shinynessReceiveMode = getPropertyDefault('shinynessReceiveMode');
+            entity.connectible = getPropertyDefault('connectible');
             entity.referenceID = null; 
             entity.belongsToID = null; 
             entity.collapsed = false; // NEW: Default to expanded
@@ -244,16 +218,16 @@ function createEntityStore() {
         return null;
     };
 
-    // Cycle activation for a circle
-    const cycleCircleActivation = (id) => {
+    // Generic cycle function for any property
+    const cycleCircleProperty = (id, propertyName) => {
         const circle = data.circles.get(id);
         if (circle) {
-            circle.activation = cycleActivation(circle.activation);
+            circle[propertyName] = cycleProperty(propertyName, circle[propertyName]);
             
             // Cascade to referenced circles
             const referencedCircles = getReferencedCircles(id);
             referencedCircles.forEach(refCircle => {
-                refCircle.activation = circle.activation;
+                refCircle[propertyName] = circle[propertyName];
             });
             
             return circle;
@@ -261,55 +235,11 @@ function createEntityStore() {
         return null;
     };
 
-    // Cycle activationTriggers for a circle
-    const cycleCircleActivationTriggers = (id) => {
-        const circle = data.circles.get(id);
-        if (circle) {
-            circle.activationTriggers = cycleActivationTriggers(circle.activationTriggers);
-            
-            // Cascade to referenced circles
-            const referencedCircles = getReferencedCircles(id);
-            referencedCircles.forEach(refCircle => {
-                refCircle.activationTriggers = circle.activationTriggers;
-            });
-            
-            return circle;
-        }
-        return null;
-    };
-
-    // Cycle connectible for a circle
-    const cycleCircleConnectible = (id) => {
-        const circle = data.circles.get(id);
-        if (circle) {
-            circle.connectible = cycleConnectible(circle.connectible);
-            
-            // Cascade to referenced circles
-            const referencedCircles = getReferencedCircles(id);
-            referencedCircles.forEach(refCircle => {
-                refCircle.connectible = circle.connectible;
-            });
-            
-            return circle;
-        }
-        return null;
-    };
-
-    const cycleCircleShinynessReceiveMode = (id) => {
-        const circle = data.circles.get(id);
-        if (circle) {
-            circle.shinynessReceiveMode = cycleShinynessReceiveMode(circle.shinynessReceiveMode);
-
-            // Cascade to referenced circles
-            const referencedCircles = getReferencedCircles(id);
-            referencedCircles.forEach(refCircle => {
-                refCircle.shinynessReceiveMode = circle.shinynessReceiveMode;
-            });
-
-            return circle;
-        }
-        return null;
-    };
+    // Specific cycle functions using the generic one
+    const cycleCircleActivation = (id) => cycleCircleProperty(id, 'activation');
+    const cycleCircleActivationTriggers = (id) => cycleCircleProperty(id, 'activationTriggers');
+    const cycleCircleShinynessReceiveMode = (id) => cycleCircleProperty(id, 'shinynessReceiveMode');
+    const cycleCircleConnectible = (id) => cycleCircleProperty(id, 'connectible');
 
     const updateEntity = (entityType, id, updates) => {
         const store = entityType === 'circle' ? data.circles : data.squares;
@@ -332,27 +262,30 @@ function createEntityStore() {
                     entity.colors = entity.color ? [entity.color] : ['#4CAF50'];
                 }
                 
-		if (!entity.connectible) {
-			entity.connectible = 'receives'; // Default for existing circles
-		}
+                if (!entity.connectible) {
+                    entity.connectible = getPropertyDefault('connectible');
+                }
 
                 // Ensure energyTypes array always exists
                 if (!entity.energyTypes) {
                     entity.energyTypes = [];
                 }
                 
-                // UPDATED: Ensure activation property always exists and is valid
-                if (!entity.activation || !['activated', 'inactive', 'inert'].includes(entity.activation)) {
-                    entity.activation = 'activated'; // Default to first state in cycle
+                // Ensure all cycleable properties exist and are valid
+                if (!validatePropertyValue('activation', entity.activation)) {
+                    entity.activation = getPropertyDefault('activation');
                 }
                 
-                // NEW: Ensure activationTriggers property always exists and is valid
-                if (!entity.activationTriggers || !['none', 'members'].includes(entity.activationTriggers)) {
-                    entity.activationTriggers = 'none'; // Default to first state in cycle
+                if (!validatePropertyValue('activationTriggers', entity.activationTriggers)) {
+                    entity.activationTriggers = getPropertyDefault('activationTriggers');
                 }
 
-                if (!entity.shinynessReceiveMode || !['or', 'and', 'explosiveAnd'].includes(entity.shinynessReceiveMode)) {
-                        entity.shinynessReceiveMode = 'or'; // Default to first state in cycle
+                if (!validatePropertyValue('shinynessReceiveMode', entity.shinynessReceiveMode)) {
+                    entity.shinynessReceiveMode = getPropertyDefault('shinynessReceiveMode');
+                }
+
+                if (!validatePropertyValue('connectible', entity.connectible)) {
+                    entity.connectible = getPropertyDefault('connectible');
                 }
                 
                 // Ensure referenceID property always exists
@@ -365,30 +298,6 @@ function createEntityStore() {
                     entity.collapsed = false;
                 }
                 
-                // Handle activation state changes
-                if (updates.activation !== undefined) {
-                    entity.activation = updates.activation;
-                }
-                
-                // NEW: Handle activationTriggers state changes
-                if (updates.activationTriggers !== undefined) {
-                    entity.activationTriggers = updates.activationTriggers;
-                }
-
-                if (updates.shinynessReceiveMode !== undefined) {
-                        entity.shinynessReceiveMode = updates.shinynessReceiveMode;
-                }
-                
-                // Handle referenceID changes
-                if (updates.referenceID !== undefined) {
-                    entity.referenceID = updates.referenceID;
-                }
-                
-                // NEW: Handle collapsed state changes
-                if (updates.collapsed !== undefined) {
-                    entity.collapsed = updates.collapsed;
-                }
-                
                 // Handle emoji when type changes to/from 'emoji'
                 if (updates.type === 'emoji' && !entity.emoji) {
                     entity.emoji = 'A'; // Set default emoji for emoji circles
@@ -397,103 +306,73 @@ function createEntityStore() {
                     // entity.emoji = null; // Commented out to preserve emoji
                 }
 
-		if (entityType === 'circle' && entity.referenceID === null) {
-			// This is an original circle (not a reference), cascade changes to its references
-			const referencedCircles = getReferencedCircles(id);
+                if (entityType === 'circle' && entity.referenceID === null) {
+                    // This is an original circle (not a reference), cascade changes to its references
+                    const referencedCircles = getReferencedCircles(id);
 
-			if (referencedCircles.length > 0) {
-				referencedCircles.forEach(refCircle => {
-					// Cascade name changes
-					if (updates.name !== undefined) {
-						refCircle.name = entity.name;
-					}
+                    if (referencedCircles.length > 0) {
+                        referencedCircles.forEach(refCircle => {
+                            if (updates.name !== undefined) {
+                                refCircle.name = entity.name;
+                            }
 
-					// Cascade color changes - use the final computed values from the main entity
-					if (updates.color !== undefined || updates.colors !== undefined) {
-						refCircle.color = entity.color;
-						refCircle.colors = [...entity.colors]; // Copy the array
-					}
+                            if (updates.color !== undefined || updates.colors !== undefined) {
+                                refCircle.color = entity.color;
+                                refCircle.colors = [...entity.colors]; // Copy the array
+                            }
 
-					// Cascade type changes
-					if (updates.type !== undefined) {
-						refCircle.type = entity.type;
-						// Handle emoji for type changes
-						if (entity.type === 'emoji' && !refCircle.emoji) {
-							refCircle.emoji = entity.emoji || 'A';
-						}
-					}
+                            if (updates.type !== undefined) {
+                                refCircle.type = entity.type;
+                                // Handle emoji for type changes
+                                if (entity.type === 'emoji' && !refCircle.emoji) {
+                                    refCircle.emoji = entity.emoji || 'A';
+                                }
+                            }
 
-					// Cascade emoji changes
-					if (updates.emoji !== undefined) {
-						refCircle.emoji = entity.emoji;
-					}
+                            if (updates.emoji !== undefined) {
+                                refCircle.emoji = entity.emoji;
+                            }
 
-					// Cascade energy types
-					if (updates.energyTypes !== undefined) {
-						refCircle.energyTypes = [...entity.energyTypes]; // Copy the array
-					}
+                            if (updates.energyTypes !== undefined) {
+                                refCircle.energyTypes = [...entity.energyTypes]; // Copy the array
+                            }
 
-					if (updates.connectible !== undefined) {
-						entity.connectible = updates.connectible;
-					}
+                            // Handle all cycleable properties
+                            ['activation', 'activationTriggers', 'shinynessReceiveMode', 'connectible'].forEach(prop => {
+                                if (updates[prop] !== undefined) {
+                                    refCircle[prop] = entity[prop];
+                                }
+                            });
 
-					// Cascade activation changes
-					if (updates.activation !== undefined) {
-						refCircle.activation = entity.activation;
-					}
+                            if (updates.collapsed !== undefined) {
+                                refCircle.collapsed = entity.collapsed;
+                            }
 
-                    // NEW: Cascade activationTriggers changes
-                    if (updates.activationTriggers !== undefined) {
-                        refCircle.activationTriggers = entity.activationTriggers;
+                            // Ensure all properties exist with defaults
+                            if (!refCircle.energyTypes) {
+                                refCircle.energyTypes = [];
+                            }
+                            if (!validatePropertyValue('activation', refCircle.activation)) {
+                                refCircle.activation = getPropertyDefault('activation');
+                            }
+                            if (!validatePropertyValue('activationTriggers', refCircle.activationTriggers)) {
+                                refCircle.activationTriggers = getPropertyDefault('activationTriggers');
+                            }
+                            if (!validatePropertyValue('shinynessReceiveMode', refCircle.shinynessReceiveMode)) {
+                                refCircle.shinynessReceiveMode = getPropertyDefault('shinynessReceiveMode');
+                            }
+                            if (!validatePropertyValue('connectible', refCircle.connectible)) {
+                                refCircle.connectible = getPropertyDefault('connectible');
+                            }
+                            if (!refCircle.colors) {
+                                refCircle.colors = [refCircle.color || '#4CAF50'];
+                            }
+                            if (refCircle.collapsed === undefined) {
+                                refCircle.collapsed = false;
+                            }
+                        });
                     }
-
-                    if (updates.shinynessReceiveMode !== undefined) {
-                            refCircle.shinynessReceiveMode = entity.shinynessReceiveMode;
-                    }
-
-                    if (!refCircle.shinynessReceiveMode || !['or', 'and', 'explosiveAnd'].includes(refCircle.shinynessReceiveMode)) {
-                            refCircle.shinynessReceiveMode = 'or';
-                    }
-
-
-					if (updates.connectible !== undefined) {
-						refCircle.connectible = entity.connectible;
-					}
-
-					// NEW: Cascade collapsed changes
-					if (updates.collapsed !== undefined) {
-						refCircle.collapsed = entity.collapsed;
-					}
-
-					// Ensure referenced circles have all required properties
-					if (!refCircle.energyTypes) {
-						refCircle.energyTypes = [];
-					}
-					// UPDATED: Ensure activation is valid for referenced circles
-					if (!refCircle.activation || !['activated', 'inactive', 'inert'].includes(refCircle.activation)) {
-						refCircle.activation = 'activated';
-					}
-
-                    // NEW: Ensure activationTriggers is valid for referenced circles
-                    if (!refCircle.activationTriggers || !['none', 'members'].includes(refCircle.activationTriggers)) {
-                        refCircle.activationTriggers = 'none';
-                    }
-
-					if (!refCircle.connectible) {
-						refCircle.connectible = 'receives';
-					}
-
-					if (!refCircle.colors) {
-						refCircle.colors = [refCircle.color || '#4CAF50'];
-					}
-
-					// NEW: Ensure referenced circles have collapsed property
-					if (refCircle.collapsed === undefined) {
-						refCircle.collapsed = false;
-					}
-				});
-			}
-		}
+                }
             }
             
             return entity;
@@ -621,7 +500,7 @@ function createEntityStore() {
         if (savedData.circles) {
             data.circles = new Map(savedData.circles);
             
-            // Ensure all circles have the new color, emoji, energy, activation, activationTriggers, referenceID, and collapsed properties
+            // Ensure all circles have the required properties
             data.circles.forEach((circle, id) => {
                 if (!circle.colors) {
                     circle.colors = circle.color ? [circle.color] : ['#CCCCCC'];
@@ -634,9 +513,10 @@ function createEntityStore() {
                     circle.emoji = null;
                 }
 
-		if (circle.connectible === undefined) {
-			circle.connectible = 'receives'; // Default for existing circles
-		}
+                // Ensure all cycleable properties exist with valid values
+                if (!validatePropertyValue('connectible', circle.connectible)) {
+                    circle.connectible = getPropertyDefault('connectible');
+                }
 
                 // Set default emoji for existing emoji-type circles that don't have one
                 if (circle.type === 'emoji' && !circle.emoji) {
@@ -646,17 +526,16 @@ function createEntityStore() {
                 if (!circle.energyTypes) {
                     circle.energyTypes = [];
                 }
-                // UPDATED: Ensure activation property exists and is valid for circles
-                if (!circle.activation || !['activated', 'inactive', 'inert'].includes(circle.activation)) {
-                    circle.activation = 'activated'; // Default for existing circles (backward compatibility)
+                
+                // Ensure all cycleable properties exist and are valid
+                if (!validatePropertyValue('activation', circle.activation)) {
+                    circle.activation = getPropertyDefault('activation');
                 }
-                // NEW: Ensure activationTriggers property exists and is valid for circles
-                if (!circle.activationTriggers || !['none', 'members'].includes(circle.activationTriggers)) {
-                    circle.activationTriggers = 'none'; // Default for existing circles (backward compatibility)
+                if (!validatePropertyValue('activationTriggers', circle.activationTriggers)) {
+                    circle.activationTriggers = getPropertyDefault('activationTriggers');
                 }
-
-                if (!circle.shinynessReceiveMode || !['or', 'and', 'explosiveAnd'].includes(circle.shinynessReceiveMode)) {
-                        circle.shinynessReceiveMode = 'or'; // Default for existing circles (backward compatibility)
+                if (!validatePropertyValue('shinynessReceiveMode', circle.shinynessReceiveMode)) {
+                    circle.shinynessReceiveMode = getPropertyDefault('shinynessReceiveMode');
                 }
 
                 // Ensure referenceID property exists for circles
@@ -737,7 +616,6 @@ function createEntityStore() {
         cycleCircleActivation,
         cycleCircleActivationTriggers,
         cycleCircleShinynessReceiveMode,
-        cycleShinynessReceiveMode,
         cycleCircleConnectible,
         // Utilities
         generateRandomPosition,
@@ -751,6 +629,7 @@ function createEntityStore() {
         
         // NEW: Expose member activation function for potential external use
         checkAndUpdateMemberActivation,
+        cycleCircleProperty,
     };
 }
 

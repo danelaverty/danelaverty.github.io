@@ -3,8 +3,6 @@ import { ref, computed, onMounted, onUnmounted } from './vue-composition-api.js'
 import { useDataStore } from './dataCoordinator.js';
 import { useRectangleSelection } from './useRectangleSelection.js';
 import { useConnectionUpdater, useConnections } from './useConnections.js';
-import { useEnergyProximitySystem } from './EnergyProximitySystem.js';
-import { useAnimationLoopManager } from './AnimationLoopManager.js';
 import { EntityComponent } from './EntityComponent.js';
 import { EntityControls } from './EntityControls.js';
 import { CircleViewer } from './CircleViewer.js';
@@ -14,6 +12,7 @@ import { SquareDocumentTabs } from './SquareDocumentTabs.js';
 import { SharedDropdown } from './SharedDropdown.js';
 import { IndicatorEmojiPicker } from './IndicatorEmojiPicker.js';
 import { ConnectionComponent } from './ConnectionComponent.js';
+import { ExplicitConnectionService } from './ExplicitConnectionService.js';
 import { createKeyboardHandler, setupKeyboardListeners } from './keyboardHandler.js';
 import { createViewerManager } from './viewerManager.js';
 import { createEntityHandlers } from './entityHandlers.js';
@@ -23,11 +22,16 @@ export const App = {
     setup() {
         const dataStore = useDataStore();
         const squareViewerContentRef = ref(null);
-	const proximitySystem = useEnergyProximitySystem(dataStore);
-        const animationManager = useAnimationLoopManager();
 
         // Document hover state for viewer highlighting
         const hoveredDocumentId = ref(null);
+
+        const explicitConnectionService = new ExplicitConnectionService({
+            getCircle: dataStore.getCircle,
+            getSquare: dataStore.getSquare,
+            getCirclesForViewer: dataStore.getCirclesForViewer,
+            saveToStorage: dataStore.saveToStorage
+        });
 
         // Square drag state management
         const squareDragState = ref({
@@ -109,7 +113,7 @@ export const App = {
 
         // Get explicit connections for squares
         const squareExplicitConnections = computed(() => {
-            return dataStore.getExplicitConnectionsForEntityType('square');
+            return explicitConnectionService.getVisualConnectionsForEntityType('square');
         });
 
         // Combine regular and explicit connections for squares
@@ -186,7 +190,7 @@ export const App = {
                 const selectedSquareIds = dataStore.getSelectedSquares();
                 const selectedEntityType = 'square';
                 
-                const result = dataStore.handleEntityCtrlClick(
+                const result = explicitConnectionService.handleEntityCtrlClick(
                     id, 'square', selectedSquareIds, selectedEntityType
                 );
                 
@@ -302,23 +306,12 @@ export const App = {
             keyboardCleanup = setupKeyboardListeners(keyboardHandler);
             document.addEventListener('mousemove', viewerManager.handleReorderMove);
             document.addEventListener('mouseup', viewerManager.handleReorderEnd);
-
-window.debugProximitySystem = proximitySystem;
-            
-            // Start the energy proximity system
-            proximitySystem.start();
         });
 
         onUnmounted(() => {
             if (keyboardCleanup) keyboardCleanup();
             document.removeEventListener('mousemove', viewerManager.handleReorderMove);
             document.removeEventListener('mouseup', viewerManager.handleReorderEnd);
-            
-            // Stop the energy proximity system
-            proximitySystem.stop();
-            
-            // Cleanup animation loops
-            animationManager.cleanup();
         });
 
         return {

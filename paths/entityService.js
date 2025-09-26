@@ -8,13 +8,13 @@ import { useConnections } from './useConnections.js';
  * Service layer that handles complex business operations involving multiple stores
  */
 export class EntityService {
-    constructor() {
+    constructor(explicitConnectionService = null) {
         this.entityStore = useEntityStore();
         this.documentStore = useDocumentStore();
         this.uiStore = useUIStore();
-        // Get connection manager for updating connections
         const { connectionManager } = useConnections();
         this.connectionManager = connectionManager;
+        this.explicitConnectionService = explicitConnectionService;
     }
 
     /**
@@ -116,6 +116,7 @@ createSquare() {
         this.documentStore.deleteSquareDocumentsForCircle(id);
         
         // Delete the circle
+        this.explicitConnectionService.deleteConnectionsForEntity(id, 'circle');
         const deleted = this.entityStore.deleteCircle(id);
         
         if (deleted) {
@@ -151,7 +152,7 @@ createSquare() {
         // Remove from selection first
         this.uiStore.removeFromSelection('square', id);
         
-        // Delete the square
+        this.explicitConnectionService.deleteConnectionsForEntity(id, 'square');
         const deleted = this.entityStore.deleteSquare(id);
         
         // Update connections after deletion - force a full update
@@ -324,6 +325,7 @@ createSquare() {
         let deletedCount = 0;
         
         circleIds.forEach(id => {
+            this.explicitConnectionService.deleteConnectionsForEntity(id, 'circle');
             if (this.deleteCircle(id)) {
                 deletedCount++;
             }
@@ -342,10 +344,8 @@ createSquare() {
         let deletedCount = 0;
         
         squareIds.forEach(id => {
-            // Remove from selection first
             this.uiStore.removeFromSelection('square', id);
-            
-            // Delete the square
+            this.explicitConnectionService.deleteConnectionsForEntity(id, 'square');
             if (this.entityStore.deleteSquare(id)) {
                 deletedCount++;
             }

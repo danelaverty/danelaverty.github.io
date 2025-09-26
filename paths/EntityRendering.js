@@ -3,11 +3,9 @@ import { computed, watch, nextTick, onMounted, onUnmounted } from './vue-composi
 import { EntityStyleCalculator } from './EntityStyleCalculator.js';
 import { CircleTypeRenderer } from './CircleTypeRenderer.js';
 import { SelectionRenderer } from './SelectionRenderer.js';
-import { useEnergyProximitySystem } from './EnergyProximitySystem.js';
 
 export const useEntityRendering = (props, state) => {
     const { shapeRef } = state;
-    const proximitySystem = useEnergyProximitySystem();
 
     // Use separated concerns modules
     const styleCalculator = new EntityStyleCalculator(props);
@@ -55,19 +53,6 @@ export const useEntityRendering = (props, state) => {
         return classes;
     });
 
-    // Register/update circle with proximity system
-    const updateProximityRegistration = () => {
-        if (props.entityType === 'circle' && shapeRef.value && props.viewerWidth && state.actualViewerId.value) {
-            proximitySystem.updateCircle(
-                props.entity.id,
-                props.entity,
-                shapeRef.value,
-                props.viewerWidth,
-                state.actualViewerId.value
-            );
-        }
-    };
-
     // Watch for changes that should trigger re-rendering
     watch(
         () => [
@@ -93,25 +78,11 @@ export const useEntityRendering = (props, state) => {
                 if (hasActualChanges) {
                     nextTick(() => {
                         CircleTypeRenderer.render(shapeRef.value, props.entity, props.isSelected, state.squareCount.value, state.belongingCirclesCount?.value);
-                        // Update proximity system registration after re-render
-                        updateProximityRegistration();
                     });
                 }
             }
         },
         { deep: true }
-    );
-
-    // Watch for position changes to update proximity system
-    watch(
-        () => [props.entity.x, props.entity.y, props.viewerWidth],
-        () => {
-            if (props.entityType === 'circle') {
-                nextTick(() => {
-                    updateProximityRegistration();
-                });
-            }
-        }
     );
 
     // Watch for selection changes - handled centrally by SelectionRenderer
@@ -139,8 +110,6 @@ export const useEntityRendering = (props, state) => {
         if (props.entityType === 'circle') {
             // Render circle type first
             CircleTypeRenderer.render(shapeRef.value, props.entity, props.isSelected, state.squareCount.value, state.belongingCirclesCount?.value);
-            // Register with proximity system
-            updateProximityRegistration();
         } else if (props.entityType === 'square') {
             // Initialize selection for squares
             SelectionRenderer.initializeSelection(
@@ -156,11 +125,6 @@ export const useEntityRendering = (props, state) => {
     const cleanupRendering = () => {
         if (shapeRef.value) {
             SelectionRenderer.removeSelectionIndicator(shapeRef.value);
-        }
-        
-        // Unregister from proximity system
-        if (props.entityType === 'circle') {
-            proximitySystem.unregisterCircle(props.entity.id);
         }
     };
 
@@ -180,7 +144,6 @@ export const useEntityRendering = (props, state) => {
         squareStyles,
         shapeClasses,
         nameClasses,
-        updateProximityRegistration,
         initializeEntityDisplay,
         cleanupRendering
     };

@@ -1,10 +1,31 @@
-// controls/CBActivationTriggersControl.js - Toggle control for circle activation triggers
+// CBActivationTriggersControl.js - Toggle control for circle activation triggers
+
+export const ACTIVATION_TRIGGERS_CONFIG = {
+  'none': { icon: '🫗', label: 'None', description: 'No activation triggers - Click to cycle to Members', default: true },
+  'members': { icon: '🥛', label: 'Members', description: 'Members trigger activation - Click to cycle to None' }
+};
+
+// Utility functions
+export const getActivationTriggersValues = () => Object.keys(ACTIVATION_TRIGGERS_CONFIG);
+
+export const getActivationTriggersDefault = () => {
+  return Object.keys(ACTIVATION_TRIGGERS_CONFIG).find(key => 
+    ACTIVATION_TRIGGERS_CONFIG[key].default
+  ) || Object.keys(ACTIVATION_TRIGGERS_CONFIG)[0];
+};
+
+export const cycleActivationTriggers = (currentValue) => {
+  const values = getActivationTriggersValues();
+  const currentIndex = values.indexOf(currentValue);
+  return values[(currentIndex + 1) % values.length];
+};
+
 export const CBActivationTriggersControl = {
   props: {
     activationTriggers: {
       type: String,
       required: true,
-      validator: (value) => ['none', 'members'].includes(value)
+      validator: (value) => getActivationTriggersValues().includes(value)
     }
   },
   
@@ -12,27 +33,15 @@ export const CBActivationTriggersControl = {
   
   computed: {
     activationTriggersIcon() {
-      const icons = {
-        none: '🫗',
-        members: '🥛'
-      };
-      return icons[this.activationTriggers];
+      return ACTIVATION_TRIGGERS_CONFIG[this.activationTriggers].icon;
     },
     
     activationTriggersLabel() {
-      const labels = {
-        none: 'None',
-        members: 'Members'
-      };
-      return labels[this.activationTriggers];
+      return ACTIVATION_TRIGGERS_CONFIG[this.activationTriggers].label;
     },
     
     activationTriggersTitle() {
-      const descriptions = {
-        none: 'No activation triggers - Click to cycle to Members',
-        members: 'Members trigger activation - Click to cycle to None'
-      };
-      return descriptions[this.activationTriggers];
+      return ACTIVATION_TRIGGERS_CONFIG[this.activationTriggers].description;
     }
   },
   
