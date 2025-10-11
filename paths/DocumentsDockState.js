@@ -148,7 +148,7 @@ export function createDocumentsDockState() {
     };
 
     const getDocumentNestingClass = (doc) => {
-        if (doc.level === 0) return '';
+        if (doc.level === 0) return 'nested-level-0';
         if (doc.level === 1) return 'nested nested-level-1';
         if (doc.level === 2) return 'nested nested-level-2';
         if (doc.level === 3) return 'nested nested-level-3';

@@ -111,6 +111,22 @@ getActiveConnectionEnergyTypes(connectionId) {
         this.delayedShinyStates.delete(circleId);
     }
 
+clearConnectionEnergy(connectionId) {
+    // Clear all energy types for this connection
+    this.delayedConnectionEnergy.delete(connectionId);
+    
+    // Clear all pending timeouts for this connection
+    const keysToDelete = [];
+    this.connectionTimeouts.forEach((timeoutId, key) => {
+        if (key.startsWith(`${connectionId}-`)) {
+            clearTimeout(timeoutId);
+            keysToDelete.push(key);
+        }
+    });
+    
+    keysToDelete.forEach(key => this.connectionTimeouts.delete(key));
+}
+
 clearAllDelayedStates() {
     // Clear existing circle logic (keep this part)
     this.delayedShinyStates.forEach((state, circleId) => {

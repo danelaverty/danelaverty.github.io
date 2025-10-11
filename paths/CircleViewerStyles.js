@@ -6,7 +6,7 @@ const componentStyles = `
     .circle-viewer {
         position: relative;
         height: 100vh;
-        background-color: #111;
+        background-color: #201c15;
         border-right: 2px solid #333;
         flex-shrink: 0;
         overflow: hidden;
@@ -28,7 +28,7 @@ const componentStyles = `
         opacity: 0.3;
         pointer-events: none;
         z-index: 0;
-        transition: opacity 0.3s ease;
+        transition: opacity 0.6s ease;
     }
 
     /* Background image variants */
@@ -47,7 +47,6 @@ const componentStyles = `
     }
 
     .circle-viewer.selected {
-        background-color: #131313;
         border-right-color: #444;
     }
 
@@ -116,7 +115,7 @@ const componentStyles = `
     .viewer-content {
         flex: 1;
         position: relative;
-        margin-top: 40px;
+        margin-top: 30px;
         overflow: hidden;
         transition: margin-top 0.2s ease;
     }
@@ -173,6 +172,67 @@ const componentStyles = `
     .entity-container.animation-dimmed {
         opacity: 0.2;
     }
+
+.energized-circles-list {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    width: 140px;
+    max-height: 300px;
+    overflow-y: auto;
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 0;
+    font-size: 11px;
+    color: #999;
+    z-index: 1001;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.energized-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 3px 2px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    gap: 4px;
+}
+
+.energized-list-item:last-child {
+    border-bottom: none;
+}
+
+.energized-circle-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.energized-circle-types {
+    font-size: 10px;
+    color: #FFD700;
+    font-family: monospace;
+    white-space: nowrap;
+}
+
+/* Scrollbar styling for the list */
+.energized-circles-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.energized-circles-list::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+}
+
+.energized-circles-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 215, 0, 0.3);
+    border-radius: 3px;
+}
+
+.energized-circles-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 215, 0, 0.5);
+}
 `;
 
 injectComponentStyles('circle-viewer', componentStyles);

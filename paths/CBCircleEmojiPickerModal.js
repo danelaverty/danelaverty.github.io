@@ -1,4 +1,4 @@
-// pickers/CircleEmojiPickerModal.js - Updated with auto tab detection for current emoji
+// pickers/CircleEmojiPickerModal.js - Updated with dynamic tab generation
 import { emojiCategories } from './emojiFullSet.js';
 import { EmojiVariantService } from './EmojiVariantService.js';
 import { injectComponentStyles } from './styleUtils.js';
@@ -82,8 +82,13 @@ const circleEmojiPickerModalStyles = `
   color: #000;
 }
 
+.circle-emoji-tab {
+    color: white;
+}
+
 .circle-emoji-item {
   position: relative;
+  color: white;
 }
 
 .circle-emoji-item.selected {
@@ -101,7 +106,6 @@ const circleEmojiPickerModalStyles = `
   top: -2px;
   right: -2px;
   background: #007acc;
-  color: white;
   font-size: 10px;
   width: 14px;
   height: 14px;
@@ -118,7 +122,6 @@ injectComponentStyles('circle-emoji-picker-modal', circleEmojiPickerModalStyles)
 
 export const CircleEmojiPickerModal = {
   props: {
-    // NEW: Add prop for current emoji to detect which tab it belongs to
     currentEmoji: {
       type: String,
       default: ''
@@ -129,7 +132,7 @@ export const CircleEmojiPickerModal = {
   
   data() {
     return {
-      activeTab: 'smileys', // Will be overridden in mounted()
+      activeTab: '', // Will be set to first tab in mounted()
       selectedSkinTone: '🏼', // Default medium-light skin tone
       selectedGender: 'neutral', // neutral, male, female
       
@@ -148,23 +151,17 @@ export const CircleEmojiPickerModal = {
         { id: 'female', name: 'Female', icon: '👩' }
       ],
       
-      tabs: [
-        { id: 'smileys', name: 'Smileys', icon: '😀' },
-        { id: 'people', name: 'People', icon: '👱‍♀️' },
-        { id: 'animals', name: 'Animals & Nature', icon: '🐶' },
-        { id: 'food', name: 'Food & Drink', icon: '🍎' },
-        { id: 'activities', name: 'Activities', icon: '⚽' },
-        { id: 'travel', name: 'Travel & Places', icon: '🚗' },
-        { id: 'objects', name: 'Objects', icon: '💡' },
-        { id: 'symbols', name: 'Symbols', icon: '❤️' },
-      ],
-      
       emojiCategories: emojiCategories,
     };
   },
 
-  // NEW: Add mounted lifecycle hook to detect current emoji's tab
   mounted() {
+    // Set initial active tab to first category
+    if (!this.activeTab && this.tabs.length > 0) {
+      this.activeTab = this.tabs[0].id;
+    }
+    
+    // Detect and set active tab based on current emoji
     if (this.currentEmoji) {
       const detectedTab = this.detectEmojiTab(this.currentEmoji);
       if (detectedTab) {
@@ -174,6 +171,34 @@ export const CircleEmojiPickerModal = {
   },
   
   computed: {
+    // Dynamically generate tabs from emojiCategories
+    tabs() {
+      return Object.keys(this.emojiCategories).map(categoryKey => {
+        const categoryData = this.emojiCategories[categoryKey];
+        const firstSubcategory = Object.values(categoryData)[0];
+        
+        // Get the first emoji from the category to use as icon
+        let icon = '📦'; // Default fallback icon
+        if (Array.isArray(firstSubcategory) && firstSubcategory.length > 0) {
+          const firstItem = firstSubcategory[0];
+          if (typeof firstItem === 'string') {
+            icon = firstItem;
+          } else if (typeof firstItem === 'object' && firstItem.base) {
+            icon = firstItem.base;
+          }
+        }
+        
+        // Capitalize the category key for display name
+        const name = categoryKey.charAt(0).toUpperCase() + categoryKey.slice(1);
+        
+        return {
+          id: categoryKey,
+          name: name,
+          icon: icon
+        };
+      });
+    },
+    
     currentSkinTone() {
       return this.skinTones.find(tone => tone.emoji === this.selectedSkinTone) || this.skinTones[2];
     },
@@ -196,7 +221,6 @@ export const CircleEmojiPickerModal = {
   },
   
   methods: {
-    // NEW: Method to detect which tab contains the current emoji
     detectEmojiTab(targetEmoji) {
       if (!targetEmoji) return null;
       
@@ -248,7 +272,6 @@ export const CircleEmojiPickerModal = {
       return null; // Emoji not found in any category
     },
 
-    // NEW: Helper method to clean emoji by removing modifiers
     cleanEmoji(emoji) {
       if (!emoji) return '';
       
@@ -264,12 +287,10 @@ export const CircleEmojiPickerModal = {
         .trim();
     },
 
-    // NEW: Check if an emoji is currently selected
     isEmojiSelected(emoji) {
       return emoji === this.currentEmoji;
     },
 
-    // NEW: Check if "no emoji" is selected (empty string)
     isNoEmojiSelected() {
       return this.currentEmoji === '';
     },
@@ -332,13 +353,14 @@ export const CircleEmojiPickerModal = {
         <button class="close-button" @click="$emit('close')" title="Close picker">×</button>
       </div>
       
-      <!-- Tabs -->
+      <!-- Tabs (dynamically generated) -->
       <div class="circle-emoji-tabs">
         <button 
           v-for="tab in tabs"
           :key="tab.id"
           :class="['circle-emoji-tab', { active: activeTab === tab.id }]"
           @click="setActiveTab(tab.id)"
+          :title="tab.name"
         >
           {{ tab.icon }}
         </button>

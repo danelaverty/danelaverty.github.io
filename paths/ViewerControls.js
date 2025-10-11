@@ -418,7 +418,6 @@ export const ViewerControls = {
         // Background cycling constants
         const BACKGROUND_TYPES = {
             SILHOUETTE: 'silhouette',
-            CYCLE: 'cycle',
             NONE: 'none'
         };
 
@@ -461,8 +460,6 @@ const shinynessTitle = computed(() => {
             switch (backgroundType.value) {
                 case BACKGROUND_TYPES.SILHOUETTE:
                     return '◐'; // Half circle for silhouette
-                case BACKGROUND_TYPES.CYCLE:
-                    return '◯'; // Circle for cycle
                 case BACKGROUND_TYPES.NONE:
                 default:
                     return '○'; // Empty circle for none
@@ -473,8 +470,6 @@ const shinynessTitle = computed(() => {
             switch (backgroundType.value) {
                 case BACKGROUND_TYPES.SILHOUETTE:
                     return 'Background: Silhouette (click to cycle)';
-                case BACKGROUND_TYPES.CYCLE:
-                    return 'Background: Cycle (click to cycle)';
                 case BACKGROUND_TYPES.NONE:
                 default:
                     return 'Background: None (click to cycle)';
@@ -613,9 +608,6 @@ const shinynessTitle = computed(() => {
             // Cycle through: silhouette -> cycle -> none -> silhouette
             switch (currentType) {
                 case BACKGROUND_TYPES.SILHOUETTE:
-                    nextType = BACKGROUND_TYPES.CYCLE;
-                    break;
-                case BACKGROUND_TYPES.CYCLE:
                     nextType = BACKGROUND_TYPES.NONE;
                     break;
                 case BACKGROUND_TYPES.NONE:
@@ -694,11 +686,11 @@ handleShinynessToggle,
             ]"
         >
             <div class="controls-top-row">
-                <div 
+                <!--div 
                     class="reorder-handle"
                     @mousedown="handleReorderMouseDown"
                     :title="isDragDisabled ? 'Drag operation in progress' : 'Drag to reorder viewers'"
-                >⋮⋮</div>
+                >⋮⋮</div-->
                 
                 <div 
                     v-if="!isEditing"
@@ -745,11 +737,11 @@ handleShinynessToggle,
             </div>
             
             <div class="controls-bottom-row">
-                <div 
+                <!--div 
                     class="reorder-handle"
                     @mousedown="handleReorderMouseDown"
                     :title="isDragDisabled ? 'Drag operation in progress' : 'Drag to reorder viewers'"
-                >⋮⋮</div>
+                >⋮⋮</div-->
                 
                 <div class="viewer-buttons">
                     <button 

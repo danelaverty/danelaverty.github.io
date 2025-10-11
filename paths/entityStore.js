@@ -1,8 +1,122 @@
-// entityStore.js - Unified entity management for circles and squares with bold, indicator emoji, circle emoji, energy support, activation, activationTriggers, referenceID, collapsed groups, and member activation with debounced queue
+// entityStore.js
 import { reactive } from './vue-composition-api.js';
 import { getPropertyDefault, cycleProperty, validatePropertyValue } from './CBCyclePropertyConfigs.js';
 
 let entityStoreInstance = null;
+
+// CENTRALIZED DEFAULT VALUES
+const CIRCLE_DEFAULTS = {
+    color: '#CCCCCC',
+    colors: ['#B3B3B3'],
+    energyTypes: [],
+    activation: () => getPropertyDefault('activation'),
+    activationTriggers: () => getPropertyDefault('activationTriggers'),
+    shinynessReceiveMode: () => getPropertyDefault('shinynessReceiveMode'),
+    connectible: () => getPropertyDefault('connectible'),
+    referenceID: null,
+    belongsToID: null,
+    collapsed: false,
+    type: 'basic',
+    emoji: null,
+    emojiForEmojiType: 'A',
+};
+
+const SQUARE_DEFAULTS = {
+    emoji: null,
+    emojiKey: null,
+    emojiCss: null,
+    color: '#CCCCCC',
+    bold: false,
+    indicatorEmoji: null
+};
+
+// Helper to get circle default (handles both values and functions)
+const getCircleDefault = (key) => {
+    const value = CIRCLE_DEFAULTS[key];
+    return typeof value === 'function' ? value() : value;
+};
+
+// Helper to get square default
+const getSquareDefault = (key) => {
+    return SQUARE_DEFAULTS[key];
+};
+
+// Helper to ensure circle has all required properties with defaults
+const ensureCircleDefaults = (circle) => {
+    // Handle colors array
+    if (!circle.colors) {
+        circle.colors = circle.color ? [circle.color] : [getCircleDefault('colors')[0]];
+    }
+    if (!circle.color) {
+        circle.color = getCircleDefault('color');
+    }
+    
+    // Handle emoji
+    if (circle.emoji === undefined) {
+        circle.emoji = getCircleDefault('emoji');
+    }
+    
+    // Handle energyTypes
+    if (!circle.energyTypes) {
+        circle.energyTypes = getCircleDefault('energyTypes');
+    }
+    
+    // Handle cycleable properties
+    if (!validatePropertyValue('connectible', circle.connectible)) {
+        circle.connectible = getCircleDefault('connectible');
+    }
+    if (!validatePropertyValue('activation', circle.activation)) {
+        circle.activation = getCircleDefault('activation');
+    }
+    if (!validatePropertyValue('activationTriggers', circle.activationTriggers)) {
+        circle.activationTriggers = getCircleDefault('activationTriggers');
+    }
+    if (!validatePropertyValue('shinynessReceiveMode', circle.shinynessReceiveMode)) {
+        circle.shinynessReceiveMode = getCircleDefault('shinynessReceiveMode');
+    }
+    
+    // Handle referenceID
+    if (circle.referenceID === undefined) {
+        circle.referenceID = getCircleDefault('referenceID');
+    }
+    
+    // Handle belongsToID
+    if (circle.belongsToID === undefined) {
+        circle.belongsToID = getCircleDefault('belongsToID');
+    }
+    
+    // Handle collapsed
+    if (circle.collapsed === undefined) {
+        circle.collapsed = getCircleDefault('collapsed');
+    }
+    
+    // Set default emoji for emoji-type circles
+    if (circle.type === 'emoji' && !circle.emoji) {
+        circle.emoji = getCircleDefault('emojiForEmojiType');
+    }
+};
+
+// Helper to ensure square has all required properties with defaults
+const ensureSquareDefaults = (square) => {
+    if (square.emoji === undefined) {
+        square.emoji = getSquareDefault('emoji');
+    }
+    if (square.emojiKey === undefined) {
+        square.emojiKey = getSquareDefault('emojiKey');
+    }
+    if (square.emojiCss === undefined) {
+        square.emojiCss = getSquareDefault('emojiCss');
+    }
+    if (!square.color) {
+        square.color = getSquareDefault('color');
+    }
+    if (square.bold === undefined) {
+        square.bold = getSquareDefault('bold');
+    }
+    if (square.indicatorEmoji === undefined) {
+        square.indicatorEmoji = getSquareDefault('indicatorEmoji');
+    }
+};
 
 function createEntityStore() {
     const data = reactive({
@@ -120,19 +234,19 @@ function createEntityStore() {
 
         // Add circle-specific properties
         if (entityType === 'circle') {
-            entity.color = '#CCCCCC'; 
-            entity.colors = ['#4CAF50']; 
-            entity.energyTypes = []; 
-            entity.activation = getPropertyDefault('activation');
-            entity.activationTriggers = getPropertyDefault('activationTriggers');
-            entity.shinynessReceiveMode = getPropertyDefault('shinynessReceiveMode');
-            entity.connectible = getPropertyDefault('connectible');
-            entity.referenceID = null; 
-            entity.belongsToID = null; 
-            entity.collapsed = false; // NEW: Default to expanded
+            entity.color = getCircleDefault('color');
+            entity.colors = [...getCircleDefault('colors')];
+            entity.energyTypes = [...getCircleDefault('energyTypes')];
+            entity.activation = getCircleDefault('activation');
+            entity.activationTriggers = getCircleDefault('activationTriggers');
+            entity.shinynessReceiveMode = getCircleDefault('shinynessReceiveMode');
+            entity.connectible = getCircleDefault('connectible');
+            entity.referenceID = getCircleDefault('referenceID');
+            entity.belongsToID = getCircleDefault('belongsToID');
+            entity.collapsed = getCircleDefault('collapsed');
             
             // Set circle type based on document's mostRecentlySetCircleType
-            let defaultType = 'basic'; // Fallback default
+            let defaultType = getCircleDefault('type');
             if (documentStore) {
                 const recentType = documentStore.getMostRecentlySetCircleType(documentId);
                 if (recentType) {
@@ -141,23 +255,23 @@ function createEntityStore() {
             }
             entity.type = defaultType;
             
-            // Add emoji property for emoji-type circles
-            entity.emoji = null; // Default: no emoji, will be set when type is 'emoji'
+            // Add emoji property
+            entity.emoji = getCircleDefault('emoji');
             
             // Set default emoji for emoji-type circles
             if (entity.type === 'emoji') {
-                entity.emoji = 'A'; // Default emoji for emoji circles
+                entity.emoji = getCircleDefault('emojiForEmojiType');
             }
         }
 
         // Add square-specific properties
         if (entityType === 'square') {
-            entity.emoji = null; // Default: no emoji
-            entity.emojiKey = null; // Key from attributeInfo
-            entity.emojiCss = null; // CSS filter for emoji
-            entity.color = '#CCCCCC'; // Default color (can be overridden by emoji)
-            entity.bold = false; // Default bold state
-            entity.indicatorEmoji = null; // Default indicator emoji
+            entity.emoji = getSquareDefault('emoji');
+            entity.emojiKey = getSquareDefault('emojiKey');
+            entity.emojiCss = getSquareDefault('emojiCss');
+            entity.color = getSquareDefault('color');
+            entity.bold = getSquareDefault('bold');
+            entity.indicatorEmoji = getSquareDefault('indicatorEmoji');
         }
 
         const store = entityType === 'circle' ? data.circles : data.squares;
@@ -247,7 +361,7 @@ function createEntityStore() {
         if (entity) {
             Object.assign(entity, updates);
             
-            // For circles, ensure color consistency, emoji handling, energy types, activation, activationTriggers, referenceID, and collapsed state
+            // For circles, ensure all properties have defaults
             if (entityType === 'circle') {
                 // If colors array is updated but color is not, update primary color
                 if (updates.colors && !updates.color && updates.colors.length > 0) {
@@ -257,53 +371,15 @@ function createEntityStore() {
                 if (updates.color && !updates.colors) {
                     entity.colors = [updates.color];
                 }
-                // Ensure colors array always exists
-                if (!entity.colors) {
-                    entity.colors = entity.color ? [entity.color] : ['#4CAF50'];
-                }
                 
-                if (!entity.connectible) {
-                    entity.connectible = getPropertyDefault('connectible');
-                }
-
-                // Ensure energyTypes array always exists
-                if (!entity.energyTypes) {
-                    entity.energyTypes = [];
-                }
-                
-                // Ensure all cycleable properties exist and are valid
-                if (!validatePropertyValue('activation', entity.activation)) {
-                    entity.activation = getPropertyDefault('activation');
-                }
-                
-                if (!validatePropertyValue('activationTriggers', entity.activationTriggers)) {
-                    entity.activationTriggers = getPropertyDefault('activationTriggers');
-                }
-
-                if (!validatePropertyValue('shinynessReceiveMode', entity.shinynessReceiveMode)) {
-                    entity.shinynessReceiveMode = getPropertyDefault('shinynessReceiveMode');
-                }
-
-                if (!validatePropertyValue('connectible', entity.connectible)) {
-                    entity.connectible = getPropertyDefault('connectible');
-                }
-                
-                // Ensure referenceID property always exists
-                if (entity.referenceID === undefined) {
-                    entity.referenceID = null;
-                }
-                
-                // NEW: Ensure collapsed property always exists
-                if (entity.collapsed === undefined) {
-                    entity.collapsed = false;
-                }
+                // Ensure all required properties exist with defaults
+                ensureCircleDefaults(entity);
                 
                 // Handle emoji when type changes to/from 'emoji'
                 if (updates.type === 'emoji' && !entity.emoji) {
-                    entity.emoji = 'A'; // Set default emoji for emoji circles
+                    entity.emoji = getCircleDefault('emojiForEmojiType');
                 } else if (updates.type && updates.type !== 'emoji') {
                     // Don't clear emoji when changing away from emoji type - keep it for future use
-                    // entity.emoji = null; // Commented out to preserve emoji
                 }
 
                 if (entityType === 'circle' && entity.referenceID === null) {
@@ -318,14 +394,14 @@ function createEntityStore() {
 
                             if (updates.color !== undefined || updates.colors !== undefined) {
                                 refCircle.color = entity.color;
-                                refCircle.colors = [...entity.colors]; // Copy the array
+                                refCircle.colors = [...entity.colors];
                             }
 
                             if (updates.type !== undefined) {
                                 refCircle.type = entity.type;
                                 // Handle emoji for type changes
                                 if (entity.type === 'emoji' && !refCircle.emoji) {
-                                    refCircle.emoji = entity.emoji || 'A';
+                                    refCircle.emoji = entity.emoji || getCircleDefault('emojiForEmojiType');
                                 }
                             }
 
@@ -334,7 +410,7 @@ function createEntityStore() {
                             }
 
                             if (updates.energyTypes !== undefined) {
-                                refCircle.energyTypes = [...entity.energyTypes]; // Copy the array
+                                refCircle.energyTypes = [...entity.energyTypes];
                             }
 
                             // Handle all cycleable properties
@@ -348,28 +424,8 @@ function createEntityStore() {
                                 refCircle.collapsed = entity.collapsed;
                             }
 
-                            // Ensure all properties exist with defaults
-                            if (!refCircle.energyTypes) {
-                                refCircle.energyTypes = [];
-                            }
-                            if (!validatePropertyValue('activation', refCircle.activation)) {
-                                refCircle.activation = getPropertyDefault('activation');
-                            }
-                            if (!validatePropertyValue('activationTriggers', refCircle.activationTriggers)) {
-                                refCircle.activationTriggers = getPropertyDefault('activationTriggers');
-                            }
-                            if (!validatePropertyValue('shinynessReceiveMode', refCircle.shinynessReceiveMode)) {
-                                refCircle.shinynessReceiveMode = getPropertyDefault('shinynessReceiveMode');
-                            }
-                            if (!validatePropertyValue('connectible', refCircle.connectible)) {
-                                refCircle.connectible = getPropertyDefault('connectible');
-                            }
-                            if (!refCircle.colors) {
-                                refCircle.colors = [refCircle.color || '#4CAF50'];
-                            }
-                            if (refCircle.collapsed === undefined) {
-                                refCircle.collapsed = false;
-                            }
+                            // Ensure all referenced circles have required properties with defaults
+                            ensureCircleDefaults(refCircle);
                         });
                     }
                 }
@@ -500,86 +556,17 @@ function createEntityStore() {
         if (savedData.circles) {
             data.circles = new Map(savedData.circles);
             
-            // Ensure all circles have the required properties
+            // Ensure all circles have the required properties with defaults
             data.circles.forEach((circle, id) => {
-                if (!circle.colors) {
-                    circle.colors = circle.color ? [circle.color] : ['#CCCCCC'];
-                }
-                if (!circle.color) {
-                    circle.color = '#CCCCCC'; // Default color
-                }
-                // Ensure emoji property exists for circles
-                if (circle.emoji === undefined) {
-                    circle.emoji = null;
-                }
-
-                // Ensure all cycleable properties exist with valid values
-                if (!validatePropertyValue('connectible', circle.connectible)) {
-                    circle.connectible = getPropertyDefault('connectible');
-                }
-
-                // Set default emoji for existing emoji-type circles that don't have one
-                if (circle.type === 'emoji' && !circle.emoji) {
-                    circle.emoji = 'A';
-                }
-                // Ensure energyTypes property exists for circles
-                if (!circle.energyTypes) {
-                    circle.energyTypes = [];
-                }
-                
-                // Ensure all cycleable properties exist and are valid
-                if (!validatePropertyValue('activation', circle.activation)) {
-                    circle.activation = getPropertyDefault('activation');
-                }
-                if (!validatePropertyValue('activationTriggers', circle.activationTriggers)) {
-                    circle.activationTriggers = getPropertyDefault('activationTriggers');
-                }
-                if (!validatePropertyValue('shinynessReceiveMode', circle.shinynessReceiveMode)) {
-                    circle.shinynessReceiveMode = getPropertyDefault('shinynessReceiveMode');
-                }
-
-                // Ensure referenceID property exists for circles
-                if (circle.referenceID === undefined) {
-                    circle.referenceID = null; // Default for existing circles
-                }
-
-                if (circle.belongsToID === undefined) {
-                circle.belongsToID = null;
-            }
-
-                // NEW: Ensure collapsed property exists for circles
-                if (circle.collapsed === undefined) {
-                    circle.collapsed = false; // Default for existing circles
-                }
+                ensureCircleDefaults(circle);
             });
         }
         if (savedData.squares) {
             data.squares = new Map(savedData.squares);
             
-            // Ensure all squares have the new emoji, bold, and indicator properties
+            // Ensure all squares have the required properties with defaults
             data.squares.forEach((square, id) => {
-                if (square.emoji === undefined) {
-                    square.emoji = null;
-                }
-                if (square.emojiKey === undefined) {
-                    square.emojiKey = null;
-                }
-                // Ensure emojiCss property exists
-                if (square.emojiCss === undefined) {
-                    square.emojiCss = null;
-                }
-                // Ensure squares have a color property
-                if (!square.color) {
-                    square.color = '#CCCCCC'; // Default square color
-                }
-                // Ensure squares have a bold property
-                if (square.bold === undefined) {
-                    square.bold = false; // Default to not bold
-                }
-                // Ensure squares have an indicator emoji property
-                if (square.indicatorEmoji === undefined) {
-                    square.indicatorEmoji = null; // Default to no indicator
-                }
+                ensureSquareDefaults(square);
             });
         }
         if (savedData.nextCircleId) data.nextCircleId = savedData.nextCircleId;

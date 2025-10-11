@@ -6,6 +6,9 @@ import { EnergyIndicators } from './EnergyIndicators.js';
 import { useEntityState } from './EntityState.js';
 import { useEntityRendering } from './EntityRendering.js';
 import { useEntityInteractions } from './EntityInteractions.js';
+import { ConnectionManager } from './ConnectionManager.js';
+
+const connectionManager = new ConnectionManager();
 
 // Component styles - updated to support bold squares, indicator emojis, reference circles, animation copies, group shape scaling, and collapsed group member count
 const componentStyles = `
@@ -43,6 +46,19 @@ const componentStyles = `
 
     .emoji-circle-container {
         transition: transform 1.0s cubic-bezier(0.2,-2,0.8,2), opacity 1.0s cubic-bezier(0.2,-2,0.8,2), filter 1.0s cubic-bezier(0.2,-2,0.8,2);
+    }
+
+    .the-emoji-itself {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        pointer-events: none;
     }
 
     .square-shape {
@@ -111,15 +127,6 @@ const componentStyles = `
     }
 
     /* Legacy selection styles - kept for backward compatibility but will be phased out */
-    .entity-shape.selected {
-        border-color: #ffff00;
-        box-shadow: 0 0 10px #ffff00;
-    }
-
-    .entity-shape.square-shape.selected {
-        border: 2px solid #ffff00;
-    }
-
     .entity-shape.highlight {
         animation: highlight 1s ease-in-out;
     }
@@ -139,8 +146,8 @@ const componentStyles = `
     }
 
     .entity-name {
-        color: white;
-        font-size: 14px;
+        color: #FFF;
+        font-size: 12px;
         text-align: center;
         width: 120px;
         padding: 2px 4px;
@@ -152,6 +159,11 @@ const componentStyles = `
         background-color: rgba(0, 0, 0, .05);
         z-index: 10;
         text-shadow: 1px 1px 1px black;
+    }
+
+    .entity-container-emoji .entity-name {
+        color: #CCC;
+        font-size: 11px;
     }
 
     .circle-type-group ~ .entity-name {
@@ -238,6 +250,41 @@ const componentStyles = `
         background-color: rgba(0, 0, 0, 0.5);
         transform: translate(-50%, -50%) scale(1.1);
     }
+
+ .connection-radius-indicator {
+        position: absolute;
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: -1;
+        background: rgba(255, 255, 255, 0.05);
+        transition: none;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    .connection-radius-indicator.bold {
+        background: rgba(255, 255, 100, 0.08) !important;
+    }
+
+    .connection-radius-indicator.circle-indicator {
+        background: rgba(76, 175, 80, 0.06) !important;
+    }
+
+    .connection-radius-indicator.fade-in {
+        animation: radiusIndicatorFadeIn 0.2s ease;
+    }
+
+    @keyframes radiusIndicatorFadeIn {
+        from { 
+            opacity: 0; 
+            transform: translate(-50%, -50%) scale(0.8);
+        }
+        to { 
+            opacity: 1; 
+            transform: translate(-50%, -50%) scale(1);
+        }
+    }
 `;
 
 injectComponentStyles('entity-component', componentStyles);
@@ -261,6 +308,14 @@ export const EntityComponent = {
         energizedConnections: {
             type: Object,
             default: () => ({})
+        },
+        isDragging: {
+            type: Boolean,
+            default: false
+        },
+        dragDeltas: {
+            type: Object,
+            default: () => ({ deltaX: 0, deltaY: 0 })
         }
     },
     components: {
@@ -300,23 +355,57 @@ export const EntityComponent = {
                    state.collapsedMemberCount.value > 0;
         });
 
+const showRadiusIndicator = computed(() => { return props.isDragging && (props.dragDeltas.deltaX !== 0 || props.dragDeltas.deltaY !== 0); });
+
+const radiusIndicatorStyles = computed(() => {
+    let connectionDistance;
+    
+    if (props.entityType === 'circle') {
+        connectionDistance = props.entity.bold === true 
+            ? connectionManager.CIRCLE_BOLD_CONNECTION_DISTANCE 
+            : connectionManager.CIRCLE_CONNECTION_DISTANCE;
+    } else if (props.entityType === 'square') {
+        connectionDistance = props.entity.bold === true 
+            ? connectionManager.SQUARE_BOLD_CONNECTION_DISTANCE 
+            : connectionManager.SQUARE_CONNECTION_DISTANCE;
+    } else {
+        connectionDistance = 100; // fallback
+    }
+    
+    const diameter = connectionDistance * 2;
+    
+    return {
+        width: `${diameter}px`,
+        height: `${diameter}px`,
+    };
+});
+
+const radiusIndicatorClasses = computed(() => {
+    const classes = ['connection-radius-indicator', 'fade-in'];
+    
+    if (props.entityType === 'square' && props.entity.bold) {
+        classes.push('bold');
+    } else if (props.entityType === 'circle') {
+        classes.push('circle-indicator');
+    }
+    
+    return classes;
+});
+
         // Cleanup function for external use
         const cleanup = () => {
             rendering.cleanupRendering();
         };
 
         return {
-            // State
             ...state,
-            // Rendering
             ...rendering,
-            // Interactions
             ...interactions,
-            // Shape scaling
             shapeScaleStyles,
-            // NEW: Collapsed group member count
             shouldShowMemberCount,
-            // Cleanup
+            showRadiusIndicator,
+            radiusIndicatorStyles,
+            radiusIndicatorClasses,
             cleanup
         };
     },
@@ -333,7 +422,8 @@ export const EntityComponent = {
         :class="{
             'animation-copy': isAnimationCopy,
             'animation-dimmed': isAnimationDimmed,
-            'group-member': groupMemberScale !== 1
+            'group-member': groupMemberScale !== 1,
+            'entity-container-emoji': entity.type === 'emoji',
         }"
         :data-entity-id="entity.id"
         @click="handleClick"
@@ -342,6 +432,12 @@ export const EntityComponent = {
         @drag-move="(event) => $emit('drag-move', event)"
         @drag-end="(event) => $emit('drag-end', event)"
     >
+
+        <div 
+            v-if="showRadiusIndicator"
+            :class="radiusIndicatorClasses"
+            :style="radiusIndicatorStyles"
+        ></div>
         <!-- Render shape div for squares and all circle types except triangle and emoji -->
         <div 
             v-if="entityType === 'square' || (entityType === 'circle' && entity.type !== 'triangle' && entity.type !== 'emoji')"
@@ -412,13 +508,13 @@ export const EntityComponent = {
             @keydown="handleNameKeydown"
         >
         {{ entity.name }}
-        <!--span v-if="Object.keys(energizedConnections).length > 0" style="color: #888; font-size: 12px;">
-            {{ JSON.stringify(energizedConnections) }}
-        </span-->
-        <!--EnergyIndicators 
+        <span v-if="Object.keys(energyDistance).length > 0" style="color: #888; font-size: 12px;">
+            {{ 'E: ' + energyDistance['exciter'] }}
+        </span>
+        <EnergyIndicators 
             v-if="entityType === 'circle'"
             :energyTypes="circleEnergyTypes"
-/-->
+/>
         </div>
     </div>
 `

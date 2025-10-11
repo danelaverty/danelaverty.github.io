@@ -81,11 +81,12 @@ function createDataCoordinator() {
 
     const initializeApp = () => {
         const loaded = loadFromStorage();
-        
-        // Ensure defaults exist
-        if (documentStore.getAllCircleDocuments().length === 0) {
-            documentStore.createCircleDocument();
-        }
+        const allDocs = documentStore.getAllCircleDocuments();
+        const hasDaily = allDocs.some(doc => doc.name === 'Dailies');
+        const hasLandscapes = allDocs.some(doc => doc.name === 'Landscapes');
+
+        if (!hasDaily) { documentStore.createCircleDocument('Dailies'); }
+        if (!hasLandscapes) { documentStore.createCircleDocument('Landscapes'); }
         
         if (!loaded) {
             saveToStorage();
@@ -256,6 +257,13 @@ function createDataCoordinator() {
             return result;
         },
         getCircleDocumentViewerProperties: documentStore.getCircleDocumentViewerProperties,
+
+        updateCircleDocumentEnergizedCircles: (id, energizedCircles) => {
+            const result = documentStore.updateCircleDocumentEnergizedCircles(id, energizedCircles);
+            if (result) saveToStorage();
+            return result;
+        },
+        getEnergizedCirclesForDocument: documentStore.getEnergizedCirclesForDocument,
 
         // Viewer operations (with persistence and property coordination)
         createCircleViewer: (width, documentId) => {

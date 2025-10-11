@@ -15,13 +15,13 @@ const componentStyles = `
     }
 
     /* Adjust position when document has children (to avoid overlap with collapse button) */
-    .document-icon-controls-container.has-children {
+    /*.document-icon-controls-container.has-children {
         right: 10px;
-    }
+    }*/
 
     .document-icon-controls {
         display: flex;
-        flex-direction: row;
+        flex-direction: column;
         gap: 2px;
         opacity: 1; /* Controls are visible when container is visible */
         transition: none; /* Remove transition conflicts */
@@ -134,6 +134,14 @@ const componentStyles = `
 
     .delete-document-button:active {
         transform: scale(0.9);
+    }
+
+    .nested-level-0 .delete-document-button {
+        display: none;
+    }
+
+    .nested-level-1 .create-child-button {
+        display: none;
     }
 `;
 

@@ -11,12 +11,12 @@ const componentStyles = `
         width: var(--dock-width, 60px); /* Use CSS custom property for dynamic width */
         min-width: 50px;
         max-width: 300px;
-        background-color: #1a1a1a;
+        background-color: #221d19;
         border-right: 2px solid #333;
         display: flex;
         flex-direction: column;
         align-items: left;
-        padding: 10px 0;
+        padding: 0;
         gap: 8px;
         z-index: 1004;
         overflow-y: auto;
@@ -74,8 +74,7 @@ const componentStyles = `
 
     /* Disable transition during resize */
     .documents-dock.resizing, 
-    .documents-dock.resizing .document-icon,
-    .documents-dock.resizing .new-document-button {
+    .documents-dock.resizing .document-icon {
         transition: none !important;
     }
 
@@ -249,6 +248,10 @@ const componentStyles = `
         pointer-events: none; /* Make non-interactive */
     }
 
+    .document-icon .collapse-button {
+        display: none;
+    }
+
     .document-icon:hover .collapse-button {
         opacity: 1;
     }
@@ -312,40 +315,20 @@ const componentStyles = `
         transition: opacity 0.2s ease;
     }
 
+    .document-icon.nested-level-0 {
+        width: 100%;
+        border-radius: 0;
+        border: none;
+        font-size: 14px;
+        background-color: #44403b;
+        padding: 6px;
+    }
+
     .document-icon.nested-level-1::before,
     .document-icon.nested-level-2::before,
     .document-icon.nested-level-3::before,
     .document-icon.nested-deep::before {
         opacity: 1;
-    }
-
-    /* New document button - responsive sizing */
-    .new-document-button {
-        width: 24px;
-        height: 24px;
-        background-color: #333;
-        border: 1px solid #444;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        color: white;
-        font-size: 24px;
-        font-weight: bold;
-        transition: all 0.2s ease;
-        margin-bottom: 8px;
-        user-select: none;
-    }
-
-    .new-document-button:hover {
-        background-color: #388E3C;
-        border-color: #66BB6A;
-        transform: scale(1.05);
-    }
-
-    .new-document-button:active {
-        transform: scale(0.95);
     }
 
     /* Hide resize handle during drag operations */
@@ -362,6 +345,11 @@ const componentStyles = `
         opacity: 0.8;
         transform: rotate(5deg);
     }
+
+.energized-count {
+    font-size: 10px;
+    color: #AAA;
+}
 `;
 
 // Initialize styles when module is imported

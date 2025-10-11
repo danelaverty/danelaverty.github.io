@@ -1,17 +1,16 @@
 // EnergizedConnectionsCalculator.js - Calculates the number of energized connections per circle by energy type
 export class EnergizedConnectionsCalculator {
     constructor() {
-        this.energyTypes = ['exciter', 'dampener', 'stabilizer', 'amplifier'];
+        this.energyTypes = ['exciter', 'dampener'];
     }
 
     /**
      * Calculate energized connections for all circles in a viewer
      * @param {Array} circles - Array of circle objects
      * @param {Array} explicitConnections - Array of explicit connection objects
-     * @param {EnergyDistanceEffectsController} energyEffectsController - Controller with energized connection state
      * @returns {Map} Map of circle ID to energized connection counts by type
      */
-    calculateEnergizedConnectionsForCircles(circles, explicitConnections, energyEffectsController = null) {
+    calculateEnergizedConnectionsForCircles(circles, explicitConnections) {
         const result = new Map();
         
         // Initialize result map with empty counts for all circles
@@ -28,12 +27,7 @@ export class EnergizedConnectionsCalculator {
         explicitConnections.forEach((connection, index) => {
             // Get energized types from the controller instead of the connection object
             let energizedTypes = [];
-            if (energyEffectsController) {
-                energizedTypes = energyEffectsController.getEnergizedTypesForConnection(connection.id);
-            } else {
-                // Fallback to old method if no controller provided
-                energizedTypes = connection.energizedWith || [];
-            }
+            energizedTypes = connection.energizedWith || [];
 
             if (energizedTypes && energizedTypes.length > 0) {
                 energizedConnectionsFound++;

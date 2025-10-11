@@ -1,11 +1,6 @@
 // CBCyclePropertyConfigs.js - Centralized configuration for all cycleable properties
 
 export const CYCLE_PROPERTY_CONFIGS = {
-  proximityConnectionsMode: {
-    'no': { icon: '👤', label: 'No', description: '...', default: true },
-    'yes': { icon: '👥', label: 'Yes', description: '...' },
-  },
-  
   shinynessReceiveMode: {
     'or': { icon: '➕', label: 'Or Mode', description: 'Or Mode - Click to cycle to Explosive Or Mode', default: true },
     'additiveOr': { icon: '🎆', label: 'Additive Or Mode', description: 'Additive Or Mode - Click to cycle to And Mode' },
