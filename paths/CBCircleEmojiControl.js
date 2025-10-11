@@ -54,7 +54,7 @@ export const CircleEmojiControl = {
             @click="$emit('toggle')"
             :title="displayTitle"
         >
-            <div class="circle-emoji-display">{{ displayEmoji }}</div>
+            <div style="color: white;" class="circle-emoji-display">{{ displayEmoji }}</div>
         </div>
     </div>
   `

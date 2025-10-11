@@ -143,24 +143,26 @@ export const useEntityState = (props) => {
     });
 
     // Computed position styles with center-relative positioning for circles
-    const positionStyles = computed(() => {
-        if (props.entityType === 'circle' && props.viewerWidth) {
-            // For circles: position relative to center of viewer
-            const centerX = props.viewerWidth / 2;
-            const calculatedLeft = centerX + props.entity.x;
-            
-            return {
-                left: calculatedLeft + 'px',
-                top: props.entity.y + 'px'
-            };
-        } else {
-            // For squares: use position as-is
-            return {
-                left: props.entity.x + 'px',
-                top: props.entity.y + 'px'
-            };
-        }
-    });
+const positionStyles = computed(() => {
+    if (props.entityType === 'circle' && props.viewerWidth) {
+        const centerX = props.viewerWidth / 2;
+        const calculatedLeft = centerX + props.entity.x;
+        
+        // Apply drag offset if this entity is being dragged
+        const finalLeft = props.isDragging ? calculatedLeft + props.dragDeltas.deltaX : calculatedLeft;
+        const finalTop = props.isDragging ? props.entity.y + props.dragDeltas.deltaY : props.entity.y;
+        
+        return {
+            left: finalLeft + 'px',
+            top: finalTop + 'px'
+        };
+    } else {
+        return {
+            left: props.entity.x + 'px',
+            top: props.entity.y + 'px'
+        };
+    }
+});
 
     // Square count for circles (for rendering)
     const squareCount = computed(() => {
@@ -208,7 +210,6 @@ export const useEntityState = (props) => {
                 }
             }
             
-            console.warn(`⚠️ EntityComponent: Could not determine viewerId for circle ${props.entity.id}, using fallback`);
             return 'viewer_1'; // Fallback
         }
         
@@ -226,18 +227,6 @@ export const useEntityState = (props) => {
         
         return base;
     });
-
-    // Watch for animation copy position changes
-    watch(() => props.entity, (newEntity, oldEntity) => {
-        if (newEntity.isAnimationCopy) {
-            console.log(`[EntityComponent] Animation copy ${newEntity.id} position changed:`, {
-                x: newEntity.x,
-                y: newEntity.y,
-                oldX: oldEntity?.x,
-                oldY: oldEntity?.y
-            });
-        }
-    }, { deep: true });
 
     return {
         elementRef,

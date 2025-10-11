@@ -220,20 +220,23 @@ const energyClasses = computed(() => props.connectionEnergyClasses);
         };
 
         // Helper function to get entity position with drag adjustments
-        const getEntityPosition = (entity, entityType) => {
-            let baseX = entity.x;
-            let baseY = entity.y;
-
-            if (isExplicitConnection.value && 
-                props.entityDragState.isDragging && 
-                props.entityDragState.draggedEntityIds.includes(entity.id)) {
-                
-                baseX += props.entityDragState.currentDeltas.deltaX;
-                baseY += props.entityDragState.currentDeltas.deltaY;
-            }
-
-            return { x: baseX, y: baseY };
+const getEntityPosition = (entity, entityType) => {
+    // Check if this entity is currently being dragged
+    const isDragging = props.entityDragState.isDragging;
+    const draggedIds = props.entityDragState.draggedEntityIds || [];
+    const isEntityBeingDragged = isDragging && draggedIds.includes(entity.id);
+    
+    if (isEntityBeingDragged) {
+        // Apply drag deltas to the entity's position
+        return {
+            x: entity.x + props.entityDragState.currentDeltas.deltaX,
+            y: entity.y + props.entityDragState.currentDeltas.deltaY
         };
+    }
+    
+    // Return the entity's current position without modifications
+    return { x: entity.x, y: entity.y };
+};
 
         const getArrowColor = computed(() => {
             const { entityType } = props.connection;
@@ -403,9 +406,9 @@ if (isExplicit) {
             :style="lineStyle"
             :title="getConnectionTitle()"
         >
-        <!--span v-if="Object.keys(energyDistance).length > 0" style="color: #888; font-size: 12px;">
-            {{ JSON.stringify(energyDistance) }}
-        </span-->
+        <span v-if="Object.keys(energyDistance).length > 0" style="color: #888; font-size: 12px; display: block; position: absolute; left: 25%;">
+            {{ 'E: ' + energyDistance['exciter'] }}
+        </span>
         </div>
     `
 };

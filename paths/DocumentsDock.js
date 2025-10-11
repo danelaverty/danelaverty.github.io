@@ -1,5 +1,6 @@
 // DocumentsDock.js - Main DocumentsDock component (Updated with hover events for viewer highlighting)
 import { onMounted, onUnmounted } from './vue-composition-api.js';
+import { useDataStore } from './dataCoordinator.js';
 import { DocumentIconControls } from './DocumentIconControlsComponent.js';
 import { createDocumentsDockState } from './DocumentsDockState.js';
 import { createDocumentsDockHandlers } from './DocumentsDockHandlers.js';
@@ -12,6 +13,7 @@ initializeDocumentsDockStyles();
 export const DocumentsDock = {
     emits: ['create-viewer-for-document', 'document-hover', 'document-hover-end'],
     setup(props, { emit }) {
+        const dataStore = useDataStore();
         // Create state and handlers
         const dockState = createDocumentsDockState();
         const handlers = createDocumentsDockHandlers(dockState, emit);
@@ -20,6 +22,10 @@ export const DocumentsDock = {
         // Document hover handlers
         const handleDocumentHover = (documentId) => {
             emit('document-hover', documentId);
+        };
+
+        const getEnergizedCirclesForDocument = (documentId) => {
+            return dataStore.getEnergizedCirclesForDocument(documentId);
         };
 
         const handleDocumentHoverEnd = () => {
@@ -42,7 +48,8 @@ export const DocumentsDock = {
             ...resize,
             // New hover handlers
             handleDocumentHover,
-            handleDocumentHoverEnd
+            handleDocumentHoverEnd,
+            getEnergizedCirclesForDocument,
         };
     },
     components: {
@@ -62,15 +69,6 @@ export const DocumentsDock = {
             @dragleave="handleDockDragLeave"
             @drop="handleDockDrop"
         >
-            <!-- New Document Button -->
-            <div 
-                class="new-document-button"
-                @click="handleNewDocumentClick"
-                title="Create new document and viewer"
-            >
-                +
-            </div>
-            
             <!-- All Document Icons -->
             <div 
                 v-for="doc in allDocuments"
@@ -101,6 +99,16 @@ export const DocumentsDock = {
                 <!-- Display text when not editing -->
                 <div v-if="!isEditingDocument(doc.id)">
                     {{ getDocumentDisplayName(doc) }}
+                    <div 
+                        v-for="energizedCircle in getEnergizedCirclesForDocument(doc.id)"
+                        class="energized-count"
+                    >
+                        <div 
+                            style="display: inline-block; width: 8px; height: 8px; border-radius: 50%;" 
+                            :style="{ backgroundColor: energizedCircle.color }"
+                        ></div>
+                        <span style="margin: 0px 3px;">{{ energizedCircle.name }}</span>
+                    </div>
                 </div>
                 
                 <!-- Input field when editing -->

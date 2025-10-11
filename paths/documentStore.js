@@ -89,6 +89,7 @@ function createDocumentStore() {
                 showBackground: true, // Keep for backward compatibility
                 backgroundType: BACKGROUND_TYPES.SILHOUETTE // NEW: Default background type
             };
+            document.energizedCircles = [];
         }
         
         const store = entityType === 'circle' ? data.circleDocuments : data.squareDocuments;
@@ -403,6 +404,20 @@ function createDocumentStore() {
     const updateSquareDocumentName = (id, name) => updateDocumentName('square', id, name);
     const deleteSquareDocument = (id) => deleteSquareDocumentWithSelection(id);
 
+const updateCircleDocumentEnergizedCircles = (id, energizedCircles) => {
+    const document = data.circleDocuments.get(id);
+    if (document) {
+        document.energizedCircles = energizedCircles;
+        return true;
+    }
+    return false;
+};
+
+const getEnergizedCirclesForDocument = (id) => {
+    const document = data.circleDocuments.get(id);
+    return document?.energizedCircles || [];
+};
+
     const getSquareDocumentsForCircle = (circleId) => {
         return Array.from(data.squareDocuments.values()).filter(doc => doc.circleId === circleId);
     };
@@ -522,6 +537,10 @@ function createDocumentStore() {
                         doc.viewerProperties.showBackground = doc.viewerProperties.backgroundType !== BACKGROUND_TYPES.NONE;
                     }
                 }
+
+                if (doc.energizedCircles === undefined) {
+                    doc.energizedCircles = [];
+                }
             });
         }
         if (savedData.squareDocuments) {
@@ -553,6 +572,8 @@ function createDocumentStore() {
         updateCircleDocumentPin,
         updateCircleDocumentParent,
         deleteCircleDocument,
+        updateCircleDocumentEnergizedCircles,
+        getEnergizedCirclesForDocument,
         // UPDATED: Viewer properties methods with background type support
         updateCircleDocumentViewerProperties,
         getCircleDocumentViewerProperties,

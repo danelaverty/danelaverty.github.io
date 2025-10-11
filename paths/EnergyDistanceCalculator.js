@@ -1,8 +1,7 @@
 // EnergyDistanceCalculator.js - Calculates energy propagation distances for circles based on activation and energy types
 export class EnergyDistanceCalculator {
     constructor() {
-        // Available energy types - should match your energy types configuration
-        this.energyTypes = ['exciter', 'dampener', 'stabilizer', 'amplifier'];
+        this.energyTypes = ['exciter', 'dampener'];
     }
 
     calculateEnergyDistanceForAllCirclesInCircleViewer(circles, explicitConnections) {
@@ -106,39 +105,46 @@ export class EnergyDistanceCalculator {
         };
     }
 
-    calculateConnectionEnergyDistances(explicitConnections, circleMap) {
-        const connectionEnergyDistances = new Map();
+calculateConnectionEnergyDistances(explicitConnections, circleMap) {
+    const connectionEnergyDistances = new Map();
 
-        explicitConnections.forEach(connection => {
-            const entity1Data = circleMap.get(connection.entity1Id);
-            const entity2Data = circleMap.get(connection.entity2Id);
+    explicitConnections.forEach(connection => {
+        const entity1Data = circleMap.get(connection.entity1Id);
+        const entity2Data = circleMap.get(connection.entity2Id);
 
-            if (entity1Data && entity2Data) {
-                const connectionEnergyDistance = {};
+        if (entity1Data && entity2Data) {
+            const connectionEnergyDistance = {};
 
-                // Get all energy types present in either connected circle
-                const allEnergyTypes = new Set([
-                    ...Object.keys(entity1Data.energyDistance),
-                    ...Object.keys(entity2Data.energyDistance)
-                ]);
+            // Get all energy types present in either connected circle
+            const allEnergyTypes = new Set([
+                ...Object.keys(entity1Data.energyDistance),
+                ...Object.keys(entity2Data.energyDistance)
+            ]);
 
-                allEnergyTypes.forEach(energyType => {
-                    const distance1 = entity1Data.energyDistance[energyType];
-                    const distance2 = entity2Data.energyDistance[energyType];
+            allEnergyTypes.forEach(energyType => {
+                const distance1 = entity1Data.energyDistance[energyType];
+                const distance2 = entity2Data.energyDistance[energyType];
 
-                    // Only calculate connection distance if both circles have this energy type
-                    if (distance1 !== undefined && distance2 !== undefined) {
+                // Only calculate connection distance if both circles have this energy type
+                if (distance1 !== undefined && distance2 !== undefined) {
+                    // Check if energy can actually propagate through this connection
+                    // At least one circle must be able to propagate this energy type
+                    const circle1CanPropagate = this.canCirclePropagateEnergyType(entity1Data.circle, energyType);
+                    const circle2CanPropagate = this.canCirclePropagateEnergyType(entity2Data.circle, energyType);
+                    
+                    if (circle1CanPropagate || circle2CanPropagate) {
                         // Connection gets the average of the two distances (which will be an odd number)
                         connectionEnergyDistance[energyType] = (distance1 + distance2) / 2;
                     }
-                });
+                }
+            });
 
-                connectionEnergyDistances.set(connection.id, connectionEnergyDistance);
-            }
-        });
+            connectionEnergyDistances.set(connection.id, connectionEnergyDistance);
+        }
+    });
 
-        return connectionEnergyDistances;
-    }
+    return connectionEnergyDistances;
+}
 
     canCirclePropagateEnergyType(circle, energyType) {
         // Inert circles cannot propagate any energy
@@ -159,17 +165,10 @@ export class EnergyDistanceCalculator {
             return '';
         }
 
-        const shortNames = {
-            exciter: 'E',
-            dampener: 'D',
-            stabilizer: 'S',
-            amplifier: 'A'
-        };
-
         return Object.entries(energyDistance)
             .sort(([a], [b]) => a.localeCompare(b)) // Sort alphabetically for consistency
             .map(([energyType, distance]) => {
-                const shortName = shortNames[energyType] || energyType.charAt(0).toUpperCase();
+                const shortName = energyType[0] || energyType.charAt(0).toUpperCase();
                 return `${shortName}:${distance}`;
             })
             .join(' ');

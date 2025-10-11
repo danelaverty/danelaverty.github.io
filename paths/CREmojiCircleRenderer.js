@@ -1,4 +1,3 @@
-// renderers/EmojiCircleRenderer.js - Emoji circle type renderer
 export const EmojiCircleRenderer = {
     /**
      * Render emoji circle type
@@ -9,27 +8,19 @@ export const EmojiCircleRenderer = {
         // Set transparent background for the element
         element.style.backgroundColor = 'transparent';
         element.style.border = 'none';
+        element.style.color = 'white';
         
-        // Create emoji container
-        const emojiContainer = document.createElement('div');
-        emojiContainer.className = 'emoji-circle-container';
-        emojiContainer.style.cssText = `
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-            pointer-events: none;
-        `;
+        // Check if emoji container already exists
+        let emojiContainer = element.querySelector('.the-emoji-itself');
         
-        // Set the emoji (default to 🧑🏼 if not set)
+        if (!emojiContainer) {
+            // Create new emoji container if it doesn't exist
+            emojiContainer = document.createElement('div');
+            emojiContainer.className = 'the-emoji-itself';
+            element.appendChild(emojiContainer);
+        }
+        
         const emoji = circle.emoji || '🧑🏼';
         emojiContainer.textContent = emoji;
-        
-        element.appendChild(emojiContainer);
     }
 };

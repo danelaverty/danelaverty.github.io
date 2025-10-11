@@ -22,13 +22,13 @@ export const circleTypeStyles = `
         border-radius: 50%;
         background-color: var(--circle-color);
         z-index: 1;
-        animation: glow 3s linear 0s infinite alternate;
+        animation: glow 6s ease 0s infinite alternate;
         pointer-events: none;
     }
 
     @keyframes glow {
         0% { filter: blur(3px); }
-        100% { filter: blur(6px); }
+        100% { filter: blur(10px); }
     }
 
     .circle-type-triangle {

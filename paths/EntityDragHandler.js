@@ -1,9 +1,8 @@
-// EntityDragHandler.js - UPDATED: Add visual group member dragging during drag operations
+// EntityDragHandler.js
 import { onMounted } from './vue-composition-api.js';
 import { useDraggable } from './useDraggable.js';
 import { useConnectionDragUpdater } from './useConnections.js';
 import { CircleHandler, SquareHandler } from './EntityTypeHandler.js';
-import { RadiusIndicatorManager } from './RadiusIndicatorManager.js';
 import { DragStateManager } from './DragStateManager.js';
 
 export class EntityDragHandler {
@@ -31,10 +30,6 @@ export class EntityDragHandler {
         
         // Initialize managers
         this.dragStateManager = new DragStateManager(this.entityTypeHandler);
-        this.radiusIndicatorManager = new RadiusIndicatorManager(
-            this.entityTypeHandler, 
-            this.entityTypeHandler.getContainer()
-        );
         
         // Set up connection drag updater
         this.setupConnectionUpdater();
@@ -185,33 +180,8 @@ export class EntityDragHandler {
 getReactiveEntitiesWithCurrentPositions() {
     const originalEntities = this.entityTypeHandler.getCurrentEntities();
     
-    if (!this.currentDragState.isDragging || (!this.currentDragState.deltaX && !this.currentDragState.deltaY)) {
-        // No drag in progress, return original entities
-        return originalEntities;
-    }
-    
-    const selectedEntityIds = this.entityTypeHandler.getSelectedEntityIds();
-    
-    const result = originalEntities.map(entity => {
-        const isDragged = selectedEntityIds.includes(entity.id);
-
-        if (isDragged) {
-            const newPos = {
-                x: entity.x + this.currentDragState.deltaX,
-                y: entity.y + this.currentDragState.deltaY
-            };
-
-            return {
-                ...entity,
-                x: newPos.x,
-                y: newPos.y
-            };
-        }
-
-        return entity;
-    });
-
-    return result;
+    // Remove the drag adjustment logic - just return original entities
+    return originalEntities;
 }
 
     bindMethods() {
@@ -261,7 +231,7 @@ if (e && ((e.ctrlKey || e.metaKey) && e.shiftKey)) {
     onDragMove(deltaX, deltaY) {
         // Mark that actual dragging has occurred
         this.hasActuallyDragged = true;
-        
+
         // Update current drag state for connection calculations
         this.currentDragState = { deltaX, deltaY, isDragging: true };
         
@@ -291,13 +261,6 @@ if (e && ((e.ctrlKey || e.metaKey) && e.shiftKey)) {
     updateVisualsDuringDrag(deltaX, deltaY) {
         const selectedIds = this.entityTypeHandler.getSelectedEntityIds();
 
-        // Create radius indicators on first drag move
-        if (!this.radiusIndicatorManager.isActive) {
-            if (selectedIds && selectedIds.length > 0) {
-                this.radiusIndicatorManager.createIndicators(selectedIds, deltaX, deltaY);
-            }
-        }
-
         // Update entity visuals
         if (this.entityTypeHandler.isMultiSelected(this.props.entity.id)) {
             // Multi-selection: update all selected entities
@@ -306,11 +269,6 @@ if (e && ((e.ctrlKey || e.metaKey) && e.shiftKey)) {
         } else {
             // Single entity: update just this one
             this.dragStateManager.updateEntityVisuals([this.props.entity.id], deltaX, deltaY);
-        }
-
-        // Update radius indicators
-        if (this.radiusIndicatorManager.isActive) {
-            this.radiusIndicatorManager.updateIndicators(selectedIds, deltaX, deltaY);
         }
     }
 
@@ -370,9 +328,6 @@ if (e && ((e.ctrlKey || e.metaKey) && e.shiftKey)) {
         
         // Call proximity callback
         this.proximityCallbacks.onDragEnd?.();
-        
-        // Clean up visuals
-        this.radiusIndicatorManager.removeIndicators();
         
         const selectedIds = this.entityTypeHandler.getSelectedIds();
         this.dragStateManager.resetEntityVisuals(selectedIds);
@@ -510,10 +465,7 @@ handleClick(e) {
 
     // Cleanup method
     cleanup() {
-        this.radiusIndicatorManager.cleanup();
-        // NEW: Reset any group member visuals on cleanup
         this.resetGroupMemberVisuals();
-        // Remove mouse move listener if needed
         document.removeEventListener('mousemove', this.handleMouseMove);
         document.removeEventListener('mousemove', this.trackMousePosition);
     }

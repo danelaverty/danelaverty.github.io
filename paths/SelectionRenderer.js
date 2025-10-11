@@ -9,9 +9,8 @@ const selectionStyles = `
         pointer-events: none;
         transition: all 0.2s ease;
         z-index: 9 !important; /* Higher z-index to ensure visibility */
-        border: 3px solid transparent;
+        border: 1px solid transparent;
         box-sizing: border-box !important; /* Ensure consistent sizing */
-        opacity: 0 !important; /* Force opacity */
         visibility: visible !important; /* Force visibility */
     }
 
@@ -72,12 +71,6 @@ const selectionStyles = `
         box-shadow: 0 0 8px #ffff00 !important;
     }
 
-    /* Debug styles - remove after testing */
-    .entity-selection-indicator.debug {
-        border-color: red !important;
-        opacity: 0.8 !important;
-        background-color: rgba(255, 0, 0, 0.2) !important;
-    }
 `;
 
 injectComponentStyles('selection-renderer', selectionStyles);

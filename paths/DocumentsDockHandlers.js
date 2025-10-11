@@ -123,7 +123,7 @@ export function createDocumentsDockHandlers(dockState, emit) {
         
         // Only allow drop if we're dragging over the dock background, not over document icons
         const target = e.target;
-        if (target.closest('.document-icon') || target.closest('.new-document-button') || 
+        if (target.closest('.document-icon') || 
             target.closest('.dock-resize-handle')) {
             return;
         }
@@ -139,7 +139,7 @@ export function createDocumentsDockHandlers(dockState, emit) {
         
         // Only handle if we're dragging over the dock background
         const target = e.target;
-        if (target.closest('.document-icon') || target.closest('.new-document-button') || 
+        if (target.closest('.document-icon') || 
             target.closest('.dock-resize-handle')) {
             return;
         }
@@ -177,7 +177,7 @@ export function createDocumentsDockHandlers(dockState, emit) {
         
         // Only handle if we're dropping on the dock background
         const target = e.target;
-        if (target.closest('.document-icon') || target.closest('.new-document-button') || 
+        if (target.closest('.document-icon') || 
             target.closest('.dock-resize-handle')) {
             return;
         }
@@ -219,22 +219,37 @@ export function createDocumentsDockHandlers(dockState, emit) {
         emit('create-viewer-for-document', newDoc.id);
     };
 
-    // NEW: Handle creating child documents
     const handleCreateChildDocument = (parentDocId) => {
+        // Get parent document to check for special cases
+        const parentDoc = dataStore.getAllCircleDocuments().find(d => d.id === parentDocId);
+
+        // Determine the name for the new document
+        let newDocName = null; // Default behavior (will use current date)
+        if (parentDoc && parentDoc.name === 'Landscapes') {
+            newDocName = 'New Landscape';
+        }
+
         // Create new document as a child of the parent
-        const newDoc = dataStore.createCircleDocument(null, parentDocId);
-        
+        const newDoc = dataStore.createCircleDocument(newDocName, parentDocId);
+
+        // Special case: If parent is "Landscapes", set backgroundType to "none"
+        if (parentDoc && parentDoc.name === 'Landscapes') {
+            dataStore.updateCircleDocumentViewerProperties(newDoc.id, {
+                backgroundType: 'none'
+            });
+        }
+
         // Create new viewer for this document
         const newViewer = dataStore.createCircleViewer();
         dataStore.setCircleDocumentForViewer(newViewer.id, newDoc.id);
         dataStore.setSelectedViewer(newViewer.id);
-        
+
         // Ensure the parent is expanded so the new child is visible
         if (dockState.collapsedDocuments.value.has(parentDocId)) {
             dockState.collapsedDocuments.value.delete(parentDocId);
             dockState.saveDockState();
         }
-        
+
         emit('create-viewer-for-document', newDoc.id);
     };
 
@@ -277,18 +292,31 @@ export function createDocumentsDockHandlers(dockState, emit) {
     const handleDocumentDoubleClick = async (documentId, event) => {
         // Prevent the single click handler from firing
         event.stopPropagation();
-        
+
         // Don't start editing if already editing another document
         if (dockState.editingDocuments.value.size > 0) return;
-        
+
+        // Get the current document
+        const currentDoc = dataStore.getCircleDocumentForViewer 
+            ? dataStore.getCircleDocumentForViewer(documentId) 
+            : dockState.allDocuments.value.find(d => d.id === documentId);
+
+        if (!currentDoc) return;
+
+        // NEW: Prevent editing if this is a root document (level 0)
+        console.log(currentDoc.level);
+        if (currentDoc.level === 0) {
+            return;
+        }
+
         // Start editing this document
         dockState.startEditingDocument(documentId);
-        
+
         // Focus the input after Vue updates the DOM
         await nextTick();
         const inputRef = document.querySelector(`[data-ref="input-${documentId}"]`) || 
-                        document.querySelector(`textarea[ref="input-${documentId}"]`);
-        
+            document.querySelector(`textarea[ref="input-${documentId}"]`);
+
         if (inputRef) {
             inputRef.focus();
             inputRef.select();
