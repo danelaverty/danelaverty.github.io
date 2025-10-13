@@ -13,6 +13,9 @@ const CIRCLE_DEFAULTS = {
     activationTriggers: () => getPropertyDefault('activationTriggers'),
     shinynessReceiveMode: () => getPropertyDefault('shinynessReceiveMode'),
     connectible: () => getPropertyDefault('connectible'),
+    sizeMode: () => getPropertyDefault('sizeMode'),
+    manualWidth: null,
+    manualHeight: null,
     referenceID: null,
     belongsToID: null,
     collapsed: false,
@@ -43,56 +46,60 @@ const getSquareDefault = (key) => {
 
 // Helper to ensure circle has all required properties with defaults
 const ensureCircleDefaults = (circle) => {
-    // Handle colors array
-    if (!circle.colors) {
-        circle.colors = circle.color ? [circle.color] : [getCircleDefault('colors')[0]];
-    }
-    if (!circle.color) {
-        circle.color = getCircleDefault('color');
-    }
+    // Dynamically ensure all properties from CIRCLE_DEFAULTS exist with proper values
+    Object.keys(CIRCLE_DEFAULTS).forEach(key => {
+        const defaultValue = CIRCLE_DEFAULTS[key];
+        const resolvedDefault = typeof defaultValue === 'function' ? defaultValue() : defaultValue;
+        
+        // Special handling for colors array
+        if (key === 'colors') {
+            if (!circle.colors) {
+                circle.colors = circle.color ? [circle.color] : [...resolvedDefault];
+            }
+            return;
+        }
+        
+        // Special handling for color (should sync with colors[0])
+        if (key === 'color') {
+            if (!circle.color) {
+                circle.color = circle.colors?.[0] || resolvedDefault;
+            }
+            return;
+        }
+        
+        // Special handling for emoji based on type
+        if (key === 'emoji') {
+            if (circle.emoji === undefined) {
+                circle.emoji = circle.type === 'emoji' && !circle.emoji 
+                    ? getCircleDefault('emojiForEmojiType') 
+                    : resolvedDefault;
+            }
+            return;
+        }
+        
+        // Skip emojiForEmojiType as it's just a default constant, not a stored property
+        if (key === 'emojiForEmojiType') {
+            return;
+        }
+        
+        // For cycleable properties, validate the value
+        if (validatePropertyValue(key, circle[key])) {
+            // Value is valid, keep it
+            return;
+        }
+        
+        // For all other properties, set if undefined or invalid
+        if (circle[key] === undefined) {
+            circle[key] = Array.isArray(resolvedDefault) ? [...resolvedDefault] : resolvedDefault;
+        }
+    });
     
-    // Handle emoji
-    if (circle.emoji === undefined) {
-        circle.emoji = getCircleDefault('emoji');
+    // Handle color/colors synchronization (if one was updated but not the other)
+    if (circle.colors && circle.colors.length > 0 && !circle.color) {
+        circle.color = circle.colors[0];
     }
-    
-    // Handle energyTypes
-    if (!circle.energyTypes) {
-        circle.energyTypes = getCircleDefault('energyTypes');
-    }
-    
-    // Handle cycleable properties
-    if (!validatePropertyValue('connectible', circle.connectible)) {
-        circle.connectible = getCircleDefault('connectible');
-    }
-    if (!validatePropertyValue('activation', circle.activation)) {
-        circle.activation = getCircleDefault('activation');
-    }
-    if (!validatePropertyValue('activationTriggers', circle.activationTriggers)) {
-        circle.activationTriggers = getCircleDefault('activationTriggers');
-    }
-    if (!validatePropertyValue('shinynessReceiveMode', circle.shinynessReceiveMode)) {
-        circle.shinynessReceiveMode = getCircleDefault('shinynessReceiveMode');
-    }
-    
-    // Handle referenceID
-    if (circle.referenceID === undefined) {
-        circle.referenceID = getCircleDefault('referenceID');
-    }
-    
-    // Handle belongsToID
-    if (circle.belongsToID === undefined) {
-        circle.belongsToID = getCircleDefault('belongsToID');
-    }
-    
-    // Handle collapsed
-    if (circle.collapsed === undefined) {
-        circle.collapsed = getCircleDefault('collapsed');
-    }
-    
-    // Set default emoji for emoji-type circles
-    if (circle.type === 'emoji' && !circle.emoji) {
-        circle.emoji = getCircleDefault('emojiForEmojiType');
+    if (circle.color && (!circle.colors || circle.colors.length === 0)) {
+        circle.colors = [circle.color];
     }
 };
 
@@ -177,7 +184,7 @@ function createEntityStore() {
                 if (isGroupMember && circle.activation === 'inactive') {
                     updateFn(circleId, { activation: 'activated' });
                 } else if (!isGroupMember && circle.activation === 'activated') {
-                    // updateFn(circleId, { activation: 'inactive' });
+                    updateFn(circleId, { activation: 'inactive' });
                 }
             }
         });

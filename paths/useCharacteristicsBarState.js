@@ -3,7 +3,7 @@ import { computed, ref, watchEffect } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
 import { useCharacteristicsBarData } from './useCharacteristicsBarData.js';
 import { useCharacteristicsBarPickers } from './useCharacteristicsBarPickers.js';
-import { CYCLE_PROPERTY_CONFIGS, getPropertyValues } from './CBCyclePropertyConfigs.js';
+import { CYCLE_PROPERTY_CONFIGS, getPropertyValues, getPropertyDefault } from './CBCyclePropertyConfigs.js';
 
 export function useCharacteristicsBarState(dataHooks, pickerHooks) {
   const dataStore = useDataStore();
@@ -85,17 +85,47 @@ export function useCharacteristicsBarState(dataHooks, pickerHooks) {
     return dataStore.hasMultipleCirclesSelected();
   });
 
-  // Define which properties should show cycleable controls
-  const cycleableProperties = Object.keys(CYCLE_PROPERTY_CONFIGS);
+  // Dynamically get all cycleable properties from config
+  const cycleableProperties = computed(() => {
+    const allProperties = Object.keys(CYCLE_PROPERTY_CONFIGS);
+    
+    // Filter properties based on context (single vs multi-selection, circle type, etc.)
+    return allProperties.filter(propertyName => {
+      // Add any property-specific visibility logic here
+      // For now, return all properties - you can add conditions as needed
+      
+      // Example: only show sizeMode for group circles
+      if (propertyName === 'sizeMode') {
+        if (hasMultipleCirclesSelected.value) {
+          // For multi-selection, check if all selected circles are groups
+          const selectedIds = dataStore.getSelectedCircles();
+          return selectedIds.every(id => {
+            const circle = dataStore.getCircle(id);
+            return circle && circle.type === 'group';
+          });
+        } else if (dataHooks.selectedCircle.value) {
+          return dataHooks.selectedCircle.value.type === 'group';
+        }
+        return false;
+      }
+      
+      // Add more property-specific visibility rules here as needed
+      // if (propertyName === 'someOtherProperty') { ... }
+      
+      return true; // Show by default
+    });
+  });
 
-  // Create computed properties for each cycleable property
+  // Generic function to get property value for single or multiple selection
   const getPropertyValue = (propertyName) => {
+    const defaultValue = getPropertyDefault(propertyName);
+    
     if (hasMultipleCirclesSelected.value) {
       // For multiple selection, show the most common value
       const selectedIds = dataStore.getSelectedCircles();
       const values = selectedIds.map(id => {
         const circle = dataStore.getCircle(id);
-        return circle ? circle[propertyName] : getPropertyValues(propertyName)[0];
+        return circle?.[propertyName] ?? defaultValue;
       });
 
       // Count occurrences and return most common
@@ -104,11 +134,14 @@ export function useCharacteristicsBarState(dataHooks, pickerHooks) {
         return acc;
       }, {});
 
-      return Object.entries(counts).reduce((a, b) => counts[a[0]] > counts[b[0]] ? a : b)[0];
+      return Object.entries(counts).reduce((a, b) => 
+        counts[a[0]] > counts[b[0]] ? a : b
+      )[0];
     } else if (dataHooks.selectedCircle.value) {
-      return dataHooks.selectedCircle.value[propertyName] || getPropertyValues(propertyName)[0];
+      return dataHooks.selectedCircle.value[propertyName] ?? defaultValue;
     }
-    return getPropertyValues(propertyName)[0];
+    
+    return defaultValue;
   };
 
   const selectedExplicitConnection = computed(() => {

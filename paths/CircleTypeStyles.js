@@ -560,7 +560,7 @@ export const circleTypeStyles = `
         width: 100%;
         height: 100%;
         border: 2px solid var(--circle-color);
-        border-radius: 25%;
+        border-radius: 5px;
         background-color: color-mix(in srgb, var(--circle-color) 10%, transparent);
         pointer-events: none;
         z-index: 1;
@@ -595,7 +595,7 @@ export const circleTypeStyles = `
     min-width: 32px;
     min-height: 32px;
     border: 2px solid var(--circle-color);
-    border-radius: 25%;
+    border-radius: 5px;
     background-color: color-mix(in srgb, var(--circle-color) 15%, transparent);
     pointer-events: none;
     z-index: 1;

@@ -90,6 +90,15 @@ function createDocumentStore() {
                 backgroundType: BACKGROUND_TYPES.SILHOUETTE // NEW: Default background type
             };
             document.energizedCircles = [];
+            
+            // NEW: Initialize order property - new documents are always first
+            // Increment order of all siblings with the same parent
+            const siblings = Array.from(data.circleDocuments.values())
+                .filter(doc => doc.parentId === parentId);
+            siblings.forEach(sibling => {
+                sibling.order = (sibling.order || 0) + 1;
+            });
+            document.order = 0;
         }
         
         const store = entityType === 'circle' ? data.circleDocuments : data.squareDocuments;
@@ -125,7 +134,21 @@ function createDocumentStore() {
             if (parentId && isDescendantOf(parentId, id)) {
                 return false;
             }
+            
+            const oldParentId = document.parentId;
             document.parentId = parentId;
+            
+            // NEW: Reset order when moving to a new parent - place at top (order 0)
+            if (oldParentId !== parentId) {
+                // Increment order of all siblings in the new parent
+                const newSiblings = Array.from(data.circleDocuments.values())
+                    .filter(doc => doc.parentId === parentId && doc.id !== id);
+                newSiblings.forEach(sibling => {
+                    sibling.order = (sibling.order || 0) + 1;
+                });
+                document.order = 0;
+            }
+            
             return true;
         }
         return false;
@@ -293,7 +316,7 @@ function createDocumentStore() {
         const allDocs = Array.from(data.circleDocuments.values());
         const flattened = [];
         
-        // Get root documents first, sorted by pin status then alphabetically
+        // Get root documents first, sorted by pin status then by order
         const rootDocs = allDocs.filter(doc => !doc.parentId)
             .sort((a, b) => {
                 const aPinned = a.isPinned || false;
@@ -301,7 +324,8 @@ function createDocumentStore() {
                 
                 if (aPinned && !bPinned) return -1;
                 if (!aPinned && bPinned) return 1;
-                return a.name.localeCompare(b.name);
+                // UPDATED: Sort by order instead of alphabetically
+                return (a.order || 0) - (b.order || 0);
             });
         
         // Recursive function to add a document and all its children
@@ -313,7 +337,7 @@ function createDocumentStore() {
                 children: [] // We'll use this for the tree structure, but flatten here
             });
             
-            // Get children of this document, sorted by pin status then alphabetically
+            // Get children of this document, sorted by pin status then by order
             const children = allDocs.filter(child => child.parentId === doc.id)
                 .sort((a, b) => {
                     const aPinned = a.isPinned || false;
@@ -321,7 +345,8 @@ function createDocumentStore() {
                     
                     if (aPinned && !bPinned) return -1;
                     if (!aPinned && bPinned) return 1;
-                    return a.name.localeCompare(b.name);
+                    // UPDATED: Sort by order instead of alphabetically
+                    return (a.order || 0) - (b.order || 0);
                 });
             
             // Recursively add each child and their descendants
@@ -352,6 +377,50 @@ function createDocumentStore() {
     const getMostRecentlySetCircleType = (documentId) => {
         const document = data.circleDocuments.get(documentId);
         return document?.mostRecentlySetCircleType || null;
+    };
+
+    // NEW: Reorder a document within its current parent
+    const reorderCircleDocument = (docId, targetDocId, position) => {
+        const doc = data.circleDocuments.get(docId);
+        const targetDoc = data.circleDocuments.get(targetDocId);
+        
+        if (!doc || !targetDoc) {
+            return false;
+        }
+        
+        // Must have same parent to reorder
+        if (doc.parentId !== targetDoc.parentId) {
+            return false;
+        }
+        
+        // Get all siblings (including the doc being moved) sorted by order
+        const siblings = Array.from(data.circleDocuments.values())
+            .filter(d => d.parentId === doc.parentId)
+            .sort((a, b) => (a.order || 0) - (b.order || 0));
+        
+        // Remove the dragged doc from the list
+        const draggedIndex = siblings.findIndex(d => d.id === docId);
+        if (draggedIndex === -1) return false;
+        
+        const [draggedDoc] = siblings.splice(draggedIndex, 1);
+        
+        // Find target index (after removal of dragged doc)
+        const targetIndex = siblings.findIndex(d => d.id === targetDocId);
+        if (targetIndex === -1) return false;
+        
+        // Insert before or after target
+        if (position === 'before') {
+            siblings.splice(targetIndex, 0, draggedDoc);
+        } else {
+            siblings.splice(targetIndex + 1, 0, draggedDoc);
+        }
+        
+        // Reassign order values
+        siblings.forEach((d, index) => {
+            d.order = index;
+        });
+        
+        return true;
     };
 
     // Smart deletion for square documents that handles selection automatically
@@ -541,6 +610,10 @@ const getEnergizedCirclesForDocument = (id) => {
                 if (doc.energizedCircles === undefined) {
                     doc.energizedCircles = [];
                 }
+                // NEW: Ensure order property exists
+                if (doc.order === undefined) {
+                    doc.order = 0;
+                }
             });
         }
         if (savedData.squareDocuments) {
@@ -586,6 +659,8 @@ const getEnergizedCirclesForDocument = (id) => {
         // Circle type tracking methods
         setMostRecentlySetCircleType,
         getMostRecentlySetCircleType,
+        // NEW: Reordering method
+        reorderCircleDocument,
         // Square documents
         createSquareDocument,
         getSquareDocumentsForCircle,

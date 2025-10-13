@@ -89,6 +89,10 @@ const handleEntityDragEnd = (event) => {
         viewerId: null
     };
 };
+
+const handleCircleUpdate = (updates) => {
+    state.dataStore.updateCircle(updates.id, updates);
+};
         const explicitConnectionService = new ExplicitConnectionService({
             getCircle: state.dataStore.getCircle,
             getSquare: state.dataStore.getSquare,
@@ -242,6 +246,10 @@ const energizedCirclesList = computed(() => {
         if (!distances || Object.keys(distances).length === 0) {
             return;
         }
+
+        if (circle.type !== 'glow') {
+            return;
+        }
         
         // Skip activated circles (they're sources, not receivers)
         if (circle.activation === 'activated') {
@@ -385,6 +393,9 @@ watch(energyDistancesData, (newData, oldData) => {
         return;
     }
     
+    // Check if this is the very first run (no previous snapshot)
+    const isInitialLoad = lastEnergyDataSnapshot === null;
+    
     lastEnergyDataSnapshot = newSnapshot;
     
     // Perform selective clearing and scheduling based on what changed
@@ -392,7 +403,7 @@ watch(energyDistancesData, (newData, oldData) => {
     const changedConnections = new Set();
     
     // Compare circle energy distances
-    if (newData.circles && oldData?.circles) {
+    if (newData.circles && oldData?.circles && !isInitialLoad) {
         // Check for changed or new circles
         newData.circles.forEach((newDistances, circleId) => {
             const oldDistances = oldData.circles.get(circleId);
@@ -408,12 +419,14 @@ watch(energyDistancesData, (newData, oldData) => {
             }
         });
     } else {
-        // If we don't have old data, treat all as changed
-        newData.circles?.forEach((_, circleId) => changedCircles.add(circleId));
+        // If we don't have old data or this is initial load, treat all as changed
+        if (newData.circles) {
+            newData.circles.forEach((_, circleId) => changedCircles.add(circleId));
+        }
     }
     
     // Compare connection energy distances
-    if (newData.connections && oldData?.connections) {
+    if (newData.connections && oldData?.connections && !isInitialLoad) {
         // Check for changed or new connections
         newData.connections.forEach((newDistances, connectionId) => {
             const oldDistances = oldData.connections.get(connectionId);
@@ -429,8 +442,10 @@ watch(energyDistancesData, (newData, oldData) => {
             }
         });
     } else {
-        // If we don't have old data, treat all as changed
-        newData.connections?.forEach((_, connectionId) => changedConnections.add(connectionId));
+        // If we don't have old data or this is initial load, treat all as changed
+        if (newData.connections) {
+            newData.connections.forEach((_, connectionId) => changedConnections.add(connectionId));
+        }
     }
     
     // Only clear delayed states for circles that actually changed
@@ -515,6 +530,7 @@ onUnmounted(() => {
             handleEntityDragStart,
             handleEntityDragMove,
             handleEntityDragEnd,
+            handleCircleUpdate,
             shinynessEffects,
             getConnectionEnergyClasses,
             getShinynessEffectsForCircle,
@@ -586,18 +602,18 @@ onUnmounted(() => {
                 </div>
             </div>
                 <!-- Connection Rendering - Use combined connections (regular + explicit) with drag state -->
-                <ConnectionComponent
-                    v-for="connection in allConnections"
-                    :key="connection.id"
-                    :connection="connection"
-                    :connection-energy-classes="getConnectionEnergyClasses(connection.id)"
-                    :viewer-width="viewerWidth"
-                    :entity-drag-state="entityDragState"
-                    :viewer-id="viewerId"
-                    :energy-distance="connectionEnergyDistances.get(connection.id) || {}"
-                    :energy-affected-connections="energyAffectedConnections"
-                />
-                
+ <ConnectionComponent
+    v-for="connection in allConnections"
+    :key="connection.id"
+    :connection="connection"
+    :connection-energy-classes="getConnectionEnergyClasses(connection.id)"
+    :viewer-width="viewerWidth"
+    :entity-drag-state="entityDragState"
+    :viewer-id="viewerId"
+    :energy-distance="connectionEnergyDistances.get(connection.id) || {}"
+    :energy-affected-connections="energyAffectedConnections"
+    :circle-energy-distances="energyDistances"
+/>               
                 <!-- Render filtered circles -->
                 <EntityComponent
                     v-for="circle in allCircles"
@@ -620,6 +636,7 @@ onUnmounted(() => {
                     @drag-start="handleEntityDragStart"
                     @drag-move="handleEntityDragMove"
                     @drag-end="handleEntityDragEnd"
+                    @update-circle="handleCircleUpdate"
                 />
                 
                 <EntityControls 

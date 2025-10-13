@@ -7,6 +7,32 @@ export function createDocumentsDockState() {
     
     // Persistence key for dock state
     const dockStateKey = `documentsDock_${window.location.pathname}`;
+
+    const activeDropZone = ref(null);
+
+const isFirstInLevel = (doc, index) => {
+    if (index === 0) return true;
+    const prevDoc = allDocuments.value[index - 1];
+    return prevDoc.parentId !== doc.parentId || prevDoc.level !== doc.level;
+};
+
+// Helper to get drop zone CSS class based on nesting level
+const getDropZoneClass = (doc) => {
+    return `drop-zone-level-${doc.level}`;
+};
+
+// Helper to check if a drop zone is active
+const isDropZoneActive = (dropZoneId) => {
+    return activeDropZone.value === dropZoneId;
+};
+
+const setActiveDropZone = (dropZoneId) => {
+    activeDropZone.value = dropZoneId;
+};
+
+const clearActiveDropZone = () => {
+    activeDropZone.value = null;
+};
     
     // Load persisted state
     const loadDockState = () => {
@@ -43,13 +69,14 @@ export function createDocumentsDockState() {
     const collapsedDocuments = ref(initialState.collapsedDocs);
     
     // Drag and drop state
-    const dragState = ref({
-        isDragging: false,
-        draggedDocId: null,
-        dropTargetId: null,
-        isDockDropTarget: false,
-        isDockDropInvalid: false
-    });
+const dragState = ref({
+    isDragging: false,
+    draggedDocId: null,
+    dropTargetId: null,
+    dropPosition: null, // 'before' or 'after' - NEW
+    isDockDropTarget: false,
+    isDockDropInvalid: false
+});
 
     // Editing state
     const editingDocuments = ref(new Map()); // docId -> editingName
@@ -229,6 +256,12 @@ export function createDocumentsDockState() {
     };
 
     return {
+activeDropZone,
+isFirstInLevel,
+getDropZoneClass,
+isDropZoneActive,
+setActiveDropZone,
+clearActiveDropZone,
         // State
         collapsedDocuments,
         dragState,

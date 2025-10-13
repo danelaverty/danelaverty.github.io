@@ -1,5 +1,5 @@
 // EntityComponent.js - Main entity component shell with template (UPDATED: Add group shape scaling and collapsed group member count display)
-import { computed } from './vue-composition-api.js';
+import { computed, ref } from './vue-composition-api.js';
 import { injectComponentStyles } from './styleUtils.js';
 import { EmojiRenderer } from './EmojiRenderer.js';
 import { EnergyIndicators } from './EnergyIndicators.js';
@@ -7,6 +7,7 @@ import { useEntityState } from './EntityState.js';
 import { useEntityRendering } from './EntityRendering.js';
 import { useEntityInteractions } from './EntityInteractions.js';
 import { ConnectionManager } from './ConnectionManager.js';
+import { GroupResizeHandles } from './GroupResizeHandles.js';
 
 const connectionManager = new ConnectionManager();
 
@@ -321,8 +322,9 @@ export const EntityComponent = {
     components: {
         EmojiRenderer,
         EnergyIndicators,
+        GroupResizeHandles,
     },
-    emits: ['select', 'update-position', 'update-name', 'move-multiple', 'drag-start', 'drag-move', 'drag-end'],
+    emits: ['select', 'update-position', 'update-name', 'update-circle', 'move-multiple', 'drag-start', 'drag-move', 'drag-end'],
     setup(props, { emit }) {
         // Use state management composable
         const state = useEntityState(props);
@@ -332,6 +334,8 @@ export const EntityComponent = {
         
         // Use interactions composable
         const interactions = useEntityInteractions(props, emit, state);
+
+        const shapeRef = rendering.shapeRef;
 
         // Computed style for shape scaling (group circles only)
         const shapeScaleStyles = computed(() => {
@@ -397,17 +401,106 @@ const radiusIndicatorClasses = computed(() => {
             rendering.cleanupRendering();
         };
 
-        return {
-            ...state,
-            ...rendering,
-            ...interactions,
-            shapeScaleStyles,
-            shouldShowMemberCount,
-            showRadiusIndicator,
-            radiusIndicatorStyles,
-            radiusIndicatorClasses,
-            cleanup
-        };
+const handleResizeStart = (data) => {
+    console.log('RESIZE START:', data);
+    console.log('Current entity:', props.entity);
+    console.log('Current sizeMode:', props.entity.sizeMode);
+    console.log('rendering object:', rendering);
+    console.log('rendering.shapeRef:', rendering.shapeRef);
+    console.log('shapeRef variable:', shapeRef);
+    console.log('shapeRef type:', typeof shapeRef);
+    
+    // Try to get the actual DOM element
+    const actualShapeElement = document.querySelector(`[data-entity-id="${props.entity.id}"] .entity-shape`);
+    console.log('actualShapeElement from DOM:', actualShapeElement);
+    console.log('actualShapeElement dimensions:', actualShapeElement?.offsetWidth, actualShapeElement?.offsetHeight);
+    
+    // Switch to manual mode if not already
+    if (props.entity.sizeMode !== 'manual') {
+        const width = actualShapeElement?.offsetWidth || 32;
+        const height = actualShapeElement?.offsetHeight || 32;
+        
+        console.log('Using dimensions:', width, height);
+        
+        emit('update-circle', {
+            id: props.entity.id,
+            sizeMode: 'manual',
+            manualWidth: width,
+            manualHeight: height
+        });
+    }
+};
+
+const handleResizeMove = (data) => {
+    console.log('RESIZE MOVE:', data);
+    console.log('Emitting update-circle with:', {
+        id: props.entity.id,
+        manualWidth: data.width,
+        manualHeight: data.height
+    });
+    
+    // Emit update immediately for reactive resize
+    emit('update-circle', {
+        id: props.entity.id,
+        manualWidth: data.width,
+        manualHeight: data.height
+    });
+};
+
+const handleResizeEnd = (data) => {
+    console.log('RESIZE END:', data);
+    
+    // Already updated during move, just ensure final state is saved
+    emit('update-circle', {
+        id: props.entity.id,
+        manualWidth: data.width,
+        manualHeight: data.height
+    });
+};
+
+const groupCircleStyles = computed(() => {
+    if (props.entityType !== 'circle' || props.entity.type !== 'group') {
+        return {};
+    }
+    
+    const baseSize = 32;
+    let width = baseSize;
+    let height = baseSize;
+    
+    if (props.entity.sizeMode === 'manual' && props.entity.manualWidth && props.entity.manualHeight) {
+        width = props.entity.manualWidth;
+        height = props.entity.manualHeight;
+    } else if (!props.entity.collapsed && state.belongingCirclesCount?.value > 0) {
+        // Auto sizing logic if needed
+        width = baseSize;
+        height = baseSize;
+    }
+    
+    const color = props.entity.colors?.[0] || props.entity.color || '#4CAF50';
+    
+    return {
+        width: `${width}px`,
+        height: `${height}px`,
+        borderColor: color,
+        backgroundColor: `color-mix(in srgb, ${color} 15%, transparent)`
+    };
+});
+
+return {
+        ...state,
+        ...rendering,
+        ...interactions,
+        shapeScaleStyles,
+        shouldShowMemberCount,
+        showRadiusIndicator,
+        radiusIndicatorStyles,
+        radiusIndicatorClasses,
+        cleanup,
+        handleResizeStart,
+        handleResizeMove,
+        handleResizeEnd,
+        groupCircleStyles
+    };
     },
     template: `
     <div 
@@ -443,8 +536,9 @@ const radiusIndicatorClasses = computed(() => {
             v-if="entityType === 'square' || (entityType === 'circle' && entity.type !== 'triangle' && entity.type !== 'emoji')"
             ref="shapeRef"
             :class="shapeClasses"
-            :style="{
+:style="{
                 ...shapeScaleStyles,
+                ...(entity.type === 'group' ? groupCircleStyles : {}),
                 transform: shinynessEffects.transform || 'scale(1.0)',
                 opacity: shinynessEffects.opacity || 1.0,
                 filter: shinynessEffects.filter || 'saturate(1.0)'
@@ -473,6 +567,15 @@ const radiusIndicatorClasses = computed(() => {
             >
                 {{ collapsedMemberCount }}
             </div>
+
+<!-- Inside the shape div, after member count display -->
+<GroupResizeHandles
+    v-if="entityType === 'circle' && entity.type === 'group'"
+    :circle="entity"
+    @resize-start="handleResizeStart"
+    @resize-move="handleResizeMove"
+    @resize-end="handleResizeEnd"
+/>
         </div>
         <!-- For triangle circles, render a special container with scaling -->
         <div 
@@ -508,9 +611,9 @@ const radiusIndicatorClasses = computed(() => {
             @keydown="handleNameKeydown"
         >
         {{ entity.name }}
-        <span v-if="Object.keys(energyDistance).length > 0" style="color: #888; font-size: 12px;">
+        <!--span v-if="Object.keys(energyDistance).length > 0" style="color: #888; font-size: 12px;">
             {{ 'E: ' + energyDistance['exciter'] }}
-        </span>
+        </span-->
         <EnergyIndicators 
             v-if="entityType === 'circle'"
             :energyTypes="circleEnergyTypes"

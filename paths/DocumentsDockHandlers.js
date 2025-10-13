@@ -5,6 +5,70 @@ import { nextTick } from './vue-composition-api.js';
 export function createDocumentsDockHandlers(dockState, emit) {
     const dataStore = useDataStore();
 
+const handleDropZoneDragOver = (e, position, docId) => {
+    if (!dockState.dragState.value.isDragging) {
+        return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+};
+
+const handleDropZoneDragEnter = (e, position, docId) => {
+    if (!dockState.dragState.value.isDragging) {
+        return;
+    }
+    e.stopPropagation();
+    
+    const draggedDocId = dockState.dragState.value.draggedDocId;
+    const targetDoc = dockState.allDocuments.value.find(d => d.id === docId);
+    const draggedDoc = dockState.allDocuments.value.find(d => d.id === draggedDocId);
+    
+    if (!targetDoc || !draggedDoc) return;
+    
+    // Set the active drop zone
+    dockState.setActiveDropZone(`${position}-${docId}`);
+};
+
+const handleDropZoneDragLeave = (e) => {
+    e.stopPropagation();
+    // Only clear if we're actually leaving the drop zone
+    const relatedTarget = e.relatedTarget;
+    if (!relatedTarget || !e.currentTarget.contains(relatedTarget)) {
+        dockState.clearActiveDropZone();
+    }
+};
+
+const handleDropZoneDrop = (e, position, docId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const draggedDocId = dockState.dragState.value.draggedDocId;
+    if (!draggedDocId) return;
+    
+    const targetDoc = dockState.allDocuments.value.find(d => d.id === docId);
+    const draggedDoc = dockState.allDocuments.value.find(d => d.id === draggedDocId);
+    
+    if (!targetDoc || !draggedDoc) return;
+    
+    // Check if we need to change parent first
+    if (draggedDoc.parentId !== targetDoc.parentId) {
+        // Move to same parent as target
+        dataStore.updateCircleDocumentParent(draggedDocId, targetDoc.parentId);
+    }
+    
+    // Now reorder based on position
+    if (position === 'before') {
+        dataStore.reorderCircleDocument(draggedDocId, docId, 'before');
+    } else {
+        dataStore.reorderCircleDocument(draggedDocId, docId, 'after');
+    }
+    
+    console.log(`Document ${draggedDocId} reordered ${position} ${docId}`);
+    
+    dockState.clearActiveDropZone();
+};
+
     // Drag and Drop Handlers for Document Icons
     const handleDragStart = (e, docId) => {
         // Prevent drag if editing
@@ -51,69 +115,69 @@ export function createDocumentsDockHandlers(dockState, emit) {
         e.dataTransfer.dropEffect = 'move';
     };
 
-    const handleDragEnter = (e, targetDocId) => {
-        if (!dockState.dragState.value.isDragging || dockState.dragState.value.draggedDocId === targetDocId) {
-            return;
-        }
-        
-        // Check if this would create a circular reference
-        const draggedDoc = dataStore.getAllCircleDocuments().find(d => d.id === dockState.dragState.value.draggedDocId);
-        const targetDoc = dataStore.getAllCircleDocuments().find(d => d.id === targetDocId);
-        
-        if (!draggedDoc || !targetDoc) return;
-        
-        // Prevent dropping a parent onto its descendant
-        const wouldCreateCircularRef = dataStore.isDescendantOf(targetDocId, dockState.dragState.value.draggedDocId);
-        
-        dockState.dragState.value.dropTargetId = targetDocId;
-        
-        // Add visual feedback
-        const targetElement = e.target.closest('.document-icon');
-        if (targetElement) {
-            if (wouldCreateCircularRef) {
-                targetElement.classList.add('drag-invalid');
-            } else {
-                targetElement.classList.add('drag-over');
-            }
-        }
-    };
-
-    const handleDragLeave = (e, targetDocId) => {
-        // Only remove classes if we're actually leaving this element
-        const targetElement = e.target.closest('.document-icon');
-        if (targetElement) {
-            targetElement.classList.remove('drag-over', 'drag-invalid');
-        }
-    };
-
-    const handleDrop = (e, targetDocId) => {
-        e.preventDefault();
-        
-        const draggedDocId = dockState.dragState.value.draggedDocId;
-        if (!draggedDocId || draggedDocId === targetDocId) {
-            return;
-        }
-        
-        // Check if this would create a circular reference
-        const wouldCreateCircularRef = dataStore.isDescendantOf(targetDocId, draggedDocId);
+const handleDragEnter = (e, targetDocId) => {
+    if (!dockState.dragState.value.isDragging || dockState.dragState.value.draggedDocId === targetDocId) {
+        return;
+    }
+    
+    e.stopPropagation();
+    
+    const draggedDoc = dataStore.getAllCircleDocuments().find(d => d.id === dockState.dragState.value.draggedDocId);
+    const targetDoc = dataStore.getAllCircleDocuments().find(d => d.id === targetDocId);
+    
+    if (!draggedDoc || !targetDoc) return;
+    
+    // Prevent dropping a parent onto its descendant
+    const wouldCreateCircularRef = dataStore.isDescendantOf(targetDocId, dockState.dragState.value.draggedDocId);
+    
+    dockState.dragState.value.dropTargetId = targetDocId;
+    
+    const targetElement = e.target.closest('.document-icon');
+    if (targetElement) {
         if (wouldCreateCircularRef) {
-            console.warn('Cannot create circular reference in document hierarchy');
-            return;
+            targetElement.classList.add('drag-invalid');
+        } else {
+            targetElement.classList.add('drag-nest');
         }
-        
-        // Update the parent relationship
-        const success = dataStore.updateCircleDocumentParent(draggedDocId, targetDocId);
-        
-        if (success) {
-            console.log(`Document ${draggedDocId} nested under ${targetDocId}`);
-        }
-        
-        // Clean up drag classes
-        const targetElement = e.target.closest('.document-icon');
-        if (targetElement) {
-            targetElement.classList.remove('drag-over', 'drag-invalid');
-        }
-    };
+    }
+};
+
+const handleDragLeave = (e, targetDocId) => {
+    const targetElement = e.target.closest('.document-icon');
+    if (targetElement) {
+        targetElement.classList.remove('drag-nest', 'drag-invalid');
+    }
+};
+
+const handleDrop = (e, targetDocId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const draggedDocId = dockState.dragState.value.draggedDocId;
+    if (!draggedDocId || draggedDocId === targetDocId) {
+        return;
+    }
+    
+    // Check if this would create a circular reference
+    const wouldCreateCircularRef = dataStore.isDescendantOf(targetDocId, draggedDocId);
+    if (wouldCreateCircularRef) {
+        console.warn('Cannot create circular reference in document hierarchy');
+        return;
+    }
+    
+    // Nest under the target document
+    const success = dataStore.updateCircleDocumentParent(draggedDocId, targetDocId);
+    
+    if (success) {
+        console.log(`Document ${draggedDocId} nested under ${targetDocId}`);
+    }
+    
+    // Clean up drag classes
+    const targetElement = e.target.closest('.document-icon');
+    if (targetElement) {
+        targetElement.classList.remove('drag-nest', 'drag-invalid');
+    }
+};
 
     // Dock Drop Handlers for Un-nesting Documents
     const handleDockDragOver = (e) => {
@@ -267,6 +331,12 @@ export function createDocumentsDockHandlers(dockState, emit) {
             dockState.saveDockState(); // Persist the change
             return;
         }
+
+        // NEW: If the document is top level (nested-level-0), return early
+        const doc = dockState.allDocuments.value.find(d => d.id === documentId);
+        if (doc && doc.level === 0) {
+            return;
+        }
         
         // For documents without children, proceed with normal viewer logic
         // Check if this document already has a visible viewer
@@ -297,9 +367,7 @@ export function createDocumentsDockHandlers(dockState, emit) {
         if (dockState.editingDocuments.value.size > 0) return;
 
         // Get the current document
-        const currentDoc = dataStore.getCircleDocumentForViewer 
-            ? dataStore.getCircleDocumentForViewer(documentId) 
-            : dockState.allDocuments.value.find(d => d.id === documentId);
+        const currentDoc = dockState.allDocuments.value.find(d => d.id === documentId);
 
         if (!currentDoc) return;
 
@@ -340,15 +408,12 @@ export function createDocumentsDockHandlers(dockState, emit) {
         dockState.saveEditingName(documentId);
     };
 
-    const handleEditingInput = (event, documentId) => {
-        // Update the editing name as user types
-        dockState.updateEditingName(documentId, event.target.value);
-        
-        // Auto-resize textarea to fit content
-        const textarea = event.target;
-        textarea.style.height = 'auto';
-        textarea.style.height = Math.min(textarea.scrollHeight, 60) + 'px';
-    };
+const handleEditingInput = (event, documentId) => {
+    // Update the editing name as user types
+    // For contenteditable, get the text content
+    const newValue = event.target.textContent;
+    dockState.updateEditingName(documentId, newValue);
+};
 
     const handleDeleteDocument = (docId) => {
         if (!dockState.canDeleteDocument(docId)) return;
@@ -414,6 +479,11 @@ export function createDocumentsDockHandlers(dockState, emit) {
         handleEditingKeydown,
         handleEditingBlur,
         handleEditingInput,
+
+handleDropZoneDragOver,
+handleDropZoneDragEnter,
+handleDropZoneDragLeave,
+handleDropZoneDrop,
         
         // Toggle and collapse handlers
         toggleCollapse

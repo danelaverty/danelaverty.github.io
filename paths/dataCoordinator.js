@@ -6,7 +6,7 @@ import { EntityService } from './entityService.js';
 import { ExplicitConnectionService } from './ExplicitConnectionService.js';
 import { getRecentEmojisStoreInstance } from './useRecentEmojis.js';
 import { useClipboardStore } from './clipboardStore.js';
-import { cycleProperty } from './CBCyclePropertyConfigs.js';
+import { cycleProperty, CYCLE_PROPERTY_CONFIGS } from './CBCyclePropertyConfigs.js';
 
 let dataCoordinatorInstance = null;
 
@@ -122,6 +122,22 @@ function createDataCoordinator() {
         return result;
     };
 
+    // Dynamically generate cycle methods for all cycleable properties
+    const generateCycleMethods = () => {
+        const methods = {};
+        
+        Object.keys(CYCLE_PROPERTY_CONFIGS).forEach(propertyName => {
+            // Convert camelCase to function name: sizeMode -> cycleSizeMode
+            const methodName = `cycle${propertyName.charAt(0).toUpperCase()}${propertyName.slice(1)}`;
+            methods[methodName] = (id) => cycleCircleProperty(id, propertyName);
+        });
+        
+        return methods;
+    };
+
+    // Generate all cycle methods dynamically
+    const cycleMethods = generateCycleMethods();
+
     // Return unified API that combines data access with business logic
     return {
         // Raw data access (for templates that need reactive refs)
@@ -134,7 +150,7 @@ function createDataCoordinator() {
             get selectedSquareIds() { return uiStore.data.selectedSquareIds; }
         },
 
-        // Business operations (with persistence) - UPDATED: Use enhanced delete methods
+        // Business operations (with persistence)
         createCircleInViewer: withPersistence(entityService.createCircleInViewer.bind(entityService)),
         createSquare: withPersistence(entityService.createSquare.bind(entityService)),
         selectCircle: withPersistence(entityService.selectCircle.bind(entityService)),
@@ -150,7 +166,7 @@ function createDataCoordinator() {
         deleteSelectedSquares: withPersistence(entityService.deleteSelectedSquares.bind(entityService)),
 
         // Simple entity operations (direct store access with persistence and cache invalidation)
-        updateCircle: updateCircle, // NEW: Use cache-invalidating version
+        updateCircle: updateCircle,
         updateSquare: (id, updates) => {
             const result = entityStore.updateSquare(id, updates);
             if (result) saveToStorage();
@@ -167,11 +183,8 @@ function createDataCoordinator() {
         // Generic property cycling operation
         cycleCircleProperty: cycleCircleProperty,
 
-        // Specific cycling operations (backward compatibility)
-        cycleCircleActivation: (id) => cycleCircleProperty(id, 'activation'),
-        cycleCircleActivationTriggers: (id) => cycleCircleProperty(id, 'activationTriggers'),
-        cycleShinynessReceiveMode: (id) => cycleCircleProperty(id, 'shinynessReceiveMode'),
-        cycleCircleConnectible: (id) => cycleCircleProperty(id, 'connectible'),
+        // Dynamically generated cycle methods (e.g., cycleActivation, cycleSizeMode, etc.)
+        ...cycleMethods,
 
         // Read operations (no persistence needed)
         getCircle: entityStore.getCircle,
@@ -206,6 +219,11 @@ function createDataCoordinator() {
         },
         updateCircleDocumentParent: (id, parentId) => {
             const result = documentStore.updateCircleDocumentParent(id, parentId);
+            if (result) saveToStorage();
+            return result;
+        },
+        reorderCircleDocument: (docId, targetDocId, position) => {
+            const result = documentStore.reorderCircleDocument(docId, targetDocId, position);
             if (result) saveToStorage();
             return result;
         },
@@ -271,7 +289,6 @@ function createDataCoordinator() {
             saveToStorage();
             return viewer;
         },
-        // Now passes documentStore to handle property persistence
         updateCircleViewer: (id, updates) => {
             const result = uiStore.updateCircleViewer(id, updates, documentStore);
             if (result) saveToStorage();
@@ -298,7 +315,6 @@ function createDataCoordinator() {
         // Enhanced viewer read operations that include properties from documents
         getVisibleCircleViewers: () => {
             const viewers = uiStore.getVisibleCircleViewers();
-            // Enhance each viewer with properties from its document
             return viewers.map(viewer => {
                 const properties = uiStore.getViewerProperties(viewer.id, documentStore);
                 return {
@@ -310,7 +326,6 @@ function createDataCoordinator() {
         },
         getViewerTitle: (viewerId) => uiStore.getViewerTitle(viewerId, documentStore),
         isViewerSelected: uiStore.isViewerSelected,
-        // Get viewer properties from document
         getViewerProperties: (viewerId) => uiStore.getViewerProperties(viewerId, documentStore),
 
         // Selection read operations
@@ -325,7 +340,6 @@ function createDataCoordinator() {
         saveToStorage,
 
         getCirclesBelongingToGroup: entityStore.getCirclesBelongingToGroup,
-        // NEW: Enhanced setCircleBelongsTo that passes persistence callback for delayed activation checks
         setCircleBelongsTo: (circleId, groupId) => {
             const result = entityStore.setCircleBelongsTo(circleId, groupId, updateCircle);
             if (result) {
@@ -333,7 +347,6 @@ function createDataCoordinator() {
             }
             return result;
         },
-        // NEW: Enhanced clearCircleBelongsTo that passes persistence callback for delayed activation checks
         clearCircleBelongsTo: (circleId) => {
             const result = entityStore.clearCircleBelongsTo(circleId, updateCircle);
             if (result) {
@@ -343,9 +356,9 @@ function createDataCoordinator() {
         },
 
         // Explicit connection operations (with persistence)
-        getExplicitConnectionBetweenEntities: explicitConnectionService.getExplicitConnectionBetweenEntities,
+        getExplicitConnectionBetweenEntities: explicitConnectionService.getConnectionBetweenEntities.bind(explicitConnectionService),
         updateExplicitConnectionProperty: (connectionId, propertyName, value) => {
-            const result = explicitConnectionService.updateExplicitConnectionProperty(connectionId, propertyName, value);
+            const result = explicitConnectionService.updateConnectionProperty(connectionId, propertyName, value);
             if (result) {
                 saveToStorage();
             }
