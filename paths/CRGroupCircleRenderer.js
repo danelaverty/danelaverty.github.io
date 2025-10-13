@@ -1,4 +1,4 @@
-// CRGroupCircleRenderer.js - Updated with collapsed group support
+// CRGroupCircleRenderer.js - Updated to let container inherit size from parent
 import { getColorWithOpacity } from './colorUtils.js';
 import { useDataStore } from './dataCoordinator.js';
 
@@ -16,32 +16,20 @@ export const GroupCircleRenderer = {
             actualBelongingCount = belongingCircles.length;
         }
         
-        // NEW: Check if the group is collapsed
         const isCollapsed = circle.collapsed === true;
         
-        // NEW: Calculate size - use normal size when collapsed, scaled when expanded
-        const baseSize = 32;
-        let scaledWidth = baseSize;
-        let scaledHeight = baseSize;
-        
-        if (!isCollapsed && actualBelongingCount > 0) {
-            // Only scale when expanded and has members
-            //const scaleFactor = Math.sqrt(Math.max(1, actualBelongingCount + 1)) * 1.3 * 0.8;
-            const scaleFactor = 1;
-            scaledWidth = Math.max(baseSize, baseSize * scaleFactor);
-            scaledHeight = Math.max(baseSize, baseSize * scaleFactor);
-        }
-        
         const groupElement = document.createElement('div');
-        groupElement.className = `group-circle-container ${isCollapsed ? 'collapsed' : 'expanded'}`;
+        groupElement.className = `group-circle-container ${isCollapsed ? 'collapsed' : 'expanded'} ${circle.sizeMode === 'manual' ? 'manual-size' : 'auto-size'}`;
         
-        // Apply dynamic sizing
-        groupElement.style.width = `${scaledWidth}px`;
-        groupElement.style.height = `${scaledHeight}px`;
+        // REMOVED: Don't set explicit width/height - inherit from parent entity-shape
+        // groupElement.style.width = `${scaledWidth}px`;
+        // groupElement.style.height = `${scaledHeight}px`;
+        
+        // Set only the visual styling, not the dimensions
         groupElement.style.borderColor = color;
         groupElement.style.backgroundColor = `color-mix(in srgb, ${color} 15%, transparent)`;
         
-        // NEW: Add member count display for collapsed groups
+        // Add member count display for collapsed groups
         if (isCollapsed && actualBelongingCount > 0) {
             const countElement = document.createElement('div');
             countElement.className = 'group-member-count';
@@ -63,10 +51,8 @@ export const GroupCircleRenderer = {
         
         element.appendChild(groupElement);
         
-        // Store current scale and collapsed state for drag calculations
+        // Store current collapsed state for reference (dimensions now handled by parent)
         element._groupScale = { 
-            width: scaledWidth, 
-            height: scaledHeight,
             isCollapsed: isCollapsed
         };
     }

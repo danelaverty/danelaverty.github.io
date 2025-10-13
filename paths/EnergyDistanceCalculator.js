@@ -11,6 +11,7 @@ export class EnergyDistanceCalculator {
             circleMap.set(circle.id, {
                 circle: circle,
                 neighbors: new Set(),
+                neighborConnections: new Map(), // Map neighbor ID to connection object
                 energyDistance: {} // Will store { energyType: distance }
             });
         });
@@ -23,6 +24,10 @@ export class EnergyDistanceCalculator {
             if (entity1Data && entity2Data) {
                 entity1Data.neighbors.add(connection.entity2Id);
                 entity2Data.neighbors.add(connection.entity1Id);
+                
+                // Store connection references for directionality checking
+                entity1Data.neighborConnections.set(connection.entity2Id, connection);
+                entity2Data.neighborConnections.set(connection.entity1Id, connection);
             }
         });
 
@@ -68,13 +73,25 @@ export class EnergyDistanceCalculator {
                     circleData.neighbors.forEach(neighborId => {
                         const neighborData = circleMap.get(neighborId);
                         if (neighborData) {
-                            const newDistance = currentDistance + 2;
+                            // Check if energy flow is allowed through this connection
+                            const connection = circleData.neighborConnections.get(neighborId);
+                            const flowAllowed = this.canEnergyFlowThroughConnection(
+                                connection,
+                                circleId,
+                                neighborId,
+                                energyType,
+                                circleMap
+                            );
                             
-                            // Only set if neighbor doesn't have this energy type yet, or if new distance is lower
-                            if (neighborData.energyDistance[energyType] === undefined || 
-                                neighborData.energyDistance[energyType] > newDistance) {
-                                neighborData.energyDistance[energyType] = newDistance;
-                                hasChanges = true;
+                            if (flowAllowed) {
+                                const newDistance = currentDistance + 2;
+                                
+                                // Only set if neighbor doesn't have this energy type yet, or if new distance is lower
+                                if (neighborData.energyDistance[energyType] === undefined || 
+                                    neighborData.energyDistance[energyType] > newDistance) {
+                                    neighborData.energyDistance[energyType] = newDistance;
+                                    hasChanges = true;
+                                }
                             }
                         }
                     });
@@ -105,46 +122,84 @@ export class EnergyDistanceCalculator {
         };
     }
 
-calculateConnectionEnergyDistances(explicitConnections, circleMap) {
-    const connectionEnergyDistances = new Map();
-
-    explicitConnections.forEach(connection => {
-        const entity1Data = circleMap.get(connection.entity1Id);
-        const entity2Data = circleMap.get(connection.entity2Id);
-
-        if (entity1Data && entity2Data) {
-            const connectionEnergyDistance = {};
-
-            // Get all energy types present in either connected circle
-            const allEnergyTypes = new Set([
-                ...Object.keys(entity1Data.energyDistance),
-                ...Object.keys(entity2Data.energyDistance)
-            ]);
-
-            allEnergyTypes.forEach(energyType => {
-                const distance1 = entity1Data.energyDistance[energyType];
-                const distance2 = entity2Data.energyDistance[energyType];
-
-                // Only calculate connection distance if both circles have this energy type
-                if (distance1 !== undefined && distance2 !== undefined) {
-                    // Check if energy can actually propagate through this connection
-                    // At least one circle must be able to propagate this energy type
-                    const circle1CanPropagate = this.canCirclePropagateEnergyType(entity1Data.circle, energyType);
-                    const circle2CanPropagate = this.canCirclePropagateEnergyType(entity2Data.circle, energyType);
-                    
-                    if (circle1CanPropagate || circle2CanPropagate) {
-                        // Connection gets the average of the two distances (which will be an odd number)
-                        connectionEnergyDistance[energyType] = (distance1 + distance2) / 2;
-                    }
-                }
-            });
-
-            connectionEnergyDistances.set(connection.id, connectionEnergyDistance);
+    /**
+     * Check if energy can flow through a connection based on directionality
+     * @param {Object} connection - The connection object (may be null for proximity connections)
+     * @param {string} sourceCircleId - ID of circle energy is flowing FROM
+     * @param {string} targetCircleId - ID of circle energy is flowing TO
+     * @param {string} energyType - Type of energy being propagated
+     * @param {Map} circleMap - Map of all circle data
+     * @returns {boolean} - True if energy flow is allowed
+     */
+    canEnergyFlowThroughConnection(connection, sourceCircleId, targetCircleId, energyType, circleMap) {
+        // If no connection object, this is a proximity connection - always allow
+        if (!connection) {
+            return true;
         }
-    });
 
-    return connectionEnergyDistances;
-}
+        // If connection has no directionality or is 'none' or 'both', always allow
+        const directionality = connection.directionality;
+        if (!directionality || directionality === 'none' || directionality === 'both') {
+            return true;
+        }
+
+        // Determine actual flow direction based on entity1/entity2 in the connection
+        const isFlowingEntity1ToEntity2 = (sourceCircleId === connection.entity1Id && targetCircleId === connection.entity2Id);
+        const isFlowingEntity2ToEntity1 = (sourceCircleId === connection.entity2Id && targetCircleId === connection.entity1Id);
+
+        // Check if directionality allows this flow
+        if (directionality === 'out') {
+            // 'out' allows entity1 → entity2 only
+            return isFlowingEntity1ToEntity2;
+        } else if (directionality === 'in') {
+            // 'in' allows entity2 → entity1 only
+            return isFlowingEntity2ToEntity1;
+        }
+
+        // Shouldn't reach here, but default to allowing flow
+        return true;
+    }
+
+    calculateConnectionEnergyDistances(explicitConnections, circleMap) {
+        const connectionEnergyDistances = new Map();
+
+        explicitConnections.forEach(connection => {
+            const entity1Data = circleMap.get(connection.entity1Id);
+            const entity2Data = circleMap.get(connection.entity2Id);
+
+            if (entity1Data && entity2Data) {
+                const connectionEnergyDistance = {};
+
+                // Get all energy types present in either connected circle
+                const allEnergyTypes = new Set([
+                    ...Object.keys(entity1Data.energyDistance),
+                    ...Object.keys(entity2Data.energyDistance)
+                ]);
+
+                allEnergyTypes.forEach(energyType => {
+                    const distance1 = entity1Data.energyDistance[energyType];
+                    const distance2 = entity2Data.energyDistance[energyType];
+
+                    // Only calculate connection distance if both circles have this energy type
+                    if (distance1 !== undefined && distance2 !== undefined) {
+                        // Check if energy can actually propagate through this connection
+                        // At least one circle must be able to propagate this energy type
+                        const circle1CanPropagate = this.canCirclePropagateEnergyType(entity1Data.circle, energyType);
+                        const circle2CanPropagate = this.canCirclePropagateEnergyType(entity2Data.circle, energyType);
+                        
+                        if (circle1CanPropagate || circle2CanPropagate) {
+                            // Connection gets the average of the two distances (which will be an odd number)
+                            connectionEnergyDistance[energyType] = (distance1 + distance2) / 2;
+                        }
+                    }
+                });
+
+                connectionEnergyDistances.set(connection.id, connectionEnergyDistance);
+            }
+        });
+
+        return connectionEnergyDistances;
+    }
 
     canCirclePropagateEnergyType(circle, energyType) {
         // Inert circles cannot propagate any energy

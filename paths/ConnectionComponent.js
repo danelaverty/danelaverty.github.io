@@ -22,16 +22,17 @@ const connectionStyles = `
         background-color: rgba(70, 70, 70, 1);
     }
 
-.connection-line::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    opacity: 0;
-    transition: opacity 1.5s ease;
-}
+    /* Animated overlay for exciter/dampener - uses ::before */
+    .connection-line::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        transition: opacity 1.5s ease;
+    }
 
     @keyframes barber-pole {
         0% {
@@ -52,7 +53,6 @@ const connectionStyles = `
     }
 
     .connection-line.exciter-connection::before {
-        content: "";
         background: repeating-linear-gradient(
             90deg,
             #00AAAA 0px,
@@ -62,16 +62,11 @@ const connectionStyles = `
             #00AAAA 16px,
             #00AAAA 20px
         );
-        animation: barber-pole-rev 1s linear infinite;
+        animation: barber-pole 1s linear infinite;
         opacity: 1;
     }
 
-    .connection-line.exciter-connection.explicit-solid::before {
-        animation: barber-pole 1s linear infinite;
-    }
-
     .connection-line.dampener-connection::before {
-        content: "";
         background: repeating-linear-gradient(
             90deg,
             #AA0000 0px,
@@ -85,21 +80,34 @@ const connectionStyles = `
         opacity: 1;
     }
 
-    /* CSS-based arrow styles */
-    /*.connection-line::before,
-    .connection-line::after {
-        content: '';
+    .connection-line.exciter-connection.reverse-flow::before {
+        animation: barber-pole-rev 1s linear infinite;
+    }
+
+    .connection-line.dampener-connection.reverse-flow::before {
+        animation: barber-pole-rev 1s linear infinite;
+    }
+
+    /* Arrow wrapper - separate element from the line */
+    .arrow-container {
         position: absolute;
-        width: 0;
-        height: 0;
-        border-style: solid;
-    }*/
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: -1;
+    }
 
     /* Start arrow (left side) - pointing right */
-    .connection-line.arrow-start::before {
+    .arrow-start-indicator {
+        position: absolute;
         left: 7px;
         top: 50%;
         transform: translateY(-50%);
+        width: 0;
+        height: 0;
+        border-style: solid;
         border-left: 12px solid transparent;
         border-right: 12px solid var(--arrow-color);
         border-top: 6px solid transparent;
@@ -107,10 +115,14 @@ const connectionStyles = `
     }
 
     /* End arrow (right side) - pointing right */
-    .connection-line.arrow-end::after {
+    .arrow-end-indicator {
+        position: absolute;
         right: 7px;
         top: 50%;
         transform: translateY(-50%);
+        width: 0;
+        height: 0;
+        border-style: solid;
         border-left: 12px solid var(--arrow-color);
         border-right: 12px solid transparent;
         border-top: 6px solid transparent;
@@ -203,6 +215,10 @@ export const ConnectionComponent = {
         connectionEnergyClasses: {
             type: Array,
             default: () => []
+        },
+        circleEnergyDistances: {
+                type: Map,
+                default: () => new Map()
         }
     },
     setup(props) {
@@ -212,7 +228,40 @@ export const ConnectionComponent = {
             return result;
         });
 
-const energyClasses = computed(() => props.connectionEnergyClasses);
+        const energyClasses = computed(() => props.connectionEnergyClasses);
+
+        const flowDirectionClasses = computed(() => {
+            const classes = [];
+            const connectionEnergy = props.energyDistance;
+            
+            if (!connectionEnergy || Object.keys(connectionEnergy).length === 0) {
+                return classes;
+            }
+            
+            const entity1Id = props.connection.entity1Id;
+            const entity2Id = props.connection.entity2Id;
+            
+            const entity1Energy = props.circleEnergyDistances.get(entity1Id) || {};
+            const entity2Energy = props.circleEnergyDistances.get(entity2Id) || {};
+            
+            // Check each energy type present on this connection
+            Object.keys(connectionEnergy).forEach(energyType => {
+                const entity1Distance = entity1Energy[energyType];
+                const entity2Distance = entity2Energy[energyType];
+                
+                // Only determine direction if both entities have this energy type
+                if (entity1Distance !== undefined && entity2Distance !== undefined) {
+                    // The default animation flows from entity2 to entity1
+                    // We want energy to flow from lower distance to higher distance
+                    // So add reverse-flow when entity1 has LOWER distance (to flip it to entity1→entity2)
+                    if (entity1Distance < entity2Distance) {
+                        classes.push('reverse-flow');
+                    }
+                }
+            });
+            
+            return classes;
+        });
 
         // Helper function to check if a circle is inactive
         const isCircleInactive = (entity) => {
@@ -220,23 +269,23 @@ const energyClasses = computed(() => props.connectionEnergyClasses);
         };
 
         // Helper function to get entity position with drag adjustments
-const getEntityPosition = (entity, entityType) => {
-    // Check if this entity is currently being dragged
-    const isDragging = props.entityDragState.isDragging;
-    const draggedIds = props.entityDragState.draggedEntityIds || [];
-    const isEntityBeingDragged = isDragging && draggedIds.includes(entity.id);
-    
-    if (isEntityBeingDragged) {
-        // Apply drag deltas to the entity's position
-        return {
-            x: entity.x + props.entityDragState.currentDeltas.deltaX,
-            y: entity.y + props.entityDragState.currentDeltas.deltaY
+        const getEntityPosition = (entity, entityType) => {
+            // Check if this entity is currently being dragged
+            const isDragging = props.entityDragState.isDragging;
+            const draggedIds = props.entityDragState.draggedEntityIds || [];
+            const isEntityBeingDragged = isDragging && draggedIds.includes(entity.id);
+            
+            if (isEntityBeingDragged) {
+                // Apply drag deltas to the entity's position
+                return {
+                    x: entity.x + props.entityDragState.currentDeltas.deltaX,
+                    y: entity.y + props.entityDragState.currentDeltas.deltaY
+                };
+            }
+            
+            // Return the entity's current position without modifications
+            return { x: entity.x, y: entity.y };
         };
-    }
-    
-    // Return the entity's current position without modifications
-    return { x: entity.x, y: entity.y };
-};
 
         const getArrowColor = computed(() => {
             const { entityType } = props.connection;
@@ -250,6 +299,21 @@ const getEntityPosition = (entity, entityType) => {
             } else {
                 return '#ffffff';
             }
+        });
+
+        const showArrows = computed(() => {
+            const { directionality } = props.connection;
+            return isExplicitConnection.value && directionality && directionality !== 'none';
+        });
+
+        const showStartArrow = computed(() => {
+            const { directionality } = props.connection;
+            return showArrows.value && (directionality === 'in' || directionality === 'both');
+        });
+
+        const showEndArrow = computed(() => {
+            const { directionality } = props.connection;
+            return showArrows.value && (directionality === 'out' || directionality === 'both');
         });
 
         const lineStyle = computed(() => {
@@ -311,47 +375,29 @@ const getEntityPosition = (entity, entityType) => {
                 '--arrow-color': getArrowColor.value
             };
 
-                const style = {
-                    ...baseStyle,
-                    border: 'none'
-                };
-                
-                    style.backgroundColor = strokeColor;
-                
-                return style;
+            const style = {
+                ...baseStyle,
+                border: 'none'
+            };
+            
+            style.backgroundColor = strokeColor;
+            
+            return style;
         });
 
         const lineClasses = computed(() => {
-            const { entityType, directionality } = props.connection;
+            const { entityType } = props.connection;
             const isCircleType = entityType === 'circle' || entityType.startsWith('circle-') || entityType.startsWith('explicit-circle');
             const isExplicit = isExplicitConnection.value;
 
             const classes = ['connection-line'];
             
-if (isExplicit) {
-    classes.push('explicit-solid');
-} else if (isCircleType) {
-    classes.push('circle-solid');
-} else {
-    classes.push('solid');
-}
-
             if (isExplicit) {
                 classes.push('explicit-solid');
             } else if (isCircleType) {
                 classes.push('circle-solid');
             } else {
                 classes.push('solid');
-            }
-
-            // Add arrow classes based on directionality
-            if (isExplicit && directionality && directionality !== 'none') {
-                if (directionality === 'in' || directionality === 'both') {
-                    classes.push('arrow-start');
-                }
-                if (directionality === 'out' || directionality === 'both') {
-                    classes.push('arrow-end');
-                }
             }
             
             return classes;
@@ -398,17 +444,24 @@ if (isExplicit) {
             isExplicitConnection,
             getConnectionTitle,
             energyClasses,
+            flowDirectionClasses,
+            showStartArrow,
+            showEndArrow,
         };
     },
     template: `
         <div 
-            :class="[...lineClasses, ...energyClasses]"
+            :class="[...lineClasses, ...energyClasses, ...flowDirectionClasses]"
             :style="lineStyle"
             :title="getConnectionTitle()"
         >
-        <span v-if="Object.keys(energyDistance).length > 0" style="color: #888; font-size: 12px; display: block; position: absolute; left: 25%;">
-            {{ 'E: ' + energyDistance['exciter'] }}
-        </span>
+            <div class="arrow-container" v-if="showStartArrow || showEndArrow">
+                <div v-if="showStartArrow" class="arrow-start-indicator"></div>
+                <div v-if="showEndArrow" class="arrow-end-indicator"></div>
+            </div>
+            <!--span v-if="Object.keys(energyDistance).length > 0" style="color: #888; font-size: 12px; display: block; position: absolute; left: 25%;">
+                {{ 'E: ' + energyDistance['exciter'] }}
+            </span-->
         </div>
     `
 };

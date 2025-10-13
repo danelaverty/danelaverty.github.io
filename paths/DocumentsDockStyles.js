@@ -17,7 +17,7 @@ const componentStyles = `
         flex-direction: column;
         align-items: left;
         padding: 0;
-        gap: 8px;
+        gap: 0px;
         z-index: 1004;
         overflow-y: auto;
         transition: width 0.1s ease;
@@ -161,26 +161,27 @@ const componentStyles = `
         cursor: text;
     }
 
-    .document-icon-input {
-        background: transparent;
-        border: none;
-        color: white;
-        font-family: sans-serif;
-        font-size: inherit;
-        text-align: left;
-        word-break: break-word;
-        line-height: 1.1;
-        padding: 0;
-        width: 100%;
-        height: 100%;
-        outline: none;
-        resize: none;
-        overflow: hidden;
-        min-height: 20px;
-    }
+.document-icon-input {
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid #4CAF50;
+    border-radius: 3px;
+    color: white;
+    font-family: sans-serif;
+    font-size: inherit;
+    text-align: left;
+    word-break: break-word;
+    line-height: 1.1;
+    padding: 2px 4px;
+    width: 100%;
+    min-height: 20px;
+    outline: none;
+    overflow-wrap: break-word;
+}
 
     .document-icon-input:focus {
         outline: none;
+        border-color: #66BB6A;
+            background: rgba(255, 255, 255, 0.08);
     }
 
     /* Responsive indentation for nested documents */
@@ -270,6 +271,7 @@ const componentStyles = `
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     }
 
+
     .document-icon.drag-over {
         border-color: #4CAF50;
         background-color: rgba(76, 175, 80, 0.1);
@@ -350,6 +352,118 @@ const componentStyles = `
     font-size: 10px;
     color: #AAA;
 }
+
+
+  .document-icon.drag-target {
+        background-color: rgba(76, 175, 80, 0.1);
+        border-color: #4CAF50;
+    }
+
+/* Drop zones for reordering */
+.drop-zone {
+    width: 100%;
+    height: 4px;
+    background-color: transparent;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.drop-zone-active {
+    height: 8px;
+    background-color: #4CAF50;
+    box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
+}
+
+.drop-zone-active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 2px;
+    background-color: #66BB6A;
+    box-shadow: 0 0 4px rgba(76, 175, 80, 0.8);
+}
+
+/* Drop zone indentation based on level */
+.drop-zone-level-0 {
+    width: 100%;
+    margin-left: 0;
+}
+
+.drop-zone-level-1 {
+    width: calc(var(--dock-width, 60px) - 15px);
+    margin-left: 5px;
+}
+
+.drop-zone-level-2 {
+    width: calc(var(--dock-width, 60px) - 20px);
+    margin-left: 10px;
+}
+
+.drop-zone-level-3 {
+    width: calc(var(--dock-width, 60px) - 25px);
+    margin-left: 15px;
+}
+
+/* Nesting indicator on document icons */
+.document-icon.drag-nest {
+    background-color: rgba(76, 175, 80, 0.2);
+    border-color: #4CAF50;
+    box-shadow: inset 0 0 8px rgba(76, 175, 80, 0.3);
+}
+
+.document-icon.drag-nest::after {
+    content: 'Nest Under';
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    font-size: 8px;
+    color: #4CAF50;
+    background-color: rgba(0, 0, 0, 0.7);
+    padding: 1px 3px;
+    border-radius: 2px;
+    pointer-events: none;
+}
+
+.document-icon.nested-level-0::after,
+.document-icon.nested-level-1::after,
+.document-icon.nested-level-1::after
+{
+    content: '…';
+    position: absolute;
+    right: -10px;
+    bottom: 0px;
+    font-size: 8px;
+    font-weight: bold;
+    color: #888;
+    padding: 0px 3px;
+    line-height: 1.2;
+    display: none;
+}
+
+.document-icon.has-collapsed-children::after {
+    display: block;
+}
+
+.circle-count-indicator {
+    position: absolute;
+    right: 2px;
+    top: 1px;
+    font-size: 9px;
+    font-weight: bold;
+    color: #AAA;
+    background-color: rgba(0, 0, 0, 0.5);
+    border: 1px solid #555;
+    border-radius: 3px;
+    padding: 1px 4px;
+    line-height: 1.2;
+    pointer-events: none;
+    z-index: 1008;
+}
+
 `;
 
 // Initialize styles when module is imported

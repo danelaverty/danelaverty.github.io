@@ -140,8 +140,12 @@ const componentStyles = `
         display: none;
     }
 
-    .nested-level-1 .create-child-button {
+    .create-child-button {
         display: none;
+    }
+
+    .nested-level-0 .create-child-button {
+        display: block;
     }
 `;
 

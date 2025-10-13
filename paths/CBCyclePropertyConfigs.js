@@ -30,7 +30,12 @@ export const CYCLE_PROPERTY_CONFIGS = {
     'out': { icon: '→', label: 'Outward', description: 'Outward direction - Click to cycle to Inward' },
     'in': { icon: '←', label: 'Inward', description: 'Inward direction - Click to cycle to Both' },
     'both': { icon: '↔', label: 'Both', description: 'Both directions - Click to cycle to None' }
-  }
+  },
+
+sizeMode: {
+    'auto': { icon: '🔄', label: 'Auto Size', description: 'Auto size based on members - Click to cycle to Manual', default: true },
+    'manual': { icon: '✋', label: 'Manual Size', description: 'Manual size - Click to cycle to Auto' }
+  },
 };
 
 // Utility functions that work with any property
