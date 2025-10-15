@@ -52,6 +52,10 @@ const connectionStyles = `
         }
     }
 
+    .connection-line.exciter-connection, .connection-line.dampener-connection {
+    	opacity: 1 !important;
+    }
+
     .connection-line.exciter-connection::before {
         background: repeating-linear-gradient(
             90deg,
@@ -152,7 +156,7 @@ const connectionStyles = `
     .connection-path.explicit-connection {
         stroke: rgba(70, 70, 70, 1);
         stroke-width: 2.5;
-        opacity: 0.8;
+        opacity: 0.1;
     }
 
     .connection-path.fade-in {
@@ -353,7 +357,7 @@ export const ConnectionComponent = {
             // Set default values
             if (isExplicit) {
                 strokeColor = 'rgba(70, 70, 70, 1)';
-                opacity = 0.8;
+                opacity = 0.0;
                 strokeWidth = '2.5px';
             } else if (isCircleType) {
                 strokeColor = '#505050';
@@ -460,7 +464,7 @@ export const ConnectionComponent = {
                 <div v-if="showEndArrow" class="arrow-end-indicator"></div>
             </div>
             <!--span v-if="Object.keys(energyDistance).length > 0" style="color: #888; font-size: 12px; display: block; position: absolute; left: 25%;">
-                {{ 'E: ' + energyDistance['exciter'] }}
+		    {{ 'E: ' + energyDistance['exciter'] }}
             </span-->
         </div>
     `

@@ -10,48 +10,95 @@ export class ShinynessCalculator {
         this.triggerReactivityUpdate = null; // Will be set by CircleViewer
         this.delayedConnectionEnergy = new Map(); // connectionId -> Set of active energy types
         this.connectionTimeouts = new Map(); // connectionId-energyType -> timeoutId
+        this.delayedDampenerConnections = new Map(); // connectionId -> timeout info
     }
 
-scheduleConnectionEnergy(connectionId, energyType, distance) {
-    const key = `${connectionId}-${energyType}`;
-    
-    // Clear existing timeout for this connection-energy combo
-    if (this.connectionTimeouts.has(key)) {
-        clearTimeout(this.connectionTimeouts.get(key));
+    scheduleConnectionEnergy(connectionId, energyType, distance) {
+        const key = `${connectionId}-${energyType}`;
+        
+        // Clear existing timeout for this connection-energy combo
+        if (this.connectionTimeouts.has(key)) {
+            clearTimeout(this.connectionTimeouts.get(key));
+        }
+        
+        const delay = this.animationDelay * Math.max(0, distance / 2);
+        
+        const timeoutId = setTimeout(() => {
+            // Add energy type to active set
+            if (!this.delayedConnectionEnergy.has(connectionId)) {
+                this.delayedConnectionEnergy.set(connectionId, new Set());
+            }
+            this.delayedConnectionEnergy.get(connectionId).add(energyType);
+            
+            // Clean up timeout reference
+            this.connectionTimeouts.delete(key);
+            
+            // Trigger reactivity
+            if (this.triggerReactivityUpdate) {
+                this.triggerReactivityUpdate();
+            }
+        }, delay);
+        
+        this.connectionTimeouts.set(key, timeoutId);
     }
-    
-    const delay = this.animationDelay * Math.max(0, distance / 2);
-    
-    const timeoutId = setTimeout(() => {
-        // Add energy type to active set
-        if (!this.delayedConnectionEnergy.has(connectionId)) {
-            this.delayedConnectionEnergy.set(connectionId, new Set());
-        }
-        this.delayedConnectionEnergy.get(connectionId).add(energyType);
-        
-        // Clean up timeout reference
-        this.connectionTimeouts.delete(key);
-        
-        // Trigger reactivity
-        if (this.triggerReactivityUpdate) {
-            this.triggerReactivityUpdate();
-        }
-    }, delay);
-    
-    this.connectionTimeouts.set(key, timeoutId);
-}
 
-getActiveConnectionEnergyTypes(connectionId) {
-    return this.delayedConnectionEnergy.get(connectionId) || new Set();
-}
+    scheduleDampenerConnection(connectionId) {
+        // Clear existing timeout for this connection
+        if (this.delayedDampenerConnections.has(connectionId)) {
+            const existing = this.delayedDampenerConnections.get(connectionId);
+            if (existing.timeoutId) {
+                clearTimeout(existing.timeoutId);
+            }
+        }
+        
+        // Dampener energy doesn't cascade, so it's always immediate (distance 0)
+        // But we still add a small delay for visual effect
+        const delay = this.animationDelay * 0.5; // Half delay for dampener
+        
+        const timeoutId = setTimeout(() => {
+            this.delayedDampenerConnections.set(connectionId, {
+                active: true,
+                timeoutId: null
+            });
+            
+            // Trigger reactivity
+            if (this.triggerReactivityUpdate) {
+                this.triggerReactivityUpdate();
+            }
+        }, delay);
+        
+        this.delayedDampenerConnections.set(connectionId, {
+            active: false,
+            timeoutId: timeoutId
+        });
+    }
 
-    calculateShinyness(circle, energyDistanceMap = null) {
+    getActiveConnectionEnergyTypes(connectionId) {
+        return this.delayedConnectionEnergy.get(connectionId) || new Set();
+    }
+
+    isDampenerConnectionActive(connectionId) {
+        const state = this.delayedDampenerConnections.get(connectionId);
+        return state && state.active === true;
+    }
+
+    calculateShinyness(circle, energyDistanceMap = null, dampenedCircles = null) {
         if (!circle) return 0.0;
         
         if (circle.activation === 'inert') return null;
-        if (circle.activation === 'activated') return 1.0;
         
-        // For inactive circles, check both immediate and delayed shiny states
+        // Check if this circle is dampened
+        if (dampenedCircles && dampenedCircles.has(circle.id)) {
+            // Dampened circles are always dull (0.0)
+            return 0.0;
+        }
+        
+        // For ACTIVATED circles (not dampened)
+        if (circle.activation === 'activated') {
+            return 1.0; // Always shiny
+        }
+        
+        // For INACTIVE circles
         if (circle.activation === 'inactive') {
             // Check if we have a delayed shiny state active
             const delayedState = this.delayedShinyStates.get(circle.id);
@@ -59,7 +106,7 @@ getActiveConnectionEnergyTypes(connectionId) {
                 return 1.0;
             }
             
-            // Check if we should schedule a delayed shiny effect
+            // Check if we should schedule a delayed shiny effect from exciter energy
             if (energyDistanceMap) {
                 const distances = energyDistanceMap.get(circle.id);
                 if (distances && distances.exciter !== undefined && distances.exciter > 0) {
@@ -111,42 +158,55 @@ getActiveConnectionEnergyTypes(connectionId) {
         this.delayedShinyStates.delete(circleId);
     }
 
-clearConnectionEnergy(connectionId) {
-    // Clear all energy types for this connection
-    this.delayedConnectionEnergy.delete(connectionId);
-    
-    // Clear all pending timeouts for this connection
-    const keysToDelete = [];
-    this.connectionTimeouts.forEach((timeoutId, key) => {
-        if (key.startsWith(`${connectionId}-`)) {
-            clearTimeout(timeoutId);
-            keysToDelete.push(key);
-        }
-    });
-    
-    keysToDelete.forEach(key => this.connectionTimeouts.delete(key));
-}
+    clearConnectionEnergy(connectionId) {
+        // Clear all energy types for this connection
+        this.delayedConnectionEnergy.delete(connectionId);
+        
+        // Clear all pending timeouts for this connection
+        const keysToDelete = [];
+        this.connectionTimeouts.forEach((timeoutId, key) => {
+            if (key.startsWith(`${connectionId}-`)) {
+                clearTimeout(timeoutId);
+                keysToDelete.push(key);
+            }
+        });
+        
+        keysToDelete.forEach(key => this.connectionTimeouts.delete(key));
+    }
 
-clearAllDelayedStates() {
-    // Clear existing circle logic (keep this part)
-    this.delayedShinyStates.forEach((state, circleId) => {
-        this.clearDelayedState(circleId);
-    });
-    
-    // Clear completed connection energy states (so cascades end when connections break)
-    this.delayedConnectionEnergy.clear();
-}
+    clearDampenerConnection(connectionId) {
+        const existing = this.delayedDampenerConnections.get(connectionId);
+        if (existing && existing.timeoutId) {
+            clearTimeout(existing.timeoutId);
+        }
+        this.delayedDampenerConnections.delete(connectionId);
+    }
+
+    clearAllDelayedStates() {
+        // Clear existing circle logic
+        this.delayedShinyStates.forEach((state, circleId) => {
+            this.clearDelayedState(circleId);
+        });
+        
+        // Clear completed connection energy states
+        this.delayedConnectionEnergy.clear();
+        
+        // Clear dampener connections
+        this.delayedDampenerConnections.forEach((state, connectionId) => {
+            this.clearDampenerConnection(connectionId);
+        });
+    }
 
     setReactivityTrigger(triggerFn) {
         this.triggerReactivityUpdate = triggerFn;
     }
 
     // Keep existing methods for compatibility
-    calculateShinynessForCircles(circles, energizedConnectionsData = null) {
+    calculateShinynessForCircles(circles, energyDistanceMap = null, dampenedCircles = null) {
         const shinynessMap = new Map();
         
         for (const circle of circles) {
-            const shinyness = this.calculateShinyness(circle, null); // energyDistanceMap passed separately now
+            const shinyness = this.calculateShinyness(circle, energyDistanceMap, dampenedCircles);
             shinynessMap.set(circle.id, shinyness);
         }
 

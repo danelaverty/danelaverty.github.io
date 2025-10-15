@@ -9,7 +9,7 @@ const resizeHandleStyles = `
         pointer-events: none;
     }
     
-    .resize-handle {
+    .group-resize-handle {
         position: absolute;
         width: 12px;
         height: 12px;
@@ -22,47 +22,47 @@ const resizeHandleStyles = `
         z-index: 1000;
     }
     
-    .group-circle-container:hover .resize-handle,
-    .resize-handle.dragging {
-        opacity: 1;
+    .group-circle-container:hover .group-resize-handle,
+    .group-resize-handle.dragging {
+        opacity: 0;
     }
     
-    .resize-handle:hover {
+    .group-resize-handle:hover {
         background: rgba(255, 255, 255, 1);
         transform: scale(1.2);
     }
     
     /* Corner handles - use calc for dynamic positioning */
-    .resize-handle.nw {
+    .group-resize-handle.nw {
         cursor: nwse-resize;
     }
     
-    .resize-handle.ne {
+    .group-resize-handle.ne {
         cursor: nesw-resize;
     }
     
-    .resize-handle.sw {
+    .group-resize-handle.sw {
         cursor: nesw-resize;
     }
     
-    .resize-handle.se {
+    .group-resize-handle.se {
         cursor: nwse-resize;
     }
     
     /* Edge handles */
-    .resize-handle.n {
+    .group-resize-handle.n {
         cursor: ns-resize;
     }
     
-    .resize-handle.s {
+    .group-resize-handle.s {
         cursor: ns-resize;
     }
     
-    .resize-handle.e {
+    .group-resize-handle.e {
         cursor: ew-resize;
     }
     
-    .resize-handle.w {
+    .group-resize-handle.w {
         cursor: ew-resize;
     }
 `;
@@ -153,67 +153,69 @@ export const GroupResizeHandles = {
             document.addEventListener('mouseup', handleMouseUp);
         };
         
-        const handleMouseMove = (e) => {
-            if (!resizing.value) return;
-            
-            const deltaX = e.clientX - startPos.value.x;
-            const deltaY = e.clientY - startPos.value.y;
-            
-            let newWidth = startSize.value.width;
-            let newHeight = startSize.value.height;
-            
-            const handle = currentHandle.value;
-            
-            // Calculate new dimensions based on handle direction
-            if (handle.includes('e')) newWidth += deltaX;
-            if (handle.includes('w')) newWidth -= deltaX;
-            if (handle.includes('s')) newHeight += deltaY;
-            if (handle.includes('n')) newHeight -= deltaY;
-            
-            // Enforce minimum size
-            const minSize = 32;
-            newWidth = Math.max(minSize, newWidth);
-            newHeight = Math.max(minSize, newHeight);
-            
-            emit('resize-move', {
-                width: newWidth,
-                height: newHeight,
-                handleType: handle
-            });
-        };
-        
-        const handleMouseUp = (e) => {
-            if (!resizing.value) return;
-            
-            const deltaX = e.clientX - startPos.value.x;
-            const deltaY = e.clientY - startPos.value.y;
-            
-            let newWidth = startSize.value.width;
-            let newHeight = startSize.value.height;
-            
-            const handle = currentHandle.value;
-            
-            if (handle.includes('e')) newWidth += deltaX;
-            if (handle.includes('w')) newWidth -= deltaX;
-            if (handle.includes('s')) newHeight += deltaY;
-            if (handle.includes('n')) newHeight -= deltaY;
-            
-            const minSize = 32;
-            newWidth = Math.max(minSize, newWidth);
-            newHeight = Math.max(minSize, newHeight);
-            
-            emit('resize-end', {
-                width: newWidth,
-                height: newHeight,
-                handleType: handle
-            });
-            
-            resizing.value = false;
-            currentHandle.value = null;
-            
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
-        };
+	    const handleMouseMove = (e) => {
+    if (!resizing.value) return;
+    
+    // Double the delta to compensate for translate(-50%, -50%) centering
+    const deltaX = (e.clientX - startPos.value.x) * 2;
+    const deltaY = (e.clientY - startPos.value.y) * 2;
+    
+    let newWidth = startSize.value.width;
+    let newHeight = startSize.value.height;
+    
+    const handle = currentHandle.value;
+    
+    // Calculate new dimensions based on handle direction
+    if (handle.includes('e')) newWidth += deltaX;
+    if (handle.includes('w')) newWidth -= deltaX;
+    if (handle.includes('s')) newHeight += deltaY;
+    if (handle.includes('n')) newHeight -= deltaY;
+    
+    // Enforce minimum size
+    const minSize = 32;
+    newWidth = Math.max(minSize, newWidth);
+    newHeight = Math.max(minSize, newHeight);
+    
+    emit('resize-move', {
+        width: newWidth,
+        height: newHeight,
+        handleType: handle
+    });
+};
+
+const handleMouseUp = (e) => {
+    if (!resizing.value) return;
+    
+    // Double the delta to compensate for translate(-50%, -50%) centering
+    const deltaX = (e.clientX - startPos.value.x) * 2;
+    const deltaY = (e.clientY - startPos.value.y) * 2;
+    
+    let newWidth = startSize.value.width;
+    let newHeight = startSize.value.height;
+    
+    const handle = currentHandle.value;
+    
+    if (handle.includes('e')) newWidth += deltaX;
+    if (handle.includes('w')) newWidth -= deltaX;
+    if (handle.includes('s')) newHeight += deltaY;
+    if (handle.includes('n')) newHeight -= deltaY;
+    
+    const minSize = 32;
+    newWidth = Math.max(minSize, newWidth);
+    newHeight = Math.max(minSize, newHeight);
+    
+    emit('resize-end', {
+        width: newWidth,
+        height: newHeight,
+        handleType: handle
+    });
+    
+    resizing.value = false;
+    currentHandle.value = null;
+    
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+};
         
         onUnmounted(() => {
             document.removeEventListener('mousemove', handleMouseMove);
@@ -233,25 +235,25 @@ export const GroupResizeHandles = {
         <div class="group-resize-handles" ref="containerRef" v-if="circle.sizeMode === 'manual'">
             <!-- Corner handles -->
             <div 
-                class="resize-handle nw"
+                class="group-resize-handle nw"
                 :class="{ dragging: resizing }"
                 :style="handleStyles.nw"
                 @mousedown="(e) => handleMouseDown(e, 'nw')"
             ></div>
             <div 
-                class="resize-handle ne"
+                class="group-resize-handle ne"
                 :class="{ dragging: resizing }"
                 :style="handleStyles.ne"
                 @mousedown="(e) => handleMouseDown(e, 'ne')"
             ></div>
             <div 
-                class="resize-handle sw"
+                class="group-resize-handle sw"
                 :class="{ dragging: resizing }"
                 :style="handleStyles.sw"
                 @mousedown="(e) => handleMouseDown(e, 'sw')"
             ></div>
             <div 
-                class="resize-handle se"
+                class="group-resize-handle se"
                 :class="{ dragging: resizing }"
                 :style="handleStyles.se"
                 @mousedown="(e) => handleMouseDown(e, 'se')"
@@ -259,25 +261,25 @@ export const GroupResizeHandles = {
             
             <!-- Edge handles -->
             <div 
-                class="resize-handle n"
+                class="group-resize-handle n"
                 :class="{ dragging: resizing }"
                 :style="handleStyles.n"
                 @mousedown="(e) => handleMouseDown(e, 'n')"
             ></div>
             <div 
-                class="resize-handle s"
+                class="group-resize-handle s"
                 :class="{ dragging: resizing }"
                 :style="handleStyles.s"
                 @mousedown="(e) => handleMouseDown(e, 's')"
             ></div>
             <div 
-                class="resize-handle e"
+                class="group-resize-handle e"
                 :class="{ dragging: resizing }"
                 :style="handleStyles.e"
                 @mousedown="(e) => handleMouseDown(e, 'e')"
             ></div>
             <div 
-                class="resize-handle w"
+                class="group-resize-handle w"
                 :class="{ dragging: resizing }"
                 :style="handleStyles.w"
                 @mousedown="(e) => handleMouseDown(e, 'w')"

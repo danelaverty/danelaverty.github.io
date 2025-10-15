@@ -3,16 +3,16 @@ export class ShinynessEffectsTranslator {
     constructor() {
         this.effectRanges = {
             scale: {
-                max: 1.3,
-                min: 0.7
+                shiny: 1.3,
+                dull: 0.7
             },
             opacity: {
-                max: 1.0,
-                min: 0.5
+                shiny: 1.0,
+                dull: 0.5
             },
             saturation: {
-                max: 1.0,
-                min: 0.3
+                shiny: 1.0,
+                dull: 0.3
             }
         };
 
@@ -38,20 +38,20 @@ export class ShinynessEffectsTranslator {
 
         // Calculate interpolated values
         const scale = this.lerp(
-            this.effectRanges.scale.min,
-            this.effectRanges.scale.max,
+            this.effectRanges.scale.dull,
+            this.effectRanges.scale.shiny,
             clampedShinyness
         );
 
         const opacity = this.lerp(
-            this.effectRanges.opacity.min,
-            this.effectRanges.opacity.max,
+            this.effectRanges.opacity.dull,
+            this.effectRanges.opacity.shiny,
             clampedShinyness
         );
 
         const saturation = this.lerp(
-            this.effectRanges.saturation.min,
-            this.effectRanges.saturation.max,
+            this.effectRanges.saturation.dull,
+            this.effectRanges.saturation.shiny,
             clampedShinyness
         );
 

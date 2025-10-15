@@ -181,12 +181,14 @@ const allConnections = computed(() => {
 const energyDistancesData = computed(() => {
     const result = energyDistanceCalculator.calculateEnergyDistanceForAllCirclesInCircleViewer(
         allCircles.value, 
-        allConnections.value,
-        null
+        allConnections.value
     );
     
     return result;
 });
+
+const dampenedCircles = computed(() => energyDistancesData.value.dampenedCircles || new Set());
+const dampenerConnections = computed(() => energyDistancesData.value.dampenerConnections || new Map());
 
 const energizedConnectionsData = computed(() => {
     energyEffectsTrigger.value; // Keep reactivity trigger
@@ -209,7 +211,8 @@ const shinynessEffects = computed(() => {
     allCircles.value.forEach(circle => {
         const shinyness = shinynessCalculator.calculateShinyness(
             circle, 
-            energyDistances.value
+            energyDistances.value,
+            dampenedCircles.value  // NEW: Pass dampened circles
         );
         shinynessMap.set(circle.id, shinyness);
     });
@@ -305,12 +308,19 @@ let lastValidEnergyDistancesData = { circles: new Map(), connections: new Map() 
 const getConnectionEnergyClasses = (connectionId) => {
     energyEffectsTrigger.value; // Track dependency
     
-    const activeEnergyTypes = shinynessCalculator.getActiveConnectionEnergyTypes(connectionId);
     const classes = [];
     
+    // Check for exciter energy
+    const activeEnergyTypes = shinynessCalculator.getActiveConnectionEnergyTypes(connectionId);
     activeEnergyTypes.forEach(energyType => {
         classes.push(`${energyType}-connection`);
     });
+    
+    // Check for dampener energy
+    const dampenerInfo = dampenerConnections.value.get(connectionId);
+    if (dampenerInfo && shinynessCalculator.isDampenerConnectionActive(connectionId)) {
+        classes.push('dampener-connection');
+    }
     
     return classes;
 };
@@ -382,7 +392,27 @@ const createDataSnapshot = (energyData) => {
         connectionSnapshot[connectionId] = { ...distances };
     });
     
-    return JSON.stringify({ circles: circleSnapshot, connections: connectionSnapshot });
+    // NEW: Include dampened circles in snapshot
+    const dampenedCirclesSnapshot = energyData.dampenedCircles ? 
+        Array.from(energyData.dampenedCircles).sort() : [];
+    
+    // NEW: Include dampener connections in snapshot
+    const dampenerConnectionsSnapshot = {};
+    if (energyData.dampenerConnections) {
+        energyData.dampenerConnections.forEach((info, connectionId) => {
+            dampenerConnectionsSnapshot[connectionId] = { 
+                dampenerId: info.dampenerId, 
+                targetId: info.targetId 
+            };
+        });
+    }
+    
+    return JSON.stringify({ 
+        circles: circleSnapshot, 
+        connections: connectionSnapshot,
+        dampenedCircles: dampenedCirclesSnapshot,
+        dampenerConnections: dampenerConnectionsSnapshot
+    });
 };
 
 watch(energyDistancesData, (newData, oldData) => {
@@ -448,6 +478,29 @@ watch(energyDistancesData, (newData, oldData) => {
         }
     }
     
+    // Check for changes in dampened circles
+    if (newData.dampenedCircles && oldData?.dampenedCircles && !isInitialLoad) {
+        
+        // Check for newly dampened circles
+        newData.dampenedCircles.forEach(circleId => {
+            if (!oldData.dampenedCircles.has(circleId)) {
+                changedCircles.add(circleId);
+            }
+        });
+        
+        // Check for circles that are no longer dampened
+        oldData.dampenedCircles.forEach(circleId => {
+            if (!newData.dampenedCircles.has(circleId)) {
+                changedCircles.add(circleId);
+            }
+        });
+    } else {
+        // If we don't have old data or this is initial load, treat all dampened circles as changed
+        if (newData.dampenedCircles) {
+            newData.dampenedCircles.forEach(circleId => changedCircles.add(circleId));
+        }
+    }
+    
     // Only clear delayed states for circles that actually changed
     changedCircles.forEach(circleId => {
         shinynessCalculator.clearDelayedState(circleId);
@@ -473,6 +526,44 @@ watch(energyDistancesData, (newData, oldData) => {
                 shinynessCalculator.scheduleConnectionEnergy(connectionId, energyType, distance);
             });
         }
+    });
+    
+    // Handle dampener connections
+    const changedDampenerConnections = new Set();
+    
+    if (newData.dampenerConnections && newData.dampenerConnections.size > 0) {
+        if (isInitialLoad || !oldData?.dampenerConnections) {
+            // On initial load or when dampenerConnections first appears, schedule ALL dampener connections
+            newData.dampenerConnections.forEach((dampenerInfo, connectionId) => {
+                changedDampenerConnections.add(connectionId);
+            });
+        } else {
+            // Check for new or changed dampener connections
+            newData.dampenerConnections.forEach((dampenerInfo, connectionId) => {
+                const oldDampenerInfo = oldData.dampenerConnections.get(connectionId);
+                
+                if (!oldDampenerInfo) {
+                    changedDampenerConnections.add(connectionId);
+                } else if (oldDampenerInfo.dampenerId !== dampenerInfo.dampenerId ||
+                           oldDampenerInfo.targetId !== dampenerInfo.targetId) {
+                    changedDampenerConnections.add(connectionId);
+                }
+            });
+        }
+    }
+    
+    // Check for removed dampener connections
+    if (oldData?.dampenerConnections && oldData.dampenerConnections.size > 0) {
+        oldData.dampenerConnections.forEach((dampenerInfo, connectionId) => {
+            if (!newData.dampenerConnections || !newData.dampenerConnections.has(connectionId)) {
+                shinynessCalculator.clearDampenerConnection(connectionId);
+            }
+        });
+    }
+    
+    // Schedule animations for changed dampener connections
+    changedDampenerConnections.forEach(connectionId => {
+        shinynessCalculator.scheduleDampenerConnection(connectionId);
     });
     
     energyEffectsTrigger.value++;
@@ -539,6 +630,8 @@ onUnmounted(() => {
             connectionEnergyDistances,
             energyEffectsTrigger,
             energyAffectedConnections,
+		dampenedCircles,
+		dampenerConnections,
         };
     },
     components: {
