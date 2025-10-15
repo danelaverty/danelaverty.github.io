@@ -12,6 +12,7 @@ export class EntityDragHandler {
         this.dataStore = dataStore;
         this.props = props;
         this.proximityCallbacks = callbacks;
+    this.currentHoveredGroup = null;
         
         // Track if actual dragging occurred
         this.hasActuallyDragged = false;
@@ -79,34 +80,40 @@ export class EntityDragHandler {
         this.updateConnectionsForDrag = updateConnectionsForDrag;
     }
 
-    detectGroupCircleUnderMouse(x, y, viewerId) {
-        const circles = this.dataStore.getCirclesForViewer ? this.dataStore.getCirclesForViewer(viewerId) : [];
+	detectGroupCircleUnderMouse(x, y, viewerId) {
+    const circles = this.dataStore.getCirclesForViewer ? this.dataStore.getCirclesForViewer(viewerId) : [];
     
-        for (const circle of circles) {
-            if (circle.type === 'group' && circle.id !== this.props.entity.id) {
-                const circleElement = document.querySelector(`[data-entity-id="${circle.id}"]`);
-                if (circleElement) {
-                    const rect = circleElement.getBoundingClientRect();
-                    const groupScale = circleElement.querySelector('.circle-shape')?._groupScale || { width: 32, height: 32 };
+    const groupCircles = circles.filter(c => c.type === 'group' && c.id !== this.props.entity.id);
+    
+    for (const circle of circles) {
+        if (circle.type === 'group' && circle.id !== this.props.entity.id) {
+            
+            const circleElement = document.querySelector(`[data-entity-id="${circle.id}"]`);
+            
+            if (circleElement) {
+                const rect = circleElement.getBoundingClientRect();
                 
-                    // Expand hit detection area based on group scale
-                    const padding = Math.max(0, (groupScale.width - 32) / 2, (groupScale.height - 32) / 2);
-                    const expandedRect = {
-                        left: rect.left - padding,
-                        right: rect.right + padding,
-                        top: rect.top - padding,
-                        bottom: rect.bottom + padding
-                    };
+                // FIXED: Use the bounding rect dimensions directly
+                // The rect already accounts for transforms and gives us the actual rendered size
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                const radiusX = rect.width / 2;
+                const radiusY = rect.height / 2;
                 
-                    if (x >= expandedRect.left && x <= expandedRect.right &&
-                        y >= expandedRect.top && y <= expandedRect.bottom) {
-                        return circle;
-                    }
+                // Check if mouse is within the ellipse (or circle if width === height)
+                const normalizedX = (x - centerX) / radiusX;
+                const normalizedY = (y - centerY) / radiusY;
+                const distanceSquared = normalizedX * normalizedX + normalizedY * normalizedY;
+                
+                // Allow a small tolerance (1.1 = 10% larger hit area)
+                if (distanceSquared <= 1.1) {
+                    return circle;
                 }
             }
         }
-        return null;
     }
+    return null;
+}
 
     // NEW: Find and cache group member elements for visual dragging
     findGroupMemberElements() {
@@ -228,35 +235,75 @@ if (e && ((e.ctrlKey || e.metaKey) && e.shiftKey)) {
         viewerId: this.props.viewerId
     });
 }
-    onDragMove(deltaX, deltaY) {
-        // Mark that actual dragging has occurred
-        this.hasActuallyDragged = true;
+onDragMove(deltaX, deltaY) {
+    // Mark that actual dragging has occurred
+    this.hasActuallyDragged = true;
 
-        // Update current drag state for connection calculations
-        this.currentDragState = { deltaX, deltaY, isDragging: true };
+    // Update current drag state for connection calculations
+    this.currentDragState = { deltaX, deltaY, isDragging: true };
+    
+    this.dragStateManager.updateDragState(deltaX, deltaY);
+    
+    // Call proximity callback
+    this.proximityCallbacks.onDragMove?.(deltaX, deltaY);
+    
+    this.updateVisualsDuringDrag(deltaX, deltaY);
+    
+    // NEW: Update group member visuals during drag
+    this.updateGroupMemberVisuals(deltaX, deltaY);
+    
+    // NEW: Check for group hover (only for non-group circles)
+    if (this.props.entityType === 'circle' && this.props.entity.type !== 'group') {
+        const mouseX = this.lastMouseX || (window.innerWidth / 2);
+        const mouseY = this.lastMouseY || (window.innerHeight / 2);
         
-        this.dragStateManager.updateDragState(deltaX, deltaY);
+        const hoveredGroup = this.detectGroupCircleUnderMouse(mouseX, mouseY, this.props.viewerId);
         
-        // Call proximity callback
-        this.proximityCallbacks.onDragMove?.(deltaX, deltaY);
+        // Update hover state if changed
+        if (hoveredGroup !== this.currentHoveredGroup) {
+            // Remove highlight from previous group
+            if (this.currentHoveredGroup) {
+                this.setGroupDropZoneHighlight(this.currentHoveredGroup.id, false);
+            }
+            
+            // Add highlight to new group
+            if (hoveredGroup) {
+                this.setGroupDropZoneHighlight(hoveredGroup.id, true);
+            }
+            
+            this.currentHoveredGroup = hoveredGroup;
+        }
+    } 
+    
+    this.updateConnectionsDuringDrag();
+    
+    // Emit drag move event with current state
+    this.emit('drag-move', {
+        entityId: this.props.entity.id,
+        entityType: this.props.entityType,
+        viewerId: this.props.viewerId,
+        deltaX,
+        deltaY,
+        selectedEntityIds: this.entityTypeHandler.getSelectedEntityIds()
+    });
+}
+
+// Add new method to highlight/unhighlight group drop zones:
+setGroupDropZoneHighlight(groupId, highlight) {
+    const groupElement = document.querySelector(`[data-entity-id="${groupId}"]`);
+    
+    if (groupElement) {
+        const groupShape = groupElement.querySelector('.entity-shape');
         
-        this.updateVisualsDuringDrag(deltaX, deltaY);
-        
-        // NEW: Update group member visuals during drag
-        this.updateGroupMemberVisuals(deltaX, deltaY);
-        
-        this.updateConnectionsDuringDrag();
-        
-        // Emit drag move event with current state
-        this.emit('drag-move', {
-            entityId: this.props.entity.id,
-            entityType: this.props.entityType,
-            viewerId: this.props.viewerId,
-            deltaX,
-            deltaY,
-            selectedEntityIds: this.entityTypeHandler.getSelectedEntityIds()
-        });
+        if (groupShape) {
+            if (highlight) {
+                groupShape.classList.add('group-drop-zone-active');
+            } else {
+                groupShape.classList.remove('group-drop-zone-active');
+            }
+        }
     }
+}
 
     updateVisualsDuringDrag(deltaX, deltaY) {
         const selectedIds = this.entityTypeHandler.getSelectedEntityIds();
@@ -290,6 +337,10 @@ if (e && ((e.ctrlKey || e.metaKey) && e.shiftKey)) {
     }
 
     onDragEnd(x, y, deltaX, deltaY) {
+	    if (this.currentHoveredGroup) {
+        this.setGroupDropZoneHighlight(this.currentHoveredGroup.id, false);
+        this.currentHoveredGroup = null;
+    }
         // Check for group drop (only for non-group circles)
         if (this.props.entityType === 'circle' && this.props.entity.type !== 'group') {
             const mouseX = this.lastMouseX || (window.innerWidth / 2);
@@ -464,9 +515,15 @@ handleClick(e) {
 }
 
     // Cleanup method
-    cleanup() {
-        this.resetGroupMemberVisuals();
-        document.removeEventListener('mousemove', this.handleMouseMove);
-        document.removeEventListener('mousemove', this.trackMousePosition);
+cleanup() {
+    // Clear any lingering group highlight
+    if (this.currentHoveredGroup) {
+        this.setGroupDropZoneHighlight(this.currentHoveredGroup.id, false);
+        this.currentHoveredGroup = null;
     }
+    
+    this.resetGroupMemberVisuals();
+    document.removeEventListener('mousemove', this.handleMouseMove);
+    document.removeEventListener('mousemove', this.trackMousePosition);
+}
 }

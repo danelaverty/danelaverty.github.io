@@ -17,6 +17,7 @@ export const useEntityState = (props) => {
     });
 
     const groupMemberScale = computed(() => {
+	    return 1;
     if (props.entityType === 'circle' && props.entity.belongsToID) {
         // Get all circles belonging to the same group
         const groupCircles = dataStore.getCirclesBelongingToGroup(props.entity.belongsToID);

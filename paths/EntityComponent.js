@@ -19,6 +19,7 @@ const componentStyles = `
         flex-direction: column;
         align-items: center;
         cursor: url(black-dot.png), auto;
+        cursor: auto;
         user-select: none;
         transition: transform 0.3s ease;
         transform-origin: center center;
@@ -286,6 +287,11 @@ const componentStyles = `
             transform: translate(-50%, -50%) scale(1);
         }
     }
+
+    .entity-shape.group-drop-zone-active {
+    box-shadow: 0 0 20px rgba(76, 175, 80, 1), inset 0 0 20px rgba(76, 175, 80, 1);
+}
+
 `;
 
 injectComponentStyles('entity-component', componentStyles);
@@ -402,25 +408,13 @@ const radiusIndicatorClasses = computed(() => {
         };
 
 const handleResizeStart = (data) => {
-    console.log('RESIZE START:', data);
-    console.log('Current entity:', props.entity);
-    console.log('Current sizeMode:', props.entity.sizeMode);
-    console.log('rendering object:', rendering);
-    console.log('rendering.shapeRef:', rendering.shapeRef);
-    console.log('shapeRef variable:', shapeRef);
-    console.log('shapeRef type:', typeof shapeRef);
-    
     // Try to get the actual DOM element
     const actualShapeElement = document.querySelector(`[data-entity-id="${props.entity.id}"] .entity-shape`);
-    console.log('actualShapeElement from DOM:', actualShapeElement);
-    console.log('actualShapeElement dimensions:', actualShapeElement?.offsetWidth, actualShapeElement?.offsetHeight);
     
     // Switch to manual mode if not already
     if (props.entity.sizeMode !== 'manual') {
         const width = actualShapeElement?.offsetWidth || 32;
         const height = actualShapeElement?.offsetHeight || 32;
-        
-        console.log('Using dimensions:', width, height);
         
         emit('update-circle', {
             id: props.entity.id,
@@ -432,13 +426,6 @@ const handleResizeStart = (data) => {
 };
 
 const handleResizeMove = (data) => {
-    console.log('RESIZE MOVE:', data);
-    console.log('Emitting update-circle with:', {
-        id: props.entity.id,
-        manualWidth: data.width,
-        manualHeight: data.height
-    });
-    
     // Emit update immediately for reactive resize
     emit('update-circle', {
         id: props.entity.id,
@@ -448,8 +435,6 @@ const handleResizeMove = (data) => {
 };
 
 const handleResizeEnd = (data) => {
-    console.log('RESIZE END:', data);
-    
     // Already updated during move, just ensure final state is saved
     emit('update-circle', {
         id: props.entity.id,
@@ -614,10 +599,10 @@ return {
         <!--span v-if="Object.keys(energyDistance).length > 0" style="color: #888; font-size: 12px;">
             {{ 'E: ' + energyDistance['exciter'] }}
         </span-->
-        <EnergyIndicators 
+        <!--EnergyIndicators 
             v-if="entityType === 'circle'"
             :energyTypes="circleEnergyTypes"
-/>
+/-->
         </div>
     </div>
 `
