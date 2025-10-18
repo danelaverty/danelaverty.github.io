@@ -55,6 +55,18 @@ export const useCharacteristicsBarData = () => {
     return selectedCircle.value.energyTypes || [];
   });
 
+const connectionEnergyTypes = computed(() => {
+  const selectedIds = dataStore.getSelectedCircles();
+  if (selectedIds.length !== 2) return [];
+  
+  const connection = dataStore.getExplicitConnectionBetweenEntities(
+    selectedIds[0], 'circle',
+    selectedIds[1], 'circle'
+  );
+  
+  return connection?.energyTypes || [];
+});
+
   // Get type info
   const currentTypeInfo = computed(() => {
     return circleTypes.find(type => type.id === circleType.value) || circleTypes[0];
@@ -119,6 +131,7 @@ export const useCharacteristicsBarData = () => {
     circleColors,
     circleType,
     circleEnergyTypes,
+      connectionEnergyTypes,
     currentTypeInfo,
     emojiAttributes,
     emojisByCategory,

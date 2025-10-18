@@ -172,30 +172,31 @@ createConnections(clickedEntityId, clickedEntityType, selectedEntityIds, selecte
      * Get all explicit connections that should be rendered as visual connections
      * Returns connections in the same format as regular connections for compatibility with ConnectionComponent
      */
-    getVisualConnections(entityType = null) {
-        let connections;
-        
-        if (entityType) {
-            connections = this.explicitConnectionStore.getConnectionsForEntityTypes(entityType);
-        } else {
-            connections = this.explicitConnectionStore.getAllConnections();
-        }
-
-        // Convert to visual connection format compatible with ConnectionComponent
-        return connections.map(connection => ({
-            id: connection.id,
-            entity1Id: connection.entity1Id,
-            entity2Id: connection.entity2Id,
-            entity1: connection.entity1,
-            entity2: connection.entity2,
-            entityType: `explicit-${connection.entity1Type}-${connection.entity2Type}`,
-            isExplicit: true, // Flag to distinguish from regular connections
-            directionality: connection.directionality || 'none', // ADDED: Include directionality property
-            distance: this.calculateDistance(connection.entity1, connection.entity2),
-            connectionDistance: Infinity, // Explicit connections always render regardless of distance
-            createdAt: connection.createdAt
-        }));
+getVisualConnections(entityType = null) {
+    let connections;
+    
+    if (entityType) {
+        connections = this.explicitConnectionStore.getConnectionsForEntityTypes(entityType);
+    } else {
+        connections = this.explicitConnectionStore.getAllConnections();
     }
+
+    // Convert to visual connection format compatible with ConnectionComponent
+    return connections.map(connection => ({
+        id: connection.id,
+        entity1Id: connection.entity1Id,
+        entity2Id: connection.entity2Id,
+        entity1: connection.entity1,
+        entity2: connection.entity2,
+        entityType: `explicit-${connection.entity1Type}-${connection.entity2Type}`,
+        isExplicit: true, // Flag to distinguish from regular connections
+        directionality: connection.directionality || 'none', // Include directionality property
+        connectionEnergyTypes: connection.energyTypes || [], // NEW: Include energy types
+        distance: this.calculateDistance(connection.entity1, connection.entity2),
+        connectionDistance: Infinity, // Explicit connections always render regardless of distance
+        createdAt: connection.createdAt
+    }));
+}
 
     /**
      * Get visual connections for specific entity types (for viewer-specific rendering)

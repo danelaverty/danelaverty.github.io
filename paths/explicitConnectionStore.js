@@ -25,7 +25,7 @@ function createExplicitConnectionStore() {
     /**
      * Create an explicit connection between two entities
      */
-    const createConnection = (entity1Id, entity1Type, entity2Id, entity2Type, entity1Ref, entity2Ref) => {
+const createConnection = (entity1Id, entity1Type, entity2Id, entity2Type, entity1Ref, entity2Ref) => {
     // Prevent connecting entity to itself
     if (entity1Id === entity2Id) {
         return null;
@@ -46,7 +46,8 @@ function createExplicitConnectionStore() {
         entity2Type,
         entity1: entity1Ref, // Store reactive reference to entity
         entity2: entity2Ref, // Store reactive reference to entity
-        directionality: 'none', // NEW: Default directionality property
+        directionality: 'none', // Default directionality property
+        energyTypes: [], // NEW: Default energy types array
         createdAt: Date.now()
     };
 
@@ -193,8 +194,10 @@ const deserialize = (savedData, getEntityRef) => {
                     ...connectionData,
                     entity1: entity1Ref,
                     entity2: entity2Ref,
-                    // NEW: Ensure directionality exists for backward compatibility
-                    directionality: connectionData.directionality || 'none'
+                    // Ensure directionality exists for backward compatibility
+                    directionality: connectionData.directionality || 'none',
+                    // NEW: Ensure energyTypes exists for backward compatibility
+                    energyTypes: connectionData.energyTypes || []
                 };
                 data.connections.set(id, restoredConnection);
             }

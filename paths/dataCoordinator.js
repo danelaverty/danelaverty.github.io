@@ -16,6 +16,21 @@ function createDataCoordinator() {
     const uiStore = useUIStore();
     const storageKey = `circleApp_${window.location.pathname}`;
 
+    // Automaton trigger function (set by CircleViewer)
+    let automatonTrigger = null;
+    
+    const setAutomatonTrigger = (triggerFn) => {
+        automatonTrigger = triggerFn;
+    };
+    
+    const triggerAutomatonIfActive = () => {
+        console.log('a');
+        if (automatonTrigger) {
+            console.log('b');
+            automatonTrigger();
+        }
+    };
+
     // 1. Create a placeholder for saveToStorage that will be set later
     let saveToStorageRef = null;
     
@@ -55,6 +70,7 @@ function createDataCoordinator() {
     
     // 5. Set the reference to point to the actual function
     saveToStorageRef = saveToStorage;
+    
     const loadFromStorage = () => {
         try {
             const recentEmojisStore = getRecentEmojisStoreInstance();
@@ -96,12 +112,13 @@ function createDataCoordinator() {
     // Initialize the app
     initializeApp();
 
-    // Create wrapper methods that add persistence to service calls
+    // Create wrapper methods that add persistence AND automaton triggering to service calls
     const withPersistence = (serviceMethod) => {
         return (...args) => {
             const result = serviceMethod.apply(entityService, args);
             if (result !== false && result !== null) {
                 saveToStorage();
+                triggerAutomatonIfActive();
             }
             return result;
         };
@@ -110,6 +127,7 @@ function createDataCoordinator() {
     const updateCircle = (id, updates) => {
         const result = entityStore.updateCircle(id, updates);
         saveToStorage();
+        triggerAutomatonIfActive();
         return result;
     };
 
@@ -118,6 +136,7 @@ function createDataCoordinator() {
         const result = entityStore.cycleCircleProperty(id, propertyName);
         if (result) {
             saveToStorage();
+            triggerAutomatonIfActive();
         }
         return result;
     };
@@ -150,7 +169,7 @@ function createDataCoordinator() {
             get selectedSquareIds() { return uiStore.data.selectedSquareIds; }
         },
 
-        // Business operations (with persistence)
+        // Business operations (with persistence and automaton triggering)
         createCircleInViewer: withPersistence(entityService.createCircleInViewer.bind(entityService)),
         createSquare: withPersistence(entityService.createSquare.bind(entityService)),
         selectCircle: withPersistence(entityService.selectCircle.bind(entityService)),
@@ -165,18 +184,24 @@ function createDataCoordinator() {
         deleteSelectedCircles: withPersistence(entityService.deleteSelectedCircles.bind(entityService)),
         deleteSelectedSquares: withPersistence(entityService.deleteSelectedSquares.bind(entityService)),
 
-        // Simple entity operations (direct store access with persistence and cache invalidation)
+        // Simple entity operations (direct store access with persistence and automaton triggering)
         updateCircle: updateCircle,
         updateSquare: (id, updates) => {
             const result = entityStore.updateSquare(id, updates);
-            if (result) saveToStorage();
+            if (result) {
+                saveToStorage();
+                triggerAutomatonIfActive();
+            }
             return result;
         },
 
         // Group collapsed operations
         toggleGroupCollapsed: (id) => {
             const result = entityStore.toggleGroupCollapsed(id);
-            if (result) saveToStorage();
+            if (result) {
+                saveToStorage();
+                triggerAutomatonIfActive();
+            }
             return result;
         },
 
@@ -344,6 +369,7 @@ function createDataCoordinator() {
             const result = entityStore.setCircleBelongsTo(circleId, groupId, updateCircle);
             if (result) {
                 saveToStorage();
+                triggerAutomatonIfActive();
             }
             return result;
         },
@@ -351,19 +377,44 @@ function createDataCoordinator() {
             const result = entityStore.clearCircleBelongsTo(circleId, updateCircle);
             if (result) {
                 saveToStorage();
+                triggerAutomatonIfActive();
             }
             return result;
         },
 
-        // Explicit connection operations (with persistence)
+        // Explicit connection operations (with persistence and automaton triggering)
         getExplicitConnectionBetweenEntities: explicitConnectionService.getConnectionBetweenEntities.bind(explicitConnectionService),
         updateExplicitConnectionProperty: (connectionId, propertyName, value) => {
             const result = explicitConnectionService.updateConnectionProperty(connectionId, propertyName, value);
             if (result) {
                 saveToStorage();
+                triggerAutomatonIfActive();
             }
             return result;
-        }
+        },
+
+        toggleDemoMode: () => {
+            const result = uiStore.toggleDemoMode();
+            saveToStorage();
+            return result;
+        },
+        isDemoMode: uiStore.isDemoMode,
+
+        // Automaton trigger management
+        setAutomatonTrigger,
+
+        getGlobalProperty: uiStore.getGlobalProperty,
+        setGlobalProperty: (propertyKey, value) => {
+            const result = uiStore.setGlobalProperty(propertyKey, value);
+            if (result) saveToStorage();
+            return result;
+        },
+        toggleGlobalProperty: (propertyKey) => {
+            const result = uiStore.toggleGlobalProperty(propertyKey);
+            saveToStorage();
+            return result;
+        },
+        getAllGlobalProperties: uiStore.getAllGlobalProperties,
     };
 }
 

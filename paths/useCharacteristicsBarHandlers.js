@@ -111,6 +111,38 @@ export function useCharacteristicsBarHandlers(dataHooks, actionHooks, pickerHook
     }
   };
 
+const isConnectionEnergySelected = (energyId) => {
+  if (!stateHooks.selectedExplicitConnection.value) return false;
+  const energyTypes = stateHooks.selectedExplicitConnection.value.energyTypes || [];
+  return energyTypes.includes(energyId);
+};
+
+const handleConnectionEnergySelect = (energyId, isCtrlClick) => {
+  if (!stateHooks.selectedExplicitConnection.value) return;
+  
+  const connection = stateHooks.selectedExplicitConnection.value;
+  const currentTypes = connection.energyTypes || [];
+  let newTypes;
+  
+  if (isCtrlClick) {
+    // Toggle mode: add or remove the energy type
+    if (currentTypes.includes(energyId)) {
+      newTypes = currentTypes.filter(id => id !== energyId);
+    } else {
+      newTypes = [...currentTypes, energyId];
+    }
+  } else {
+    // Replace mode: set only this energy type
+    newTypes = [energyId];
+  }
+  
+  dataStore.updateExplicitConnectionProperty(connection.id, 'energyTypes', newTypes);
+  
+  if (!isCtrlClick) {
+    pickerHooks.closePickerAction('connectionEnergy');
+  }
+};
+
   const handleCircleEmojiSelect = (emoji) => {
     if (stateHooks.hasMultipleCirclesSelected.value) {
       // Apply to all selected circles
@@ -253,5 +285,7 @@ export function useCharacteristicsBarHandlers(dataHooks, actionHooks, pickerHook
     handleQuickEmojiSelect,
     handleCategorySelect,
     handleClearRecentEmojis,
+      isConnectionEnergySelected,
+      handleConnectionEnergySelect,
   };
 }

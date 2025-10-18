@@ -10,16 +10,21 @@ export const useCharacteristicsBarPickers = () => {
   const isEnergyPickerOpen = ref(false);
   const isEmojiPickerOpen = ref(false);
   const isCircleEmojiPickerOpen = ref(false);
+  const isConnectionEnergyPickerOpen = ref(false);
+  
   const colorPickerRef = ref(null);
   const typePickerRef = ref(null);
   const energyPickerRef = ref(null);
   const emojiPickerRef = ref(null);
   const circleEmojiPickerRef = ref(null);
+  const connectionEnergyPickerRef = ref(null);
+  
   const colorDisplayRef = ref(null);
   const typeDisplayRef = ref(null);
   const energyDisplayRef = ref(null);
   const emojiDisplayRef = ref(null);
   const circleEmojiDisplayRef = ref(null);
+  const connectionEnergyDisplayRef = ref(null);
 
   // Close all pickers helper
   const closeAllPickers = () => {
@@ -28,6 +33,7 @@ export const useCharacteristicsBarPickers = () => {
     isEnergyPickerOpen.value = false;
     isCircleEmojiPickerOpen.value = false;
     isEmojiPickerOpen.value = false;
+    isConnectionEnergyPickerOpen.value = false;
   };
 
   // Show/hide pickers with proper async handling
@@ -36,7 +42,7 @@ export const useCharacteristicsBarPickers = () => {
     isColorPickerOpen.value = true;
     
     if (isColorPickerOpen.value) {
-      await nextTick(); // Wait for DOM update
+      await nextTick();
       positionColorPicker();
     }
   };
@@ -56,7 +62,7 @@ export const useCharacteristicsBarPickers = () => {
     isEnergyPickerOpen.value = true;
     
     if (isEnergyPickerOpen.value) {
-      await nextTick(); // Wait for Vue to create the modal DOM element
+      await nextTick();
       positionEnergyPicker();
     }
   };
@@ -78,6 +84,16 @@ export const useCharacteristicsBarPickers = () => {
     if (isCircleEmojiPickerOpen.value) {
       await nextTick();
       positionCircleEmojiPicker();
+    }
+  };
+
+  const toggleConnectionEnergyPicker = async () => {
+    closeAllPickers();
+    isConnectionEnergyPickerOpen.value = true;
+    
+    if (isConnectionEnergyPickerOpen.value) {
+      await nextTick();
+      positionConnectionEnergyPicker();
     }
   };
 
@@ -122,6 +138,14 @@ export const useCharacteristicsBarPickers = () => {
     positionPicker(circleEmojiPickerRef.value, circleEmojiDisplayRef.value, 600, 500);
   };
 
+  const positionConnectionEnergyPicker = () => {
+    if (!connectionEnergyPickerRef.value || !connectionEnergyDisplayRef.value) {
+      console.warn('Connection energy picker refs not available for positioning');
+      return;
+    }
+    positionPicker(connectionEnergyPickerRef.value, connectionEnergyDisplayRef.value, 400, 350);
+  };
+
   // Close pickers when clicking outside
   const handleGlobalClick = (e) => {
     // Use requestAnimationFrame to ensure DOM updates are complete
@@ -161,6 +185,13 @@ export const useCharacteristicsBarPickers = () => {
           !circleEmojiDisplayRef.value.contains(e.target)) {
         isCircleEmojiPickerOpen.value = false;
       }
+
+      if (isConnectionEnergyPickerOpen.value && 
+          connectionEnergyPickerRef.value && connectionEnergyDisplayRef.value &&
+          !connectionEnergyPickerRef.value.contains(e.target) && 
+          !connectionEnergyDisplayRef.value.contains(e.target)) {
+        isConnectionEnergyPickerOpen.value = false;
+      }
     });
   };
 
@@ -188,6 +219,9 @@ export const useCharacteristicsBarPickers = () => {
       case 'circleEmoji':
         isCircleEmojiPickerOpen.value = false;
         break;
+      case 'connectionEnergy':
+        isConnectionEnergyPickerOpen.value = false;
+        break;
     }
   };
 
@@ -207,21 +241,25 @@ export const useCharacteristicsBarPickers = () => {
     isEnergyPickerOpen,
     isEmojiPickerOpen,
     isCircleEmojiPickerOpen,
+    isConnectionEnergyPickerOpen,
     colorPickerRef,
     typePickerRef,
     energyPickerRef,
     emojiPickerRef,
     circleEmojiPickerRef,
+    connectionEnergyPickerRef,
     colorDisplayRef,
     typeDisplayRef,
     energyDisplayRef,
     emojiDisplayRef,
     circleEmojiDisplayRef,
+    connectionEnergyDisplayRef,
     toggleColorPicker,
     toggleTypePicker,
     toggleEnergyPicker,
     toggleEmojiPicker,
     toggleCircleEmojiPicker,
+    toggleConnectionEnergyPicker,
     closePickerAction
   };
 };

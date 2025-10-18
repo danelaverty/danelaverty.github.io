@@ -11,6 +11,7 @@ import { EmojiService } from './emojiService.js';
 import { EmojiVariantService } from './EmojiVariantService.js';
 import { getEnergyTypeColor } from './energyTypes.js';
 import { CBConnectionDirectionalityControl } from './CBConnectionDirectionalityControl.js';
+import { CBConnectionEnergyControl } from './CBConnectionEnergyControl.js';
 import { getPropertyConfig } from './CBCyclePropertyConfigs.js';
 
 // Import styles
@@ -99,11 +100,13 @@ export const CircleCharacteristicsBar = {
       isEnergyPickerOpen: pickerHooks.isEnergyPickerOpen,
       isEmojiPickerOpen: pickerHooks.isEmojiPickerOpen,
       isCircleEmojiPickerOpen: pickerHooks.isCircleEmojiPickerOpen,
+      isConnectionEnergyPickerOpen: pickerHooks.isConnectionEnergyPickerOpen,
       toggleColorPicker: pickerHooks.toggleColorPicker,
       toggleTypePicker: pickerHooks.toggleTypePicker,
       toggleEnergyPicker: pickerHooks.toggleEnergyPicker,
       toggleEmojiPicker: pickerHooks.toggleEmojiPicker,
       toggleCircleEmojiPicker: pickerHooks.toggleCircleEmojiPicker,
+      toggleConnectionEnergyPicker: pickerHooks.toggleConnectionEnergyPicker,
       closePickerAction: pickerHooks.closePickerAction,
     };
   },
@@ -125,6 +128,7 @@ export const CircleCharacteristicsBar = {
     EnergyPickerModal,
     EmojiPickerModal,
     CBConnectionDirectionalityControl,
+    CBConnectionEnergyControl,
   },
   
   template: `
@@ -199,6 +203,14 @@ export const CircleCharacteristicsBar = {
             <CBConnectionDirectionalityControl 
                 :directionality="connectionDirectionality"
                 @cycle="handleDirectionalityCycle"
+            />
+            
+            <!-- Connection Energy Control -->
+            <CBConnectionEnergyControl 
+                :connectionEnergyTypes="connectionEnergyTypes"
+                :isPickerOpen="isConnectionEnergyPickerOpen"
+                :getEnergyTypeColor="getEnergyTypeColor"
+                @toggle="toggleConnectionEnergyPicker"
             />
         </template>
 
@@ -275,6 +287,16 @@ export const CircleCharacteristicsBar = {
             @selectEmoji="handleEmojiSelect"
             @selectCategory="handleCategorySelect"
             @close="closePickerAction('emoji')"
+        />
+        
+        <!-- Connection Energy Picker Modal (Only available when connection is selected) -->
+        <EnergyPickerModal 
+            v-if="isConnectionEnergyPickerOpen && shouldShowExplicitConnectionControls"
+            ref="connectionEnergyPickerRefTemplate"
+            :energyTypes="energyTypes"
+            :isEnergySelected="isConnectionEnergySelected"
+            @selectEnergy="handleConnectionEnergySelect"
+            @close="closePickerAction('connectionEnergy')"
         />
     </div>
   `

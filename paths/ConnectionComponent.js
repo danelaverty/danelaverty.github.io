@@ -7,6 +7,7 @@ const connectionStyles = `
         pointer-events: none;
         z-index: 0;
         transform-origin: left center;
+        transition: opacity 1s ease;
     }
 
     .connection-line.solid {
@@ -31,7 +32,7 @@ const connectionStyles = `
         width: 100%;
         height: 100%;
         opacity: 0;
-        transition: opacity 1.5s ease;
+        transition: opacity 0.5s ease;
     }
 
     @keyframes barber-pole {
@@ -223,6 +224,10 @@ export const ConnectionComponent = {
         circleEnergyDistances: {
                 type: Map,
                 default: () => new Map()
+        },
+        demoMode: {
+            type: Boolean,
+            default: false
         }
     },
     setup(props) {
@@ -357,7 +362,7 @@ export const ConnectionComponent = {
             // Set default values
             if (isExplicit) {
                 strokeColor = 'rgba(70, 70, 70, 1)';
-                opacity = 0.0;
+                opacity = props.demoMode ? 0 : 0.6;
                 strokeWidth = '2.5px';
             } else if (isCircleType) {
                 strokeColor = '#505050';

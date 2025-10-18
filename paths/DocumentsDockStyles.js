@@ -464,6 +464,77 @@ const componentStyles = `
     z-index: 1008;
 }
 
+.demo-mode-toggle {
+            position: absolute;
+            bottom: 3px;
+            left: 3px;
+            background-color: rgba(0, 0, 0, 0.2);
+            border: 1px solid #222;
+            border-radius: 6px;
+            padding: 8px 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+            font-size: 12px;
+            color: #CCC;
+            user-select: none;
+            z-index: 1000;
+        }
+        
+        .demo-mode-toggle:hover {
+            background-color: rgba(70, 70, 70, 0.95);
+            border-color: #888;
+        }
+        
+        .demo-mode-icon {
+            font-size: 16px;
+        }
+        
+        .demo-mode-label {
+            font-weight: 500;
+            color: #666;
+        }
+
+.global-properties-container {
+    position: absolute;
+    bottom: 3px;
+    left: 3px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    z-index: 1000;
+}
+
+.global-property-toggle {
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 1px solid #222;
+    border-radius: 3px;
+    padding: 3px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+    font-size: 12px;
+    color: #CCC;
+    user-select: none;
+}
+
+.global-property-toggle:hover {
+    background-color: rgba(70, 70, 70, 0.95);
+    border-color: #888;
+}
+
+.global-property-toggle .property-label {
+    color: #555;
+}
+
+.global-property-toggle .property-value {
+    color: #666;
+}
+
 `;
 
 // Initialize styles when module is imported

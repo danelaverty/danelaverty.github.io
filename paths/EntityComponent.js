@@ -24,6 +24,11 @@ const componentStyles = `
         transition: transform 0.3s ease;
         transform-origin: center center;
         transform: translate(-50%, -50%);
+        z-index: 10;
+    }
+
+    .entity-container.entity-container-group {
+        z-index: 9;
     }
 
     .entity-container.group-member {
@@ -161,6 +166,7 @@ const componentStyles = `
         background-color: rgba(0, 0, 0, .05);
         z-index: 10;
         text-shadow: 1px 1px 1px black;
+        transition: transform 1s ease, opacity 1s ease, filter 1s ease;
     }
 
     .entity-container-emoji .entity-name {
@@ -292,6 +298,15 @@ const componentStyles = `
     box-shadow: 0 0 20px rgba(76, 175, 80, 1), inset 0 0 20px rgba(76, 175, 80, 1);
 }
 
+.app-demo-mode .entity-shape.circle-shape {
+        box-shadow: none !important;
+    }
+    
+    .app-demo-mode .square-shape {
+        outline: none !important;
+        box-shadow: none !important;
+    }
+
 `;
 
 injectComponentStyles('entity-component', componentStyles);
@@ -323,6 +338,10 @@ export const EntityComponent = {
         dragDeltas: {
             type: Object,
             default: () => ({ deltaX: 0, deltaY: 0 })
+        },
+        demoMode: {
+            type: Boolean,
+            default: false
         }
     },
     components: {
@@ -502,6 +521,7 @@ return {
             'animation-dimmed': isAnimationDimmed,
             'group-member': groupMemberScale !== 1,
             'entity-container-emoji': entity.type === 'emoji',
+            'entity-container-group': entity.type === 'group',
         }"
         :data-entity-id="entity.id"
         @click="handleClick"
@@ -594,15 +614,20 @@ return {
             @click="handleNameClick"
             @blur="handleBlur"
             @keydown="handleNameKeydown"
+:style="{
+                transform: shinynessEffects.transform || 'scale(1.0)',
+                opacity: shinynessEffects.opacity || 1.0,
+                filter: shinynessEffects.filter || 'saturate(1.0)'
+            }"
         >
         {{ entity.name }}
         <!--span v-if="Object.keys(energyDistance).length > 0" style="color: #888; font-size: 12px;">
             {{ 'E: ' + energyDistance['exciter'] }}
         </span-->
-        <!--EnergyIndicators 
-            v-if="entityType === 'circle'"
+        <EnergyIndicators 
+            v-if="entityType === 'circle' && !demoMode"
             :energyTypes="circleEnergyTypes"
-/-->
+        />
         </div>
     </div>
 `
