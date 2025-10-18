@@ -19,7 +19,7 @@ export const EnergyPickerModal = {
   template: `
     <div 
         class="energy-picker-modal"
-        style="display: block;"
+        style="display: block; top: 10px;"
     >
         <div class="energy-picker-header">
             <span>Select Energy Types</span>

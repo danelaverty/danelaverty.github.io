@@ -233,6 +233,41 @@ const componentStyles = `
 .energized-circles-list::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 215, 0, 0.5);
 }
+
+.ca-step-control {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    width: 36px;
+    height: 36px;
+    background-color: rgba(76, 175, 80, 0.2);
+    border: 2px solid #4CAF50;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 1002;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.ca-step-control:hover {
+    background-color: rgba(76, 175, 80, 0.4);
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4);
+}
+
+.ca-step-control:active {
+    transform: scale(0.95);
+}
+
+.ca-step-text {
+    font-size: 16px;
+    font-weight: bold;
+    color: #4CAF50;
+    font-family: monospace;
+}
 `;
 
 injectComponentStyles('circle-viewer', componentStyles);

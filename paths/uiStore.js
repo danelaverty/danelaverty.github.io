@@ -1,5 +1,6 @@
-// uiStore.js - UI state management: viewers, selections, and layout (Updated with shinynessMode support)
+// uiStore.js - UI state management: viewers, selections, and layout (Updated with generic global properties)
 import { reactive } from './vue-composition-api.js';
+import { GLOBAL_PROPERTIES_CONFIG, getDefaultGlobalProperties, isValidPropertyValue, getNextPropertyValue } from './globalPropertiesConfig.js';
 
 let uiStoreInstance = null;
 
@@ -15,7 +16,10 @@ function createUIStore() {
         selectedCircleIds: new Set(),
         selectedSquareIds: new Set(),
         selectedCircleViewerId: null,
-        selectedSquareViewerId: null
+        selectedSquareViewerId: null,
+
+        // Global properties - initialized from config
+        globalProperties: { ...getDefaultGlobalProperties() }
     });
 
     // Background type constants (should match documentStore)
@@ -31,13 +35,11 @@ function createUIStore() {
         const viewer = {
             id,
             currentCircleDocumentId: documentId
-            // NOTE: width, showBackground, backgroundType, and shinynessMode are now stored in the document, not here
         };
         
         data.circleViewers.set(id, viewer);
         data.viewerOrder.push(id);
         
-        // If this is the first viewer or no viewer is selected, select this one
         if (!data.selectedViewerId) {
             data.selectedViewerId = id;
         }
@@ -53,16 +55,13 @@ function createUIStore() {
         return getCircleViewers();
     };
 
-    // UPDATED: Now syncs viewer properties to the associated document with shinynessMode support
     const updateCircleViewer = (id, updates, documentStore = null) => {
         const viewer = data.circleViewers.get(id);
         if (!viewer) return null;
         
-        // If we have a document store and the viewer has a document, update the document properties
         if (documentStore && viewer.currentCircleDocumentId) {
             const viewerPropertyUpdates = {};
             
-            // Extract viewer properties that should be persisted to the document
             if (updates.width !== undefined) {
                 viewerPropertyUpdates.width = updates.width;
             }
@@ -72,12 +71,10 @@ function createUIStore() {
             if (updates.backgroundType !== undefined) {
                 viewerPropertyUpdates.backgroundType = updates.backgroundType;
             }
-            // NEW: Handle shinynessMode updates
             if (updates.shinynessMode !== undefined) {
                 viewerPropertyUpdates.shinynessMode = updates.shinynessMode;
             }
             
-            // Update the document's viewer properties
             if (Object.keys(viewerPropertyUpdates).length > 0) {
                 documentStore.updateCircleDocumentViewerProperties(
                     viewer.currentCircleDocumentId, 
@@ -86,7 +83,6 @@ function createUIStore() {
             }
         }
         
-        // Update non-persistent viewer properties (like currentCircleDocumentId)
         const nonPersistentUpdates = {};
         if (updates.currentCircleDocumentId !== undefined) {
             nonPersistentUpdates.currentCircleDocumentId = updates.currentCircleDocumentId;
@@ -103,7 +99,6 @@ function createUIStore() {
         data.circleViewers.delete(id);
         data.viewerOrder = data.viewerOrder.filter(viewerId => viewerId !== id);
         
-        // If we deleted the selected viewer, select another one
         if (data.selectedViewerId === id) {
             data.selectedViewerId = null;
             ensureSelectedViewer();
@@ -160,11 +155,9 @@ function createUIStore() {
         return 'No Document';
     };
 
-    // UPDATED: Get viewer properties from the associated document with shinynessMode support
     const getViewerProperties = (viewerId, documentStore) => {
         const viewer = data.circleViewers.get(viewerId);
         if (!viewer || !viewer.currentCircleDocumentId || !documentStore) {
-            // Return defaults if no document or document store
             return {
                 width: 270,
                 showBackground: true,
@@ -175,7 +168,6 @@ function createUIStore() {
         
         const properties = documentStore.getCircleDocumentViewerProperties(viewer.currentCircleDocumentId);
         
-        // Ensure all required properties exist with proper defaults
         return {
             width: properties.width || 270,
             showBackground: properties.showBackground !== undefined ? properties.showBackground : true,
@@ -189,15 +181,10 @@ function createUIStore() {
         return viewer ? viewer.currentCircleDocumentId : null;
     };
 
-    // UPDATED: When setting a new document, apply the document's viewer properties
     const setCircleDocumentForViewer = (viewerId, documentId, documentStore = null) => {
         const viewer = data.circleViewers.get(viewerId);
         if (viewer) {
             viewer.currentCircleDocumentId = documentId;
-            
-            // If we have access to the document store, we could trigger a property update
-            // but that's handled at the coordination layer
-            
             return true;
         }
         return false;
@@ -285,13 +272,45 @@ function createUIStore() {
     const hasMultipleCirclesSelected = () => hasMultipleSelected('circle');
     const hasMultipleSquaresSelected = () => hasMultipleSelected('square');
 
+    // Global properties management
+    const getGlobalProperty = (propertyKey) => {
+        return data.globalProperties[propertyKey];
+    };
+
+    const setGlobalProperty = (propertyKey, value) => {
+        if (isValidPropertyValue(propertyKey, value)) {
+            data.globalProperties[propertyKey] = value;
+            return true;
+        }
+        return false;
+    };
+
+    const toggleGlobalProperty = (propertyKey) => {
+        const currentValue = data.globalProperties[propertyKey];
+        const nextValue = getNextPropertyValue(propertyKey, currentValue);
+        data.globalProperties[propertyKey] = nextValue;
+        return nextValue;
+    };
+
+    const getAllGlobalProperties = () => {
+        return { ...data.globalProperties };
+    };
+
+    // Legacy compatibility methods for demoMode
+    const toggleDemoMode = () => {
+        return toggleGlobalProperty('demoMode');
+    };
+
+    const isDemoMode = () => {
+        return data.globalProperties.demoMode === 'Demo';
+    };
+
     const serialize = () => ({
         circleViewers: Array.from(data.circleViewers.entries()),
         viewerOrder: data.viewerOrder,
         selectedViewerId: data.selectedViewerId,
-        nextViewerId: data.nextViewerId
-        // Selections are intentionally not serialized - they should reset on page load
-        // Viewer properties (including shinynessMode) are now stored in documents, not here
+        nextViewerId: data.nextViewerId,
+        globalProperties: data.globalProperties
     });
 
     const deserialize = (savedData) => {
@@ -308,7 +327,17 @@ function createUIStore() {
             data.nextViewerId = savedData.nextViewerId;
         }
         
-        // Reset all selections on load
+        // Load global properties with defaults for any missing properties
+        if (savedData.globalProperties) {
+            data.globalProperties = {
+                ...getDefaultGlobalProperties(),
+                ...savedData.globalProperties
+            };
+        } else if (savedData.demoMode !== undefined) {
+            // Legacy support: convert old demoMode boolean to new format
+            data.globalProperties.demoMode = savedData.demoMode ? 'Demo' : 'Edit';
+        }
+        
         clearSelections();
     };
 
@@ -316,6 +345,7 @@ function createUIStore() {
         data,
         // Constants
         BACKGROUND_TYPES,
+        GLOBAL_PROPERTIES_CONFIG,
         // Viewer management
         createCircleViewer,
         getCircleViewers,
@@ -327,7 +357,7 @@ function createUIStore() {
         ensureSelectedViewer,
         isViewerSelected,
         getViewerTitle,
-        getViewerProperties, // UPDATED: Get properties from document with shinynessMode support
+        getViewerProperties,
         getCircleDocumentForViewer,
         setCircleDocumentForViewer,
         // Selection management
@@ -345,7 +375,14 @@ function createUIStore() {
         getSelectedSquares,
         hasMultipleCirclesSelected,
         hasMultipleSquaresSelected,
-        // Initialization
+        // Global properties
+        getGlobalProperty,
+        setGlobalProperty,
+        toggleGlobalProperty,
+        getAllGlobalProperties,
+        // Legacy demoMode compatibility
+        toggleDemoMode,
+        isDemoMode,
         // Serialization
         serialize,
         deserialize

@@ -23,6 +23,8 @@ export const App = {
         const dataStore = useDataStore();
         const squareViewerContentRef = ref(null);
 
+        const isDemoMode = computed(() => dataStore.isDemoMode());
+
         // Document hover state for viewer highlighting
         const hoveredDocumentId = ref(null);
 
@@ -348,7 +350,8 @@ export const App = {
                 ...entityHandlers,
                 handleSquareSelect: handleSquareSelectWithMultiSelect // Override with multi-select version
             },
-            ...viewerManager // This now includes dragState and new drag handlers
+            ...viewerManager,
+            isDemoMode
         };
     },
     components: {
@@ -363,7 +366,7 @@ export const App = {
         ConnectionComponent
     },
     template: `
-        <div :class="['app-container', { 'has-documents-dock': true }]">
+        <div :class="['app-container', { 'has-documents-dock': true, 'app-demo-mode': isDemoMode }]">
             <DocumentsDock 
                 @document-hover="handleDocumentHover"
                 @document-hover-end="handleDocumentHoverEnd"
@@ -404,27 +407,28 @@ export const App = {
                     >
                         <!-- Connection Rendering - Use combined connections (regular + explicit) with drag state -->
                         <ConnectionComponent
-                            v-for="connection in allSquareConnections"
-                            :key="connection.id"
-                            :connection="connection"
-                            :entity-drag-state="squareDragState"
-                        />
-                        
+                                v-for="connection in allSquareConnections"
+                                :key="connection.id"
+                                :connection="connection"
+                                :entity-drag-state="squareDragState"
+                                :demo-mode="isDemoMode"
+                            />
                         <EntityComponent
-                            v-for="square in currentSquares"
-                            :key="square.id"
-                            :entity="square"
-                            entity-type="square"
-                            :is-selected="dataStore.isSquareSelected(square.id)"
-                            :data-store="dataStore"
-                            @select="handleSquareSelect"
-                            @update-position="handleSquarePositionUpdate"
-                            @update-name="handleSquareNameUpdate"
-                            @move-multiple="handleSquareMoveMultiple"
-                            @drag-start="handleSquareDragStart"
-                            @drag-move="handleSquareDragMove"
-                            @drag-end="handleSquareDragEnd"
-                        />
+                                v-for="square in currentSquares"
+                                :key="square.id"
+                                :entity="square"
+                                entity-type="square"
+                                :is-selected="dataStore.isSquareSelected(square.id)"
+                                :data-store="dataStore"
+                                :demo-mode="isDemoMode"
+                                @select="handleSquareSelect"
+                                @update-position="handleSquarePositionUpdate"
+                                @update-name="handleSquareNameUpdate"
+                                @move-multiple="handleSquareMoveMultiple"
+                                @drag-start="handleSquareDragStart"
+                                @drag-move="handleSquareDragMove"
+                                @drag-end="handleSquareDragEnd"
+                            />
                         
                         <!-- Rectangle selection visual for squares -->
                         <div 

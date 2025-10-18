@@ -1,4 +1,4 @@
-// CircleViewer.js - Updated with ctrl+click multi-select, ctrl+shift+click explicit connections, collapsed group filtering, and shinynessMode
+// CircleViewer.js - Updated with cellular automaton system and manual cascade mode
 import { onMounted, onUnmounted, computed, ref, watch, nextTick } from './vue-composition-api.js';
 import { useCircleViewerDragResize } from './CircleViewerDragResize.js';
 import { useCircleViewerSelection } from './CircleViewerSelection.js';
@@ -9,10 +9,9 @@ import { EntityControls } from './EntityControls.js';
 import { ViewerControls } from './ViewerControls.js';
 import { ConnectionComponent } from './ConnectionComponent.js';
 import { ExplicitConnectionService } from './ExplicitConnectionService.js';
-import { ShinynessCalculator } from './ShinynessCalculator.js';
+import { CellularAutomatonEngine } from './CellularAutomatonEngine.js';
 import { ShinynessEffectsTranslator } from './ShinynessEffectsTranslator.js';
-import { EnergyDistanceCalculator } from './EnergyDistanceCalculator.js';
-import { EnergizedConnectionsCalculator } from './EnergizedConnectionsCalculator.js';
+import { CAStepControl } from './CAStepControl.js';
 import './CircleViewerStyles.js'; // Import styles
 
 export const CircleViewer = {
@@ -45,10 +44,12 @@ export const CircleViewer = {
         'drop'
     ],
     setup(props, { emit }) {
-        const energyEffectsTrigger = ref(0);
         let energizedCirclesDebounceTimeout = null;
+        
         // Get state and computed properties
         const state = useCircleViewerState(props);
+        const dataStore = state.dataStore;
+        const isDemoMode = computed(() => state.dataStore.isDemoMode());
 
         // Entity drag state management
         const entityDragState = ref({
@@ -60,39 +61,40 @@ export const CircleViewer = {
         });
 
         // Handle entity drag events
-const handleEntityDragStart = (event) => {
-    entityDragState.value = {
-        isDragging: true,
-        draggedEntityIds: [event.entityId],
-        currentDeltas: { deltaX: 0, deltaY: 0 },
-        entityType: event.entityType,
-        viewerId: event.viewerId
-    };
-};
-
-const handleEntityDragMove = (event) => {
-    if (entityDragState.value.isDragging) {
-        entityDragState.value.currentDeltas = {
-            deltaX: event.deltaX,
-            deltaY: event.deltaY
+        const handleEntityDragStart = (event) => {
+            entityDragState.value = {
+                isDragging: true,
+                draggedEntityIds: [event.entityId],
+                currentDeltas: { deltaX: 0, deltaY: 0 },
+                entityType: event.entityType,
+                viewerId: event.viewerId
+            };
         };
-        entityDragState.value.draggedEntityIds = event.selectedEntityIds || [event.entityId];
-    }
-};
 
-const handleEntityDragEnd = (event) => {
-    entityDragState.value = {
-        isDragging: false,
-        draggedEntityIds: [],
-        currentDeltas: { deltaX: 0, deltaY: 0 },
-        entityType: null,
-        viewerId: null
-    };
-};
+        const handleEntityDragMove = (event) => {
+            if (entityDragState.value.isDragging) {
+                entityDragState.value.currentDeltas = {
+                    deltaX: event.deltaX,
+                    deltaY: event.deltaY
+                };
+                entityDragState.value.draggedEntityIds = event.selectedEntityIds || [event.entityId];
+            }
+        };
 
-const handleCircleUpdate = (updates) => {
-    state.dataStore.updateCircle(updates.id, updates);
-};
+        const handleEntityDragEnd = (event) => {
+            entityDragState.value = {
+                isDragging: false,
+                draggedEntityIds: [],
+                currentDeltas: { deltaX: 0, deltaY: 0 },
+                entityType: null,
+                viewerId: null
+            };
+        };
+
+        const handleCircleUpdate = (updates) => {
+            state.dataStore.updateCircle(updates.id, updates);
+        };
+
         const explicitConnectionService = new ExplicitConnectionService({
             getCircle: state.dataStore.getCircle,
             getSquare: state.dataStore.getSquare,
@@ -100,13 +102,30 @@ const handleCircleUpdate = (updates) => {
             saveToStorage: state.dataStore.saveToStorage
         });
 
-        const shinynessCalculator = new ShinynessCalculator();
+        // Initialize cellular automaton engine and effects translator
+        const cellularAutomaton = new CellularAutomatonEngine();
         const shinynessEffectsTranslator = new ShinynessEffectsTranslator();
-        const energyDistanceCalculator = new EnergyDistanceCalculator();
-        const energizedConnectionsCalculator = new EnergizedConnectionsCalculator();
 
-        const energyAffectedCircles = ref(new Set());
-        const energyAffectedConnections = ref(new Set());
+        // State for automaton reactivity
+        const automatonState = ref({
+            circleStates: new Map(),
+            connectionStates: new Map(),
+            phase: 'circle'
+        });
+
+        // CA step control state
+        const batchedChangeCount = ref(0);
+        const canStepCA = ref(false);
+
+// Replace the batchedChanges computed property with:
+const batchedChanges = computed(() => {
+    // Force reactivity by depending on batchedChangeCount
+    batchedChangeCount.value;
+    return cellularAutomaton.getBatchedChanges();
+});
+
+        // Get cascade mode from global properties
+        const cascadeMode = computed(() => dataStore.getGlobalProperty('cascadeMode'));
 
         // Get event handlers
         const eventHandlers = useCircleViewerEventHandlers(props, emit, state.dataStore);
@@ -129,236 +148,175 @@ const handleCircleUpdate = (updates) => {
             });
         });
 
-const explicitConnections = computed(() => {
-    const entityType = `circle-${props.viewerId}`;
-    const connections = explicitConnectionService.getVisualConnectionsForEntityType(entityType);
-    return connections;
-});
+        const explicitConnections = computed(() => {
+            const entityType = `circle-${props.viewerId}`;
+            const connections = explicitConnectionService.getVisualConnectionsForEntityType(entityType);
+            return connections;
+        });
 
         const allCircles = computed(() => {
             const visible = visibleCircles.value;
-            
             return [...visible];
         });
 
-const effectiveCirclePositions = computed(() => {
-    const isDragging = entityDragState.value.isDragging;
-    const hasDraggedIds = entityDragState.value.draggedEntityIds.length > 0;
-    
-    if (!isDragging || !hasDraggedIds) {
-        return null; // Use real positions from entities
-    }
-    
-    const draggedIds = new Set(entityDragState.value.draggedEntityIds);
-    const positionMap = new Map();
-    
-    allCircles.value.forEach(circle => {
-        if (draggedIds.has(circle.id)) {
-            const effectivePos = {
-                x: circle.x + entityDragState.value.currentDeltas.deltaX,
-                y: circle.y + entityDragState.value.currentDeltas.deltaY
-            };
-            positionMap.set(circle.id, effectivePos);
-        }
-    });
-    
-    return positionMap;
-});
-
-        const energyDistances = computed(function() { 
-            return energyDistancesData.value.circles; 
+        const effectiveCirclePositions = computed(() => {
+            const isDragging = entityDragState.value.isDragging;
+            const hasDraggedIds = entityDragState.value.draggedEntityIds.length > 0;
+            
+            if (!isDragging || !hasDraggedIds) {
+                return null; // Use real positions from entities
+            }
+            
+            const draggedIds = new Set(entityDragState.value.draggedEntityIds);
+            const positionMap = new Map();
+            
+            allCircles.value.forEach(circle => {
+                if (draggedIds.has(circle.id)) {
+                    const effectivePos = {
+                        x: circle.x + entityDragState.value.currentDeltas.deltaX,
+                        y: circle.y + entityDragState.value.currentDeltas.deltaY
+                    };
+                    positionMap.set(circle.id, effectivePos);
+                }
+            });
+            
+            return positionMap;
         });
-        const connectionEnergyDistances = computed(() => energyDistancesData.value.connections);
 
-const allConnections = computed(() => {
-    const regularConnections = state.viewerConnections.value;
-    const explicitConns = explicitConnections.value;
-    
-    const combined = [...regularConnections, ...explicitConns];
-    return combined;
-});
-
-const energyDistancesData = computed(() => {
-    const result = energyDistanceCalculator.calculateEnergyDistanceForAllCirclesInCircleViewer(
-        allCircles.value, 
-        allConnections.value
-    );
-    
-    return result;
-});
-
-const dampenedCircles = computed(() => energyDistancesData.value.dampenedCircles || new Set());
-const dampenerConnections = computed(() => energyDistancesData.value.dampenerConnections || new Map());
-
-const energizedConnectionsData = computed(() => {
-    energyEffectsTrigger.value; // Keep reactivity trigger
-    
-    return energizedConnectionsCalculator.calculateEnergizedConnectionsForCircles(
-        allCircles.value, 
-        allConnections.value
-    );
-});
-
-
-const shinynessEffects = computed(() => {
-    if (!state.viewerProperties?.value?.shinynessMode) {
-        return new Map();
-    }
-    
-    energyEffectsTrigger.value; // Keep reactivity trigger
-    
-    const shinynessMap = new Map();
-    allCircles.value.forEach(circle => {
-        const shinyness = shinynessCalculator.calculateShinyness(
-            circle, 
-            energyDistances.value,
-            dampenedCircles.value  // NEW: Pass dampened circles
-        );
-        shinynessMap.set(circle.id, shinyness);
-    });
-    
-    const optionsMap = new Map();
-    allCircles.value.forEach(circle => {
-        const connectionMultiplier = shinynessCalculator.getAdditiveOrConnectionMultiplier(
-            circle, 
-            energizedConnectionsData.value
-        );
-        
-        optionsMap.set(circle.id, {
-            circleType: circle.type,
-            circleShinynessReceiveMode: circle.shinynessReceiveMode,
-            connectionMultiplier: connectionMultiplier
+        const allConnections = computed(() => {
+            const regularConnections = state.viewerConnections.value;
+            const explicitConns = explicitConnections.value;
+            
+            const combined = [...regularConnections, ...explicitConns];
+            return combined;
         });
-    });
-    
-    const result = shinynessEffectsTranslator.translateMultipleShinyness(shinynessMap, optionsMap);
-    return result;
-});
 
-const energizedCirclesList = computed(() => {
-    if (!state.viewerProperties?.value?.shinynessMode) {
-        return [];
-    }
-    
-    const list = [];
-    
-    allCircles.value.forEach(circle => {
-        const distances = energyDistances.value.get(circle.id);
-        
-        // Skip if no energy distances
-        if (!distances || Object.keys(distances).length === 0) {
-            return;
-        }
-
-        if (circle.type !== 'glow') {
-            return;
-        }
-        
-        // Skip activated circles (they're sources, not receivers)
-        if (circle.activation === 'activated') {
-            return;
-        }
-        
-        // Skip inert circles
-        if (circle.activation === 'inert') {
-            return;
-        }
-        
-        // This circle is receiving energy - collect energy types
-        const receivedEnergyTypes = Object.entries(distances)
-            .filter(([type, distance]) => distance !== undefined)
-            .map(([type, distance]) => {
-                const shortNames = {
-                    exciter: 'E',
-                    dampener: 'D',
-                };
-                return `${shortNames[type] || type[0].toUpperCase()}:${distance}`;
-            })
-            .join(' ');
-        
-        list.push({
-            id: circle.id,
-            name: circle.name,
-            color: circle.color,
-            energyTypes: receivedEnergyTypes
+        // Shinyness effects computed property using cellular automaton
+        const shinynessEffects = computed(() => {
+            if (!state.viewerProperties?.value?.shinynessMode) {
+                return new Map();
+            }
+            
+            // Force reactivity on automaton state
+            automatonState.value;
+            
+            // Get numeric shinyness values from automaton
+            const shinynessMap = cellularAutomaton.getAllCircleShininessNumeric();
+            
+            // Build options map
+            const optionsMap = new Map();
+            allCircles.value.forEach(circle => {
+                optionsMap.set(circle.id, {
+                    circleType: circle.type,
+                    circleShinynessReceiveMode: circle.shinynessReceiveMode,
+                    connectionMultiplier: 1 // No longer using energized connections multiplier
+                });
+            });
+            
+            // Translate to visual effects
+            return shinynessEffectsTranslator.translateMultipleShinyness(shinynessMap, optionsMap);
         });
-    });
-    
-    // Sort by name for consistency
-    return list.sort((a, b) => a.name.localeCompare(b.name));
-});
 
-watch(energizedCirclesList, (newList) => {
-    // Clear existing timeout
-    if (energizedCirclesDebounceTimeout) {
-        clearTimeout(energizedCirclesDebounceTimeout);
-    }
-    
-    // Debounce the update
-    energizedCirclesDebounceTimeout = setTimeout(() => {
-        const currentDoc = state.dataStore.getCircleDocumentForViewer(props.viewerId);
-        if (currentDoc) {
-            state.dataStore.updateCircleDocumentEnergizedCircles(currentDoc.id, newList);
-        }
-    }, 200); // 200ms debounce
-}, { deep: true });
+        // Energized circles list for display
+        const energizedCirclesList = computed(() => {
+            if (!state.viewerProperties?.value?.shinynessMode) {
+                return [];
+            }
+            
+            // Force reactivity
+            automatonState.value;
+            
+            const list = [];
+            
+            allCircles.value.forEach(circle => {
+                const circleState = cellularAutomaton.getCircleState(circle.id);
+                
+                // Skip if not energized
+                if (circleState.energized === 'unenergized') {
+                    return;
+                }
 
-let lastValidEnergyDistancesData = { circles: new Map(), connections: new Map() };
+                if (circle.type !== 'glow') {
+                    return;
+                }
+                
+                // Skip activated circles (they're sources, not receivers)
+                if (circle.activation === 'activated') {
+                    return;
+                }
+                
+                // Skip inert circles
+                if (circle.activation === 'inert') {
+                    return;
+                }
+                
+                list.push({
+                    id: circle.id,
+                    name: circle.name,
+                    color: circle.color,
+                    energyTypes: circleState.energized // 'excited' or 'dampened'
+                });
+            });
+            
+            // Sort by name for consistency
+            return list.sort((a, b) => a.name.localeCompare(b.name));
+        });
 
-const getConnectionEnergyClasses = (connectionId) => {
-    energyEffectsTrigger.value; // Track dependency
-    
-    const classes = [];
-    
-    // Check for exciter energy
-    const activeEnergyTypes = shinynessCalculator.getActiveConnectionEnergyTypes(connectionId);
-    activeEnergyTypes.forEach(energyType => {
-        classes.push(`${energyType}-connection`);
-    });
-    
-    // Check for dampener energy
-    const dampenerInfo = dampenerConnections.value.get(connectionId);
-    if (dampenerInfo && shinynessCalculator.isDampenerConnectionActive(connectionId)) {
-        classes.push('dampener-connection');
-    }
-    
-    return classes;
-};
+        watch(energizedCirclesList, (newList) => {
+            // Clear existing timeout
+            if (energizedCirclesDebounceTimeout) {
+                clearTimeout(energizedCirclesDebounceTimeout);
+            }
+            
+            // Debounce the update
+            energizedCirclesDebounceTimeout = setTimeout(() => {
+                const currentDoc = state.dataStore.getCircleDocumentForViewer(props.viewerId);
+                if (currentDoc) {
+                    state.dataStore.updateCircleDocumentEnergizedCircles(currentDoc.id, newList);
+                }
+            }, 200); // 200ms debounce
+        }, { deep: true });
 
-const getShinynessEffectsForCircle = (circle) => {
-    energyEffectsTrigger.value;
-    
-    const effects = shinynessEffects.value.get(circle.id);
-    
-    if (!effects) {
-        return shinynessEffectsTranslator.getNormalValues();
-    }
-    return effects;
-};
+        // Get connection energy classes
+        const getConnectionEnergyClasses = (connectionId) => {
+            // Force reactivity on automaton state
+            automatonState.value;
+            
+            return cellularAutomaton.getConnectionEnergyClasses(connectionId);
+        };
+
+        // Get shinyness effects for a circle
+        const getShinynessEffectsForCircle = (circle) => {
+            const effects = shinynessEffects.value.get(circle.id);
+            
+            if (!effects) {
+                return shinynessEffectsTranslator.getNormalValues();
+            }
+            return effects;
+        };
 
         const handleCircleSelectWithMultiSelect = (id, isCtrlClick = false, isShiftClick = false) => {
             // Check for explicit connection creation (ctrl+shift+click)
             if (isCtrlClick && isShiftClick) {
+                // CLEAR DRAG STATE IMMEDIATELY when creating connections
+                entityDragState.value = {
+                    isDragging: false,
+                    draggedEntityIds: [],
+                    currentDeltas: { deltaX: 0, deltaY: 0 },
+                    entityType: null,
+                    viewerId: null
+                };
 
-        // CLEAR DRAG STATE IMMEDIATELY when creating connections
-        entityDragState.value = {
-            isDragging: false,
-            draggedEntityIds: [],
-            currentDeltas: { deltaX: 0, deltaY: 0 },
-            entityType: null,
-            viewerId: null
-        };
+                // Handle explicit connection creation/deletion
+                const selectedCircleIds = state.dataStore.getSelectedCircles();
+                const selectedEntityType = 'circle';
 
-        // Handle explicit connection creation/deletion
-        const selectedCircleIds = state.dataStore.getSelectedCircles();
-        const selectedEntityType = 'circle';
+                const result = explicitConnectionService.handleEntityCtrlClick(
+                    id, 'circle', selectedCircleIds, selectedEntityType, props.viewerId
+                );
 
-        const result = explicitConnectionService.handleEntityCtrlClick(
-            id, 'circle', selectedCircleIds, selectedEntityType, props.viewerId
-        );
-
-        // Don't change selection when ctrl+shift-clicking for connections
-        return;
+                // Don't change selection when ctrl+shift-clicking for connections
+                return;
             } else if (isCtrlClick || isShiftClick) {
                 const isCurrentlySelected = state.dataStore.isCircleSelected(id);
                 
@@ -375,227 +333,99 @@ const getShinynessEffectsForCircle = (circle) => {
         const handleViewerClick = eventHandlers.createHandleViewerClick(selection.hasRectangleSelected);
         const handleViewerContainerClick = eventHandlers.createHandleViewerContainerClick(selection.hasRectangleSelected);
 
-
-let lastEnergyDataSnapshot = null;
-
-const createDataSnapshot = (energyData) => {
-    if (!energyData) return null;
-    
-    // Create a serializable snapshot for comparison
-    const circleSnapshot = {};
-    energyData.circles.forEach((distances, circleId) => {
-        circleSnapshot[circleId] = { ...distances };
-    });
-    
-    const connectionSnapshot = {};
-    energyData.connections.forEach((distances, connectionId) => {
-        connectionSnapshot[connectionId] = { ...distances };
-    });
-    
-    // NEW: Include dampened circles in snapshot
-    const dampenedCirclesSnapshot = energyData.dampenedCircles ? 
-        Array.from(energyData.dampenedCircles).sort() : [];
-    
-    // NEW: Include dampener connections in snapshot
-    const dampenerConnectionsSnapshot = {};
-    if (energyData.dampenerConnections) {
-        energyData.dampenerConnections.forEach((info, connectionId) => {
-            dampenerConnectionsSnapshot[connectionId] = { 
-                dampenerId: info.dampenerId, 
-                targetId: info.targetId 
-            };
-        });
-    }
-    
-    return JSON.stringify({ 
-        circles: circleSnapshot, 
-        connections: connectionSnapshot,
-        dampenedCircles: dampenedCirclesSnapshot,
-        dampenerConnections: dampenerConnectionsSnapshot
-    });
+        // CA step control handler
+const handleCAStep = () => {
+    cellularAutomaton.stepManual();
+    updateCAControlState();
 };
 
-watch(energyDistancesData, (newData, oldData) => {
-    const newSnapshot = createDataSnapshot(newData);
-    
-    // If nothing changed at all, skip entirely
-    if (newSnapshot === lastEnergyDataSnapshot) {
-        return;
-    }
-    
-    // Check if this is the very first run (no previous snapshot)
-    const isInitialLoad = lastEnergyDataSnapshot === null;
-    
-    lastEnergyDataSnapshot = newSnapshot;
-    
-    // Perform selective clearing and scheduling based on what changed
-    const changedCircles = new Set();
-    const changedConnections = new Set();
-    
-    // Compare circle energy distances
-    if (newData.circles && oldData?.circles && !isInitialLoad) {
-        // Check for changed or new circles
-        newData.circles.forEach((newDistances, circleId) => {
-            const oldDistances = oldData.circles.get(circleId);
-            if (!oldDistances || !areEnergyDistancesEqual(oldDistances, newDistances)) {
-                changedCircles.add(circleId);
-            }
-        });
-        
-        // Check for removed circles
-        oldData.circles.forEach((oldDistances, circleId) => {
-            if (!newData.circles.has(circleId)) {
-                changedCircles.add(circleId);
-            }
-        });
-    } else {
-        // If we don't have old data or this is initial load, treat all as changed
-        if (newData.circles) {
-            newData.circles.forEach((_, circleId) => changedCircles.add(circleId));
-        }
-    }
-    
-    // Compare connection energy distances
-    if (newData.connections && oldData?.connections && !isInitialLoad) {
-        // Check for changed or new connections
-        newData.connections.forEach((newDistances, connectionId) => {
-            const oldDistances = oldData.connections.get(connectionId);
-            if (!oldDistances || !areEnergyDistancesEqual(oldDistances, newDistances)) {
-                changedConnections.add(connectionId);
-            }
-        });
-        
-        // Check for removed connections
-        oldData.connections.forEach((oldDistances, connectionId) => {
-            if (!newData.connections.has(connectionId)) {
-                changedConnections.add(connectionId);
-            }
-        });
-    } else {
-        // If we don't have old data or this is initial load, treat all as changed
-        if (newData.connections) {
-            newData.connections.forEach((_, connectionId) => changedConnections.add(connectionId));
-        }
-    }
-    
-    // Check for changes in dampened circles
-    if (newData.dampenedCircles && oldData?.dampenedCircles && !isInitialLoad) {
-        
-        // Check for newly dampened circles
-        newData.dampenedCircles.forEach(circleId => {
-            if (!oldData.dampenedCircles.has(circleId)) {
-                changedCircles.add(circleId);
-            }
-        });
-        
-        // Check for circles that are no longer dampened
-        oldData.dampenedCircles.forEach(circleId => {
-            if (!newData.dampenedCircles.has(circleId)) {
-                changedCircles.add(circleId);
-            }
-        });
-    } else {
-        // If we don't have old data or this is initial load, treat all dampened circles as changed
-        if (newData.dampenedCircles) {
-            newData.dampenedCircles.forEach(circleId => changedCircles.add(circleId));
-        }
-    }
-    
-    // Only clear delayed states for circles that actually changed
-    changedCircles.forEach(circleId => {
-        shinynessCalculator.clearDelayedState(circleId);
-    });
-    
-    // Clear connection energy for changed connections
-    changedConnections.forEach(connectionId => {
-        shinynessCalculator.clearConnectionEnergy(connectionId);
-    });
-    
-    // Schedule new energy effects only for changed entities
-    changedCircles.forEach(circleId => {
-        const distances = newData.circles.get(circleId);
-        if (distances && distances.exciter !== undefined && distances.exciter > 0) {
-            // Circle will schedule itself via calculateShinyness
-        }
-    });
-    
-    changedConnections.forEach(connectionId => {
-        const energyDistance = newData.connections.get(connectionId);
-        if (energyDistance) {
-            Object.entries(energyDistance).forEach(([energyType, distance]) => {
-                shinynessCalculator.scheduleConnectionEnergy(connectionId, energyType, distance);
-            });
-        }
-    });
-    
-    // Handle dampener connections
-    const changedDampenerConnections = new Set();
-    
-    if (newData.dampenerConnections && newData.dampenerConnections.size > 0) {
-        if (isInitialLoad || !oldData?.dampenerConnections) {
-            // On initial load or when dampenerConnections first appears, schedule ALL dampener connections
-            newData.dampenerConnections.forEach((dampenerInfo, connectionId) => {
-                changedDampenerConnections.add(connectionId);
-            });
-        } else {
-            // Check for new or changed dampener connections
-            newData.dampenerConnections.forEach((dampenerInfo, connectionId) => {
-                const oldDampenerInfo = oldData.dampenerConnections.get(connectionId);
+// CA step specific handler - NEW
+const handleCAStepSpecific = (index) => {
+    cellularAutomaton.applyBatchedChangeByIndex(index);
+    updateCAControlState();
+};
+
+        // Helper to update CA control state
+        const updateCAControlState = () => {
+            batchedChangeCount.value = cellularAutomaton.getBatchedChangeCount();
+            canStepCA.value = cellularAutomaton.canStep();
+        };
+
+        // Automaton state change callback that also updates control state
+        const onAutomatonStateChange = (newState) => {
+            automatonState.value = newState;
+            updateCAControlState();
+        };
+
+        // Watch for shinyness mode changes to start/stop automaton
+        watch(() => state.viewerProperties?.value?.shinynessMode, (shinynessMode) => {
+            if (shinynessMode) {
+                // Set cascade mode before starting
+                cellularAutomaton.setCascadeMode(cascadeMode.value);
                 
-                if (!oldDampenerInfo) {
-                    changedDampenerConnections.add(connectionId);
-                } else if (oldDampenerInfo.dampenerId !== dampenerInfo.dampenerId ||
-                           oldDampenerInfo.targetId !== dampenerInfo.targetId) {
-                    changedDampenerConnections.add(connectionId);
-                }
-            });
-        }
-    }
-    
-    // Check for removed dampener connections
-    if (oldData?.dampenerConnections && oldData.dampenerConnections.size > 0) {
-        oldData.dampenerConnections.forEach((dampenerInfo, connectionId) => {
-            if (!newData.dampenerConnections || !newData.dampenerConnections.has(connectionId)) {
-                shinynessCalculator.clearDampenerConnection(connectionId);
+                // Start the automaton
+                cellularAutomaton.start(
+                    allCircles.value,
+                    allConnections.value,
+                    onAutomatonStateChange
+                );
+                dataStore.setAutomatonTrigger(() => {
+                    cellularAutomaton.triggerImmediateIteration();
+                });
+                
+                // Update control state after starting
+                updateCAControlState();
+            } else {
+                // Stop the automaton
+                cellularAutomaton.stop();
+                dataStore.setAutomatonTrigger(null);
+                updateCAControlState();
+            }
+        }, { immediate: true });
+
+        // Watch for cascade mode changes
+        watch(cascadeMode, (newMode) => {
+            if (cellularAutomaton.isActive()) {
+                cellularAutomaton.setCascadeMode(newMode);
+                updateCAControlState();
+            }
+        }, { immediate: true });
+
+        // Watch for data changes to update automaton
+        watch([allCircles, allConnections], () => {
+            if (cellularAutomaton.isActive()) {
+                cellularAutomaton.updateData(
+                    allCircles.value,
+                    allConnections.value
+                );
+            }
+        }, { deep: true });
+
+        onMounted(() => {
+            dragResize.onMounted();
+            
+            // Start automaton if shinyness mode is enabled
+            if (state.viewerProperties?.value?.shinynessMode) {
+                cellularAutomaton.start(
+                    allCircles.value,
+                    allConnections.value,
+                    onAutomatonStateChange
+                );
+                dataStore.setAutomatonTrigger(() => {
+                    cellularAutomaton.triggerImmediateIteration();
+                });
             }
         });
-    }
-    
-    // Schedule animations for changed dampener connections
-    changedDampenerConnections.forEach(connectionId => {
-        shinynessCalculator.scheduleDampenerConnection(connectionId);
-    });
-    
-    energyEffectsTrigger.value++;
-}, { deep: true });
 
-// Helper function to compare energy distance objects
-function areEnergyDistancesEqual(distances1, distances2) {
-    const keys1 = Object.keys(distances1);
-    const keys2 = Object.keys(distances2);
-    
-    if (keys1.length !== keys2.length) {
-        return false;
-    }
-    
-    return keys1.every(key => distances1[key] === distances2[key]);
-}
-
-onMounted(() => {
-    dragResize.onMounted();
-    
-    // Set up reactivity trigger for delayed shinyness
-    shinynessCalculator.setReactivityTrigger(() => {
-        energyEffectsTrigger.value++;
-    });
-});
-
-onUnmounted(() => {
-    dragResize.onUnmounted();
-    if (energizedCirclesDebounceTimeout) {
-        clearTimeout(energizedCirclesDebounceTimeout);
-    }
-});
+        onUnmounted(() => {
+            dragResize.onUnmounted();
+            cellularAutomaton.stop();
+            dataStore.setAutomatonTrigger(null);
+            
+            if (energizedCirclesDebounceTimeout) {
+                clearTimeout(energizedCirclesDebounceTimeout);
+            }
+        });
 
         return {
             ...state,
@@ -609,7 +439,7 @@ onUnmounted(() => {
             allConnections,
             handleViewerClick,
             handleViewerContainerClick,
-            handleCircleSelect: handleCircleSelectWithMultiSelect, // UPDATED: Use new multi-select version
+            handleCircleSelect: handleCircleSelectWithMultiSelect,
             handleCirclePositionUpdate: eventHandlers.handleCirclePositionUpdate,
             handleCircleNameUpdate: eventHandlers.handleCircleNameUpdate,
             handleMoveMultiple: eventHandlers.handleMoveMultiple,
@@ -625,20 +455,22 @@ onUnmounted(() => {
             shinynessEffects,
             getConnectionEnergyClasses,
             getShinynessEffectsForCircle,
-            energyDistances,
-            energizedConnectionsData,
-            connectionEnergyDistances,
-            energyEffectsTrigger,
-            energyAffectedConnections,
-		dampenedCircles,
-		dampenerConnections,
+            automatonState,
+            cellularAutomaton,
+            isDemoMode,
+            batchedChangeCount,
+            batchedChanges,
+            canStepCA,
+            handleCAStep,
+            handleCAStepSpecific,
         };
     },
     components: {
         EntityComponent,
         EntityControls,
         ViewerControls,
-        ConnectionComponent
+        ConnectionComponent,
+        CAStepControl
     },
     template: `
         <div 
@@ -679,35 +511,33 @@ onUnmounted(() => {
                 class="viewer-content" 
                 @click="handleViewerClick"
             >
-
-            <div 
-                v-if="energizedCirclesList.length > 0"
-                class="energized-circles-list"
-            >
                 <div 
-                    v-for="circle in energizedCirclesList"
-                    :key="circle.id"
-                    class="energized-list-item"
+                    v-if="energizedCirclesList.length > 0"
+                    class="energized-circles-list"
                 >
-                    <div style="display: inline-block; width: 8px; height: 8px; border-radius: 50%;" :style="{ backgroundColor: circle.color, }"></div>
-                    <span class="energized-circle-name">{{ circle.name }}</span>
-                    <!--span class="energized-circle-types">{{ circle.energyTypes }}</span-->
+                    <div 
+                        v-for="circle in energizedCirclesList"
+                        :key="circle.id"
+                        class="energized-list-item"
+                    >
+                        <div style="display: inline-block; width: 8px; height: 8px; border-radius: 50%;" :style="{ backgroundColor: circle.color, }"></div>
+                        <span class="energized-circle-name">{{ circle.name }}</span>
+                    </div>
                 </div>
-            </div>
-                <!-- Connection Rendering - Use combined connections (regular + explicit) with drag state -->
- <ConnectionComponent
-    v-for="connection in allConnections"
-    :key="connection.id"
-    :connection="connection"
-    :connection-energy-classes="getConnectionEnergyClasses(connection.id)"
-    :viewer-width="viewerWidth"
-    :entity-drag-state="entityDragState"
-    :viewer-id="viewerId"
-    :energy-distance="connectionEnergyDistances.get(connection.id) || {}"
-    :energy-affected-connections="energyAffectedConnections"
-    :circle-energy-distances="energyDistances"
-/>               
-                <!-- Render filtered circles -->
+                
+                <!-- Connection Rendering -->
+                <ConnectionComponent
+                    v-for="connection in allConnections"
+                    :key="connection.id"
+                    :connection="connection"
+                    :connection-energy-classes="getConnectionEnergyClasses(connection.id)"
+                    :viewer-width="viewerWidth"
+                    :entity-drag-state="entityDragState"
+                    :viewer-id="viewerId"
+                    :demo-mode="isDemoMode"
+                />
+                
+                <!-- Entity Rendering -->
                 <EntityComponent
                     v-for="circle in allCircles"
                     :key="circle.id"
@@ -720,8 +550,7 @@ onUnmounted(() => {
                     :is-dragging="entityDragState.isDragging && entityDragState.draggedEntityIds.includes(circle.id)"
                     :drag-deltas="entityDragState.currentDeltas"
                     :shinyness-effects="getShinynessEffectsForCircle(circle)"
-                    :energy-distance="energyDistances.get(circle.id) || {}"
-                    :energized-connections="energizedConnectionsData.get(circle.id) || {}"
+                    :demo-mode="isDemoMode"
                     @select="handleCircleSelect"
                     @update-position="handleCirclePositionUpdate"
                     @update-name="handleCircleNameUpdate"
@@ -751,6 +580,16 @@ onUnmounted(() => {
                 class="resize-handle"
                 @mousedown="startResize"
             ></div>
+            
+<CAStepControl
+    :batched-change-count="batchedChangeCount"
+    :batched-changes="batchedChanges"
+    :can-step="canStepCA"
+    :circles="allCircles"
+    :connections="allConnections"
+    @step="handleCAStep"
+    @step-specific="handleCAStepSpecific"
+/>
         </div>
     `
 };

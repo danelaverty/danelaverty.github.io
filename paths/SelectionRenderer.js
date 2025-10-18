@@ -14,6 +14,12 @@ const selectionStyles = `
         visibility: visible !important; /* Force visibility */
     }
 
+    .app-demo-mode .entity-selection-indicator {
+        display: none !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+    }
+
     /* Circle selection indicators */
     .entity-selection-indicator.circle {
         top: -6px;

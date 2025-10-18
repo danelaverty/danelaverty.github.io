@@ -1,7 +1,9 @@
-// DocumentsDock.js - Main DocumentsDock component (Updated with hover events for viewer highlighting)
-import { onMounted, onUnmounted } from './vue-composition-api.js';
+// DocumentsDock.js - Main DocumentsDock component (Updated with generic global properties)
+import { onMounted, onUnmounted, computed } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
+import { GLOBAL_PROPERTIES_CONFIG } from './globalPropertiesConfig.js';
 import { DocumentIconControls } from './DocumentIconControlsComponent.js';
+import { GlobalPropertyToggle } from './GlobalPropertyToggle.js';
 import { createDocumentsDockState } from './DocumentsDockState.js';
 import { createDocumentsDockHandlers } from './DocumentsDockHandlers.js';
 import { createDocumentsDockResize } from './DocumentsDockResize.js';
@@ -14,10 +16,26 @@ export const DocumentsDock = {
     emits: ['create-viewer-for-document', 'document-hover', 'document-hover-end'],
     setup(props, { emit }) {
         const dataStore = useDataStore();
+        
         // Create state and handlers
         const dockState = createDocumentsDockState();
         const handlers = createDocumentsDockHandlers(dockState, emit);
         const resize = createDocumentsDockResize();
+
+        // Generic global properties handling
+        const globalPropertiesConfig = computed(() => GLOBAL_PROPERTIES_CONFIG);
+        
+        const globalPropertiesArray = computed(() => {
+            return Object.entries(GLOBAL_PROPERTIES_CONFIG).map(([key, config]) => ({
+                key,
+                label: config.label,
+                currentValue: dataStore.getGlobalProperty(key)
+            }));
+        });
+
+        const handleToggleGlobalProperty = (propertyKey) => {
+            dataStore.toggleGlobalProperty(propertyKey);
+        };
 
         // Document hover handlers
         const handleDocumentHover = (documentId) => {
@@ -46,16 +64,21 @@ export const DocumentsDock = {
             ...handlers,
             // Resize functionality
             ...resize,
-            // New hover handlers
+            // Hover handlers
             handleDocumentHover,
             handleDocumentHoverEnd,
             getEnergizedCirclesForDocument,
+            // Generic global properties
+            globalPropertiesConfig,
+            globalPropertiesArray,
+            handleToggleGlobalProperty
         };
     },
     components: {
-        DocumentIconControls
+        DocumentIconControls,
+        GlobalPropertyToggle
     },
-template: `
+    template: `
         <div 
             ref="dockRef"
             :class="['documents-dock', { 
@@ -126,17 +149,17 @@ template: `
                     </div>
                     
                     <!-- Input field when editing -->
-<div
-    v-if="isEditingDocument(doc.id)"
-    :ref="'input-' + doc.id"
-    class="document-icon-input"
-    contenteditable="true"
-    @click.stop
-    @keydown="handleEditingKeydown($event, doc.id)"
-    @blur="handleEditingBlur(doc.id)"
-    @input="handleEditingInput($event, doc.id)"
-    spellcheck="false"
->{{ getEditingName(doc.id) }}</div>
+                    <div
+                        v-if="isEditingDocument(doc.id)"
+                        :ref="'input-' + doc.id"
+                        class="document-icon-input"
+                        contenteditable="true"
+                        @click.stop
+                        @keydown="handleEditingKeydown($event, doc.id)"
+                        @blur="handleEditingBlur(doc.id)"
+                        @input="handleEditingInput($event, doc.id)"
+                        spellcheck="false"
+                    >{{ getEditingName(doc.id) }}</div>
                     
                     <!-- Collapse/Expand Button -->
                     <div 
@@ -159,15 +182,15 @@ template: `
                         @close-viewer="handleCloseViewer"
                         @create-child-document="handleCreateChildDocument"
                     />
-<div 
-    v-if="!isEditingDocument(doc.id) && getCircleCountForDocument(doc.id) > 0"
-    class="circle-count-indicator"
-    :title="getCircleCountForDocument(doc.id) + ' circles'"
->
-    {{ getCircleCountForDocument(doc.id) }}
-</div>
+                    
+                    <div 
+                        v-if="!isEditingDocument(doc.id) && getCircleCountForDocument(doc.id) > 0"
+                        class="circle-count-indicator"
+                        :title="getCircleCountForDocument(doc.id) + ' circles'"
+                    >
+                        {{ getCircleCountForDocument(doc.id) }}
+                    </div>
                 </div>
-
 
                 <!-- Drop zone after this document -->
                 <div
@@ -182,6 +205,18 @@ template: `
                     @drop="handleDropZoneDrop($event, 'after', doc.id)"
                 ></div>
             </template>
+
+            <!-- Global Properties Container -->
+            <div class="global-properties-container">
+                <GlobalPropertyToggle
+                    v-for="prop in globalPropertiesArray"
+                    :key="prop.key"
+                    :property-key="prop.key"
+                    :label="prop.label"
+                    :current-value="prop.currentValue"
+                    @toggle="handleToggleGlobalProperty"
+                />
+            </div>
             
             <!-- Resize Handle -->
             <div 
