@@ -1,4 +1,4 @@
-// ShinynessEffectsTranslator.js - Translates shinyness values into visual effects (scale, opacity, saturation)
+// ShinynessEffectsTranslator.js - Translates shinyness values into visual effects (scale, opacity, saturation, brightness)
 export class ShinynessEffectsTranslator {
     constructor() {
         this.effectRanges = {
@@ -13,13 +13,18 @@ export class ShinynessEffectsTranslator {
             saturation: {
                 shiny: 1.0,
                 dull: 0.3
+            },
+            brightness: {
+                shiny: 1.3,
+                dull: 0.7
             }
         };
 
         this.normalValues = {
             scale: 1.0,
             opacity: 1.0,
-            saturation: 1.0
+            saturation: 1.0,
+            brightness: 1.0
         };
     }
 
@@ -55,10 +60,17 @@ export class ShinynessEffectsTranslator {
             clampedShinyness
         );
 
+        const brightness = this.lerp(
+            this.effectRanges.brightness.dull,
+            this.effectRanges.brightness.shiny,
+            clampedShinyness
+        );
+
         return {
             scale: parseFloat(scale.toFixed(3)),
             opacity: parseFloat(opacity.toFixed(3)),
-            saturation: parseFloat(saturation.toFixed(3))
+            saturation: parseFloat(saturation.toFixed(3)),
+            brightness: parseFloat(brightness.toFixed(3))
         };
     }
 
@@ -80,7 +92,7 @@ export class ShinynessEffectsTranslator {
         return {
             transform: ignoreScale ? 'scale(1.0)' : `scale(${effects.scale})`,
             opacity: effects.opacity,
-            filter: `saturate(${effects.saturation})`
+            filter: `saturate(${effects.saturation}) brightness(${effects.brightness})`
         };
     }
 

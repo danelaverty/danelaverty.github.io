@@ -95,6 +95,14 @@ export const CircleViewer = {
             state.dataStore.updateCircle(updates.id, updates);
         };
 
+const getCircleShinyness = (circleId) => {
+    // Force reactivity by depending on automatonState
+    automatonState.value;
+    
+    const state = cellularAutomaton.getCircleState(circleId);
+    return state.shinyness;
+};
+
         const explicitConnectionService = new ExplicitConnectionService({
             getCircle: state.dataStore.getCircle,
             getSquare: state.dataStore.getSquare,
@@ -452,6 +460,7 @@ const handleCAStepSpecific = (index) => {
             handleEntityDragMove,
             handleEntityDragEnd,
             handleCircleUpdate,
+            getCircleShinyness,
             shinynessEffects,
             getConnectionEnergyClasses,
             getShinynessEffectsForCircle,
@@ -526,16 +535,17 @@ const handleCAStepSpecific = (index) => {
                 </div>
                 
                 <!-- Connection Rendering -->
-                <ConnectionComponent
-                    v-for="connection in allConnections"
-                    :key="connection.id"
-                    :connection="connection"
-                    :connection-energy-classes="getConnectionEnergyClasses(connection.id)"
-                    :viewer-width="viewerWidth"
-                    :entity-drag-state="entityDragState"
-                    :viewer-id="viewerId"
-                    :demo-mode="isDemoMode"
-                />
+<ConnectionComponent
+    v-for="connection in allConnections"
+    :key="connection.id"
+    :connection="connection"
+    :connection-energy-classes="getConnectionEnergyClasses(connection.id)"
+    :viewer-width="viewerWidth"
+    :entity-drag-state="entityDragState"
+    :viewer-id="viewerId"
+    :demo-mode="isDemoMode"
+    :get-circle-shinyness="getCircleShinyness"
+/>
                 
                 <!-- Entity Rendering -->
                 <EntityComponent

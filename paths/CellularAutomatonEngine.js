@@ -51,11 +51,11 @@ export class CellularAutomatonEngine {
         const previousMode = this.cascadeMode;
         this.cascadeMode = mode;
         
-        console.log('CA: setCascadeMode', mode, 'previous:', previousMode);
+        //console.log('CA: setCascadeMode', mode, 'previous:', previousMode);
         
         // When switching from manual to auto, apply all pending changes
         if (previousMode === 'Manual' && mode === 'Auto') {
-            console.log('CA: Switching to Auto mode, applying', this.batchedChanges.length, 'pending changes');
+            //console.log('CA: Switching to Auto mode, applying', this.batchedChanges.length, 'pending changes');
             this.applyAllBatchedChanges();
             // Restart automatic iterations
             if (this.isRunning) {
@@ -65,7 +65,7 @@ export class CellularAutomatonEngine {
         
         // When switching from auto to manual, clear any pending timeout
         if (previousMode === 'Auto' && mode === 'Manual') {
-            console.log('CA: Switching to Manual mode');
+            //console.log('CA: Switching to Manual mode');
             if (this.iterationTimer) {
                 clearTimeout(this.iterationTimer);
                 this.iterationTimer = null;
@@ -119,7 +119,7 @@ export class CellularAutomatonEngine {
             return;
         }
 
-        console.log('CA: triggerImmediateIteration, mode:', this.cascadeMode);
+        //console.log('CA: triggerImmediateIteration, mode:', this.cascadeMode);
 
         // Clear the pending iteration
         if (this.iterationTimer) {
@@ -137,7 +137,7 @@ export class CellularAutomatonEngine {
     }
 
 performIteration(circles, connections) {
-    console.log('CA: performIteration, phase:', this.currentPhase, 'mode:', this.cascadeMode);
+    //console.log('CA: performIteration, phase:', this.currentPhase, 'mode:', this.cascadeMode);
     
     if (this.cascadeMode === 'Manual') {
         // In manual mode, run both phases together to show all possible changes
@@ -155,7 +155,7 @@ performIteration(circles, connections) {
         }
     }
 
-    console.log('CA: after phase, batched changes:', this.batchedChanges.length);
+    //console.log('CA: after phase, batched changes:', this.batchedChanges.length);
 
     // In auto mode, apply all changes immediately
     if (this.cascadeMode === 'Auto') {
@@ -241,14 +241,14 @@ performIteration(circles, connections) {
  */
 applyBatchedChangeByIndex(index) {
     if (index < 0 || index >= this.batchedChanges.length) {
-        console.log('CA: invalid index', index);
+        //console.log('CA: invalid index', index);
         return false;
     }
 
     // Remove the change at the specified index
     const change = this.batchedChanges.splice(index, 1)[0];
     
-    console.log('CA: applying batched change at index', index, change.type, change.id);
+    //console.log('CA: applying batched change at index', index, change.type, change.id);
     
     if (change.type === 'circle') {
         this.circleStates.set(change.id, change.state);
@@ -284,7 +284,7 @@ applyNextBatchedChange() {
 
     const change = this.batchedChanges.shift();
     
-    console.log('CA: applying batched change', change.type, change.id);
+    //console.log('CA: applying batched change', change.type, change.id);
     
     if (change.type === 'circle') {
         this.circleStates.set(change.id, change.state);
@@ -316,7 +316,7 @@ applyNextBatchedChange() {
     applyAllBatchedChanges() {
         const changeCount = this.batchedChanges.length;
         if (changeCount > 0) {
-            console.log('CA: applying all', changeCount, 'batched changes');
+            //console.log('CA: applying all', changeCount, 'batched changes');
         }
         
         while (this.batchedChanges.length > 0) {
@@ -346,14 +346,14 @@ applyNextBatchedChange() {
  */
 stepManual() {
     if (!this.isRunning || this.cascadeMode !== 'Manual') {
-        console.log('CA: stepManual called but not in correct state', {
+        /*console.log('CA: stepManual called but not in correct state', {
             isRunning: this.isRunning,
             cascadeMode: this.cascadeMode
-        });
+        });*/
         return;
     }
 
-    console.log('CA: stepManual, batched changes:', this.batchedChanges.length);
+    //console.log('CA: stepManual, batched changes:', this.batchedChanges.length);
 
     // If there are pending changes, apply the next one
     if (this.batchedChanges.length > 0) {
