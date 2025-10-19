@@ -93,6 +93,55 @@ const connectionStyles = `
         animation: barber-pole-rev 1s linear infinite;
     }
 
+/* Potential energy indicators */
+.potential-energy-indicator {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    pointer-events: none;
+    transition: width 0.3s ease;
+    animation: potential-energy-pulse 2s ease-in-out infinite;
+    /* opacity: 0; */
+    color: white;
+}
+
+.potential-energy-indicator.left {
+    left: 0;
+}
+
+.potential-energy-indicator.right {
+    right: 0;
+}
+
+/* Show and color when there's potential energy */
+.potential-energy-indicator.show-dampener {
+    opacity: 1;
+    background: linear-gradient(to right, #FF0000 5px, transparent);
+}
+
+.potential-energy-indicator.show-exciter {
+    opacity: 1;
+    background: linear-gradient(to right, #00FFFF 5px, transparent);
+}
+
+/* Right side needs opposite gradient direction */
+.potential-energy-indicator.right.show-dampener {
+    background: linear-gradient(to left, #FF0000 5px, transparent);
+}
+
+.potential-energy-indicator.right.show-exciter {
+    background: linear-gradient(to left, #00FFFF 5px, transparent);
+}
+
+@keyframes potential-energy-pulse {
+    0%, 100% {
+        width: 15px;
+    }
+    50% {
+        width: 30px;
+    }
+}
+
     /* Arrow wrapper - separate element from the line */
     .arrow-container {
         position: absolute;
@@ -187,8 +236,16 @@ export const ConnectionComponent = {
             type: Object,
             required: true
         },
+        cellularAutomaton: {
+            type: Object,
+            default: null
+        },
         viewerWidth: {
             type: Number,
+            default: null
+        },
+        getCircleShinyness: {
+            type: Function,
             default: null
         },
         entityDragState: {
@@ -271,6 +328,92 @@ export const ConnectionComponent = {
             
             return classes;
         });
+
+const potentialEnergyClasses = computed(() => {
+    if (!isExplicitConnection.value || !props.getCircleShinyness) {
+        return { left: [], right: [] };
+    }
+
+    // Only show potential energy if connection is unenergized (no energy classes)
+    if (props.connectionEnergyClasses && props.connectionEnergyClasses.length > 0) {
+        return { left: [], right: [] };
+    }
+
+    const entity1 = props.connection.entity1;
+    const entity2 = props.connection.entity2;
+    const directionality = props.connection.directionality || 'none';
+    const connectionEnergyTypes = props.connection.connectionEnergyTypes || [];
+    
+    const entity1Shinyness = props.getCircleShinyness(entity1.id);
+    const entity2Shinyness = props.getCircleShinyness(entity2.id);
+    
+    const leftClasses = [];
+    const rightClasses = [];
+    
+    // Determine which circles are inbound based on directionality
+    const entity1IsInbound = directionality === 'none' || directionality === 'both' || directionality === 'out';
+    const entity2IsInbound = directionality === 'none' || directionality === 'both' || directionality === 'in';
+    
+    // Helper to determine which energy type to show based on:
+    // 1. Intersection of circle's energy types and connection's allowed types
+    // 2. Dampener takes priority if both are present
+    const determineEnergyClass = (circleEnergyTypes) => {
+        if (!circleEnergyTypes || circleEnergyTypes.length === 0) {
+            return null;
+        }
+        
+        // If connection has no energy type restrictions, it can carry all types
+        const allowedTypes = connectionEnergyTypes.length > 0 ? connectionEnergyTypes : ['exciter', 'dampener'];
+        
+        // Find intersection of circle's types and connection's allowed types
+        const validTypes = circleEnergyTypes.filter(type => allowedTypes.includes(type));
+        
+        // Dampener takes priority
+        if (validTypes.includes('dampener')) {
+            return 'show-dampener';
+        } else if (validTypes.includes('exciter')) {
+            return 'show-exciter';
+        }
+        
+        return null;
+    };
+    
+    // Check entity1 (left): if inbound, dull, and has energy types, show potential
+    if (entity1IsInbound && entity1Shinyness === 'dull' && entity1.energyTypes) {
+        const energyClass = determineEnergyClass(entity1.energyTypes);
+        if (energyClass) {
+            leftClasses.push(energyClass);
+        }
+    }
+    
+    // Check entity2 (right): if inbound, dull, and has energy types, show potential
+    if (entity2IsInbound && entity2Shinyness === 'dull' && entity2.energyTypes) {
+        const energyClass = determineEnergyClass(entity2.energyTypes);
+        if (energyClass) {
+            rightClasses.push(energyClass);
+        }
+    }
+    
+    return { left: leftClasses, right: rightClasses };
+});
+
+const potentialEnergyDebugInfo = computed(() => {
+    if (!isExplicitConnection.value || !props.getCircleShinyness) {
+        return { left: '', right: '' };
+    }
+
+    const entity1 = props.connection.entity1;
+    const entity2 = props.connection.entity2;
+    
+    // Call the function which will internally depend on automatonState
+    const leftShinyness = props.getCircleShinyness(entity1.id);
+    const rightShinyness = props.getCircleShinyness(entity2.id);
+    
+    return {
+        left: leftShinyness,
+        right: rightShinyness
+    };
+});
 
         // Helper function to check if a circle is inactive
         const isCircleInactive = (entity) => {
@@ -456,6 +599,8 @@ export const ConnectionComponent = {
             flowDirectionClasses,
             showStartArrow,
             showEndArrow,
+            potentialEnergyClasses,
+            potentialEnergyDebugInfo
         };
     },
     template: `
@@ -471,6 +616,14 @@ export const ConnectionComponent = {
             <!--span v-if="Object.keys(energyDistance).length > 0" style="color: #888; font-size: 12px; display: block; position: absolute; left: 25%;">
 		    {{ 'E: ' + energyDistance['exciter'] }}
             </span-->
+
+<!-- Potential energy indicators -->
+<div v-if="isExplicitConnection" :class="['potential-energy-indicator', 'left', ...potentialEnergyClasses.left]">
+    <!--span>{{ potentialEnergyDebugInfo.left }}</span-->
+</div>
+<div v-if="isExplicitConnection" :class="['potential-energy-indicator', 'right', ...potentialEnergyClasses.right]">
+    <!--span>{{ potentialEnergyDebugInfo.right }}</span-->
+</div>
         </div>
     `
 };

@@ -24,9 +24,7 @@ function createDataCoordinator() {
     };
     
     const triggerAutomatonIfActive = () => {
-        console.log('a');
         if (automatonTrigger) {
-            console.log('b');
             automatonTrigger();
         }
     };
