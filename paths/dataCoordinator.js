@@ -16,6 +16,9 @@ function createDataCoordinator() {
     const uiStore = useUIStore();
     const storageKey = `circleApp_${window.location.pathname}`;
 
+    // NEW: Connect entityStore and documentStore references
+    documentStore.setEntityStoreRef(entityStore);
+
     // Automaton trigger function (set by CircleViewer)
     let automatonTrigger = null;
     
@@ -299,12 +302,12 @@ function createDataCoordinator() {
         },
         getCircleDocumentViewerProperties: documentStore.getCircleDocumentViewerProperties,
 
-        updateCircleDocumentEnergizedCircles: (id, energizedCircles) => {
-            const result = documentStore.updateCircleDocumentEnergizedCircles(id, energizedCircles);
+        updateCircleDocumentShinyCircles: (id, shinyCircles) => {
+            const result = documentStore.updateCircleDocumentShinyCircles(id, shinyCircles);
             if (result) saveToStorage();
             return result;
         },
-        getEnergizedCirclesForDocument: documentStore.getEnergizedCirclesForDocument,
+        getShinyCirclesForDocument: documentStore.getShinyCirclesForDocument,
 
         // Viewer operations (with persistence and property coordination)
         createCircleViewer: (width, documentId) => {

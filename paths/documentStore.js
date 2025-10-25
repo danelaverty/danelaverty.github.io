@@ -19,6 +19,14 @@ function createDocumentStore() {
         NONE: 'none'
     };
 
+    // NEW: Reference to entityStore - will be set via setter
+    let entityStoreRef = null;
+    
+    // NEW: Setter for entityStore reference to avoid circular dependency
+    const setEntityStoreRef = (entityStore) => {
+        entityStoreRef = entityStore;
+    };
+
     // Utility for generating unique names
     const generateUniqueName = (entityType, baseName, contextId = null) => {
         let base;
@@ -89,7 +97,7 @@ function createDocumentStore() {
                 showBackground: true, // Keep for backward compatibility
                 backgroundType: BACKGROUND_TYPES.SILHOUETTE // NEW: Default background type
             };
-            document.energizedCircles = [];
+            document.shinyCircles = [];
             
             // NEW: Initialize order property - new documents are always first
             // Increment order of all siblings with the same parent
@@ -116,11 +124,21 @@ function createDocumentStore() {
         return Array.from(store.values());
     };
 
+    // UPDATED: Update document name and cascade to document reference circles
     const updateDocumentName = (entityType, id, name) => {
         const store = entityType === 'circle' ? data.circleDocuments : data.squareDocuments;
         const document = store.get(id);
         if (document) {
             document.name = name;
+            
+            // NEW: Cascade name changes to document reference circles
+            if (entityType === 'circle' && entityStoreRef) {
+                const documentReferenceCircles = entityStoreRef.getDocumentReferenceCircles(id);
+                documentReferenceCircles.forEach(drc => {
+                    drc.name = name;
+                });
+            }
+            
             return true;
         }
         return false;
@@ -246,7 +264,7 @@ function createDocumentStore() {
     };
 
     const deleteDocument = (entityType, id) => {
-        const store = entityType === 'circle' ? data.circleDocuments : data.squareDocuments;
+        const store = entityType === 'circle' ? data.circleDocuments : data.squares;
         
         // Prevent deletion if it's the last document of its type
         if (entityType === 'circle' && data.circleDocuments.size <= 1) return false;
@@ -269,6 +287,15 @@ function createDocumentStore() {
             childDocuments.forEach(child => {
                 child.parentId = grandparentId;
             });
+            
+            // NEW: Convert document reference circles to normal circles
+            if (entityStoreRef) {
+                const documentReferenceCircles = entityStoreRef.getDocumentReferenceCircles(id);
+                documentReferenceCircles.forEach(drc => {
+                    // Clear the documentReferenceID to convert to normal circle
+                    drc.documentReferenceID = null;
+                });
+            }
         }
         
         return store.delete(id);
@@ -473,19 +500,19 @@ function createDocumentStore() {
     const updateSquareDocumentName = (id, name) => updateDocumentName('square', id, name);
     const deleteSquareDocument = (id) => deleteSquareDocumentWithSelection(id);
 
-const updateCircleDocumentEnergizedCircles = (id, energizedCircles) => {
-    const document = data.circleDocuments.get(id);
-    if (document) {
-        document.energizedCircles = energizedCircles;
-        return true;
-    }
-    return false;
-};
+    const updateCircleDocumentShinyCircles = (id, shinyCircles) => {
+        const document = data.circleDocuments.get(id);
+        if (document) {
+            document.shinyCircles = shinyCircles;
+            return true;
+        }
+        return false;
+    };
 
-const getEnergizedCirclesForDocument = (id) => {
-    const document = data.circleDocuments.get(id);
-    return document?.energizedCircles || [];
-};
+    const getShinyCirclesForDocument = (id) => {
+        const document = data.circleDocuments.get(id);
+        return document?.shinyCircles || [];
+    };
 
     const getSquareDocumentsForCircle = (circleId) => {
         return Array.from(data.squareDocuments.values()).filter(doc => doc.circleId === circleId);
@@ -571,7 +598,7 @@ const getEnergizedCirclesForDocument = (id) => {
         nextSquareDocumentId: data.nextSquareDocumentId
     });
 
-    // UPDATED: Deserialization with background type migration
+    // UPDATED: Deserialization with background type migration and energizedCircles → shinyCircles migration
     const deserialize = (savedData) => {
         if (savedData.circleDocuments) {
             data.circleDocuments = new Map(savedData.circleDocuments);
@@ -607,9 +634,14 @@ const getEnergizedCirclesForDocument = (id) => {
                     }
                 }
 
-                if (doc.energizedCircles === undefined) {
-                    doc.energizedCircles = [];
+                // MIGRATION: Convert energizedCircles to shinyCircles
+                if (doc.energizedCircles !== undefined) {
+                    doc.shinyCircles = doc.energizedCircles;
+                    delete doc.energizedCircles;
+                } else if (doc.shinyCircles === undefined) {
+                    doc.shinyCircles = [];
                 }
+                
                 // NEW: Ensure order property exists
                 if (doc.order === undefined) {
                     doc.order = 0;
@@ -645,8 +677,8 @@ const getEnergizedCirclesForDocument = (id) => {
         updateCircleDocumentPin,
         updateCircleDocumentParent,
         deleteCircleDocument,
-        updateCircleDocumentEnergizedCircles,
-        getEnergizedCirclesForDocument,
+        updateCircleDocumentShinyCircles,
+        getShinyCirclesForDocument,
         // UPDATED: Viewer properties methods with background type support
         updateCircleDocumentViewerProperties,
         getCircleDocumentViewerProperties,
@@ -676,7 +708,9 @@ const getEnergizedCirclesForDocument = (id) => {
         deleteSquareDocumentsForCircle,
         // Serialization
         serialize,
-        deserialize
+        deserialize,
+        // NEW: EntityStore reference setter
+        setEntityStoreRef,
     };
 }
 

@@ -7,16 +7,22 @@ export const GlowCircleRenderer = {
     /**
      * Render glow circle type
      */
-    render(element, circle, squareCount) {
+    render(element, circle, squareCount, isRoilMember = false) {
         if (!element) return;
+
+        const glowContainer = document.createElement('div');
+        glowContainer.className = 'circle-glow-container';
+        element.appendChild(glowContainer);
         
         // Create glow element
         const glowElement = document.createElement('div');
         glowElement.className = 'circle-glow';
-        element.appendChild(glowElement);
+        glowContainer.appendChild(glowElement);
 
-        // Create particles
-        ParticleSystem.create(element, circle);
+        // Create particles - hide for drones AND roil members
+        if (!circle.isDrone && !isRoilMember) {
+                ParticleSystem.create(element, circle);
+        }
 
         // Create chakra form
         ChakraFormSystem.create(element, circle, squareCount);

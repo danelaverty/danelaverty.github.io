@@ -42,8 +42,8 @@ export const DocumentsDock = {
             emit('document-hover', documentId);
         };
 
-        const getEnergizedCirclesForDocument = (documentId) => {
-            return dataStore.getEnergizedCirclesForDocument(documentId);
+        const getShinyCirclesForDocument = (documentId) => {
+            return dataStore.getShinyCirclesForDocument(documentId);
         };
 
         const handleDocumentHoverEnd = () => {
@@ -67,7 +67,7 @@ export const DocumentsDock = {
             // Hover handlers
             handleDocumentHover,
             handleDocumentHoverEnd,
-            getEnergizedCirclesForDocument,
+            getShinyCirclesForDocument,
             // Generic global properties
             globalPropertiesConfig,
             globalPropertiesArray,
@@ -137,14 +137,14 @@ export const DocumentsDock = {
                     <div v-if="!isEditingDocument(doc.id)">
                         {{ getDocumentDisplayName(doc) }}
                         <div 
-                            v-for="energizedCircle in getEnergizedCirclesForDocument(doc.id)"
-                            class="energized-count"
+                            v-for="shinyCircle in getShinyCirclesForDocument(doc.id)"
+                            class="shiny-count"
                         >
                             <div 
                                 style="display: inline-block; width: 8px; height: 8px; border-radius: 50%;" 
-                                :style="{ backgroundColor: energizedCircle.color }"
+                                :style="{ backgroundColor: shinyCircle.color }"
                             ></div>
-                            <span style="margin: 0px 3px;">{{ energizedCircle.name }}</span>
+                            <span style="margin: 0px 3px;">{{ shinyCircle.name }}</span>
                         </div>
                     </div>
                     
@@ -171,17 +171,20 @@ export const DocumentsDock = {
                     </div>
                     
                     <!-- Document Icon Controls -->
-                    <DocumentIconControls
-                        v-if="!isEditingDocument(doc.id)"
-                        :document-id="doc.id"
-                        :circle-count="getCircleCountForDocument(doc.id)"
-                        :can-delete="canDeleteDocument(doc.id)"
-                        :has-open-viewer="hasOpenViewer(doc.id)"
-                        :has-children="hasChildren(doc.id)"
-                        @delete-document="handleDeleteDocument"
-                        @close-viewer="handleCloseViewer"
-                        @create-child-document="handleCreateChildDocument"
-                    />
+<DocumentIconControls
+    v-if="!isEditingDocument(doc.id)"
+    :document-id="doc.id"
+    :circle-count="getCircleCountForDocument(doc.id)"
+    :can-delete="canDeleteDocument(doc.id)"
+    :has-open-viewer="hasOpenViewer(doc.id)"
+    :has-children="hasChildren(doc.id)"
+    :document-level="doc.level"
+    @delete-document="handleDeleteDocument"
+    @close-viewer="handleCloseViewer"
+    @create-child-document="handleCreateChildDocument"
+    @open-document="handleOpenDocument"
+    @create-reference-circle="handleCreateReferenceCircle"
+/>
                     
                     <div 
                         v-if="!isEditingDocument(doc.id) && getCircleCountForDocument(doc.id) > 0"

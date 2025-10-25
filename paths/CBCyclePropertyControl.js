@@ -54,13 +54,8 @@ export const CBCyclePropertyControl = {
   },
   
   template: `
-    <div class="characteristic-control">
-        <div 
-            :class="[cssClassPrefix + '-display', propertyValue]"
-            @click="$emit('cycle')"
-            style="cursor: pointer;"
-            :title="propertyTitle"
-        >
+    <div class="characteristic-control" @click="$emit('cycle')" :title="propertyTitle">
+        <div :class="[cssClassPrefix + '-display', propertyValue]">
             <div :class="cssClassPrefix + '-icon'">{{ propertyIcon }}</div>
         </div>
     </div>

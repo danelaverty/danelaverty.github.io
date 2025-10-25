@@ -77,7 +77,8 @@ export class CellularAutomatonEngine {
         circles.forEach(circle => {
             this.circleStates.set(circle.id, {
                 energized: 'unenergized',
-                shinyness: 'default'
+                shinyness: 'default',
+                partiallyExcited: false,
             });
         });
 
@@ -187,16 +188,24 @@ performIteration(circles, connections) {
                 energized
             );
 
+            const partiallyExcited = this.stateCalculator.isCirclePartiallyExcited(
+                    circle,
+                    connections,
+                    this.connectionStates
+            );
+
             const newState = {
-                energized,
-                shinyness
+                    energized,
+                    shinyness,
+                    partiallyExcited
             };
 
             // Check if this would actually change the state
             const currentState = this.circleStates.get(circle.id);
             if (!currentState || 
                 currentState.energized !== newState.energized || 
-                currentState.shinyness !== newState.shinyness) {
+                currentState.shinyness !== newState.shinyness ||
+                currentState.partiallyExcited !== newState.partiallyExcited) {
                 
                 // Batch the change instead of applying immediately
                 this.batchedChanges.push({

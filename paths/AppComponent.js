@@ -84,6 +84,26 @@ export const App = {
             hoveredDocumentId.value = null;
         };
 
+        // NEW: Handle opening viewer for document reference circles (CTRL-SHIFT-click)
+        const handleOpenDocumentViewer = (documentId) => {
+            // Check if this document already has a visible viewer
+            const visibleViewers = dataStore.getVisibleCircleViewers();
+            const existingViewer = visibleViewers.find(viewer => {
+                const doc = dataStore.getCircleDocumentForViewer(viewer.id);
+                return doc && doc.id === documentId;
+            });
+
+            if (existingViewer) {
+                // If viewer exists, just select it
+                dataStore.setSelectedViewer(existingViewer.id);
+            } else {
+                // Create new viewer for this document
+                const newViewer = dataStore.createCircleViewer();
+                dataStore.setCircleDocumentForViewer(newViewer.id, documentId);
+                dataStore.setSelectedViewer(newViewer.id);
+            }
+        };
+
         // Computed properties for viewers and squares
         const visibleCircleViewers = computed(() => dataStore.getVisibleCircleViewers());
         
@@ -340,6 +360,7 @@ export const App = {
             hoveredDocumentId,
             handleDocumentHover,
             handleDocumentHoverEnd,
+            handleOpenDocumentViewer, // NEW: Handler for document reference circles
             // Square drag state
             squareDragState,
             handleSquareDragStart,
@@ -387,6 +408,7 @@ export const App = {
                     @close-viewer="handleCloseViewer"
                     @viewer-click="handleViewerContainerClick"
                     @show-dropdown="handleShowDropdown"
+                    @open-document-viewer="handleOpenDocumentViewer"
                 />
                 
                 <!-- Square Viewer -->
