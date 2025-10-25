@@ -70,6 +70,10 @@ export class EntityStyleCalculator {
         if (this.props.entityType === 'square' && this.props.entity.emoji) {
             classes.push('has-emoji');
         }
+
+        if (this.props.isPartiallyExcited) {
+            classes.push('partially-excited');
+        }
         
         return classes;
     }

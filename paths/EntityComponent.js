@@ -1,5 +1,5 @@
 // EntityComponent.js - Main entity component shell with template (UPDATED: Add group shape scaling and collapsed group member count display)
-import { computed, ref } from './vue-composition-api.js';
+import { computed, ref, watch, onUnmounted } from './vue-composition-api.js';
 import { injectComponentStyles } from './styleUtils.js';
 import { EmojiRenderer } from './EmojiRenderer.js';
 import { EnergyIndicators } from './EnergyIndicators.js';
@@ -8,6 +8,7 @@ import { useEntityRendering } from './EntityRendering.js';
 import { useEntityInteractions } from './EntityInteractions.js';
 import { ConnectionManager } from './ConnectionManager.js';
 import { GroupResizeHandles } from './GroupResizeHandles.js';
+import { lighten } from './colorUtils.js';
 
 const connectionManager = new ConnectionManager();
 
@@ -47,9 +48,50 @@ const componentStyles = `
 
     .entity-shape.circle-shape {
         border-radius: 50%;
-        border: 3px solid #45a049;
         transition: transform 1.0s cubic-bezier(0.2,-2,0.8,2), opacity 1.0s cubic-bezier(0.2,-2,0.8,2), filter 1.0s cubic-bezier(0.2,-2,0.8,2);
     }
+
+    .entity-container, .circle-type-glow {
+        mix-blend-mode: color-dodge;
+    }
+
+/* Partially excited animation - buzzes every 1 second */
+.entity-shape.partially-excited .circle-glow-container {
+    animation: buzz 3s linear infinite;
+}
+
+@keyframes buzz {
+    0%, 80% {
+        transform: translate(0, 0);
+    }
+    82% {
+        transform: translate(-2px, -2px);
+    }
+    84% {
+        transform: translate(2px, 2px);
+    }
+    86% {
+        transform: translate(-2px, 2px);
+    }
+    88% {
+        transform: translate(2px, -2px);
+    }
+    90% {
+        transform: translate(-2px, 2px);
+    }
+    92% {
+        transform: translate(2px, -2px);
+    }
+    94% {
+        transform: translate(-2px, -2px);
+    }
+    96% {
+        transform: translate(2px, 2px);
+    }
+    99%, 100% {
+        transform: translate(0, 0);
+    }
+}
 
     .emoji-circle-container {
         transition: transform 1.0s cubic-bezier(0.2,-2,0.8,2), opacity 1.0s cubic-bezier(0.2,-2,0.8,2), filter 1.0s cubic-bezier(0.2,-2,0.8,2);
@@ -307,6 +349,102 @@ const componentStyles = `
         box-shadow: none !important;
     }
 
+
+.beacon-container {
+position: absolute;
+bottom: 0;
+}
+
+.beacon-light {
+    position: absolute;
+    bottom: 50%;
+    left: 50%;
+    width: 2px;
+    height: 90px;
+    /* Color and animation applied dynamically via inline styles */
+    transform: translateX(-50%);
+}
+
+    @keyframes beaconDrift1 {
+        0%, 100% {
+            transform: translateX(-50%);
+            opacity: 0.3;
+        }
+        25% {
+            opacity: 0;
+        }
+        50% {
+            transform: translateX(calc(-50% - 1px));
+            opacity: 0.1;
+        }
+        75% {
+            opacity: 0.4;
+        }
+    }
+
+    @keyframes beaconDrift2 {
+        0%, 100% {
+            transform: translateX(-50%);
+            opacity: 0.2;
+        }
+        30% {
+            opacity: 0.3;
+        }
+        50% {
+            transform: translateX(calc(-50% + 1px));
+            opacity: 0.5;
+        }
+        80% {
+            opacity: 0.3;
+        }
+    }
+
+    @keyframes beaconDrift3 {
+        0%, 100% {
+            transform: translateX(-50%);
+            opacity: 0.4;
+        }
+        20% {
+            opacity: 0.2;
+        }
+        50% {
+            transform: translateX(calc(-50% + 5px));
+            opacity: 0;
+        }
+        70% {
+            opacity: 0.5;
+        }
+    }
+
+.beacon-glow {
+    position: absolute;
+    bottom: 0%;
+    left: 50%;
+    transform: translate(-50%, -20%);
+    width: 25px;
+    height: 25px;
+    filter: blur(10px);
+    /* Color and animation applied dynamically via inline styles */
+}
+
+    @keyframes baseGlowPulse {
+        0%, 100% {
+            opacity: 0.6;
+        }
+        50% {
+            opacity: 1;
+        }
+    }
+
+    @keyframes baseGlowExpand {
+        0%, 100% {
+            filter: blur(10px);
+        }
+        50% {
+            filter: blur(15px);
+        }
+    }
+
 `;
 
 injectComponentStyles('entity-component', componentStyles);
@@ -339,10 +477,18 @@ export const EntityComponent = {
             type: Object,
             default: () => ({ deltaX: 0, deltaY: 0 })
         },
+        isPartiallyExcited: {
+            type: Boolean,
+            default: false
+        },
         demoMode: {
             type: Boolean,
             default: false
-        }
+        },
+        isDrone: {
+            type: Boolean,
+            default: false
+        },
     },
     components: {
         EmojiRenderer,
@@ -362,11 +508,175 @@ export const EntityComponent = {
 
         const shapeRef = rendering.shapeRef;
 
+// NEW: Beacon color cycling for document reference circles
+const beaconKeyframeId = ref(null);
+
+// Generate beacon colors from shinyCircles
+const beaconColors = computed(() => {
+    const shinyCircles = state.documentShinyCircles.value;
+    
+    if (shinyCircles.length === 0) {
+        return []; // No colors = hide beacons
+    }
+    
+    const colors = shinyCircles.map(circle => circle.color);
+    
+    // If only one color, add a lighter version for cycling effect
+    if (colors.length === 1) {
+        colors.push(lighten(colors[0], 40)); // Lighten by 40%
+    }
+    
+    return colors;
+});
+
+// Show beacons only if we have colors
+const shouldShowBeacons = computed(() => {
+    return props.entity.documentReferenceID && beaconColors.value.length > 0;
+});
+
+// Generate unique keyframe animations for beacon color cycling with smooth transitions
+const generateBeaconKeyframes = (colors, id) => {
+    if (colors.length === 0) return;
+    
+    const keyframeCount = colors.length;
+    const stepPercent = 100 / keyframeCount;
+    const transitionPercent = stepPercent * 0.3; // Use 30% of each step for transitions
+    
+    // Generate keyframes for beacon-light gradient with smooth transitions
+    let lightKeyframes = `@keyframes beaconColorCycle-light-${id} {\n`;
+    colors.forEach((color, index) => {
+        const startPercent = (index * stepPercent).toFixed(2);
+        const endPercent = ((index + 1) * stepPercent - transitionPercent).toFixed(2);
+        const nextColor = colors[(index + 1) % colors.length];
+        
+        // Hold current color for most of the step
+        lightKeyframes += `  ${startPercent}% { background: linear-gradient(to top, transparent 0%, ${color} 50%, transparent 100%); }\n`;
+        lightKeyframes += `  ${endPercent}% { background: linear-gradient(to top, transparent 0%, ${color} 50%, transparent 100%); }\n`;
+        
+        // Transition to next color at the end of the step
+        if (index < colors.length - 1 || colors.length > 1) {
+            const transitionEndPercent = ((index + 1) * stepPercent).toFixed(2);
+            lightKeyframes += `  ${transitionEndPercent}% { background: linear-gradient(to top, transparent 0%, ${nextColor} 50%, transparent 100%); }\n`;
+        }
+    });
+    lightKeyframes += `}\n`;
+    
+    // Generate keyframes for beacon-glow with smooth transitions
+    let glowKeyframes = `@keyframes beaconColorCycle-glow-${id} {\n`;
+    colors.forEach((color, index) => {
+        const startPercent = (index * stepPercent).toFixed(2);
+        const endPercent = ((index + 1) * stepPercent - transitionPercent).toFixed(2);
+        const nextColor = colors[(index + 1) % colors.length];
+        
+        // Hold current color for most of the step
+        glowKeyframes += `  ${startPercent}% { background-color: ${color}; }\n`;
+        glowKeyframes += `  ${endPercent}% { background-color: ${color}; }\n`;
+        
+        // Transition to next color at the end of the step
+        if (index < colors.length - 1 || colors.length > 1) {
+            const transitionEndPercent = ((index + 1) * stepPercent).toFixed(2);
+            glowKeyframes += `  ${transitionEndPercent}% { background-color: ${nextColor}; }\n`;
+        }
+    });
+    glowKeyframes += `}\n`;
+    
+    return lightKeyframes + glowKeyframes;
+};
+
+// Inject keyframes into document head
+const injectBeaconKeyframes = (colors) => {
+    // Remove old keyframes if they exist
+    if (beaconKeyframeId.value) {
+        const oldStyle = document.getElementById(beaconKeyframeId.value);
+        if (oldStyle) {
+            oldStyle.remove();
+        }
+    }
+    
+    if (colors.length === 0) {
+        beaconKeyframeId.value = null;
+        return;
+    }
+    
+    // Generate unique ID for this entity's keyframes
+    const id = `entity-${props.entity.id}`;
+    beaconKeyframeId.value = `beacon-keyframes-${id}`;
+    
+    // Create and inject style element
+    const styleElement = document.createElement('style');
+    styleElement.id = beaconKeyframeId.value;
+    styleElement.textContent = generateBeaconKeyframes(colors, id);
+    document.head.appendChild(styleElement);
+};
+
+// Watch for changes in beacon colors and update keyframes
+watch(beaconColors, (newColors) => {
+    injectBeaconKeyframes(newColors);
+}, { immediate: true });
+
+// Cleanup keyframes on unmount
+onUnmounted(() => {
+    if (beaconKeyframeId.value) {
+        const styleElement = document.getElementById(beaconKeyframeId.value);
+        if (styleElement) {
+            styleElement.remove();
+        }
+    }
+});
+
+// Generate random offsets for this beacon (stable per entity instance)
+const beaconRandomOffsets = (() => {
+    // Use entity ID as seed for consistent randomness per entity
+    const seed = props.entity.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const random = (index) => {
+        // Simple seeded random function
+        const x = Math.sin(seed + index) * 10000;
+        return (x - Math.floor(x));
+    };
+    
+    return {
+        drift1: random(1),
+        drift2: random(2),
+        drift3: random(3),
+        pulse: random(4),
+        expand: random(5)
+    };
+})();
+
+// Beacon animation styles
+const beaconAnimationStyles = computed(() => {
+    if (!shouldShowBeacons.value) return {};
+    
+    const id = `entity-${props.entity.id}`;
+    
+    // Apply random offsets (0.0s to 1.0s) to each animation duration
+    const drift1Duration = 5 + beaconRandomOffsets.drift1;
+    const drift2Duration = 7 + beaconRandomOffsets.drift2;
+    const drift3Duration = 6 + beaconRandomOffsets.drift3;
+    const pulseDuration = 8 + beaconRandomOffsets.pulse;
+    const expandDuration = 8 + beaconRandomOffsets.expand;
+    
+    return {
+        light1: {
+            animation: `beaconDrift1 ${drift1Duration}s ease-in-out infinite, beaconColorCycle-light-${id} 7.3s linear infinite`
+        },
+        light2: {
+            animation: `beaconDrift2 ${drift2Duration}s ease-in-out infinite, beaconColorCycle-light-${id} 9.7s linear infinite`
+        },
+        light3: {
+            animation: `beaconDrift3 ${drift3Duration}s ease-in-out infinite, beaconColorCycle-light-${id} 11.9s linear infinite`
+        },
+        glow: {
+            animation: `baseGlowPulse ${pulseDuration}s ease-in-out infinite, baseGlowExpand ${expandDuration}s ease-in-out infinite, beaconColorCycle-glow-${id} 12s linear infinite`
+        }
+    };
+});
+
         // Computed style for shape scaling (group circles only)
         const shapeScaleStyles = computed(() => {
             if (state.groupShapeScale.value !== 1) {
-                //const scale = state.groupShapeScale.value;
-                const scale = 1;
+                const scale = state.groupShapeScale.value;
+                //const scale = 1;
                 const scaledSize = Math.round(32 * scale);
                 return {
                     width: `${scaledSize}px`,
@@ -468,23 +778,24 @@ const groupCircleStyles = computed(() => {
     }
     
     const baseSize = 32;
-    let width = baseSize;
-    let height = baseSize;
+    let finalSize = baseSize;
     
+    // Priority 1: Manual sizing (user has resized)
     if (props.entity.sizeMode === 'manual' && props.entity.manualWidth && props.entity.manualHeight) {
-        width = props.entity.manualWidth;
-        height = props.entity.manualHeight;
-    } else if (!props.entity.collapsed && state.belongingCirclesCount?.value > 0) {
-        // Auto sizing logic if needed
-        width = baseSize;
-        height = baseSize;
+        finalSize = props.entity.manualWidth; // Assuming width === height for circles
     }
+    // Priority 2: Auto-sizing based on member count when expanded
+    else if (!props.entity.collapsed && state.belongingCirclesCount?.value > 0) {
+        const scale = state.groupShapeScale?.value || 1;
+        finalSize = baseSize * scale;
+    }
+    // Priority 3: Collapsed state uses normal size (finalSize stays at baseSize)
     
     const color = props.entity.colors?.[0] || props.entity.color || '#4CAF50';
     
     return {
-        width: `${width}px`,
-        height: `${height}px`,
+        width: `${finalSize}px`,
+        height: `${finalSize}px`,
         borderColor: color,
         backgroundColor: `color-mix(in srgb, ${color} 15%, transparent)`
     };
@@ -503,7 +814,9 @@ return {
         handleResizeStart,
         handleResizeMove,
         handleResizeEnd,
-        groupCircleStyles
+        groupCircleStyles,
+        shouldShowBeacons,
+        beaconAnimationStyles,
     };
     },
     template: `
@@ -582,6 +895,7 @@ return {
     @resize-end="handleResizeEnd"
 />
         </div>
+
         <!-- For triangle circles, render a special container with scaling -->
         <div 
             v-else-if="entityType === 'circle' && entity.type === 'triangle'"
@@ -606,6 +920,12 @@ return {
             }"
         ></div>
         
+<div class="beacon-container" v-if="shouldShowBeacons">
+    <div class="beacon-light" :style="beaconAnimationStyles.light1"></div>
+    <div class="beacon-light" :style="beaconAnimationStyles.light2"></div>
+    <div class="beacon-light" :style="beaconAnimationStyles.light3"></div>
+    <div class="beacon-glow" :style="beaconAnimationStyles.glow"></div>
+</div>
         <!-- Energy indicators for circles -->
         
         <div 
@@ -625,7 +945,7 @@ return {
             {{ 'E: ' + energyDistance['exciter'] }}
         </span-->
         <EnergyIndicators 
-            v-if="entityType === 'circle' && !demoMode"
+            v-if="entityType === 'circle' && !demoMode && !isDrone"
             :energyTypes="circleEnergyTypes"
         />
         </div>

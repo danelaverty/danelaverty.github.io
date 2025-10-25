@@ -8,7 +8,7 @@ export const baseCharacteristicsStyles = `
         display: flex;
         align-items: center;
         padding: 0 20px;
-        gap: 2px;
+        gap: 8px;
         z-index: 1002;
         transition: transform 0.3s ease;
     }
@@ -18,9 +18,31 @@ export const baseCharacteristicsStyles = `
     }
 
     .characteristic-control {
+        color: white;
         display: flex;
         align-items: center;
-        gap: 8px;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        background-color: rgba(40, 40, 40, 0.8);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
+        position: relative;
+    }
+    
+    .characteristic-control:hover {
+        background-color: rgba(60, 60, 60, 0.9);
+        border-color: rgba(255, 255, 255, 0.25);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+    
+    .characteristic-control:active {
+        transform: translateY(0);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
     }
 
     .characteristic-label {
@@ -28,47 +50,6 @@ export const baseCharacteristicsStyles = `
         font-size: 14px;
         font-weight: 500;
         min-width: 40px;
-    }
-`;
-
-export const displayStyles = `
-    .color-display,
-    .type-display,
-    .energy-display,
-    .emoji-display,
-    .activation-display {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        padding: 4px 8px;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        height: 32px;
-    }
-
-    .color-display.picker-open,
-    .type-display.picker-open,
-    .energy-display.picker-open,
-    .emoji-display.picker-open {
-        background-color: rgba(80, 80, 80, 0.8);
-        border-color: rgba(255, 255, 255, 0.4);
-    }
-
-    .energy-display {
-        min-width: 24px;
-    }
-
-    .type-display {
-        gap: 6px;
-    }
-
-    .emoji-display {
-        gap: 6px;
-    }
-
-    .activation-display {
-        gap: 6px;
     }
 `;
 
@@ -108,12 +89,13 @@ export const colorStyles = `
 
 export const typeStyles = `
     .type-icon {
-        font-size: 16px;
+        font-size: 18px;
         color: white;
         display: flex;
         align-items: center;
         justify-content: center;
-        min-width: 20px;
+        width: 100%;
+        height: 100%;
     }
 
     .type-name {
@@ -203,12 +185,13 @@ export const energyStyles = `
 
 export const activationStyles = `
     .activation-icon {
-        font-size: 12px;
+        font-size: 16px;
         line-height: 1;
         display: flex;
         align-items: center;
         justify-content: center;
-        min-width: 16px;
+        width: 100%;
+        height: 100%;
     }
 
     .activation-label {
@@ -222,6 +205,33 @@ export const activationStyles = `
     .activation-display.activated .activation-label {
         color: #e8f5e8;
     }
+    
+    /* Specific styles for cycle property controls */
+    .shinyness-receive-mode-display,
+    .activation-triggers-display,
+    .activation-display,
+    .connectible-display,
+    .directionality-display,
+    .size-mode-display {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .shinyness-receive-mode-icon,
+    .activation-triggers-icon,
+    .activation-icon,
+    .connectible-icon,
+    .directionality-icon,
+    .size-mode-icon {
+        font-size: 16px;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
 `;
 
 export const emojiStyles = `
@@ -231,8 +241,23 @@ export const emojiStyles = `
         display: flex;
         align-items: center;
         justify-content: center;
-        min-width: 24px;
-        height: 24px;
+        width: 100%;
+        height: 100%;
+    }
+    
+    .emoji-display {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: transparent;
+        border: none;
+    }
+    
+    .emoji-icon {
+        font-size: 16px;
+        color: white;
     }
 
     .recent-emojis-container {
@@ -246,6 +271,7 @@ export const emojiStyles = `
         height: 32px;
         background-color: rgba(255, 255, 255, 0.2);
         border-radius: 1px;
+        margin: 0 4px;
     }
 
     .recent-emojis-palette {
@@ -309,69 +335,5 @@ export const emojiStyles = `
 
     .clear-recent-button:hover .clear-recent-icon {
         color: white;
-    }
-
-    .connectible-display {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        padding: 4px 8px;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        height: 32px;
-    }
-
-    .connectible-display:hover {
-        background-color: rgba(60, 60, 60, 0.9);
-        border-color: rgba(255, 255, 255, 0.4);
-        transform: scale(1.05);
-    }
-
-    .connectible-icon {
-        font-size: 16px;
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 20px;
-        line-height: 1;
-    }
-
-    .connectible-label {
-        color: white;
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        white-space: nowrap;
-    }
-
-    /* State-specific styling */
-    .connectible-display.receives {
-        border-color: rgba(100, 149, 237, 0.3);
-    }
-
-    .connectible-display.receives:hover {
-        border-color: rgba(100, 149, 237, 0.6);
-        background-color: rgba(100, 149, 237, 0.1);
-    }
-
-    .connectible-display.gives {
-        border-color: rgba(50, 205, 50, 0.3);
-    }
-
-    .connectible-display.gives:hover {
-        border-color: rgba(50, 205, 50, 0.6);
-        background-color: rgba(50, 205, 50, 0.1);
-    }
-
-    .connectible-display.refuses {
-        border-color: rgba(220, 20, 60, 0.3);
-    }
-
-    .connectible-display.refuses:hover {
-        border-color: rgba(220, 20, 60, 0.6);
-        background-color: rgba(220, 20, 60, 0.1);
     }
 `;

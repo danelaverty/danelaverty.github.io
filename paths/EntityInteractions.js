@@ -6,7 +6,7 @@ import { EntityNameEditor } from './EntityNameEditor.js';
 
 export const useEntityInteractions = (props, emit, state) => {
     const dataStore = useDataStore();
-    const { elementRef, nameRef, isReferencedCircle, isAnimationCopy, enhancedProps } = state;
+    const { elementRef, nameRef, isReferencedCircle, isDocumentReferenceCircle, isAnimationCopy, enhancedProps } = state;
 
     // Track last click time for double-click detection
     const lastClickTime = ref(0);
@@ -37,8 +37,21 @@ export const useEntityInteractions = (props, emit, state) => {
         }
     };
 
-    // Enhanced click handler with double-click detection
+    // Enhanced click handler with double-click detection and CTRL-SHIFT-click for document reference circles
     const handleClick = (e) => {
+        // NEW: Check for CTRL-SHIFT-click on document reference circles
+        if (e.ctrlKey && e.shiftKey && 
+            props.entityType === 'circle' && 
+            isDocumentReferenceCircle.value && 
+            props.entity.documentReferenceID) {
+            e.stopPropagation();
+            e.preventDefault();
+            
+            // Emit event to open viewer for the referenced document
+            emit('open-document-viewer', props.entity.documentReferenceID);
+            return;
+        }
+        
         const currentTime = Date.now();
         const timeSinceLastClick = currentTime - lastClickTime.value;
         
@@ -66,22 +79,22 @@ export const useEntityInteractions = (props, emit, state) => {
         }, doubleClickThreshold);
     };
 
-    // Create a modified name editor that respects referenced circles and animation copies
-    const createNameEditor = () => {
-        const baseEditor = new EntityNameEditor(nameRef, emit);
-        
-        // Override the handleNameClick to prevent editing for referenced circles and animation copies
-        const originalHandleNameClick = baseEditor.handleNameClick;
-        baseEditor.handleNameClick = (e) => {
-            if (isReferencedCircle.value || isAnimationCopy.value) {
-                e.stopPropagation();
-                return; // Don't allow editing for referenced circles or animation copies
-            }
-            originalHandleNameClick(e);
-        };
-        
-        return baseEditor;
+// Create a modified name editor that respects referenced circles and animation copies
+const createNameEditor = () => {
+    const baseEditor = new EntityNameEditor(nameRef, emit);
+    
+    // Override the handleNameClick to prevent editing for referenced circles, document reference circles, and animation copies
+    const originalHandleNameClick = baseEditor.handleNameClick;
+    baseEditor.handleNameClick = (e) => {
+        if (isReferencedCircle.value || isDocumentReferenceCircle.value || isAnimationCopy.value) {
+            e.stopPropagation();
+            return; // Don't allow editing for referenced circles, document reference circles, or animation copies
+        }
+        originalHandleNameClick(e);
     };
+    
+    return baseEditor;
+};
 
     const nameEditor = createNameEditor();
 

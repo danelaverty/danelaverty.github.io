@@ -36,10 +36,29 @@ export class EnergyStateCalculator {
         }
 
         // Rule 3: Has an excited inbound connection?
-        for (const connection of inboundConnections) {
-            const connectionState = connectionStates.get(connection.id);
-            if (connectionState && connectionState.energized === 'excited') {
-                return 'excited';
+        // Check shinynessReceiveMode to determine if we need ANY or ALL connections excited
+        const receiveMode = circle.shinynessReceiveMode || 'or'; // default to 'or'
+
+        if (receiveMode === 'and') {
+            // 'and' mode: ALL inbound connections must be excited
+            if (inboundConnections.length > 0) {
+                const allExcited = inboundConnections.every(connection => {
+                    const connectionState = connectionStates.get(connection.id);
+                    return connectionState && connectionState.energized === 'excited';
+                });
+                
+                if (allExcited) {
+                    return 'excited';
+                }
+            }
+            // If not all excited (or no connections), fall through to Rule 4
+        } else {
+            // 'or' mode (default): ANY inbound connection excited
+            for (const connection of inboundConnections) {
+                const connectionState = connectionStates.get(connection.id);
+                if (connectionState && connectionState.energized === 'excited') {
+                    return 'excited';
+                }
             }
         }
 
@@ -94,6 +113,47 @@ export class EnergyStateCalculator {
         // Rule 3: Else, unenergized
         return 'unenergized';
     }
+
+/**
+ * Check if a circle is partially excited (for 'and' mode circles only)
+ * Returns true if:
+ * - Circle is in 'and' mode
+ * - Has at least one excited inbound connection
+ * - Has at least one non-excited inbound connection
+ */
+isCirclePartiallyExcited(circle, connections, connectionStates) {
+    const receiveMode = circle.shinynessReceiveMode || 'or';
+    
+    // Only applies to 'and' mode
+    if (receiveMode !== 'and') {
+        return false;
+    }
+    
+    const inboundConnections = this.getInboundConnectionsForCircle(circle.id, connections);
+    
+    if (inboundConnections.length === 0) {
+        return false;
+    }
+    
+    let hasExcited = false;
+    let hasNonExcited = false;
+    
+    for (const connection of inboundConnections) {
+        const connectionState = connectionStates.get(connection.id);
+        if (connectionState && connectionState.energized === 'excited') {
+            hasExcited = true;
+        } else {
+            hasNonExcited = true;
+        }
+        
+        // Early exit if we've found both
+        if (hasExcited && hasNonExcited) {
+            return true;
+        }
+    }
+    
+    return false;
+}
 
     /**
      * Calculate shinyness for a circle based on energized state and activation

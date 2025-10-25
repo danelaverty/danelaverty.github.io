@@ -297,7 +297,7 @@ const handleDrop = (e, targetDocId) => {
         const newDoc = dataStore.createCircleDocument(newDocName, parentDocId);
 
         // Special case: If parent is "Landscapes", set backgroundType to "none"
-        if (parentDoc && parentDoc.name === 'Landscapes') {
+        if (parentDoc && parentDoc.name !== 'Dailies') {
             dataStore.updateCircleDocumentViewerProperties(newDoc.id, {
                 backgroundType: 'none'
             });
@@ -316,6 +316,86 @@ const handleDrop = (e, targetDocId) => {
 
         emit('create-viewer-for-document', newDoc.id);
     };
+
+const handleCreateReferenceCircle = (documentId) => {
+    // Get the document to find its parent
+    const document = dataStore.getAllCircleDocuments().find(d => d.id === documentId);
+    
+    if (!document || !document.parentId) {
+        console.warn('Cannot create reference circle: document has no parent');
+        return;
+    }
+    
+    const parentDocId = document.parentId;
+    
+    // Check if parent document already has a visible viewer
+    const visibleViewers = dataStore.getVisibleCircleViewers();
+    let targetViewer = visibleViewers.find(viewer => {
+        const doc = dataStore.getCircleDocumentForViewer(viewer.id);
+        return doc && doc.id === parentDocId;
+    });
+    
+    // If no viewer exists for parent document, create one
+    if (!targetViewer) {
+        targetViewer = dataStore.createCircleViewer();
+        dataStore.setCircleDocumentForViewer(targetViewer.id, parentDocId);
+    }
+    
+    // Get parent document's viewer properties for container width
+    const viewerProperties = dataStore.getCircleDocumentViewerProperties(parentDocId);
+    const containerWidth = viewerProperties.width;
+    
+    // Create the circle manually with document reference properties
+    const circle = dataStore.getCircle('temp'); // We'll create it properly through the store
+    
+    // Use the entity store directly to create the circle
+    const entityStore = dataStore.getCircle; // Access through dataStore
+    
+    // Create circle with specific properties for document reference
+    const newCircle = {
+        id: `circle_${Date.now()}`,
+        x: Math.random() * (containerWidth - 100) - (containerWidth / 2),
+        y: Math.random() * 400 + 100,
+        name: document.name,
+        documentId: parentDocId,
+        type: 'emoji',
+        emoji: '🏦',
+        color: '#CCCCCC',
+        colors: ['#B3B3B3'],
+        energyTypes: [],
+        activation: 'inactive',
+        activationTriggers: 'manual',
+        shinynessReceiveMode: 'normal',
+        connectible: 'yes',
+        sizeMode: 'auto',
+        manualWidth: null,
+        manualHeight: null,
+        referenceID: null,
+        documentReferenceID: documentId, // This is the key property!
+        belongsToID: null,
+        collapsed: false
+    };
+    
+    // We need to use updateCircle since we can't easily create with custom properties
+    // Instead, let's create a normal circle then update it
+    const tempCircle = dataStore.createCircleInViewer(targetViewer.id);
+    
+    if (tempCircle) {
+        // Update the circle with document reference properties
+        dataStore.updateCircle(tempCircle.id, {
+            type: 'emoji',
+            emoji: '🏦',
+            name: document.name,
+            documentReferenceID: documentId
+        });
+        
+        // Select the new circle
+        dataStore.selectCircle(tempCircle.id, targetViewer.id, false);
+        dataStore.setSelectedViewer(targetViewer.id);
+    }
+    
+    emit('create-viewer-for-document', parentDocId);
+};
 
     const handleDocumentClick = (documentId) => {
         // Don't handle clicks if editing
@@ -358,6 +438,27 @@ const handleDrop = (e, targetDocId) => {
         
         emit('create-viewer-for-document', documentId);
     };
+
+const handleOpenDocument = (documentId) => {
+    // Check if this document already has a visible viewer
+    const visibleViewers = dataStore.getVisibleCircleViewers();
+    const existingViewer = visibleViewers.find(viewer => {
+        const doc = dataStore.getCircleDocumentForViewer(viewer.id);
+        return doc && doc.id === documentId;
+    });
+
+    if (existingViewer) {
+        // If viewer exists, just select it
+        dataStore.setSelectedViewer(existingViewer.id);
+    } else {
+        // Create new viewer for this document
+        const newViewer = dataStore.createCircleViewer();
+        dataStore.setCircleDocumentForViewer(newViewer.id, documentId);
+        dataStore.setSelectedViewer(newViewer.id);
+    }
+    
+    emit('create-viewer-for-document', documentId);
+};
 
     const handleDocumentDoubleClick = async (documentId, event) => {
         // Prevent the single click handler from firing
@@ -469,9 +570,11 @@ const handleEditingInput = (event, documentId) => {
         
         // Document management handlers
         handleNewDocumentClick,
-        handleCreateChildDocument, // NEW: Export the new handler
+        handleCreateChildDocument,
+        handleCreateReferenceCircle,
         handleDocumentClick,
         handleDocumentDoubleClick,
+        handleOpenDocument,
         handleDeleteDocument,
         handleCloseViewer,
         

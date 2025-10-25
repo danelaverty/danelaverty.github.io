@@ -17,6 +17,7 @@ const CIRCLE_DEFAULTS = {
     manualWidth: null,
     manualHeight: null,
     referenceID: null,
+    documentReferenceID: null, // NEW: For document reference circles
     belongsToID: null,
     collapsed: false,
     type: 'basic',
@@ -249,6 +250,7 @@ function createEntityStore() {
             entity.shinynessReceiveMode = getCircleDefault('shinynessReceiveMode');
             entity.connectible = getCircleDefault('connectible');
             entity.referenceID = getCircleDefault('referenceID');
+            entity.documentReferenceID = getCircleDefault('documentReferenceID'); // NEW
             entity.belongsToID = getCircleDefault('belongsToID');
             entity.collapsed = getCircleDefault('collapsed');
             
@@ -345,7 +347,7 @@ function createEntityStore() {
         if (circle) {
             circle[propertyName] = cycleProperty(propertyName, circle[propertyName]);
             
-            // Cascade to referenced circles
+            // Cascade to referenced circles (but NOT to document reference circles)
             const referencedCircles = getReferencedCircles(id);
             referencedCircles.forEach(refCircle => {
                 refCircle[propertyName] = circle[propertyName];
@@ -366,7 +368,16 @@ function createEntityStore() {
         const store = entityType === 'circle' ? data.circles : data.squares;
         const entity = store.get(id);
         if (entity) {
-            Object.assign(entity, updates);
+            // NEW: Prevent name updates for document reference circles
+            if (entityType === 'circle' && entity.documentReferenceID !== null && updates.name !== undefined) {
+                // Don't allow direct name updates for document reference circles
+                // Name should only be updated via document name changes
+                const filteredUpdates = { ...updates };
+                delete filteredUpdates.name;
+                Object.assign(entity, filteredUpdates);
+            } else {
+                Object.assign(entity, updates);
+            }
             
             // For circles, ensure all properties have defaults
             if (entityType === 'circle') {
@@ -389,8 +400,9 @@ function createEntityStore() {
                     // Don't clear emoji when changing away from emoji type - keep it for future use
                 }
 
-                if (entityType === 'circle' && entity.referenceID === null) {
-                    // This is an original circle (not a reference), cascade changes to its references
+                // NEW: Only cascade to circle references (referenceID), not document references (documentReferenceID)
+                if (entityType === 'circle' && entity.referenceID === null && entity.documentReferenceID === null) {
+                    // This is an original circle (not a reference), cascade changes to its circle references
                     const referencedCircles = getReferencedCircles(id);
 
                     if (referencedCircles.length > 0) {
@@ -520,8 +532,19 @@ function createEntityStore() {
         return circle && circle.referenceID !== null;
     };
 
+    // NEW: Utility function for documentReferenceID
+    const isDocumentReferenceCircle = (id) => {
+        const circle = getCircle(id);
+        return circle && circle.documentReferenceID !== null;
+    };
+
     const getReferencedCircles = (originalCircleId) => {
         return Array.from(data.circles.values()).filter(circle => circle.referenceID === originalCircleId);
+    };
+
+    // NEW: Get all circles that reference a specific document
+    const getDocumentReferenceCircles = (documentId) => {
+        return Array.from(data.circles.values()).filter(circle => circle.documentReferenceID === documentId);
     };
 
     // Utility function to toggle group collapsed state
@@ -604,6 +627,9 @@ function createEntityStore() {
         // Reference ID utilities
         isReferencedCircle,
         getReferencedCircles,
+        // NEW: Document reference utilities
+        isDocumentReferenceCircle,
+        getDocumentReferenceCircles,
         // Group collapsed utilities
         toggleGroupCollapsed,
         // Activation, activationTriggers, and connectible cycling utilities

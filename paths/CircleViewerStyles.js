@@ -118,6 +118,7 @@ const componentStyles = `
         margin-top: 30px;
         overflow: hidden;
         transition: margin-top 0.2s ease;
+        isolation: isolate;
     }
 
     .circle-viewer::before {
@@ -173,7 +174,7 @@ const componentStyles = `
         opacity: 0.2;
     }
 
-.energized-circles-list {
+.shiny-circles-list {
     position: absolute;
     top: 0px;
     left: 0px;
@@ -188,7 +189,7 @@ const componentStyles = `
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
-.energized-list-item {
+.shiny-list-item {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
@@ -197,40 +198,33 @@ const componentStyles = `
     gap: 4px;
 }
 
-.energized-list-item:last-child {
+.shiny-list-item:last-child {
     border-bottom: none;
 }
 
-.energized-circle-name {
+.shiny-circle-name {
     flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.energized-circle-types {
-    font-size: 10px;
-    color: #FFD700;
-    font-family: monospace;
-    white-space: nowrap;
-}
-
 /* Scrollbar styling for the list */
-.energized-circles-list::-webkit-scrollbar {
+.shiny-circles-list::-webkit-scrollbar {
     width: 6px;
 }
 
-.energized-circles-list::-webkit-scrollbar-track {
+.shiny-circles-list::-webkit-scrollbar-track {
     background: rgba(0, 0, 0, 0.2);
     border-radius: 3px;
 }
 
-.energized-circles-list::-webkit-scrollbar-thumb {
+.shiny-circles-list::-webkit-scrollbar-thumb {
     background: rgba(255, 215, 0, 0.3);
     border-radius: 3px;
 }
 
-.energized-circles-list::-webkit-scrollbar-thumb:hover {
+.shiny-circles-list::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 215, 0, 0.5);
 }
 

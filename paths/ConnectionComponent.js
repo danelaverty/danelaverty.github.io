@@ -23,123 +23,144 @@ const connectionStyles = `
         background-color: rgba(70, 70, 70, 1);
     }
 
-    /* Animated overlay for exciter/dampener - uses ::before */
-    .connection-line::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        opacity: 0;
-        transition: opacity 0.5s ease;
-    }
-
-    @keyframes barber-pole {
-        0% {
-            background-position: 20px 0px;
-        }
-        100% {
-            background-position: 0px 0px;
-        }
-    }
-
-    @keyframes barber-pole-rev {
-        0% {
-            background-position: 0px 0px;
-        }
-        100% {
-            background-position: 20px 0px;
-        }
-    }
-
-    .connection-line.exciter-connection, .connection-line.dampener-connection {
-    	opacity: 1 !important;
-    }
-
-    .connection-line.exciter-connection::before {
-        background: repeating-linear-gradient(
-            90deg,
-            #00AAAA 0px,
-            #00AAAA 4px,
-            #00FFFF 8px,
-            #00FFFF 12px,
-            #00AAAA 16px,
-            #00AAAA 20px
-        );
-        animation: barber-pole 1s linear infinite;
-        opacity: 1;
-    }
-
-    .connection-line.dampener-connection::before {
-        background: repeating-linear-gradient(
-            90deg,
-            #AA0000 0px,
-            #AA0000 4px,
-            #FF0000 8px,
-            #FF0000 12px,
-            #AA0000 16px,
-            #AA0000 20px
-        );
-        animation: barber-pole 1s linear infinite;
-        opacity: 1;
-    }
-
-    .connection-line.exciter-connection.reverse-flow::before {
-        animation: barber-pole-rev 1s linear infinite;
-    }
-
-    .connection-line.dampener-connection.reverse-flow::before {
-        animation: barber-pole-rev 1s linear infinite;
-    }
-
 /* Potential energy indicators */
 .potential-energy-indicator {
     position: absolute;
     top: 0;
     height: 100%;
     pointer-events: none;
-    transition: width 0.3s ease;
-    animation: potential-energy-pulse 2s ease-in-out infinite;
-    /* opacity: 0; */
-    color: white;
+    transition: width 0.9s ease;
+    width: 15px;
+    transform-origin: left center;
+}
+
+.potential-energy-indicator.demo-mode:not(.expanded) {
+    opacity: 0;
 }
 
 .potential-energy-indicator.left {
     left: 0;
+    transform-origin: left center;
 }
 
 .potential-energy-indicator.right {
     right: 0;
+    transform-origin: right center;
 }
 
-/* Show and color when there's potential energy */
+/* Solid colors as base */
 .potential-energy-indicator.show-dampener {
-    opacity: 1;
-    background: linear-gradient(to right, #FF0000 5px, transparent);
+    background: rgba(120, 80, 120, .5);
 }
 
 .potential-energy-indicator.show-exciter {
-    opacity: 1;
-    background: linear-gradient(to right, #00FFFF 5px, transparent);
+    background: rgba(0, 255, 255, .5);
 }
 
-/* Right side needs opposite gradient direction */
-.potential-energy-indicator.right.show-dampener {
-    background: linear-gradient(to left, #FF0000 5px, transparent);
+/* Gradient fade using ::after pseudo-element */
+.potential-energy-indicator.show-dampener::after,
+.potential-energy-indicator.show-exciter::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    height: 100%;
+    width: 10px;
+    pointer-events: none;
 }
 
-.potential-energy-indicator.right.show-exciter {
-    background: linear-gradient(to left, #00FFFF 5px, transparent);
+.potential-energy-indicator.left.show-dampener::after {
+    right: -10px;
+    background: linear-gradient(to right, rgba(120, 80, 120, .5), transparent);
+}
+
+.potential-energy-indicator.left.show-exciter::after {
+    right: -10px;
+    background: linear-gradient(to right, rgba(0, 255, 255, .5), transparent);
+}
+
+.potential-energy-indicator.right.show-dampener::after {
+    left: -10px;
+    background: linear-gradient(to left, rgba(120, 80, 120, .5), transparent);
+}
+
+.potential-energy-indicator.right.show-exciter::after {
+    left: -10px;
+    background: linear-gradient(to left, rgba(0, 255, 255, .5), transparent);
+}
+
+/* Pulse animation using scaleX for potential (not expanded) state */
+.potential-energy-indicator:not(.expanded) {
+    animation: potential-energy-pulse 2s ease-in-out infinite;
+}
+
+.potential-energy-indicator.expanded {
+    animation-play-state: paused;
 }
 
 @keyframes potential-energy-pulse {
     0%, 100% {
-        width: 15px;
+        transform: scaleX(1);
     }
     50% {
-        width: 30px;
+        transform: scaleX(.5);
     }
+}
+
+/* Barber pole animations */
+@keyframes barber-pole {
+    0% {
+        background-position: 20px 0px;
+    }
+    100% {
+        background-position: 0px 0px;
+    }
+}
+
+@keyframes barber-pole-rev {
+    0% {
+        background-position: 0px 0px;
+    }
+    100% {
+        background-position: 20px 0px;
+    }
+}
+
+/* Expanded state - fills entire connection with barber pole */
+.potential-energy-indicator.expanded {
+    width: 100%;
+    animation-play-state: paused;
+}
+
+.potential-energy-indicator.expanded.show-exciter {
+    background: repeating-linear-gradient(
+        90deg,
+        #00AAAA 0px,
+        #00AAAA 4px,
+        #00FFFF 8px,
+        #00FFFF 12px,
+        #00AAAA 16px,
+        #00AAAA 20px
+    );
+    animation: barber-pole 1s linear infinite;
+}
+
+.potential-energy-indicator.expanded.show-dampener {
+    background: repeating-linear-gradient(
+        90deg,
+        #332233 0px,
+        #332233 4px,
+        #664466 8px,
+        #664466 12px,
+        #332233 16px,
+        #332233 20px
+    );
+    animation: barber-pole 1s linear infinite;
+}
+
+/* Reverse flow animation */
+.potential-energy-indicator.expanded.reverse-flow.show-exciter,
+.potential-energy-indicator.expanded.reverse-flow.show-dampener {
+    animation: barber-pole-rev 1s linear infinite;
 }
 
     /* Arrow wrapper - separate element from the line */
@@ -153,6 +174,10 @@ const connectionStyles = `
         z-index: -1;
     }
 
+    .demo-mode .arrow-container {
+    opacity: 0;
+    }
+
     /* Start arrow (left side) - pointing right */
     .arrow-start-indicator {
         position: absolute;
@@ -162,10 +187,10 @@ const connectionStyles = `
         width: 0;
         height: 0;
         border-style: solid;
-        border-left: 12px solid transparent;
-        border-right: 12px solid var(--arrow-color);
-        border-top: 6px solid transparent;
-        border-bottom: 6px solid transparent;
+        border-left: 9px solid transparent;
+        border-right: 9px solid var(--arrow-color);
+        border-top: 3px solid transparent;
+        border-bottom: 3px solid transparent;
     }
 
     /* End arrow (right side) - pointing right */
@@ -177,16 +202,15 @@ const connectionStyles = `
         width: 0;
         height: 0;
         border-style: solid;
-        border-left: 12px solid var(--arrow-color);
-        border-right: 12px solid transparent;
-        border-top: 6px solid transparent;
-        border-bottom: 6px solid transparent;
+        border-left: 9px solid var(--arrow-color);
+        border-right: 9px solid transparent;
+        border-top: 3px solid transparent;
+        border-bottom: 3px solid transparent;
     }
 
     .connection-path {
         stroke: #ffffff;
         stroke-width: 2;
-        opacity: 0.6;
         fill: none;
         transition: opacity 0.15s ease;
     }
@@ -194,19 +218,16 @@ const connectionStyles = `
     .connection-path.circle-connection {
         stroke: #505050;
         stroke-width: 1.5;
-        opacity: 1;
     }
 
     .connection-path.square-connection {
         stroke: #ffffff;
         stroke-width: 2;
-        opacity: 0.6;
     }
 
     .connection-path.explicit-connection {
         stroke: rgba(70, 70, 70, 1);
         stroke-width: 2.5;
-        opacity: 0.1;
     }
 
     .connection-path.fade-in {
@@ -334,11 +355,6 @@ const potentialEnergyClasses = computed(() => {
         return { left: [], right: [] };
     }
 
-    // Only show potential energy if connection is unenergized (no energy classes)
-    if (props.connectionEnergyClasses && props.connectionEnergyClasses.length > 0) {
-        return { left: [], right: [] };
-    }
-
     const entity1 = props.connection.entity1;
     const entity2 = props.connection.entity2;
     const directionality = props.connection.directionality || 'none';
@@ -349,6 +365,11 @@ const potentialEnergyClasses = computed(() => {
     
     const leftClasses = [];
     const rightClasses = [];
+
+    if (props.demoMode) {
+        leftClasses.push('demo-mode');
+        rightClasses.push('demo-mode');
+    }
     
     // Determine which circles are inbound based on directionality
     const entity1IsInbound = directionality === 'none' || directionality === 'both' || directionality === 'out';
@@ -378,19 +399,74 @@ const potentialEnergyClasses = computed(() => {
         return null;
     };
     
-    // Check entity1 (left): if inbound, dull, and has energy types, show potential
-    if (entity1IsInbound && entity1Shinyness === 'dull' && entity1.energyTypes) {
+    // Check if connection is currently energized
+    const isConnectionEnergized = props.connectionEnergyClasses && props.connectionEnergyClasses.length > 0;
+    const connectionHasExciter = props.connectionEnergyClasses && props.connectionEnergyClasses.includes('exciter-connection');
+    const connectionHasDampener = props.connectionEnergyClasses && props.connectionEnergyClasses.includes('dampener-connection');
+    
+    // Determine flow direction for barber pole animation
+    const entity1Id = props.connection.entity1Id;
+    const entity2Id = props.connection.entity2Id;
+    const entity1Energy = props.circleEnergyDistances.get(entity1Id) || {};
+    const entity2Energy = props.circleEnergyDistances.get(entity2Id) || {};
+    
+    let shouldReverseFlow = false;
+    const connectionEnergy = props.energyDistance;
+    if (connectionEnergy && Object.keys(connectionEnergy).length > 0) {
+        Object.keys(connectionEnergy).forEach(energyType => {
+            const entity1Distance = entity1Energy[energyType];
+            const entity2Distance = entity2Energy[energyType];
+            if (entity1Distance !== undefined && entity2Distance !== undefined) {
+                if (entity1Distance < entity2Distance) {
+                    shouldReverseFlow = true;
+                }
+            }
+        });
+    }
+    
+    // Check entity1 (left)
+    if (entity1IsInbound && entity1.energyTypes) {
         const energyClass = determineEnergyClass(entity1.energyTypes);
         if (energyClass) {
             leftClasses.push(energyClass);
+            
+            // Check if this endpoint is the source of the current energy
+            // It's the source if: it's shiny AND the connection has the matching energy type
+            if (entity1Shinyness === 'shiny') {
+                const hasMatchingEnergy = 
+                    (energyClass === 'show-exciter' && connectionHasExciter) ||
+                    (energyClass === 'show-dampener' && connectionHasDampener);
+                
+                if (hasMatchingEnergy) {
+                    leftClasses.push('expanded');
+                    if (shouldReverseFlow) {
+                        leftClasses.push('reverse-flow');
+                    }
+                }
+            }
         }
     }
     
-    // Check entity2 (right): if inbound, dull, and has energy types, show potential
-    if (entity2IsInbound && entity2Shinyness === 'dull' && entity2.energyTypes) {
+    // Check entity2 (right)
+    if (entity2IsInbound && entity2.energyTypes) {
         const energyClass = determineEnergyClass(entity2.energyTypes);
         if (energyClass) {
             rightClasses.push(energyClass);
+            
+            // Check if this endpoint is the source of the current energy
+            // It's the source if: it's shiny AND the connection has the matching energy type
+            if (entity2Shinyness === 'shiny') {
+                const hasMatchingEnergy = 
+                    (energyClass === 'show-exciter' && connectionHasExciter) ||
+                    (energyClass === 'show-dampener' && connectionHasDampener);
+                
+                if (hasMatchingEnergy) {
+                    rightClasses.push('expanded');
+                    if (shouldReverseFlow) {
+                        rightClasses.push('reverse-flow');
+                    }
+                }
+            }
         }
     }
     
@@ -504,8 +580,7 @@ const potentialEnergyDebugInfo = computed(() => {
             
             // Set default values
             if (isExplicit) {
-                strokeColor = 'rgba(70, 70, 70, 1)';
-                opacity = props.demoMode ? 0 : 0.6;
+                strokeColor = props.demoMode ? 'rgba(70, 70, 70, 0)' : 'rgba(70, 70, 70, .3)';
                 strokeWidth = '2.5px';
             } else if (isCircleType) {
                 strokeColor = '#505050';
@@ -543,6 +618,10 @@ const potentialEnergyDebugInfo = computed(() => {
             const isExplicit = isExplicitConnection.value;
 
             const classes = ['connection-line'];
+
+            if (props.demoMode) {
+                classes.push('demo-mode');
+            }
             
             if (isExplicit) {
                 classes.push('explicit-solid');
@@ -613,16 +692,11 @@ const potentialEnergyDebugInfo = computed(() => {
                 <div v-if="showStartArrow" class="arrow-start-indicator"></div>
                 <div v-if="showEndArrow" class="arrow-end-indicator"></div>
             </div>
-            <!--span v-if="Object.keys(energyDistance).length > 0" style="color: #888; font-size: 12px; display: block; position: absolute; left: 25%;">
-		    {{ 'E: ' + energyDistance['exciter'] }}
-            </span-->
 
 <!-- Potential energy indicators -->
 <div v-if="isExplicitConnection" :class="['potential-energy-indicator', 'left', ...potentialEnergyClasses.left]">
-    <!--span>{{ potentialEnergyDebugInfo.left }}</span-->
 </div>
 <div v-if="isExplicitConnection" :class="['potential-energy-indicator', 'right', ...potentialEnergyClasses.right]">
-    <!--span>{{ potentialEnergyDebugInfo.right }}</span-->
 </div>
         </div>
     `

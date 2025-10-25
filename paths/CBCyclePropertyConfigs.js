@@ -2,10 +2,8 @@
 
 export const CYCLE_PROPERTY_CONFIGS = {
   shinynessReceiveMode: {
-    'or': { icon: '➕', label: 'Or Mode', description: 'Or Mode - Click to cycle to Explosive Or Mode', default: true },
-    'additiveOr': { icon: '🎆', label: 'Additive Or Mode', description: 'Additive Or Mode - Click to cycle to And Mode' },
-    'and': { icon: '✖️', label: 'And Mode', description: 'And Mode - Click to cycle to Explosive And Mode' },
-    'explosiveAnd': { icon: '🎇', label: 'Explosive And Mode', description: 'Explosive And Mode - Click to cycle to Or Mode' }
+    'or': { icon: '➕', label: 'Or Mode', description: 'Or Mode', default: true },
+    'and': { icon: '✖️', label: 'And Mode', description: 'And Mode' },
   },
   
   activationTriggers: {
@@ -35,6 +33,11 @@ export const CYCLE_PROPERTY_CONFIGS = {
 sizeMode: {
     'auto': { icon: '🔄', label: 'Auto Size', description: 'Auto size based on members - Click to cycle to Manual', default: true },
     'manual': { icon: '✋', label: 'Manual Size', description: 'Manual size - Click to cycle to Auto' }
+  },
+
+roilMode: {
+    'off': { icon: '🌷', label: 'Normal', description: '', default: true },
+    'on': { icon: '🌀', label: 'Roil', description: '' }
   },
 };
 

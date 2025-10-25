@@ -12,6 +12,7 @@ import { ExplicitConnectionService } from './ExplicitConnectionService.js';
 import { CellularAutomatonEngine } from './CellularAutomatonEngine.js';
 import { ShinynessEffectsTranslator } from './ShinynessEffectsTranslator.js';
 import { CAStepControl } from './CAStepControl.js';
+import { calculateGroupShapeScale } from './groupScaleCalculator.js';
 import './CircleViewerStyles.js'; // Import styles
 
 export const CircleViewer = {
@@ -41,10 +42,11 @@ export const CircleViewer = {
         'show-dropdown',
         'drag-enter',
         'drag-leave',
-        'drop'
+        'drop',
+        'open-document-viewer' // NEW: For document reference circles
     ],
     setup(props, { emit }) {
-        let energizedCirclesDebounceTimeout = null;
+        let shinyCirclesDebounceTimeout = null;
         
         // Get state and computed properties
         const state = useCircleViewerState(props);
@@ -132,6 +134,49 @@ const batchedChanges = computed(() => {
     return cellularAutomaton.getBatchedChanges();
 });
 
+const droneCircles = computed(() => {
+    const drones = [];
+    
+    // Find all roil groups in the current viewer
+    const roilGroups = allCircles.value.filter(circle => 
+        circle.type === 'group' && 
+        circle.roilMode === 'on' &&
+        !circle.collapsed // Only generate drones for expanded roil groups
+    );
+    
+    roilGroups.forEach(group => {
+        // Calculate the actual rendered size of the group using shared utility
+        const baseSize = 32;
+        const groupScale = calculateGroupShapeScale(group, dataStore);
+        const actualSize = baseSize * groupScale;
+        
+        // Position drones within the group's rendered bounds
+        const spread = actualSize * 0.7; // 70% of the group's size
+        
+        // Generate exactly 5 drone circles per roil group
+        for (let i = 0; i < 10; i++) {
+            const drone = {
+                id: `drone_${group.id}_${i}`,
+                type: 'glow', // Use glow type like feelings
+                name: '', // Unnamed
+                color: '#444444', // Gray color for unnamed state
+                x: group.x + (Math.random() - 0.5) * spread,
+                y: group.y + (Math.random() - 0.5) * spread,
+                belongsToID: group.id, // Belong to the roil group
+                isDrone: true, // Flag to identify as drone
+                // Make drones smaller and varied
+                _droneScale: 0.6 + Math.random() * 0.2, // 0.6 to 0.8 scale
+                // Prevent all interaction
+                _nonInteractive: true
+            };
+            
+            drones.push(drone);
+        }
+    });
+    
+    return drones;
+});
+
         // Get cascade mode from global properties
         const cascadeMode = computed(() => dataStore.getGlobalProperty('cascadeMode'));
 
@@ -217,7 +262,6 @@ const batchedChanges = computed(() => {
                 optionsMap.set(circle.id, {
                     circleType: circle.type,
                     circleShinynessReceiveMode: circle.shinynessReceiveMode,
-                    connectionMultiplier: 1 // No longer using energized connections multiplier
                 });
             });
             
@@ -225,8 +269,29 @@ const batchedChanges = computed(() => {
             return shinynessEffectsTranslator.translateMultipleShinyness(shinynessMap, optionsMap);
         });
 
-        // Energized circles list for display
-        const energizedCirclesList = computed(() => {
+// Add this new computed property alongside shinynessEffects
+const partiallyExcitedCircles = computed(() => {
+    const partiallyExcitedSet = new Set();
+    
+    // Force reactivity on automaton state
+    automatonState.value;
+    
+    allCircles.value.forEach(circle => {
+        const circleState = cellularAutomaton.getCircleState(circle.id);
+        if (circleState.partiallyExcited) {
+            partiallyExcitedSet.add(circle.id);
+        }
+    });
+    
+    return partiallyExcitedSet;
+});
+
+const isCirclePartiallyExcited = (circleId) => {
+    return partiallyExcitedCircles.value.has(circleId);
+};
+
+        // Shiny circles list for display
+        const shinyCirclesList = computed(() => {
             if (!state.viewerProperties?.value?.shinynessMode) {
                 return [];
             }
@@ -239,30 +304,20 @@ const batchedChanges = computed(() => {
             allCircles.value.forEach(circle => {
                 const circleState = cellularAutomaton.getCircleState(circle.id);
                 
-                // Skip if not energized
-                if (circleState.energized === 'unenergized') {
+                // Skip if not shiny
+                if (circleState.shinyness !== 'shiny') {
                     return;
                 }
 
+                // Only include glow circles
                 if (circle.type !== 'glow') {
-                    return;
-                }
-                
-                // Skip activated circles (they're sources, not receivers)
-                if (circle.activation === 'activated') {
-                    return;
-                }
-                
-                // Skip inert circles
-                if (circle.activation === 'inert') {
                     return;
                 }
                 
                 list.push({
                     id: circle.id,
                     name: circle.name,
-                    color: circle.color,
-                    energyTypes: circleState.energized // 'excited' or 'dampened'
+                    color: circle.color
                 });
             });
             
@@ -270,17 +325,17 @@ const batchedChanges = computed(() => {
             return list.sort((a, b) => a.name.localeCompare(b.name));
         });
 
-        watch(energizedCirclesList, (newList) => {
+        watch(shinyCirclesList, (newList) => {
             // Clear existing timeout
-            if (energizedCirclesDebounceTimeout) {
-                clearTimeout(energizedCirclesDebounceTimeout);
+            if (shinyCirclesDebounceTimeout) {
+                clearTimeout(shinyCirclesDebounceTimeout);
             }
             
             // Debounce the update
-            energizedCirclesDebounceTimeout = setTimeout(() => {
+            shinyCirclesDebounceTimeout = setTimeout(() => {
                 const currentDoc = state.dataStore.getCircleDocumentForViewer(props.viewerId);
                 if (currentDoc) {
-                    state.dataStore.updateCircleDocumentEnergizedCircles(currentDoc.id, newList);
+                    state.dataStore.updateCircleDocumentShinyCircles(currentDoc.id, newList);
                 }
             }, 200); // 200ms debounce
         }, { deep: true });
@@ -430,10 +485,15 @@ const handleCAStepSpecific = (index) => {
             cellularAutomaton.stop();
             dataStore.setAutomatonTrigger(null);
             
-            if (energizedCirclesDebounceTimeout) {
-                clearTimeout(energizedCirclesDebounceTimeout);
+            if (shinyCirclesDebounceTimeout) {
+                clearTimeout(shinyCirclesDebounceTimeout);
             }
         });
+
+        // NEW: Handler to pass through open-document-viewer event from document reference circles
+        const handleOpenDocumentViewer = (documentId) => {
+            emit('open-document-viewer', documentId);
+        };
 
         return {
             ...state,
@@ -442,7 +502,7 @@ const handleCAStepSpecific = (index) => {
             ...selection,
             visibleCircles,
             allCircles,
-            energizedCirclesList,
+            shinyCirclesList,
             explicitConnections,
             allConnections,
             handleViewerClick,
@@ -472,6 +532,10 @@ const handleCAStepSpecific = (index) => {
             canStepCA,
             handleCAStep,
             handleCAStepSpecific,
+            partiallyExcitedCircles,
+            isCirclePartiallyExcited,
+            handleOpenDocumentViewer, // NEW: Pass through document viewer opening
+            droneCircles,
         };
     },
     components: {
@@ -521,16 +585,16 @@ const handleCAStepSpecific = (index) => {
                 @click="handleViewerClick"
             >
                 <div 
-                    v-if="energizedCirclesList.length > 0"
-                    class="energized-circles-list"
+                    v-if="shinyCirclesList.length > 0"
+                    class="shiny-circles-list"
                 >
                     <div 
-                        v-for="circle in energizedCirclesList"
+                        v-for="circle in shinyCirclesList"
                         :key="circle.id"
-                        class="energized-list-item"
+                        class="shiny-list-item"
                     >
                         <div style="display: inline-block; width: 8px; height: 8px; border-radius: 50%;" :style="{ backgroundColor: circle.color, }"></div>
-                        <span class="energized-circle-name">{{ circle.name }}</span>
+                        <span class="shiny-circle-name">{{ circle.name }}</span>
                     </div>
                 </div>
                 
@@ -560,6 +624,7 @@ const handleCAStepSpecific = (index) => {
                     :is-dragging="entityDragState.isDragging && entityDragState.draggedEntityIds.includes(circle.id)"
                     :drag-deltas="entityDragState.currentDeltas"
                     :shinyness-effects="getShinynessEffectsForCircle(circle)"
+                    :is-partially-excited="isCirclePartiallyExcited(circle.id)"
                     :demo-mode="isDemoMode"
                     @select="handleCircleSelect"
                     @update-position="handleCirclePositionUpdate"
@@ -569,8 +634,19 @@ const handleCAStepSpecific = (index) => {
                     @drag-move="handleEntityDragMove"
                     @drag-end="handleEntityDragEnd"
                     @update-circle="handleCircleUpdate"
+                    @open-document-viewer="handleOpenDocumentViewer"
                 />
                 
+                <!--EntityComponent
+                    v-for="droneCircle in droneCircles"
+                    :key="droneCircle.id"
+                    :entity="droneCircle"
+                    :entity-type="'circle'"
+                    :is-drone="true"
+                    :viewer-width="viewerWidth"
+                    :viewer-id="viewerId"
+                /-->
+
                 <EntityControls 
                     entity-type="circle"
                     :viewer-id="viewerId"

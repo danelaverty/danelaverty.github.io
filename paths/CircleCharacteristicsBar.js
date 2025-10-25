@@ -15,7 +15,7 @@ import { CBConnectionEnergyControl } from './CBConnectionEnergyControl.js';
 import { getPropertyConfig } from './CBCyclePropertyConfigs.js';
 
 // Import styles
-import { baseCharacteristicsStyles, displayStyles, colorStyles, typeStyles, energyStyles, activationStyles, emojiStyles } from './cbBaseStyles.js';
+import { baseCharacteristicsStyles, colorStyles, typeStyles, energyStyles, activationStyles, emojiStyles } from './cbBaseStyles.js';
 import { modalStyles } from './cbModalStyles.js';
 import { pickerSpecificStyles } from './cbPickerStyles.js';
 
@@ -40,7 +40,6 @@ import { EmojiPickerModal } from './CBEmojiPickerModal.js';
 // Combine all styles
 const componentStyles = `
     ${baseCharacteristicsStyles}
-    ${displayStyles}
     ${colorStyles}
     ${typeStyles}
     ${energyStyles}

@@ -24,19 +24,15 @@ export const EmojiControl = {
   },
   
   template: `
-    <div class="characteristic-control">
-        <div class="recent-emojis-separator"></div>
-        
-        <!-- Cause Emoji -->
-        <div
-            :class="['emoji-display', 'recent-emoji-item', { 'picker-open': isPickerOpen }]"
-            @click="$emit('selectQuickEmoji', causeEmoji)"
-            :title="getEmojiDisplayTitle(causeEmoji, 'cause')"
-            :style="{ 
-                backgroundColor: causeEmoji ? causeEmoji.color : 'transparent', 
-                border: 'none' 
-            }"
-        >
+    <!-- Emoji Separator (as a spacer, not a control) -->
+    <div style="width: 2px; height: 32px; background-color: rgba(255, 255, 255, 0.2); border-radius: 1px; margin: 0 4px; flex-shrink: 0;"></div>
+    
+    <!-- Cause Emoji Control -->
+    <div class="characteristic-control"
+         @click="$emit('selectQuickEmoji', causeEmoji)"
+         :title="getEmojiDisplayTitle(causeEmoji, 'cause')"
+         :style="{ backgroundColor: causeEmoji ? causeEmoji.color : 'rgba(40, 40, 40, 0.8)' }">
+        <div class="emoji-display">
             <EmojiRenderer 
                 v-if="causeEmoji"
                 :emoji="causeEmoji"
@@ -44,14 +40,14 @@ export const EmojiControl = {
                 :interactive="true"
             />
         </div>
-        
-        <!-- Emoji Picker Trigger -->
-        <div 
-            :class="['emoji-display', { 'picker-open': isPickerOpen }]"
-            @click="$emit('toggle')"
-            style="background-color: transparent; border: none; cursor: pointer;"
-        >
-            <div class="emoji-icon" style="color: white;">...</div>
+    </div>
+    
+    <!-- Emoji Picker Trigger Control -->
+    <div class="characteristic-control" 
+         @click="$emit('toggle')"
+         :class="{ 'picker-open': isPickerOpen }">
+        <div class="emoji-display">
+            <div class="emoji-icon">...</div>
         </div>
     </div>
   `

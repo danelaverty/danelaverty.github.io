@@ -195,9 +195,15 @@ export function useCharacteristicsBarState(dataHooks, pickerHooks) {
     return '';
   });
   
-  // Check if the selected circle is a reference circle (only applies to single selection)
+  // UPDATED: Check if the selected circle is a circle reference (only applies to single selection)
   const isReferenceCircle = computed(() => {
+    // Only check referenceID, not documentReferenceID
     return dataHooks.selectedCircle.value && dataHooks.selectedCircle.value.referenceID !== null;
+  });
+  
+  // NEW: Check if the selected circle is a document reference circle
+  const isDocumentReferenceCircle = computed(() => {
+    return dataHooks.selectedCircle.value && dataHooks.selectedCircle.value.documentReferenceID !== null;
   });
   
   // Check if circle emoji picker should be visible
@@ -217,37 +223,40 @@ export function useCharacteristicsBarState(dataHooks, pickerHooks) {
     return !hasMultipleCirclesSelected.value;
   });
 
+  // UPDATED: Allow characteristics editing for document reference circles
   const shouldShowCircleCharacteristicControls = computed(() => {
     if (hasMultipleCirclesSelected.value) {
       return true; // Always show for multiple selection
     }
-    // For single selection, hide if it's a reference circle
+    // For single selection, hide only if it's a circle reference (not document reference)
     return !isReferenceCircle.value;
   });
 
+  // UPDATED: Only show for circle references, not document references
   const shouldShowJumpToReferenceControl = computed(() => {
     if (hasMultipleCirclesSelected.value) {
-      // For multiple selection, check if ANY selected circle is a reference
+      // For multiple selection, check if ANY selected circle is a circle reference (not document reference)
       const selectedIds = dataStore.getSelectedCircles();
       return selectedIds.some(id => {
         const circle = dataStore.getCircle(id);
         return circle && circle.referenceID !== null;
       });
     }
-    // For single selection, show if it's a reference circle
+    // For single selection, show only if it's a circle reference
     return isReferenceCircle.value;
   });
 
+  // UPDATED: Only show for circle references, not document references
   const shouldShowBreakReferenceControl = computed(() => {
     if (hasMultipleCirclesSelected.value) {
-      // For multiple selection, check if ANY selected circle is a reference
+      // For multiple selection, check if ANY selected circle is a circle reference (not document reference)
       const selectedIds = dataStore.getSelectedCircles();
       return selectedIds.some(id => {
         const circle = dataStore.getCircle(id);
         return circle && circle.referenceID !== null;
       });
     }
-    // For single selection, show if it's a reference circle
+    // For single selection, show only if it's a circle reference
     return isReferenceCircle.value;
   });
 
@@ -276,6 +285,7 @@ export function useCharacteristicsBarState(dataHooks, pickerHooks) {
     causeEmoji,
     getCurrentCircleEmoji,
     isReferenceCircle,
+    isDocumentReferenceCircle, // NEW
     isCircleEmojiPickerVisible,
     shouldShowEmojiControls,
     shouldShowCircleCharacteristicControls,

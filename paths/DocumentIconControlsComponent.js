@@ -1,16 +1,18 @@
-// DocumentIconControlsComponent.js - Controls for document icons in the dock (Updated with create child button)
+// DocumentIconControlsComponent.js - Controls for document icons in the dock (Updated with open document button)
 import { injectComponentStyles } from './styleUtils.js';
 
 // Component styles
 const componentStyles = `
     /* Document icon controls - only visible on hover */
-.document-icon-controls-container {
-        position: absolute;
+    .document-icon-controls-container {
+        position: relative;
+        margin-left: auto;
         top: 0;
         right: 0;
-        display: block; /* Changed from 'none' to 'block' */
-        opacity: 0;     /* Start hidden via opacity instead */
-        transition: opacity 0.2s ease;
+        max-height: 0;
+        overflow: hidden;
+        opacity: 0;
+        transition: max-height 0.2s ease, opacity 0.2s ease;
         z-index: 1010;
     }
 
@@ -21,7 +23,7 @@ const componentStyles = `
 
     .document-icon-controls {
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
         gap: 2px;
         opacity: 1; /* Controls are visible when container is visible */
         transition: none; /* Remove transition conflicts */
@@ -31,6 +33,7 @@ const componentStyles = `
     }
 
     .document-icon:hover .document-icon-controls-container {
+        max-height: 100px;
         opacity: 1; /* Show on hover via opacity */
     }
 
@@ -53,10 +56,9 @@ const componentStyles = `
         border-color: #4CAF50;
     }
 
-    .create-child-button {
-        background-color: #388E3C;
+    /* Base styles for all document icon control buttons */
+    .document-icon-controls-button {
         color: white;
-        border: 1px solid #4CAF50;
         border-radius: 50%;
         width: 12px;
         height: 12px;
@@ -69,6 +71,28 @@ const componentStyles = `
         transition: all 0.2s ease;
         padding: 0;
         line-height: 1;
+    }
+
+    .document-icon-controls-button:active {
+        transform: scale(0.9);
+    }
+
+    /* Open document button */
+    .open-document-button {
+        background-color: #1976D2;
+        border: 1px solid #2196F3;
+    }
+
+    .open-document-button:hover {
+        background-color: #2196F3;
+        border-color: #42A5F5;
+        transform: scale(1.1);
+    }
+
+    /* Create child button */
+    .create-child-button {
+        background-color: #388E3C;
+        border: 1px solid #4CAF50;
     }
 
     .create-child-button:hover {
@@ -77,26 +101,10 @@ const componentStyles = `
         transform: scale(1.1);
     }
 
-    .create-child-button:active {
-        transform: scale(0.9);
-    }
-
+    /* Close viewer button */
     .close-viewer-button {
         background-color: #666;
-        color: white;
         border: 1px solid #888;
-        border-radius: 50%;
-        width: 12px;
-        height: 12px;
-        font-size: 10px;
-        font-weight: bold;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        padding: 0;
-        line-height: 1;
     }
 
     .close-viewer-button:hover {
@@ -105,25 +113,10 @@ const componentStyles = `
         transform: scale(1.1);
     }
 
-    .close-viewer-button:active {
-        transform: scale(0.9);
-    }
-
+    /* Delete document button */
     .delete-document-button {
         background-color: #d32f2f;
-        color: white;
         border: 1px solid #f44336;
-        border-radius: 50%;
-        width: 12px;
-        height: 12px;
-        font-size: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        padding: 0;
-        line-height: 1;
     }
 
     .delete-document-button:hover {
@@ -132,49 +125,52 @@ const componentStyles = `
         transform: scale(1.1);
     }
 
-    .delete-document-button:active {
-        transform: scale(0.9);
-    }
+.create-reference-button {
+    background-color: #F57C00;
+    border: 1px solid #FF9800;
+}
+
+.create-reference-button:hover {
+    background-color: #FF9800;
+    border-color: #FFB74D;
+    transform: scale(1.1);
+}
 
     .nested-level-0 .delete-document-button {
         display: none;
-    }
-
-    .create-child-button {
-        display: none;
-    }
-
-    .nested-level-0 .create-child-button {
-        display: block;
     }
 `;
 
 injectComponentStyles('document-icon-controls', componentStyles);
 
 export const DocumentIconControls = {
-    props: {
-        documentId: {
-            type: String,
-            required: true
-        },
-        circleCount: {
-            type: Number,
-            required: true
-        },
-        canDelete: {
-            type: Boolean,
-            default: false
-        },
-        hasOpenViewer: {
-            type: Boolean,
-            default: false
-        },
-	hasChildren: {
-		type: Boolean,
-		default: false
-	}
+props: {
+    documentId: {
+        type: String,
+        required: true
     },
-    emits: ['delete-document', 'close-viewer', 'create-child-document'],
+    circleCount: {
+        type: Number,
+        required: true
+    },
+    canDelete: {
+        type: Boolean,
+        default: false
+    },
+    hasOpenViewer: {
+        type: Boolean,
+        default: false
+    },
+    hasChildren: {
+        type: Boolean,
+        default: false
+    },
+    documentLevel: {
+        type: Number,
+        required: true
+    }
+},
+    emits: ['delete-document', 'close-viewer', 'create-child-document', 'open-document', 'create-reference-circle'],
     setup(props, { emit }) {
         const handleDeleteClick = (e) => {
             e.stopPropagation(); // Prevent triggering document click
@@ -191,33 +187,56 @@ export const DocumentIconControls = {
             emit('create-child-document', props.documentId);
         };
 
+        const handleOpenDocumentClick = (e) => {
+            e.stopPropagation(); // Prevent triggering document click
+            emit('open-document', props.documentId);
+        };
+
+const handleCreateReferenceClick = (e) => {
+        e.stopPropagation(); // Prevent triggering document click
+        emit('create-reference-circle', props.documentId);
+    };
         return {
             handleDeleteClick,
             handleCloseViewerClick,
-            handleCreateChildClick
+            handleCreateChildClick,
+            handleOpenDocumentClick,
+            handleCreateReferenceClick 
         };
     },
     template: `
-	    <div :class="['document-icon-controls-container', { 'has-children': hasChildren }]">
-		<div class="document-icon-controls">
-		    <button 
-			class="create-child-button"
-			@click="handleCreateChildClick"
-			title="Create child document"
-		    >+</button>
-		    <button 
-			v-if="hasOpenViewer"
-			class="close-viewer-button"
-			@click="handleCloseViewerClick"
-			title="Close viewer for this document"
-		    >×</button>
-		    <button 
-			v-if="canDelete"
-			class="delete-document-button"
-			@click="handleDeleteClick"
-			title="Delete document"
-		    >🗑️</button>
-		</div>
+        <div :class="['document-icon-controls-container', { 'has-children': hasChildren }]">
+            <div class="document-icon-controls">
+                <button 
+                    v-if="!hasOpenViewer"
+                    class="document-icon-controls-button open-document-button"
+                    @click="handleOpenDocumentClick"
+                    title="Open document"
+                >📄</button>
+                <button 
+                    v-if="hasOpenViewer"
+                    class="document-icon-controls-button close-viewer-button"
+                    @click="handleCloseViewerClick"
+                    title="Close viewer for this document"
+                >×</button>
+                <button 
+                    v-if="documentLevel > 0"
+                    class="document-icon-controls-button create-reference-button"
+                    @click="handleCreateReferenceClick"
+                    title="Create reference circle for this document"
+                >🌟</button>
+                <button 
+                    class="document-icon-controls-button create-child-button"
+                    @click="handleCreateChildClick"
+                    title="Create child document"
+                >+</button>
+                <button 
+                    v-if="canDelete"
+                    class="document-icon-controls-button delete-document-button"
+                    @click="handleDeleteClick"
+                    title="Delete document"
+                >🗑️</button>
+            </div>
         </div>
     `
 };

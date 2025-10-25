@@ -25,7 +25,7 @@ export const CircleTypeRenderer = {
      * @param {number} squareCount - Number of squares for this circle
      * @param {number} belongingCount - Number of circles belonging to this group (for group circles)
      */
-    render(element, circle, isSelected = false, squareCount = null, belongingCount = null) {
+    render(element, circle, isSelected = false, squareCount = null, belongingCount = null, isRoilMember = false) {
         if (!element) {
             return;
         }
@@ -54,7 +54,7 @@ export const CircleTypeRenderer = {
         // Delegate rendering to specific renderer
         switch (currentType) {
             case 'glow':
-                GlowCircleRenderer.render(element, circle, squareCount);
+                GlowCircleRenderer.render(element, circle, squareCount, isRoilMember);
                 // FIXED: Ensure multicolor flow is properly handled for glow circles
                 this.ensureMulticolorGlowFlow(element, circle);
                 break;

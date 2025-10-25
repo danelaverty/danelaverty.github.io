@@ -3,6 +3,7 @@ import { computed, watch, nextTick, onMounted, onUnmounted } from './vue-composi
 import { EntityStyleCalculator } from './EntityStyleCalculator.js';
 import { CircleTypeRenderer } from './CircleTypeRenderer.js';
 import { SelectionRenderer } from './SelectionRenderer.js';
+import { useRoilMotion } from './EntityRendering-RoilMotion.js';
 
 export const useEntityRendering = (props, state) => {
     const { shapeRef } = state;
@@ -32,26 +33,31 @@ export const useEntityRendering = (props, state) => {
     });
 
     // Computed name classes for bold styling, reference styling, and animation styling
-    const nameClasses = computed(() => {
-        const classes = ['entity-name', `${props.entityType}-name`];
-        
-        // Add bold class for bold squares
-        if (state.isBold.value) {
-            classes.push('bold');
-        }
-        
-        // Add referenced class for referenced circles
-        if (state.isReferencedCircle.value) {
-            classes.push('referenced');
-        }
-        
-        // Add animation copy class for animation copies
-        if (state.isAnimationCopy.value) {
-            classes.push('animation-copy');
-        }
-        
-        return classes;
-    });
+const nameClasses = computed(() => {
+    const classes = ['entity-name', `${props.entityType}-name`];
+    
+    // Add bold class for bold squares
+    if (state.isBold.value) {
+        classes.push('bold');
+    }
+    
+    // Add referenced class for referenced circles
+    if (state.isReferencedCircle.value) {
+        classes.push('referenced');
+    }
+    
+    // NEW: Add referenced class for document reference circles (same styling)
+    if (state.isDocumentReferenceCircle.value) {
+        classes.push('referenced');
+    }
+    
+    // Add animation copy class for animation copies
+    if (state.isAnimationCopy.value) {
+        classes.push('animation-copy');
+    }
+    
+    return classes;
+});
 
     // Watch for changes that should trigger re-rendering
     watch(
@@ -66,7 +72,6 @@ export const useEntityRendering = (props, state) => {
             state.squareCount.value,
             state.belongingCirclesCount?.value,
             state.groupMemberScale?.value,
-            state.groupShapeScale?.value, // Watch for shape scale changes
             props.isSelected
         ],
         (newValues, oldValues) => {
@@ -77,7 +82,7 @@ export const useEntityRendering = (props, state) => {
                 
                 if (hasActualChanges) {
                     nextTick(() => {
-                        CircleTypeRenderer.render(shapeRef.value, props.entity, props.isSelected, state.squareCount.value, state.belongingCirclesCount?.value);
+                        CircleTypeRenderer.render(shapeRef.value, props.entity, props.isSelected, state.squareCount.value, state.belongingCirclesCount?.value, roilMotion.isRoilMember.value);
                     });
                 }
             }
@@ -103,13 +108,16 @@ export const useEntityRendering = (props, state) => {
         }
     );
 
+    // NEW: Add roil motion
+    const roilMotion = useRoilMotion(props, state);
+
     // Initialize rendering on mount
     const initializeEntityDisplay = () => {
         if (!shapeRef.value) return;
         
         if (props.entityType === 'circle') {
             // Render circle type first
-            CircleTypeRenderer.render(shapeRef.value, props.entity, props.isSelected, state.squareCount.value, state.belongingCirclesCount?.value);
+            CircleTypeRenderer.render(shapeRef.value, props.entity, props.isSelected, state.squareCount.value, state.belongingCirclesCount?.value, roilMotion.isRoilMember.value);
         } else if (props.entityType === 'square') {
             // Initialize selection for squares
             SelectionRenderer.initializeSelection(
@@ -145,6 +153,8 @@ export const useEntityRendering = (props, state) => {
         shapeClasses,
         nameClasses,
         initializeEntityDisplay,
-        cleanupRendering
+        cleanupRendering,
+        // NEW: Add roil motion functions
+        ...roilMotion,
     };
 };

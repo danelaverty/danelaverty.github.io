@@ -2,7 +2,6 @@ export const circleTypeStyles = `
     .circle-type-basic {
         border-radius: 50%;
         background-color: var(--circle-color);
-        border: 3px solid var(--circle-border-color, #45a049);
     }
 
     .circle-type-glow {
@@ -11,6 +10,14 @@ export const circleTypeStyles = `
         border-radius: 50% !important;
         position: relative;
         overflow: visible;
+    }
+
+    .circle-glow-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
     }
 
     .circle-glow {

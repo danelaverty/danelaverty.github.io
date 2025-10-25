@@ -2,6 +2,8 @@
 import { ref, computed, watch } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
 import { EmojiService } from './emojiService.js';
+import { useRoilState } from './EntityState-RoilExtension.js';
+import { calculateGroupShapeScale } from './groupScaleCalculator.js';
 
 export const useEntityState = (props) => {
     const dataStore = useDataStore();
@@ -16,8 +18,22 @@ export const useEntityState = (props) => {
         return props.entityType === 'circle' && props.entity.referenceID !== null;
     });
 
+    // NEW: Check if this is a document reference circle
+    const isDocumentReferenceCircle = computed(() => {
+        return props.entityType === 'circle' && props.entity.documentReferenceID !== null;
+    });
+
+    const documentShinyCircles = computed(() => {
+        if (!isDocumentReferenceCircle.value) {
+            return [];
+        }
+
+        const docId = props.entity.documentReferenceID;
+        return dataStore.getShinyCirclesForDocument(docId);
+    });
+
     const groupMemberScale = computed(() => {
-	    return 1;
+	    //return 1;
     if (props.entityType === 'circle' && props.entity.belongsToID) {
         // Get all circles belonging to the same group
         const groupCircles = dataStore.getCirclesBelongingToGroup(props.entity.belongsToID);
@@ -33,28 +49,12 @@ export const useEntityState = (props) => {
     return 1; // No scaling for non-group members or non-circles
 });
 
-    // NEW: Updated computed property for group shape scaling - considers collapsed state
-    const groupShapeScale = computed(() => {
-        if (props.entityType === 'circle' && props.entity.type === 'group') {
-            // If the group is collapsed, use normal size (no scaling)
-            if (props.entity.collapsed) {
-                return 1;
-            }
-            
-            // Get all circles belonging to this group
-            const groupCircles = dataStore.getCirclesBelongingToGroup(props.entity.id);
-            const belongingCount = groupCircles.length;
-            
-            // Use the same scaling logic as GroupCircleRenderer
-            const baseSize = 32;
-            const scaleFactor = Math.sqrt(Math.max(1, belongingCount + 1)) * 1.3; // +1 to include the group itself
-            const scaledSize = Math.max(baseSize, baseSize * scaleFactor * 0.8);
-            
-            // Return the scale ratio
-            return scaledSize / baseSize;
-        }
-        return 1; // No scaling for non-group circles or other entity types
-    });
+const groupShapeScale = computed(() => {
+    if (props.entityType === 'circle' && props.entity.type === 'group') {
+        return calculateGroupShapeScale(props.entity, dataStore);
+    }
+    return 1;
+});
 
     // NEW: Updated computed property for belonging circles count - returns 0 when collapsed
     const belongingCirclesCount = computed(() => {
@@ -229,11 +229,15 @@ const positionStyles = computed(() => {
         return base;
     });
 
+    // NEW: Add roil state
+    const roilState = useRoilState(props, dataStore);
+
     return {
         elementRef,
         shapeRef,
         nameRef,
         isReferencedCircle,
+        isDocumentReferenceCircle, // NEW
         isAnimationCopy,
         isAnimationDimmed,
         hasEmoji,
@@ -251,5 +255,9 @@ const positionStyles = computed(() => {
         // NEW: Collapsed group properties
         isHiddenGroupMember,
         collapsedMemberCount,
+        documentShinyCircles,
+        // NEW: Roil properties
+        ...roilState,
+        dataStore, // Pass dataStore for roil motion to access
     };
 };
