@@ -159,7 +159,7 @@ const droneCircles = computed(() => {
                 id: `drone_${group.id}_${i}`,
                 type: 'glow', // Use glow type like feelings
                 name: '', // Unnamed
-                color: '#444444', // Gray color for unnamed state
+                color: '#333', // Gray color for unnamed state
                 x: group.x + (Math.random() - 0.5) * spread,
                 y: group.y + (Math.random() - 0.5) * spread,
                 belongsToID: group.id, // Belong to the roil group
@@ -637,7 +637,7 @@ const handleCAStepSpecific = (index) => {
                     @open-document-viewer="handleOpenDocumentViewer"
                 />
                 
-                <!--EntityComponent
+                <EntityComponent
                     v-for="droneCircle in droneCircles"
                     :key="droneCircle.id"
                     :entity="droneCircle"
@@ -645,7 +645,7 @@ const handleCAStepSpecific = (index) => {
                     :is-drone="true"
                     :viewer-width="viewerWidth"
                     :viewer-id="viewerId"
-                /-->
+                />
 
                 <EntityControls 
                     entity-type="circle"

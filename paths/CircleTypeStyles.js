@@ -697,23 +697,8 @@ export const circleTypeStyles = `
     }
 }
 
-@keyframes groupExpand {
-    from {
-        transform: scale(0.95);
-        opacity: 0.8;
-    }
-    to {
-        transform: scale(1);
-        opacity: 1;
-    }
-}
-
 .group-circle-container.collapsed {
     animation: groupCollapse 0.3s ease forwards;
-}
-
-.group-circle-container.expanded {
-    animation: groupExpand 0.3s ease forwards;
 }
 
 /* Animation for member count appearing/disappearing */

@@ -1,4 +1,4 @@
-// EntityRendering-RoilMotion.js - Roil motion integration for EntityRendering
+// EntityRendering-RoilMotion.js - Updated to pass group positioning data to RoilMotionSystem
 import { watch, onMounted, onUnmounted, nextTick } from './vue-composition-api.js';
 import { roilMotionSystem } from './RoilMotionSystem.js';
 import { useRoilState } from './EntityState-RoilExtension.js';
@@ -31,19 +31,46 @@ export const useRoilMotion = (props, state) => {
     const addToRoilMotion = () => {
         if (!shapeRef.value || !roilState.isRoilMember.value) return;
 
-        const containerStyle = getComputedStyle(state.elementRef.value);
-        const currentLeft = parseFloat(containerStyle.left) || 0;
-        const currentTop = parseFloat(containerStyle.top) || 0;
+        // Ensure dataStore is available to RoilMotionSystem
+        const dataStore = state.dataStore || props.dataStore;
+        if (!dataStore) {
+            console.warn('No dataStore available for roil motion positioning');
+            return;
+        }
 
-        // Set bounds relative to the container's starting position
+        // Set dataStore reference on roilMotionSystem (safe to call multiple times)
+        roilMotionSystem.setDataStore(dataStore);
+
+        // Get group ID from the entity
+        const groupId = props.entity.belongsToID;
+        if (!groupId) {
+            console.warn('Roil member has no group ID:', props.entity.id);
+            return;
+        }
+
+        // Get viewer width for positioning calculations
+        const viewerWidth = props.viewerWidth;
+        if (!viewerWidth) {
+            console.warn('No viewer width available for roil positioning');
+            return;
+        }
+
+        // Set bounds relative to the group (these will be relative offsets from group position)
         const bounds = {
-            minX: currentLeft - 30,
-            maxX: currentLeft + 30,
-            minY: currentTop - 30,
-            maxY: currentTop + 30
+            minX: -30,
+            maxX: 30,
+            minY: -30,
+            maxY: 30
         };
         
-        roilMotionSystem.addCircle(props.entity.id, state.elementRef.value, bounds);
+        // Pass group ID and viewer width to enable proper positioning
+        roilMotionSystem.addCircle(
+            props.entity.id, 
+            state.elementRef.value, 
+            bounds,
+            groupId,      // NEW: Pass group ID
+            viewerWidth   // NEW: Pass viewer width
+        );
     };
 
     // Function to remove circle from roil motion
