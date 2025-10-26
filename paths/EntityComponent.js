@@ -827,6 +827,7 @@ return {
             ...positionStyles,
             ...circleStyles,
             ...squareStyles,
+            pointerEvents: isDrone ? 'none' : 'auto',
             transform: groupMemberScale !== 1 ? 'translate(-50%, -50%) scale(' + groupMemberScale + ')' : undefined
         }"
         :class="{

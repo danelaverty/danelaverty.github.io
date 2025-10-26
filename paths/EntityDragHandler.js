@@ -13,6 +13,8 @@ export class EntityDragHandler {
         this.props = props;
         this.proximityCallbacks = callbacks;
         this.currentHoveredGroup = null;
+        this.originalBelongsToID = null;
+        this.hasRemovedMembership = false;
         
         // Track if actual dragging occurred
         this.hasActuallyDragged = false;
@@ -107,14 +109,22 @@ export class EntityDragHandler {
     }
 
     // FIXED: Perfect positioning by copying all positioning attributes exactly
-    findGroupMemberElements() {
+findGroupMemberElements() {
         if (this.props.entityType === 'circle' && this.props.entity.type === 'group') {
             const belongingCircles = this.dataStore.getCirclesBelongingToGroup(this.props.entity.id);
             
             this.groupMemberElements.clear();
             
+            // NEW: Check if this group is in roil mode
+            const isGroupInRoilMode = this.props.entity.roilMode === 'on';
+            
             belongingCircles.forEach(circle => {
                 if (circle.id !== this.props.entity.id) {
+                    // NEW: Skip creating clones for roil members
+                    if (isGroupInRoilMode) {
+                        return; // Skip this circle entirely
+                    }
+                    
                     const originalElement = document.querySelector(`[data-entity-id="${circle.id}"]`);
                     
                     if (originalElement && originalElement.style) {
@@ -159,7 +169,6 @@ export class EntityDragHandler {
                             dragClone.style.left = (currentLeft + offsetX) + 'px';
                             dragClone.style.top = (currentTop + offsetY) + 'px';
                             
-                            console.log(`🔧 FIXED: Corrected clone position by (${offsetX}, ${offsetY})`);
                         }
                         
                         // Hide the original element during drag
@@ -177,16 +186,9 @@ export class EntityDragHandler {
                             isCloned: true
                         });
                         
-                        console.log(`✨ FIXED: Created perfectly positioned clone for ${circle.id}`);
-                        console.log(`  - Original rect: (${originalRect.left}, ${originalRect.top})`);
-                        console.log(`  - Clone rect: (${finalRect.left}, ${finalRect.top})`);
-                        console.log(`  - Position: left=${dragClone.style.left}, top=${dragClone.style.top}`);
-                        console.log(`  - Transform: ${dragClone.style.transform}`);
                     }
                 }
             });
-            
-            console.log(`✨ FIXED: Created ${this.groupMemberElements.size} perfectly positioned clones`);
         }
     }
 
@@ -207,8 +209,6 @@ export class EntityDragHandler {
                     // Keep the original transform unchanged
                     dragClone.style.transform = initialTransform;
                     dragClone.style.transition = 'none';
-                    
-                    console.log(`✨ FIXED: Moved ${circleId} clone to (${newLeft}, ${newTop}) with transform: ${initialTransform}`);
                 }
             });
         }
@@ -223,18 +223,15 @@ export class EntityDragHandler {
                 if (dragClone && dragClone.parentNode) {
                     // Remove the clone
                     dragClone.parentNode.removeChild(dragClone);
-                    console.log(`✨ FIXED: Removed clone for ${circleId}`);
                 }
                 
                 if (originalElement) {
                     // Restore the original element
                     originalElement.style.visibility = '';
-                    console.log(`✨ FIXED: Restored original ${circleId}`);
                 }
             });
             
             this.groupMemberElements.clear();
-            console.log(`✨ FIXED: Cleaned up all clones`);
         }
     }
 
@@ -265,27 +262,41 @@ export class EntityDragHandler {
         });
     }
 
-    onDragStart(e) {
-        if (e && ((e.ctrlKey || e.metaKey) && e.shiftKey)) {
-            return;
-        }
-        
-        this.hasActuallyDragged = false;
-        this.currentDragState = { deltaX: 0, deltaY: 0, isDragging: true };
-        
-        // Create perfectly positioned clones
-        this.findGroupMemberElements();
-        
-        this.emit('drag-start', {
-            entityId: this.props.entity.id,
-            entityType: this.props.entityType,
-            viewerId: this.props.viewerId
-        });
+onDragStart(e) {
+    if (e && ((e.ctrlKey || e.metaKey) && e.shiftKey)) {
+        return;
     }
+    
+    this.hasActuallyDragged = false;
+    this.currentDragState = { deltaX: 0, deltaY: 0, isDragging: true };
+    
+    // Reset membership tracking flags
+    this.originalBelongsToID = null;
+    this.hasRemovedMembership = false;
+    
+    // Store original membership but DON'T remove it yet (wait for actual movement)
+    if (this.props.entityType === 'circle' && this.props.entity.belongsToID) {
+        this.originalBelongsToID = this.props.entity.belongsToID;
+    }
+    
+    // Create perfectly positioned clones
+    this.findGroupMemberElements();
+    
+    this.emit('drag-start', {
+        entityId: this.props.entity.id,
+        entityType: this.props.entityType,
+        viewerId: this.props.viewerId
+    });
+}
 
     onDragMove(deltaX, deltaY) {
         this.hasActuallyDragged = true;
         this.currentDragState = { deltaX, deltaY, isDragging: true };
+
+        if (!this.hasRemovedMembership && this.originalBelongsToID && (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2)) {
+            this.dataStore.clearCircleBelongsTo(this.props.entity.id);
+            this.hasRemovedMembership = true;
+        }
         
         this.dragStateManager.updateDragState(deltaX, deltaY);
         this.proximityCallbacks.onDragMove?.(deltaX, deltaY);

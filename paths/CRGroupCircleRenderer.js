@@ -1,4 +1,4 @@
-// CRGroupCircleRenderer.js - Updated to let container inherit size from parent
+// CRGroupCircleRenderer.js - Updated with roil mode opacity and container inheritance
 import { getColorWithOpacity } from './colorUtils.js';
 import { useDataStore } from './dataCoordinator.js';
 
@@ -17,17 +17,23 @@ export const GroupCircleRenderer = {
         }
         
         const isCollapsed = circle.collapsed === true;
+        const isRoilMode = circle.roilMode === 'on';
         
         const groupElement = document.createElement('div');
-        groupElement.className = `group-circle-container ${isCollapsed ? 'collapsed' : 'expanded'} ${circle.sizeMode === 'manual' ? 'manual-size' : 'auto-size'}`;
+        groupElement.className = `group-circle-container ${isCollapsed ? 'collapsed' : 'expanded'} ${circle.sizeMode === 'manual' ? 'manual-size' : 'auto-size'} ${isRoilMode ? 'roil-mode' : ''}`;
         
         // REMOVED: Don't set explicit width/height - inherit from parent entity-shape
         // groupElement.style.width = `${scaledWidth}px`;
         // groupElement.style.height = `${scaledHeight}px`;
         
-        // Set only the visual styling, not the dimensions
+        // Set visual styling
         groupElement.style.borderColor = color;
         groupElement.style.backgroundColor = `color-mix(in srgb, ${color} 15%, transparent)`;
+        
+        // NEW: Apply roil mode opacity
+        if (isRoilMode) {
+            groupElement.style.opacity = '0.1';
+        }
         
         // Add member count display for collapsed groups
         if (isCollapsed && actualBelongingCount > 0) {
@@ -51,9 +57,10 @@ export const GroupCircleRenderer = {
         
         element.appendChild(groupElement);
         
-        // Store current collapsed state for reference (dimensions now handled by parent)
+        // Store current state for reference
         element._groupScale = { 
-            isCollapsed: isCollapsed
+            isCollapsed: isCollapsed,
+            isRoilMode: isRoilMode
         };
     }
 };

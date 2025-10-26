@@ -145,6 +145,9 @@ const groupShapeScale = computed(() => {
 
     // Computed position styles with center-relative positioning for circles
 const positionStyles = computed(() => {
+    if (roilState.isRoilMember.value) {
+        return {};
+    }
     if (props.entityType === 'circle' && props.viewerWidth) {
         const centerX = props.viewerWidth / 2;
         const calculatedLeft = centerX + props.entity.x;

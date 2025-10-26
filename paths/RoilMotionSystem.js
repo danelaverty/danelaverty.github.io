@@ -1,4 +1,4 @@
-// RoilMotionSystem-HighFrequencyMonitor.js - High-frequency monitoring to catch rapid flicker
+// RoilMotionSystem.js - Updated to position roil members relative to their group
 export class RoilMotionSystem {
     constructor() {
         this.activeCircles = new Map(); 
@@ -15,224 +15,58 @@ export class RoilMotionSystem {
         this.maxChanges = 100;
         this.frameCount = 0;
         this.lastUpdateFrameCount = 0;
-    }
-
-    debugLog(message, level = 'info', data = null) {
-        if (!this.debugMode) return;
         
-        const timestamp = new Date().toISOString().substr(11, 12);
-        const prefix = `[RoilMotion ${timestamp}]`;
+        // NEW: Store dataStore reference for group lookups
+        this.dataStore = null;
+    }
+
+    // NEW: Method to set dataStore reference
+    setDataStore(dataStore) {
+        this.dataStore = dataStore;
+    }
+
+    // NEW: Get the absolute position of a roil group
+    getGroupAbsolutePosition(groupId, viewerWidth) {
+        if (!this.dataStore) return { x: 0, y: 0 };
         
-        switch (level) {
-            case 'immediate':
-                break;
-            case 'frame':
-                break;
-            case 'expected':
-                break;
-        }
-    }
-
-    /**
-     * Start high-frequency position monitoring using requestAnimationFrame
-     */
-    startHighFrequencyMonitoring() {
-        if (this.monitoringActive) return;
+        const group = this.dataStore.getCircle(groupId);
+        if (!group) return { x: 0, y: 0 };
         
-        this.debugLog('Starting high-frequency monitoring');
-        this.monitoringActive = true;
-        this.monitorFrame();
-    }
-
-    /**
-     * Stop high-frequency monitoring
-     */
-    stopHighFrequencyMonitoring() {
-        this.monitoringActive = false;
-        this.debugLog('Stopped high-frequency monitoring');
-    }
-
-    /**
-     * Monitor positions every frame
-     */
-    monitorFrame() {
-        if (!this.monitoringActive) return;
+        // Calculate absolute position like EntityState does
+        const centerX = viewerWidth / 2;
+        const absoluteX = centerX + group.x;
+        const absoluteY = group.y;
         
-        this.frameCount++;
-        this.checkAllPositions();
-        
-        requestAnimationFrame(() => this.monitorFrame());
+        return { x: absoluteX, y: absoluteY };
     }
 
-    /**
-     * Check all positions and detect changes
-     */
-    checkAllPositions() {
-        this.activeCircles.forEach((circle, circleId) => {
-            const element = circle.element;
-            const computedStyle = getComputedStyle(element);
-            const currentX = parseFloat(computedStyle.left) || 0;
-            const currentY = parseFloat(computedStyle.top) || 0;
-            
-            const lastKnown = this.lastKnownPositions.get(circleId);
-            
-            if (lastKnown) {
-                const deltaX = Math.abs(currentX - lastKnown.x);
-                const deltaY = Math.abs(currentY - lastKnown.y);
-                const framesSinceLastChange = this.frameCount - lastKnown.frame;
-                
-                // If position changed
-                if (deltaX > 0.5 || deltaY > 0.5) {
-                    const changeData = {
-                        circleId,
-                        from: { x: lastKnown.x.toFixed(2), y: lastKnown.y.toFixed(2) },
-                        to: { x: currentX.toFixed(2), y: currentY.toFixed(2) },
-                        delta: { x: deltaX.toFixed(2), y: deltaY.toFixed(2) },
-                        framesSinceChange: framesSinceLastChange,
-                        currentFrame: this.frameCount,
-                        timestamp: Date.now(),
-                        ourUpdate: this.frameCount <= this.lastUpdateFrameCount + 2, // Within 2 frames of our update
-                        expectedPosition: { x: circle.x.toFixed(2), y: circle.y.toFixed(2) },
-                        matchesExpected: this.matchesExpectedPosition(circle, currentX, currentY),
-                        elementInfo: this.getElementInfo(element)
-                    };
-                    
-                    // Determine if this is expected or unexpected
-                    let level = 'frame';
-                    let prefix = 'Frame change';
-                    
-                    if (!changeData.ourUpdate && !changeData.matchesExpected && (deltaX > 5 || deltaY > 5)) {
-                        level = 'immediate';
-                        prefix = 'FLICKER DETECTED - External position change';
-                    } else if (changeData.ourUpdate || changeData.matchesExpected) {
-                        level = 'expected';
-                        prefix = 'Expected motion';
-                    }
-                    
-                    this.debugLog(
-                        `${prefix} for ${circleId}: (${lastKnown.x.toFixed(1)}, ${lastKnown.y.toFixed(1)}) → (${currentX.toFixed(1)}, ${currentY.toFixed(1)}) - Δ(${deltaX.toFixed(1)}, ${deltaY.toFixed(1)})`,
-                        level,
-                        changeData
-                    );
-                    
-                    this.positionChanges.push(changeData);
-                    if (this.positionChanges.length > this.maxChanges) {
-                        this.positionChanges.shift();
-                    }
-                }
-            }
-            
-            // Update last known position
-            this.lastKnownPositions.set(circleId, {
-                x: currentX,
-                y: currentY,
-                frame: this.frameCount,
-                timestamp: Date.now()
-            });
-        });
-    }
-
-    /**
-     * Check if position matches what we expect from our motion system
-     */
-    matchesExpectedPosition(circle, actualX, actualY) {
-        const expectedX = circle.x;
-        const expectedY = circle.y;
-        
-        const deltaFromExpected = Math.abs(actualX - expectedX) + Math.abs(actualY - expectedY);
-        return deltaFromExpected < 2;
-    }
-
-    /**
-     * Get detailed element information for debugging
-     */
-    getElementInfo(element) {
-        return {
-            classes: Array.from(element.classList),
-            hasTransition: getComputedStyle(element).transition !== 'none',
-            hasAnimation: getComputedStyle(element).animation !== 'none',
-            isDragging: element.hasAttribute('data-dragging') || element.closest('[data-dragging]'),
-            parentTag: element.parentElement?.tagName,
-            inViewer: !!element.closest('.circle-viewer'),
-            transform: getComputedStyle(element).transform
-        };
-    }
-
-    /**
-     * Immediate validation right after we set a position
-     */
-    validateImmediatePosition(circleId, element, expectedX, expectedY) {
-        // Check position immediately after setting it
-        setTimeout(() => {
-            const computedStyle = getComputedStyle(element);
-            const actualX = parseFloat(computedStyle.left) || 0;
-            const actualY = parseFloat(computedStyle.top) || 0;
-            
-            const deltaX = Math.abs(actualX - expectedX);
-            const deltaY = Math.abs(actualY - expectedY);
-            
-            if (deltaX > 2 || deltaY > 2) {
-                this.debugLog(
-                    `IMMEDIATE OVERRIDE detected for ${circleId}! Set: (${expectedX.toFixed(1)}, ${expectedY.toFixed(1)}) but got: (${actualX.toFixed(1)}, ${actualY.toFixed(1)})`,
-                    'immediate',
-                    {
-                        circleId,
-                        expected: { x: expectedX, y: expectedY },
-                        actual: { x: actualX, y: actualY },
-                        delta: { x: deltaX, y: deltaY },
-                        elementInfo: this.getElementInfo(element)
-                    }
-                );
-            }
-        }, 0);
-        
-        // Also check in next frame
-        requestAnimationFrame(() => {
-            const computedStyle = getComputedStyle(element);
-            const actualX = parseFloat(computedStyle.left) || 0;
-            const actualY = parseFloat(computedStyle.top) || 0;
-            
-            const deltaX = Math.abs(actualX - expectedX);
-            const deltaY = Math.abs(actualY - expectedY);
-            
-            if (deltaX > 2 || deltaY > 2) {
-                this.debugLog(
-                    `NEXT-FRAME OVERRIDE detected for ${circleId}! Set: (${expectedX.toFixed(1)}, ${expectedY.toFixed(1)}) but got: (${actualX.toFixed(1)}, ${actualY.toFixed(1)})`,
-                    'immediate',
-                    {
-                        circleId,
-                        expected: { x: expectedX, y: expectedY },
-                        actual: { x: actualX, y: actualY },
-                        delta: { x: deltaX, y: deltaY },
-                        elementInfo: this.getElementInfo(element)
-                    }
-                );
-            }
-        });
-    }
-
-    addCircle(circleId, element, groupBounds = null) {
+    addCircle(circleId, element, groupBounds = null, groupId = null, viewerWidth = null) {
         if (!element || this.activeCircles.has(circleId)) return;
 
-        this.debugLog(`Adding circle ${circleId} to high-frequency monitoring`);
+        let groupOffset = { x: 0, y: 0 };
+        if (groupId && viewerWidth) {
+            groupOffset = this.getGroupAbsolutePosition(groupId, viewerWidth);
+        }
 
         const bounds = groupBounds || {
             minX: -50, maxX: 50, minY: -50, maxY: 50
         };
 
-        const currentStyle = getComputedStyle(element);
-        const currentLeft = parseFloat(currentStyle.left) || 0;
-        const currentTop = parseFloat(currentStyle.top) || 0;
+        // Use group offset as the base position instead of current element position
+        const baseX = groupOffset.x;
+        const baseY = groupOffset.y;
 
         this.activeCircles.set(circleId, {
             element,
             bounds,
-            x: currentLeft,
-            y: currentTop,
+            x: baseX,
+            y: baseY,
             z: 0,
-            baseX: currentLeft,
-            baseY: currentTop,
+            baseX: baseX,
+            baseY: baseY,
             baseZ: 0,
+            groupId: groupId, // NEW: Store group ID for position updates
+            viewerWidth: viewerWidth, // NEW: Store viewer width for position calculations
             orbitRadius: 8 + Math.random() * 20,
             orbitSpeed: 0.008 + Math.random() * 0.015,
             orbitPhase: Math.random() * Math.PI * 2,
@@ -254,8 +88,8 @@ export class RoilMotionSystem {
 
         // Initialize position tracking
         this.lastKnownPositions.set(circleId, {
-            x: currentLeft,
-            y: currentTop,
+            x: baseX,
+            y: baseY,
             frame: this.frameCount,
             timestamp: Date.now()
         });
@@ -266,8 +100,143 @@ export class RoilMotionSystem {
         }
     }
 
+    updateAllCircles() {
+        this.lastUpdateFrameCount = this.frameCount;
+        
+        this.activeCircles.forEach((circle, circleId) => {
+            // NEW: Update group position before calculating motion
+            if (circle.groupId && circle.viewerWidth) {
+                const newGroupOffset = this.getGroupAbsolutePosition(circle.groupId, circle.viewerWidth);
+                circle.baseX = newGroupOffset.x;
+                circle.baseY = newGroupOffset.y;
+            }
+            
+            this.updateCirclePosition(circle, circleId);
+        });
+    }
+
+    startHighFrequencyMonitoring() {
+        if (this.monitoringActive) return;
+        
+        this.monitoringActive = true;
+        this.monitorFrame();
+    }
+
+    stopHighFrequencyMonitoring() {
+        this.monitoringActive = false;
+    }
+
+    monitorFrame() {
+        if (!this.monitoringActive) return;
+        
+        this.frameCount++;
+        this.checkAllPositions();
+        
+        requestAnimationFrame(() => this.monitorFrame());
+    }
+
+    checkAllPositions() {
+        this.activeCircles.forEach((circle, circleId) => {
+            const element = circle.element;
+            const computedStyle = getComputedStyle(element);
+            const currentX = parseFloat(computedStyle.left) || 0;
+            const currentY = parseFloat(computedStyle.top) || 0;
+            
+            const lastKnown = this.lastKnownPositions.get(circleId);
+            
+            if (lastKnown) {
+                const deltaX = Math.abs(currentX - lastKnown.x);
+                const deltaY = Math.abs(currentY - lastKnown.y);
+                const framesSinceLastChange = this.frameCount - lastKnown.frame;
+                
+                if (deltaX > 0.5 || deltaY > 0.5) {
+                    const changeData = {
+                        circleId,
+                        from: { x: lastKnown.x.toFixed(2), y: lastKnown.y.toFixed(2) },
+                        to: { x: currentX.toFixed(2), y: currentY.toFixed(2) },
+                        delta: { x: deltaX.toFixed(2), y: deltaY.toFixed(2) },
+                        framesSinceChange: framesSinceLastChange,
+                        currentFrame: this.frameCount,
+                        timestamp: Date.now(),
+                        ourUpdate: this.frameCount <= this.lastUpdateFrameCount + 2,
+                        expectedPosition: { x: circle.x.toFixed(2), y: circle.y.toFixed(2) },
+                        matchesExpected: this.matchesExpectedPosition(circle, currentX, currentY),
+                        elementInfo: this.getElementInfo(element)
+                    };
+                    
+                    let level = 'frame';
+                    let prefix = 'Frame change';
+                    
+                    if (!changeData.ourUpdate && !changeData.matchesExpected && (deltaX > 5 || deltaY > 5)) {
+                        level = 'immediate';
+                        prefix = 'FLICKER DETECTED - External position change';
+                    } else if (changeData.ourUpdate || changeData.matchesExpected) {
+                        level = 'expected';
+                        prefix = 'Expected motion';
+                    }
+                    
+                    this.positionChanges.push(changeData);
+                    if (this.positionChanges.length > this.maxChanges) {
+                        this.positionChanges.shift();
+                    }
+                }
+            }
+            
+            this.lastKnownPositions.set(circleId, {
+                x: currentX,
+                y: currentY,
+                frame: this.frameCount,
+                timestamp: Date.now()
+            });
+        });
+    }
+
+    matchesExpectedPosition(circle, actualX, actualY) {
+        const expectedX = circle.x;
+        const expectedY = circle.y;
+        
+        const deltaFromExpected = Math.abs(actualX - expectedX) + Math.abs(actualY - expectedY);
+        return deltaFromExpected < 2;
+    }
+
+    getElementInfo(element) {
+        return {
+            classes: Array.from(element.classList),
+            hasTransition: getComputedStyle(element).transition !== 'none',
+            hasAnimation: getComputedStyle(element).animation !== 'none',
+            isDragging: element.hasAttribute('data-dragging') || element.closest('[data-dragging]'),
+            parentTag: element.parentElement?.tagName,
+            inViewer: !!element.closest('.circle-viewer'),
+            transform: getComputedStyle(element).transform
+        };
+    }
+
+    validateImmediatePosition(circleId, element, expectedX, expectedY) {
+        setTimeout(() => {
+            const computedStyle = getComputedStyle(element);
+            const actualX = parseFloat(computedStyle.left) || 0;
+            const actualY = parseFloat(computedStyle.top) || 0;
+            
+            const deltaX = Math.abs(actualX - expectedX);
+            const deltaY = Math.abs(actualY - expectedY);
+        }, 0);
+        
+        requestAnimationFrame(() => {
+            const computedStyle = getComputedStyle(element);
+            const actualX = parseFloat(computedStyle.left) || 0;
+            const actualY = parseFloat(computedStyle.top) || 0;
+            
+            const deltaX = Math.abs(actualX - expectedX);
+            const deltaY = Math.abs(actualY - expectedY);
+        });
+    }
+
     removeCircle(circleId) {
-        this.debugLog(`Removing circle ${circleId} from monitoring`);
+        const circle = this.activeCircles.get(circleId);
+        if (circle && circle.element) {
+            // Reset opacity to full visibility
+            circle.element.style.opacity = '1';
+        }
         this.activeCircles.delete(circleId);
         this.lastKnownPositions.delete(circleId);
         
@@ -280,7 +249,6 @@ export class RoilMotionSystem {
     startMotion() {
         if (this.isRunning) return;
 
-        this.debugLog('Starting roil motion system');
         this.isRunning = true;
         this.interval = setInterval(() => {
             this.updateAllCircles();
@@ -290,21 +258,12 @@ export class RoilMotionSystem {
     stopMotion() {
         if (!this.isRunning) return;
 
-        this.debugLog('Stopping roil motion system');
         this.isRunning = false;
         if (this.interval) {
             clearInterval(this.interval);
             this.interval = null;
         }
         this.stopHighFrequencyMonitoring();
-    }
-
-    updateAllCircles() {
-        this.lastUpdateFrameCount = this.frameCount;
-        
-        this.activeCircles.forEach((circle, circleId) => {
-            this.updateCirclePosition(circle, circleId);
-        });
     }
 
     updateCirclePosition(circle, circleId) {
@@ -361,27 +320,19 @@ export class RoilMotionSystem {
         const scale = circle.minScale + (normalizedZ * (circle.maxScale - circle.minScale));
         
         // Apply styles and immediately validate
-        try {
-            element.style.left = circle.x + 'px';
-            element.style.top = circle.y + 'px';
-            element.style.transform = `translate(-50%, -50%) scale(${(scale - 0.2).toFixed(3)})`;
-            element.style.opacity = scale * 2 - 1.5;
-            
-            // Validate that our position stuck
-            this.validateImmediatePosition(circleId, element, circle.x, circle.y);
-            
-        } catch (error) {
-            this.debugLog(`Error applying styles to ${circleId}`, 'error', error);
-        }
+        element.style.left = circle.x + 'px';
+        element.style.top = circle.y + 'px';
+        element.style.transform = `translate(-50%, -50%) scale(${(scale - 0.2).toFixed(3)})`;
+        element.style.opacity = scale * 2 - 1.5;
+        
+        this.validateImmediatePosition(circleId, element, circle.x, circle.y);
         
         circle.currentScale = scale;
     }
 
-    // Rest of the methods remain the same...
     updateCircleBasePosition(circleId, newX, newY) {
         const circle = this.activeCircles.get(circleId);
         if (circle) {
-            this.debugLog(`Base position update for ${circleId}: (${newX}, ${newY})`);
             circle.baseX = newX;
             circle.baseY = newY;
             circle.x = newX;
@@ -445,7 +396,6 @@ export class RoilMotionSystem {
     }
 
     destroy() {
-        this.debugLog('Destroying roil motion system');
         this.stopMotion();
         this.stopHighFrequencyMonitoring();
         this.activeCircles.clear();
