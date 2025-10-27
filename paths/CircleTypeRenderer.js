@@ -126,6 +126,7 @@ export const CircleTypeRenderer = {
         
         // Remove type-specific elements but NOT selection indicators
         const elementsToRemove = [
+            '.circle-glow-container',
             '.circle-glow',
             '.particles',
             '.triangle-wrap',

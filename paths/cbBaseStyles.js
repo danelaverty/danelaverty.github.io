@@ -82,8 +82,7 @@ export const colorStyles = `
     }
 
     .color-swatch.selected {
-        border-color: rgba(255, 255, 255, 0.8);
-        transform: scale(1.1);
+        border: 1px solid white;
     }
 `;
 
@@ -336,4 +335,22 @@ export const emojiStyles = `
     .clear-recent-button:hover .clear-recent-icon {
         color: white;
     }
+
+.color-stack-container {
+    position: relative;
+    width: 20px; /* Adjust based on your color-swatch-mini size */
+    height: 20px; /* Adjust based on your color-swatch-mini size */
+    display: inline-block;
+}
+
+.color-swatch-stacked {
+    position: absolute !important;
+    top: 0;
+    left: 0;
+}
+
+/* Optional: Add a subtle shadow to enhance the stacked card effect */
+.color-swatch-stacked {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
 `;

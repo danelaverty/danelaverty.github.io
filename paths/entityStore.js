@@ -6,7 +6,6 @@ let entityStoreInstance = null;
 
 // CENTRALIZED DEFAULT VALUES
 const CIRCLE_DEFAULTS = {
-    color: '#CCCCCC',
     colors: ['#B3B3B3'],
     energyTypes: [],
     activation: () => getPropertyDefault('activation'),
@@ -52,22 +51,6 @@ const ensureCircleDefaults = (circle) => {
         const defaultValue = CIRCLE_DEFAULTS[key];
         const resolvedDefault = typeof defaultValue === 'function' ? defaultValue() : defaultValue;
         
-        // Special handling for colors array
-        if (key === 'colors') {
-            if (!circle.colors) {
-                circle.colors = circle.color ? [circle.color] : [...resolvedDefault];
-            }
-            return;
-        }
-        
-        // Special handling for color (should sync with colors[0])
-        if (key === 'color') {
-            if (!circle.color) {
-                circle.color = circle.colors?.[0] || resolvedDefault;
-            }
-            return;
-        }
-        
         // Special handling for emoji based on type
         if (key === 'emoji') {
             if (circle.emoji === undefined) {
@@ -94,14 +77,6 @@ const ensureCircleDefaults = (circle) => {
             circle[key] = Array.isArray(resolvedDefault) ? [...resolvedDefault] : resolvedDefault;
         }
     });
-    
-    // Handle color/colors synchronization (if one was updated but not the other)
-    if (circle.colors && circle.colors.length > 0 && !circle.color) {
-        circle.color = circle.colors[0];
-    }
-    if (circle.color && (!circle.colors || circle.colors.length === 0)) {
-        circle.colors = [circle.color];
-    }
 };
 
 // Helper to ensure square has all required properties with defaults
@@ -242,7 +217,6 @@ function createEntityStore() {
 
         // Add circle-specific properties
         if (entityType === 'circle') {
-            entity.color = getCircleDefault('color');
             entity.colors = [...getCircleDefault('colors')];
             entity.energyTypes = [...getCircleDefault('energyTypes')];
             entity.activation = getCircleDefault('activation');
@@ -381,15 +355,6 @@ function createEntityStore() {
             
             // For circles, ensure all properties have defaults
             if (entityType === 'circle') {
-                // If colors array is updated but color is not, update primary color
-                if (updates.colors && !updates.color && updates.colors.length > 0) {
-                    entity.color = updates.colors[0];
-                }
-                // If color is updated but colors array is not, update colors array
-                if (updates.color && !updates.colors) {
-                    entity.colors = [updates.color];
-                }
-                
                 // Ensure all required properties exist with defaults
                 ensureCircleDefaults(entity);
                 
@@ -411,8 +376,7 @@ function createEntityStore() {
                                 refCircle.name = entity.name;
                             }
 
-                            if (updates.color !== undefined || updates.colors !== undefined) {
-                                refCircle.color = entity.color;
+                            if (updates.colors !== undefined) {
                                 refCircle.colors = [...entity.colors];
                             }
 

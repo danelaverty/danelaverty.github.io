@@ -6,7 +6,7 @@ export const GroupCircleRenderer = {
     render(element, circle, belongingCirclesCount = null) {
         if (!element) return;
         
-        const color = circle.colors?.[0] || circle.color || '#4CAF50';
+        const color = circle.colors[0] || '#4CAF50';
         
         // Get dataStore and calculate belonging circles count if not provided
         let actualBelongingCount = belongingCirclesCount;
@@ -32,7 +32,7 @@ export const GroupCircleRenderer = {
         
         // NEW: Apply roil mode opacity
         if (isRoilMode) {
-            groupElement.style.opacity = '0.1';
+            groupElement.style.opacity = '0';
         }
         
         // Add member count display for collapsed groups

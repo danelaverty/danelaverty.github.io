@@ -1,6 +1,6 @@
 // CBCyclePropertyControl.js - Generic control for cycleable properties
 
-import { getPropertyConfig, validatePropertyValue } from './CBCyclePropertyConfigs.js';
+import { getPropertyConfig, getPropertyValueConfig, validatePropertyValue } from './CBCyclePropertyConfigs.js';
 
 export const CBCyclePropertyControl = {
   props: {
@@ -25,7 +25,12 @@ export const CBCyclePropertyControl = {
     },
     
     valueConfig() {
-      return this.config[this.propertyValue] || {};
+      const config = getPropertyConfig(this.propertyName);
+      if (!config) return {};
+      
+      // Handle both old and new format
+      const values = config.values || config;
+      return values[this.propertyValue] || {};
     },
     
     propertyIcon() {

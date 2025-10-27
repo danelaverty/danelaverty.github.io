@@ -14,10 +14,11 @@ export const TypeControl = {
   emits: ['toggle'],
   
   template: `
-    <div class="characteristic-control">
+    <div class="characteristic-control"
+            @click="$emit('toggle')"
+        >
         <div 
             :class="['type-display', { 'picker-open': isPickerOpen }]"
-            @click="$emit('toggle')"
             style="background-color: transparent; border: none; cursor: pointer;"
         >
             <div class="type-icon">{{ currentTypeInfo.icon }}</div>

@@ -48,10 +48,11 @@ export const CircleEmojiControl = {
   },
   
   template: `
-    <div class="characteristic-control">
+    <div class="characteristic-control"
+        @click="$emit('toggle')"
+        >
         <div 
             :class="['emoji-display', 'circle-emoji-display-control', { 'picker-open': isPickerOpen }]"
-            @click="$emit('toggle')"
             :title="displayTitle"
         >
             <div style="color: white;" class="circle-emoji-display">{{ displayEmoji }}</div>
