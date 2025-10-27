@@ -5,6 +5,6 @@ export const BasicCircleRenderer = {
      */
     render(element, circle) {
         if (!element) return;
-        element.style.backgroundColor = circle.colors?.[0] || circle.color || '#4CAF50';
+        element.style.backgroundColor = circle.colors[0] || '#4CAF50';
     }
 };

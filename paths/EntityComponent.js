@@ -205,7 +205,7 @@ const componentStyles = `
         transition: background-color 0.2s ease;
         position: absolute;
         top: 95%;
-        background-color: rgba(0, 0, 0, .05);
+        background-color: transparent;
         z-index: 10;
         text-shadow: 1px 1px 1px black;
         transition: transform 1s ease, opacity 1s ease, filter 1s ease;

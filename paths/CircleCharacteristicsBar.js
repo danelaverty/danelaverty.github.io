@@ -81,7 +81,7 @@ export const CircleCharacteristicsBar = {
       ...dataHooks,
       ...recentEmojiHooks,
       
-      // State from state hooks
+      // State from state hooks (includes cycleableProperties)
       ...stateHooks,
       
       // Handlers

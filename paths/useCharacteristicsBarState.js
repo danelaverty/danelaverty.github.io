@@ -3,7 +3,7 @@ import { computed, ref, watchEffect } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
 import { useCharacteristicsBarData } from './useCharacteristicsBarData.js';
 import { useCharacteristicsBarPickers } from './useCharacteristicsBarPickers.js';
-import { CYCLE_PROPERTY_CONFIGS, getPropertyValues, getPropertyDefault } from './CBCyclePropertyConfigs.js';
+import { CYCLE_PROPERTY_CONFIGS, getPropertyValues, getPropertyDefault, getVisiblePropertiesForCircleTypes } from './CBCyclePropertyConfigs.js';
 
 export function useCharacteristicsBarState(dataHooks, pickerHooks) {
   const dataStore = useDataStore();
@@ -85,35 +85,26 @@ export function useCharacteristicsBarState(dataHooks, pickerHooks) {
     return dataStore.hasMultipleCirclesSelected();
   });
 
-  // Dynamically get all cycleable properties from config
+  const getSelectedCircleObjects = computed(() => {
+    const selectedIds = dataStore.getSelectedCircles();
+    return selectedIds.map(id => dataStore.getCircle(id)).filter(Boolean);
+  });
+
+  // UPDATED: Dynamically get cycleable properties with circle type filtering
   const cycleableProperties = computed(() => {
-    const allProperties = Object.keys(CYCLE_PROPERTY_CONFIGS);
+    // Get the types of all selected circles
+    const selectedCircleTypes = getSelectedCircleObjects.value.map(circle => circle.type);
     
-    // Filter properties based on context (single vs multi-selection, circle type, etc.)
-    return allProperties.filter(propertyName => {
-      // Add any property-specific visibility logic here
-      // For now, return all properties - you can add conditions as needed
-      
-      // Example: only show sizeMode for group circles
-      if (propertyName === 'sizeMode') {
-        if (hasMultipleCirclesSelected.value) {
-          // For multi-selection, check if all selected circles are groups
-          const selectedIds = dataStore.getSelectedCircles();
-          return selectedIds.every(id => {
-            const circle = dataStore.getCircle(id);
-            return circle && circle.type === 'group';
-          });
-        } else if (dataHooks.selectedCircle.value) {
-          return dataHooks.selectedCircle.value.type === 'group';
-        }
-        return false;
-      }
-      
-      // Add more property-specific visibility rules here as needed
-      // if (propertyName === 'someOtherProperty') { ... }
-      
-      return true; // Show by default
-    });
+    // If no circles selected, return empty array
+    if (selectedCircleTypes.length === 0) {
+      return [];
+    }
+    
+    // Get unique circle types
+    const uniqueCircleTypes = [...new Set(selectedCircleTypes)];
+    
+    // Get properties visible for these circle types (all selected circles must match)
+    return getVisiblePropertiesForCircleTypes(uniqueCircleTypes);
   });
 
   // Generic function to get property value for single or multiple selection
@@ -171,11 +162,6 @@ export function useCharacteristicsBarState(dataHooks, pickerHooks) {
     return selectedCircles.length >= 1;
   });
 
-  const getSelectedCircleObjects = computed(() => {
-    const selectedIds = dataStore.getSelectedCircles();
-    return selectedIds.map(id => dataStore.getCircle(id)).filter(Boolean);
-  });
-
   // Extract specific values we need
   const { emojiAttributes } = dataHooks;
 
@@ -208,15 +194,19 @@ export function useCharacteristicsBarState(dataHooks, pickerHooks) {
   
   // Check if circle emoji picker should be visible
   const isCircleEmojiPickerVisible = computed(() => {
-    if (hasMultipleCirclesSelected.value) {
-      // For multiple selection, always show circle emoji control
-      return true;
+    const selectedCircleObjects = getSelectedCircleObjects.value;
+    
+    // If no circles selected, don't show
+    if (selectedCircleObjects.length === 0) {
+      return false;
     }
     
-    // For single selection, check type and reference status
-    return dataHooks.selectedCircle.value && 
-           (['emoji'].indexOf(dataHooks.selectedCircle.value.type) > -1) && 
-           !isReferenceCircle.value;
+    // Check if ALL selected circles are emoji type and not reference circles
+    return selectedCircleObjects.every(circle => {
+      const isEmojiType = circle.type === 'emoji';
+      const isReference = circle.referenceID !== null;
+      return isEmojiType && !isReference;
+    });
   });
 
   const shouldShowEmojiControls = computed(() => {

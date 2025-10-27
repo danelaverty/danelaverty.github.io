@@ -14,10 +14,11 @@ export const ColorControl = {
   emits: ['toggle'],
   
   template: `
-    <div class="characteristic-control">
+    <div class="characteristic-control"
+        @click="$emit('toggle')"
+        >
         <div 
             :class="['color-display', { 'picker-open': isPickerOpen }]"
-            @click="$emit('toggle')"
             style="background-color: transparent; border: none; cursor: pointer;"
         >
             <!-- Single color display -->
@@ -28,13 +29,28 @@ export const ColorControl = {
                 ></div>
             </template>
             
-            <!-- Multiple colors display -->
+            <!-- Multiple colors display with stacked card effect -->
             <template v-else-if="circleColors.length > 1">
+                <div class="color-stack-container">
+                    <div 
+                        v-for="(color, index) in circleColors.slice(0, 3)"
+                        :key="color"
+                        class="color-swatch-mini color-swatch-stacked"
+                        :style="{ 
+                            backgroundColor: color,
+                            top: (index * 3) + 'px',
+                            left: (index * 3) + 'px',
+                            zIndex: circleColors.length - index
+                        }"
+                    ></div>
+                </div>
+            </template>
+            
+            <!-- Multiple circles selected (when circleColors is empty) -->
+            <template v-else>
                 <div 
-                    v-for="(color, index) in circleColors.slice(0, 3)"
-                    :key="color"
                     class="color-swatch-mini"
-                    :style="{ backgroundColor: color }"
+                    style="background-color: #ff0000;"
                 ></div>
             </template>
         </div>

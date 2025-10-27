@@ -729,4 +729,63 @@ export const circleTypeStyles = `
         transform: none;
     }
 }
+
+@keyframes gradientOpacityShift {
+    0%, 100% {
+        opacity: 0.3;
+    }
+    25% {
+        opacity: 0.7;
+    }
+    50% {
+        opacity: 0.9;
+    }
+    75% {
+        opacity: 0.5;
+    }
+}
+
+@keyframes gradientScaleShift {
+    0%, 100% {
+        transform: scale(0.85);
+    }
+    30% {
+        transform: scale(1.1);
+    }
+    60% {
+        transform: scale(0.95);
+    }
+    80% {
+        transform: scale(1.05);
+    }
+}
+
+/* Updated gradient layer class to handle multiple animations */
+.color-flow-gradient-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    pointer-events: none;
+    will-change: transform, opacity;
+    transform-origin: center center;
+}
+
+.color-flow-gradient-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    pointer-events: none;
+    will-change: transform;
+}
+
+.color-flow-overlay.multi-layer-flow {
+    /* Remove the animation from the container since individual layers now animate */
+    animation: none;
+}
 `;

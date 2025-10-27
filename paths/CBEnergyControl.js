@@ -27,10 +27,11 @@ export const EnergyControl = {
   },
   
   template: `
-    <div class="characteristic-control">
+    <div class="characteristic-control"
+        @click="handleClick"
+        >
         <div 
             :class="['energy-display', { 'picker-open': isPickerOpen }]"
-            @click="handleClick"
             style="background-color: transparent; border: none; cursor: pointer;"
             :title="'Energy Types: ' + (circleEnergyTypes.length > 0 ? circleEnergyTypes.join(', ') : 'None')"
         >
