@@ -2,36 +2,19 @@
 import { hslStringToHex } from './colorUtils.js';
 
 export const ColorFlowSystem = {
-    debugLog(message, element, data = {}) {
-        const elementId = element?.id || element?.dataset?.entityId || 'unknown';
-        console.log(`[ColorFlowSystem] ${message} - Element: ${elementId}`, {
-            element,
-            overlayCount: element ? element.querySelectorAll('.color-flow-overlay').length : 0,
-            gradientLayerCount: element ? element.querySelectorAll('.color-flow-gradient-layer').length : 0,
-            hasAnimation: !!element?._colorFlowAnimation,
-            hasOverlay: !!element?._gradientOverlay,
-            ...data
-        });
-    },
-
     /**
      * Start CSS-based multi-layer color flow for multi-color circles
      */
     start(element, colors) {
-        this.debugLog('start() called', element, { colorsLength: colors?.length });
-        
         if (!colors || colors.length <= 1) {
-            this.debugLog('start() early return - insufficient colors', element);
             return;
         }
         
         if (!element) {
-            this.debugLog('start() early return - no element', element);
             return;
         }
         
         // Stop any existing flow first
-        this.debugLog('calling stop() before starting new flow', element);
         this.stop(element);
         
         // Convert colors to hex format
@@ -44,17 +27,10 @@ export const ColorFlowSystem = {
      * Create the CSS-based color flow overlay system with individual gradient divs
      */
     createColorFlowOverlay(element, colors) {
-        this.debugLog('createColorFlowOverlay() called', element, { colorsLength: colors.length });
-        
         // Check for existing overlays before creating new one
         const existingOverlays = element.querySelectorAll('.color-flow-overlay');
         if (existingOverlays.length > 0) {
-            this.debugLog('WARNING: Found existing overlays before creating new one!', element, { 
-                overlayCount: existingOverlays.length 
-            });
-            // Remove existing overlays
             existingOverlays.forEach((overlay, index) => {
-                this.debugLog(`Removing existing overlay ${index}`, element);
                 overlay.remove();
             });
         }
@@ -62,23 +38,12 @@ export const ColorFlowSystem = {
         // Create parent container
         const gradientOverlay = document.createElement('div');
         gradientOverlay.className = 'color-flow-overlay multi-layer-flow';
-        gradientOverlay.dataset.debugId = Date.now(); // Add unique ID for debugging
-        
-        this.debugLog('created new overlay element', element, { 
-            overlayDebugId: gradientOverlay.dataset.debugId 
-        });
         
         // Create individual gradient layers
         this.createGradientLayers(gradientOverlay, colors);
         
         element.appendChild(gradientOverlay);
         element._gradientOverlay = gradientOverlay;
-        
-        this.debugLog('overlay added to DOM', element, { 
-            overlayDebugId: gradientOverlay.dataset.debugId,
-            totalOverlaysInElement: element.querySelectorAll('.color-flow-overlay').length,
-            gradientLayersCreated: gradientOverlay.querySelectorAll('.color-flow-gradient-layer').length
-        });
     },
 
     /**
@@ -112,10 +77,6 @@ export const ColorFlowSystem = {
             overlay.appendChild(gradientLayer);
         }
         
-        this.debugLog('gradient layers created', overlay.parentElement, {
-            layerCount: layerCount,
-            colorsUsed: colors.slice(0, layerCount)
-        });
     },
 
     /**
@@ -141,13 +102,6 @@ export const ColorFlowSystem = {
         
         // Add unique animation for each layer
         this.setLayerAnimation(layer, index);
-        
-        this.debugLog('gradient layer styles set', layer.parentElement?.parentElement, {
-            layerIndex: index,
-            color: color,
-            gradient: gradient,
-            zIndex: 3 + index
-        });
     },
 
 
@@ -184,13 +138,6 @@ setLayerAnimation(layer, index) {
     ].join(', ');
     
     layer.style.animationDelay = `${delay}s, ${opacityDelay}s, ${scaleDelay}s`;
-    
-    // Store animation info for debugging
-    layer.dataset.animationDuration = duration;
-    layer.dataset.animationDirection = direction;
-    layer.dataset.animationDelay = delay;
-    layer.dataset.opacityCoeff = opacityCoeff;
-    layer.dataset.scaleCoeff = scaleCoeff;
 },
 
     /**
@@ -211,14 +158,8 @@ setLayerAnimation(layer, index) {
             const ellipse = gradientMatch[1];
             const at = gradientMatch[2];
             layer.style.background = `radial-gradient(ellipse ${ellipse} at ${at}, ${transparentColor} 0%, transparent 70%)`;
-            layer.dataset.color = newColor;
         }
         
-        this.debugLog('layer color updated', element, {
-            layerIndex,
-            newColor,
-            updatedBackground: layer.style.background
-        });
     },
 
     /**
@@ -241,19 +182,12 @@ setLayerAnimation(layer, index) {
      * Stop color flow
      */
     stop(element) {
-        this.debugLog('stop() called', element);
-        
         if (!element) {
-            this.debugLog('stop() early return - no element', element);
             return;
         }
         
         if (element._gradientOverlay && element._gradientOverlay.parentNode) {
             const layerCount = element._gradientOverlay.querySelectorAll('.color-flow-gradient-layer').length;
-            this.debugLog('removing gradient overlay from DOM', element, {
-                overlayDebugId: element._gradientOverlay.dataset?.debugId,
-                layerCount: layerCount
-            });
             element._gradientOverlay.parentNode.removeChild(element._gradientOverlay);
             element._gradientOverlay = null;
         }
@@ -261,13 +195,7 @@ setLayerAnimation(layer, index) {
         // Final check for any remaining overlays
         const remainingOverlays = element.querySelectorAll('.color-flow-overlay');
         if (remainingOverlays.length > 0) {
-            this.debugLog('WARNING: Found remaining overlays after stop()', element, {
-                overlayCount: remainingOverlays.length
-            });
             remainingOverlays.forEach((overlay, index) => {
-                this.debugLog(`Removing remaining overlay ${index}`, element, {
-                    overlayDebugId: overlay.dataset?.debugId
-                });
                 overlay.remove();
             });
         }
@@ -278,7 +206,6 @@ setLayerAnimation(layer, index) {
      */
     isActive(element) {
         const active = !!(element && element._gradientOverlay);
-        this.debugLog('isActive() called', element, { active });
         return active;
     },
 
@@ -293,16 +220,8 @@ setLayerAnimation(layer, index) {
             overlayInDOM: element._gradientOverlay ? !!element._gradientOverlay.parentNode : false,
             overlayCountInElement: element.querySelectorAll('.color-flow-overlay').length,
             gradientLayerCount: element.querySelectorAll('.color-flow-gradient-layer').length,
-            layerDetails: this.getAllGradientLayers(element).map((layer, index) => ({
-                index: layer.dataset.layerIndex,
-                color: layer.dataset.color,
-                duration: layer.dataset.animationDuration,
-                direction: layer.dataset.animationDirection,
-                delay: layer.dataset.animationDelay
-            }))
         };
         
-        this.debugLog('getStatus() called', element, status);
         return status;
     },
 
@@ -312,22 +231,6 @@ setLayerAnimation(layer, index) {
         
         const overlays = element.querySelectorAll('.color-flow-overlay');
         const gradientLayers = element.querySelectorAll('.color-flow-gradient-layer');
-        
-        this.debugLog('Manual duplicate check', element, {
-            overlayCount: overlays.length,
-            gradientLayerCount: gradientLayers.length,
-            overlayDetails: Array.from(overlays).map(overlay => ({
-                debugId: overlay.dataset?.debugId,
-                hasParent: !!overlay.parentNode,
-                className: overlay.className,
-                childLayerCount: overlay.querySelectorAll('.color-flow-gradient-layer').length
-            })),
-            layerDetails: Array.from(gradientLayers).map(layer => ({
-                layerIndex: layer.dataset?.layerIndex,
-                color: layer.dataset?.color,
-                hasParent: !!layer.parentNode
-            }))
-        });
         
         return {
             overlayCount: overlays.length,

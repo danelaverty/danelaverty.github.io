@@ -19,6 +19,8 @@ export const GroupCircleRenderer = {
         const isCollapsed = circle.collapsed === true;
         const isRoilMode = circle.roilMode === 'on';
         
+        const awarenessLine = document.createElement('div');
+        awarenessLine.className = `awareness-line`;
         const groupElement = document.createElement('div');
         groupElement.className = `group-circle-container ${isCollapsed ? 'collapsed' : 'expanded'} ${circle.sizeMode === 'manual' ? 'manual-size' : 'auto-size'} ${isRoilMode ? 'roil-mode' : ''}`;
         
@@ -56,6 +58,7 @@ export const GroupCircleRenderer = {
         }
         
         element.appendChild(groupElement);
+        element.appendChild(awarenessLine);
         
         // Store current state for reference
         element._groupScale = { 
