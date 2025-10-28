@@ -46,6 +46,32 @@ export const CYCLE_PROPERTY_CONFIGS = {
     },
     circleTypes: ['group']
   },
+
+  roilSpeed: {
+    values: {
+      1: { icon: '1x', label: '1x', description: '', default: true },
+      5: { icon: '5x', label: '5x', description: '' },
+      10: { icon: '10x', label: '10x', description: '' },
+    },
+    circleTypes: ['group']
+  },
+
+  roilAngle: {
+    values: {
+      'tilt': { icon: '▽', label: 'Tilt', description: '', default: true },
+      'side': { icon: '◻', label: 'Side', description: '' },
+    },
+    circleTypes: ['group']
+  },
+
+  buoyancy: {
+    values: {
+      'normal': { icon: '↕', label: 'Normal', description: '', default: true },
+      'buoyant': { icon: '↑', label: 'Buoyant', description: '' },
+      'antibuoyant': { icon: '↓', label: 'Antibuoyant', description: '' },
+    },
+    circleTypes: ['glow']
+  },
 };
 
 // Helper function to get the values object (handles both old and new format)

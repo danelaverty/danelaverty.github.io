@@ -445,6 +445,20 @@ bottom: 0;
         }
     }
 
+    .awareness-line {
+        position: absolute;
+        width: 100px;
+        height: 1px;
+        background-color: rgba(255, 255, 155, .3);
+        top: 50px;
+        display: none;
+    }
+
+
+    .roil-angle-side .awareness-line {
+        display: block; /* Show when roilAngle is 'side' */
+    }
+
 `;
 
 injectComponentStyles('entity-component', componentStyles);
@@ -836,6 +850,7 @@ return {
             'group-member': groupMemberScale !== 1,
             'entity-container-emoji': entity.type === 'emoji',
             'entity-container-group': entity.type === 'group',
+            'roil-angle-side': entity.roilAngle === 'side'
         }"
         :data-entity-id="entity.id"
         @click="handleClick"
@@ -945,11 +960,11 @@ return {
         <!--span v-if="Object.keys(energyDistance).length > 0" style="color: #888; font-size: 12px;">
             {{ 'E: ' + energyDistance['exciter'] }}
         </span-->
-        <EnergyIndicators 
+        <!--EnergyIndicators 
             v-if="entityType === 'circle' && !demoMode && !isDrone"
             :energyTypes="circleEnergyTypes"
         />
-        </div>
+        </div-->
     </div>
 `
 };

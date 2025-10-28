@@ -4,11 +4,11 @@ export const baseCharacteristicsStyles = `
         top: 0;
         left: 0;
         right: 0;
-        height: 50px;
+        height: 40px;
         display: flex;
         align-items: center;
-        padding: 0 20px;
-        gap: 8px;
+        padding: 0 10px;
+        gap: 4px;
         z-index: 1002;
         transition: transform 0.3s ease;
     }
@@ -22,8 +22,8 @@ export const baseCharacteristicsStyles = `
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 36px;
-        height: 36px;
+        width: 28px;
+        height: 28px;
         background-color: rgba(40, 40, 40, 0.8);
         border: 1px solid rgba(255, 255, 255, 0.15);
         border-radius: 8px;

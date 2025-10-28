@@ -27,6 +27,15 @@ export const useRoilMotion = (props, state) => {
         }
     );
 
+watch(
+    () => props.entity.buoyancy,
+    (newBuoyancy) => {
+        if (roilState.isRoilMember.value && roilMotionSystem.activeCircles.has(props.entity.id)) {
+            roilMotionSystem.updateCircleBuoyancy(props.entity.id);
+        }
+    }
+);
+
     // Function to add circle to roil motion
     const addToRoilMotion = () => {
         if (!shapeRef.value || !roilState.isRoilMember.value) return;
@@ -71,6 +80,8 @@ export const useRoilMotion = (props, state) => {
             groupId,      // NEW: Pass group ID
             viewerWidth   // NEW: Pass viewer width
         );
+
+        roilMotionSystem.updateCircleBuoyancy(props.entity.id);
     };
 
     // Function to remove circle from roil motion

@@ -1,4 +1,4 @@
-// dataCoordinator.js
+// dataCoordinator.js - Enhanced with auto-creation of roil members
 import { useEntityStore } from './entityStore.js';
 import { useDocumentStore } from './documentStore.js';
 import { useUIStore } from './uiStore.js';
@@ -132,9 +132,70 @@ function createDataCoordinator() {
         return result;
     };
 
-    // Generic cycle function that works with any cycleable property
+    // NEW: Helper function to create roil members for empty groups
+    const createRoilMembersIfNeeded = (groupId, newRoilMode) => {
+        // Only create members when switching TO roil mode
+        if (newRoilMode !== 'on') return;
+        
+        const group = entityStore.getCircle(groupId);
+        if (!group || group.type !== 'group') return;
+
+        // Check if group has no members
+        const existingMembers = entityStore.getCirclesBelongingToGroup(groupId);
+        if (existingMembers.length > 0) return;
+        
+const targetDocumentId = group.documentId;
+if (!targetDocumentId) {
+    console.warn('Group has no documentId:', groupId);
+    return;
+}
+        
+        if (!targetDocumentId) {
+            console.warn('Could not find document for roil group', groupId);
+            return;
+        }
+        
+        // Create 4 glow circles as members
+        const groupColor = group.colors?.[0] || group.color || '#4CAF50';
+        
+        for (let i = 0; i < 4; i++) {
+            // Generate random offset from -8 to +8
+            const offsetX = (Math.random() - 0.5) * 16; // -8 to +8
+            const offsetY = (Math.random() - 0.5) * 16; // -8 to +8
+            
+            // Create the circle
+            const newCircle = entityStore.createCircle(targetDocumentId, 800, 600, documentStore);
+            
+            // Set its properties
+            entityStore.updateCircle(newCircle.id, {
+                name: '', // Blank name as requested
+                type: 'glow',
+                colors: [groupColor],
+                color: groupColor, // Fallback for older code
+                x: group.x + offsetX,
+                y: group.y + offsetY,
+                belongsToID: groupId
+            });
+        }
+    };
+
+    // Enhanced cycle function that handles roil member creation
     const cycleCircleProperty = (id, propertyName) => {
+        const circle = entityStore.getCircle(id);
+        if (!circle) return null;
+        
+        // Get the new value after cycling
+        const oldValue = circle[propertyName];
+        const newValue = cycleProperty(propertyName, oldValue);
+        
+        // Use entityStore's cycle function
         const result = entityStore.cycleCircleProperty(id, propertyName);
+        
+        // NEW: Handle roil mode activation
+        if (result && propertyName === 'roilMode') {
+            createRoilMembersIfNeeded(id, newValue);
+        }
+        
         if (result) {
             saveToStorage();
             triggerAutomatonIfActive();
@@ -206,10 +267,10 @@ function createDataCoordinator() {
             return result;
         },
 
-        // Generic property cycling operation
+        // Enhanced generic property cycling operation with roil member creation
         cycleCircleProperty: cycleCircleProperty,
 
-        // Dynamically generated cycle methods (e.g., cycleActivation, cycleSizeMode, etc.)
+        // Dynamically generated cycle methods (e.g., cycleActivation, cycleSizeMode, cycleRoilMode, etc.)
         ...cycleMethods,
 
         // Read operations (no persistence needed)

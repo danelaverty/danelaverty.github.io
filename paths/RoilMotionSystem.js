@@ -67,12 +67,12 @@ export class RoilMotionSystem {
             baseZ: 0,
             groupId: groupId, // NEW: Store group ID for position updates
             viewerWidth: viewerWidth, // NEW: Store viewer width for position calculations
-            orbitRadius: 8 + Math.random() * 20,
+            orbitRadius: 8 + Math.random() * 20 * 2,
             orbitSpeed: 0.008 + Math.random() * 0.015,
             orbitPhase: Math.random() * Math.PI * 2,
             driftSpeed: 0.002 + Math.random() * 0.005,
             driftPhase: Math.random() * Math.PI * 2,
-            driftRadius: 15 + Math.random() * 25,
+            driftRadius: 15 + Math.random() * 25 * 2,
             zOrbitRadius: 10 + Math.random() * 15,
             zOrbitSpeed: 0.005 + Math.random() * 0.01,
             zOrbitPhase: Math.random() * Math.PI * 2,
@@ -268,23 +268,24 @@ export class RoilMotionSystem {
 
     updateCirclePosition(circle, circleId) {
         const { element, bounds } = circle;
+        const group = this.dataStore.getCircle(circle.groupId);
         
         circle.time += 1;
         
         // Calculate motion (same as original)
-        circle.orbitPhase += circle.orbitSpeed;
+        circle.orbitPhase += circle.orbitSpeed * group.roilSpeed;
         const orbitX = Math.cos(circle.orbitPhase) * circle.orbitRadius;
         const orbitY = Math.sin(circle.orbitPhase) * circle.orbitRadius;
         
         circle.driftPhase += circle.driftSpeed;
-        const driftX = Math.cos(circle.driftPhase * 0.7) * circle.driftRadius * 0.3;
-        const driftY = Math.sin(circle.driftPhase * 0.4) * circle.driftRadius * 0.3;
+        const driftX = 0 //Math.cos(circle.driftPhase * 0.7) * circle.driftRadius * 0.3;
+        const driftY = 0 //Math.sin(circle.driftPhase * 0.4) * circle.driftRadius * 0.3;
         
-        circle.zOrbitPhase += circle.zOrbitSpeed;
+        circle.zOrbitPhase += circle.zOrbitSpeed * group.roilSpeed;
         const zOrbit = Math.cos(circle.zOrbitPhase) * circle.zOrbitRadius;
         
         circle.zDriftPhase += circle.zDriftSpeed;
-        const zDrift = Math.sin(circle.zDriftPhase * 0.6) * circle.zDriftRadius * 0.4;
+        const zDrift = 0 //Math.sin(circle.zDriftPhase * 0.6) * circle.zDriftRadius * 0.4;
         
         const verticalOffset = Math.sin(circle.time * 0.01) * circle.verticalBias * 5;
         
@@ -321,7 +322,7 @@ export class RoilMotionSystem {
         
         // Apply styles and immediately validate
         element.style.left = circle.x + 'px';
-        element.style.top = circle.y + 'px';
+        element.style.top = (group.roilAngle == 'tilt' ? (circle.y - (2 * circle.z)) : (250 - (5 * circle.z))) + 'px';
         element.style.transform = `translate(-50%, -50%) scale(${(scale - 0.2).toFixed(3)})`;
         element.style.opacity = scale * 2 - 1.5;
         
@@ -354,6 +355,23 @@ export class RoilMotionSystem {
             circle.zOrbitRadius = 10 + (1 - buoyancy) * 10;
             circle.baseZ = (buoyancy - 0.5) * 20;
         }
+    }
+
+    updateCircleBuoyancy(circleId) {
+        const circle = this.activeCircles.get(circleId);
+        if (!circle || !this.dataStore) return;
+
+        const dataStoreCircle = this.dataStore.getCircle(circleId);
+        if (!dataStoreCircle) return;
+
+        const buoyancyMap = {
+            'normal': 0.8,
+            'buoyant': 1.5,
+            'antibuoyant': 0.3,
+        };
+
+        const buoyancyValue = buoyancyMap[dataStoreCircle.buoyancy] ?? 0.5;
+        this.setCircleBuoyancy(circleId, buoyancyValue);
     }
 
     setCircleDepthRange(circleId, minScale = 0.6, maxScale = 1.4) {

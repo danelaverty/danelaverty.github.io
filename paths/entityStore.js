@@ -1,20 +1,13 @@
-// entityStore.js
+// entityStore.js - Enhanced with dynamic cycleable property defaults
 import { reactive } from './vue-composition-api.js';
-import { getPropertyDefault, cycleProperty, validatePropertyValue } from './CBCyclePropertyConfigs.js';
+import { getPropertyDefault, cycleProperty, validatePropertyValue, CYCLE_PROPERTY_CONFIGS } from './CBCyclePropertyConfigs.js';
 
 let entityStoreInstance = null;
 
-// CENTRALIZED DEFAULT VALUES
-const CIRCLE_DEFAULTS = {
+// Base defaults for core circle properties (non-cycleable)
+const BASE_CIRCLE_DEFAULTS = {
     colors: ['#B3B3B3'],
     energyTypes: [],
-    activation: () => getPropertyDefault('activation'),
-    activationTriggers: () => getPropertyDefault('activationTriggers'),
-    shinynessReceiveMode: () => getPropertyDefault('shinynessReceiveMode'),
-    connectible: () => getPropertyDefault('connectible'),
-    sizeMode: () => getPropertyDefault('sizeMode'),
-    manualWidth: null,
-    manualHeight: null,
     referenceID: null,
     documentReferenceID: null, // NEW: For document reference circles
     belongsToID: null,
@@ -22,7 +15,27 @@ const CIRCLE_DEFAULTS = {
     type: 'basic',
     emoji: null,
     emojiForEmojiType: 'A',
+    sizeMode: () => getPropertyDefault('sizeMode'),
+    manualWidth: null,
+    manualHeight: null,
 };
+
+// Generate dynamic defaults by combining base defaults with cycleable properties
+const generateCircleDefaults = () => {
+    const defaults = { ...BASE_CIRCLE_DEFAULTS };
+    
+    // Add all cycleable properties with their defaults
+    Object.keys(CYCLE_PROPERTY_CONFIGS).forEach(propertyName => {
+        if (!defaults.hasOwnProperty(propertyName)) {
+            defaults[propertyName] = () => getPropertyDefault(propertyName);
+        }
+    });
+    
+    return defaults;
+};
+
+// Generate the complete CIRCLE_DEFAULTS
+const CIRCLE_DEFAULTS = generateCircleDefaults();
 
 const SQUARE_DEFAULTS = {
     emoji: null,
@@ -217,16 +230,15 @@ function createEntityStore() {
 
         // Add circle-specific properties
         if (entityType === 'circle') {
-            entity.colors = [...getCircleDefault('colors')];
-            entity.energyTypes = [...getCircleDefault('energyTypes')];
-            entity.activation = getCircleDefault('activation');
-            entity.activationTriggers = getCircleDefault('activationTriggers');
-            entity.shinynessReceiveMode = getCircleDefault('shinynessReceiveMode');
-            entity.connectible = getCircleDefault('connectible');
-            entity.referenceID = getCircleDefault('referenceID');
-            entity.documentReferenceID = getCircleDefault('documentReferenceID'); // NEW
-            entity.belongsToID = getCircleDefault('belongsToID');
-            entity.collapsed = getCircleDefault('collapsed');
+            // Use the dynamic defaults system
+            Object.keys(CIRCLE_DEFAULTS).forEach(key => {
+                if (key === 'emojiForEmojiType') {
+                    // Skip this as it's just a reference value, not a stored property
+                    return;
+                }
+                
+                entity[key] = getCircleDefault(key);
+            });
             
             // Set circle type based on document's mostRecentlySetCircleType
             let defaultType = getCircleDefault('type');
@@ -237,9 +249,6 @@ function createEntityStore() {
                 }
             }
             entity.type = defaultType;
-            
-            // Add emoji property
-            entity.emoji = getCircleDefault('emoji');
             
             // Set default emoji for emoji-type circles
             if (entity.type === 'emoji') {
@@ -397,7 +406,7 @@ function createEntityStore() {
                             }
 
                             // Handle all cycleable properties
-                            ['activation', 'activationTriggers', 'shinynessReceiveMode', 'connectible'].forEach(prop => {
+                            Object.keys(CYCLE_PROPERTY_CONFIGS).forEach(prop => {
                                 if (updates[prop] !== undefined) {
                                     refCircle[prop] = entity[prop];
                                 }
@@ -538,7 +547,7 @@ function createEntityStore() {
         return entityIds.map(id => store.delete(id)).filter(Boolean).length;
     };
 
-    // Serialization
+    // Enhanced serialization that includes all dynamic properties
     const serialize = () => ({
         circles: Array.from(data.circles.entries()),
         squares: Array.from(data.squares.entries()),
@@ -550,7 +559,7 @@ function createEntityStore() {
         if (savedData.circles) {
             data.circles = new Map(savedData.circles);
             
-            // Ensure all circles have the required properties with defaults
+            // Ensure all circles have the required properties with defaults (now includes all cycleable properties)
             data.circles.forEach((circle, id) => {
                 ensureCircleDefaults(circle);
             });
