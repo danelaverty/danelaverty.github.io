@@ -1,4 +1,4 @@
-// CRGroupCircleRenderer.js - Updated with roil mode opacity and container inheritance
+// CRGroupCircleRenderer.js - Updated with roil mode opacity, container inheritance, and selection handle
 import { getColorWithOpacity } from './colorUtils.js';
 import { useDataStore } from './dataCoordinator.js';
 
@@ -21,6 +21,7 @@ export const GroupCircleRenderer = {
         
         const awarenessLine = document.createElement('div');
         awarenessLine.className = `awareness-line`;
+        
         const groupElement = document.createElement('div');
         groupElement.className = `group-circle-container ${isCollapsed ? 'collapsed' : 'expanded'} ${circle.sizeMode === 'manual' ? 'manual-size' : 'auto-size'} ${isRoilMode ? 'roil-mode' : ''}`;
         
@@ -55,6 +56,28 @@ export const GroupCircleRenderer = {
                 text-shadow: 0 0 3px rgba(0, 0, 0, 0.8);
             `;
             groupElement.appendChild(countElement);
+        }
+        
+        // NEW: Add selection handle for roil mode groups
+        if (isRoilMode) {
+            const selectionHandle = document.createElement('div');
+            selectionHandle.className = 'group-selection-handle';
+            selectionHandle.style.cssText = `
+                position: absolute;
+                width: 7px;
+                height: 7px;
+                top: 0;
+                left: 0;
+                border-radius: 50%;
+                background-color: rgba(155, 155, 155, 0.1);
+                pointer-events: none;
+                z-index: 10;
+                transition: background-color 0.2s ease;
+            `;
+            
+            // Store reference to handle for potential selection state updates
+            element._selectionHandle = selectionHandle;
+            element.appendChild(selectionHandle);
         }
         
         element.appendChild(groupElement);

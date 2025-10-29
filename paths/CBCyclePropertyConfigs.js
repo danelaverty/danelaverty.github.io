@@ -36,7 +36,7 @@ export const CYCLE_PROPERTY_CONFIGS = {
       'auto': { icon: '🔄', label: 'Auto Size', description: 'Auto size based on members - Click to cycle to Manual', default: true },
       'manual': { icon: '✋', label: 'Manual Size', description: 'Manual size - Click to cycle to Auto' }
     },
-    circleTypes: ['group']
+    displayIf: { type: 'group' }
   },
 
   roilMode: {
@@ -44,7 +44,15 @@ export const CYCLE_PROPERTY_CONFIGS = {
       'off': { icon: '🌷', label: 'Normal', description: '', default: true },
       'on': { icon: '🌀', label: 'Roil', description: '' }
     },
-    circleTypes: ['group']
+    displayIf: { type: 'group' }
+  },
+
+  roilAnimation: {
+    values: {
+      'play': { icon: '▶️', label: 'Play', description: '', default: true },
+      'pause': { icon: '⏸️', label: 'Pause', description: '' },
+    },
+    displayIf: { type: 'group', roilMode: 'on' }
   },
 
   roilSpeed: {
@@ -53,7 +61,7 @@ export const CYCLE_PROPERTY_CONFIGS = {
       5: { icon: '5x', label: '5x', description: '' },
       10: { icon: '10x', label: '10x', description: '' },
     },
-    circleTypes: ['group']
+    displayIf: { type: 'group', roilMode: 'on' }
   },
 
   roilAngle: {
@@ -61,7 +69,15 @@ export const CYCLE_PROPERTY_CONFIGS = {
       'tilt': { icon: '▽', label: 'Tilt', description: '', default: true },
       'side': { icon: '◻', label: 'Side', description: '' },
     },
-    circleTypes: ['group']
+    displayIf: { type: 'group', roilMode: 'on' }
+  },
+
+  awarenessLine: {
+    values: {
+      'hide': { icon: '⚹', label: 'Hide', description: '', default: true },
+      'show': { icon: '-', label: 'Show', description: '' },
+    },
+      displayIf: { type: 'group', roilMode: 'on', roilAngle: 'side' }
   },
 
   buoyancy: {
@@ -70,7 +86,15 @@ export const CYCLE_PROPERTY_CONFIGS = {
       'buoyant': { icon: '↑', label: 'Buoyant', description: '' },
       'antibuoyant': { icon: '↓', label: 'Antibuoyant', description: '' },
     },
-    circleTypes: ['glow']
+    displayIf: { type: 'glow' }
+  },
+
+  roilMemberDisplay: {
+    values: {
+      'normal': { icon: '∴', label: 'Normal', description: '', default: true },
+      'solo': { icon: '⋅', label: 'Solo', description: '' },
+    },
+    displayIf: { type: 'glow' }
   },
 };
 
@@ -124,8 +148,56 @@ export const getPropertyValueConfig = (propertyName, value) => {
   return values[value] || {};
 };
 
-// New function to check if a property should be visible for given circle types
+// NEW: Function to check if a property should be visible based on circle properties
+export const isPropertyVisibleForCircle = (propertyName, circle) => {
+  const config = CYCLE_PROPERTY_CONFIGS[propertyName];
+  if (!config) return false;
+  
+  // If no displayIf condition is defined, show for all circles
+  if (!config.displayIf) {
+    return true;
+  }
+  
+  // If no circle provided, don't show
+  if (!circle) {
+    return false;
+  }
+  
+  // Check each condition in displayIf
+  for (const [property, expectedValue] of Object.entries(config.displayIf)) {
+    const actualValue = circle[property];
+    
+    // If the circle doesn't have this property or it doesn't match, hide the control
+    if (actualValue !== expectedValue) {
+      return false;
+    }
+  }
+  
+  // All conditions passed
+  return true;
+};
+
+// NEW: Function to check if a property should be visible for multiple circles
+export const isPropertyVisibleForCircles = (propertyName, circles) => {
+  if (!circles || circles.length === 0) {
+    return false;
+  }
+  
+  // For multiple selection, ALL circles must satisfy the displayIf conditions
+  return circles.every(circle => isPropertyVisibleForCircle(propertyName, circle));
+};
+
+// NEW: Function to get all properties visible for given circles
+export const getVisiblePropertiesForCircles = (circles) => {
+  return Object.keys(CYCLE_PROPERTY_CONFIGS).filter(propertyName => 
+    isPropertyVisibleForCircles(propertyName, circles)
+  );
+};
+
+// DEPRECATED: Keep for backward compatibility but mark as deprecated
 export const isPropertyVisibleForCircleTypes = (propertyName, circleTypes) => {
+  console.warn(`isPropertyVisibleForCircleTypes is deprecated. Use isPropertyVisibleForCircles instead.`);
+  
   const config = CYCLE_PROPERTY_CONFIGS[propertyName];
   if (!config) return false;
   
@@ -143,8 +215,10 @@ export const isPropertyVisibleForCircleTypes = (propertyName, circleTypes) => {
   return circleTypes.every(type => config.circleTypes.includes(type));
 };
 
-// New function to get all properties visible for given circle types
+// DEPRECATED: Keep for backward compatibility but mark as deprecated
 export const getVisiblePropertiesForCircleTypes = (circleTypes) => {
+  console.warn(`getVisiblePropertiesForCircleTypes is deprecated. Use getVisiblePropertiesForCircles instead.`);
+  
   return Object.keys(CYCLE_PROPERTY_CONFIGS).filter(propertyName => 
     isPropertyVisibleForCircleTypes(propertyName, circleTypes)
   );

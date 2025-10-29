@@ -1,4 +1,4 @@
-// RoilMotionSystem.js - Updated to position roil members relative to their group
+// RoilMotionSystem.js - Updated with smooth roilAngle transitions
 export class RoilMotionSystem {
     constructor() {
         this.activeCircles = new Map(); 
@@ -16,28 +16,138 @@ export class RoilMotionSystem {
         this.frameCount = 0;
         this.lastUpdateFrameCount = 0;
         
-        // NEW: Store dataStore reference for group lookups
+        // Store dataStore reference for group lookups
         this.dataStore = null;
+        
+        // NEW: Track roilAngle transitions
+        this.transitioningGroups = new Map(); // groupId -> { fromAngle, toAngle, startTime, duration }
+        this.pausedForTransition = false;
     }
 
-    // NEW: Method to set dataStore reference
     setDataStore(dataStore) {
         this.dataStore = dataStore;
     }
 
-    // NEW: Get the absolute position of a roil group
     getGroupAbsolutePosition(groupId, viewerWidth) {
         if (!this.dataStore) return { x: 0, y: 0 };
         
         const group = this.dataStore.getCircle(groupId);
         if (!group) return { x: 0, y: 0 };
         
-        // Calculate absolute position like EntityState does
         const centerX = viewerWidth / 2;
         const absoluteX = centerX + group.x;
         const absoluteY = group.y;
         
         return { x: absoluteX, y: absoluteY };
+    }
+
+    // NEW: Method to smoothly transition roilAngle
+    transitionRoilAngle(groupId, fromAngle, toAngle, duration = 800) {
+        if (!this.dataStore) return;
+        
+        const group = this.dataStore.getCircle(groupId);
+        if (!group || group.roilMode !== 'on') return;
+        
+        // Get all circles in this roil group
+        const groupMembers = Array.from(this.activeCircles.entries())
+            .filter(([circleId, circle]) => circle.groupId === groupId);
+        
+        if (groupMembers.length === 0) return;
+        
+        console.log(`Starting roilAngle transition for group ${groupId}: ${fromAngle} → ${toAngle}`);
+        
+        // Store transition info
+        this.transitioningGroups.set(groupId, {
+            fromAngle,
+            toAngle,
+            startTime: Date.now(),
+            duration,
+            members: groupMembers.map(([id]) => id)
+        });
+        
+        // Pause the motion system temporarily
+        this.pauseMotionForTransition();
+        
+        // Enable CSS transitions on all group members
+        groupMembers.forEach(([circleId, circle]) => {
+            const element = circle.element;
+            element.style.transition = `top ${duration}ms cubic-bezier(0.4, 0.0, 0.2, 1)`;
+        });
+        
+        // Apply new positions immediately (CSS will animate)
+        groupMembers.forEach(([circleId, circle]) => {
+            const newTop = this.calculateTopForAngle(circle, toAngle);
+            circle.element.style.top = newTop + 'px';
+        });
+        
+        // Resume motion system after transition completes
+        setTimeout(() => {
+            this.resumeMotionAfterTransition(groupId);
+        }, duration + 50); // Small buffer to ensure transition completes
+    }
+
+    // NEW: Calculate top position for a given roilAngle
+    calculateTopForAngle(circle, roilAngle) {
+        if (roilAngle === 'tilt') {
+            return circle.y - (2 * circle.z);
+        } else { // 'side'
+            return 250 - (5 * circle.z);
+        }
+    }
+
+    // NEW: Pause motion system for transitions
+    pauseMotionForTransition() {
+        this.pausedForTransition = true;
+        console.log('Motion system paused for roilAngle transition');
+    }
+
+pauseGroup(groupId) {
+    const group = this.roilGroups.get(groupId) || { isPaused: false };
+    group.isPaused = true;
+    this.roilGroups.set(groupId, group);
+    
+    console.log(`Paused roil animation for group ${groupId}`);
+}
+
+resumeGroup(groupId) {
+    const group = this.roilGroups.get(groupId) || { isPaused: false };
+    group.isPaused = false;
+    this.roilGroups.set(groupId, group);
+    
+    console.log(`Resumed roil animation for group ${groupId}`);
+}
+
+isGroupPaused(groupId) {
+    const group = this.roilGroups.get(groupId);
+    return group ? group.isPaused : false;
+}
+
+    // NEW: Resume motion system after transition
+    resumeMotionAfterTransition(groupId) {
+        // Remove CSS transitions from group members
+        const transitionInfo = this.transitioningGroups.get(groupId);
+        if (transitionInfo) {
+            transitionInfo.members.forEach(circleId => {
+                const circle = this.activeCircles.get(circleId);
+                if (circle && circle.element) {
+                    circle.element.style.transition = '';
+                }
+            });
+        }
+        
+        // Remove transition tracking
+        this.transitioningGroups.delete(groupId);
+        
+        // Resume motion system if no other transitions are active
+        if (this.transitioningGroups.size === 0) {
+            this.pausedForTransition = false;
+            console.log('Motion system resumed after roilAngle transition');
+        }
+    }
+
+    // MODIFIED: Check if motion system should be paused
+    shouldPauseMotion() {
+        return this.pausedForTransition;
     }
 
     addCircle(circleId, element, groupBounds = null, groupId = null, viewerWidth = null) {
@@ -52,7 +162,6 @@ export class RoilMotionSystem {
             minX: -50, maxX: 50, minY: -50, maxY: 50
         };
 
-        // Use group offset as the base position instead of current element position
         const baseX = groupOffset.x;
         const baseY = groupOffset.y;
 
@@ -65,8 +174,8 @@ export class RoilMotionSystem {
             baseX: baseX,
             baseY: baseY,
             baseZ: 0,
-            groupId: groupId, // NEW: Store group ID for position updates
-            viewerWidth: viewerWidth, // NEW: Store viewer width for position calculations
+            groupId: groupId,
+            viewerWidth: viewerWidth,
             orbitRadius: 8 + Math.random() * 20 * 2,
             orbitSpeed: 0.008 + Math.random() * 0.015,
             orbitPhase: Math.random() * Math.PI * 2,
@@ -86,7 +195,6 @@ export class RoilMotionSystem {
             time: Math.random() * 100
         });
 
-        // Initialize position tracking
         this.lastKnownPositions.set(circleId, {
             x: baseX,
             y: baseY,
@@ -100,11 +208,15 @@ export class RoilMotionSystem {
         }
     }
 
+    // MODIFIED: Skip updates during transitions
     updateAllCircles() {
+        if (this.shouldPauseMotion()) {
+            return; // Skip updates during roilAngle transitions
+        }
+        
         this.lastUpdateFrameCount = this.frameCount;
         
         this.activeCircles.forEach((circle, circleId) => {
-            // NEW: Update group position before calculating motion
             if (circle.groupId && circle.viewerWidth) {
                 const newGroupOffset = this.getGroupAbsolutePosition(circle.groupId, circle.viewerWidth);
                 circle.baseX = newGroupOffset.x;
@@ -234,7 +346,6 @@ export class RoilMotionSystem {
     removeCircle(circleId) {
         const circle = this.activeCircles.get(circleId);
         if (circle && circle.element) {
-            // Reset opacity to full visibility
             circle.element.style.opacity = '1';
         }
         this.activeCircles.delete(circleId);
@@ -269,23 +380,29 @@ export class RoilMotionSystem {
     updateCirclePosition(circle, circleId) {
         const { element, bounds } = circle;
         const group = this.dataStore.getCircle(circle.groupId);
+
+if (this.isGroupPaused(circle.groupId)) {
+        return;
+        // Don't update positions, but still apply current position
+        element.style.left = circle.x + 'px';
+        element.style.top = this.calculateTopForAngle(circle, group.roilAngle) + 'px';
+    }
         
         circle.time += 1;
         
-        // Calculate motion (same as original)
         circle.orbitPhase += circle.orbitSpeed * group.roilSpeed;
         const orbitX = Math.cos(circle.orbitPhase) * circle.orbitRadius;
         const orbitY = Math.sin(circle.orbitPhase) * circle.orbitRadius;
         
         circle.driftPhase += circle.driftSpeed;
-        const driftX = 0 //Math.cos(circle.driftPhase * 0.7) * circle.driftRadius * 0.3;
-        const driftY = 0 //Math.sin(circle.driftPhase * 0.4) * circle.driftRadius * 0.3;
+        const driftX = 0;
+        const driftY = 0;
         
         circle.zOrbitPhase += circle.zOrbitSpeed * group.roilSpeed;
         const zOrbit = Math.cos(circle.zOrbitPhase) * circle.zOrbitRadius;
         
         circle.zDriftPhase += circle.zDriftSpeed;
-        const zDrift = 0 //Math.sin(circle.zDriftPhase * 0.6) * circle.zDriftRadius * 0.4;
+        const zDrift = 0;
         
         const verticalOffset = Math.sin(circle.time * 0.01) * circle.verticalBias * 5;
         
@@ -320,9 +437,9 @@ export class RoilMotionSystem {
         const normalizedZ = (circle.z + 30) / 60;
         const scale = circle.minScale + (normalizedZ * (circle.maxScale - circle.minScale));
         
-        // Apply styles and immediately validate
+        // Apply styles - use current roilAngle from group
         element.style.left = circle.x + 'px';
-        element.style.top = (group.roilAngle == 'tilt' ? (circle.y - (2 * circle.z)) : (250 - (5 * circle.z))) + 'px';
+        element.style.top = this.calculateTopForAngle(circle, group.roilAngle) + 'px';
         element.style.transform = `translate(-50%, -50%) scale(${(scale - 0.2).toFixed(3)})`;
         element.style.opacity = scale * 2 - 1.5;
         
@@ -409,7 +526,9 @@ export class RoilMotionSystem {
             isRunning: this.isRunning,
             monitoringActive: this.monitoringActive,
             currentFrame: this.frameCount,
-            flickerReport: this.getFlickerReport()
+            flickerReport: this.getFlickerReport(),
+            pausedForTransition: this.pausedForTransition,
+            activeTransitions: this.transitioningGroups.size
         };
     }
 
@@ -419,6 +538,7 @@ export class RoilMotionSystem {
         this.activeCircles.clear();
         this.lastKnownPositions.clear();
         this.positionChanges = [];
+        this.transitioningGroups.clear();
     }
 }
 
@@ -431,6 +551,9 @@ if (typeof window !== 'undefined') {
         getDebugInfo: () => roilMotionSystem.getDebugInfo(),
         clearChanges: () => { roilMotionSystem.positionChanges = []; },
         enableDebug: () => { roilMotionSystem.debugMode = true; },
-        disableDebug: () => { roilMotionSystem.debugMode = false; }
+        disableDebug: () => { roilMotionSystem.debugMode = false; },
+        // NEW: Trigger manual roilAngle transitions
+        transitionRoilAngle: (groupId, fromAngle, toAngle, duration) => 
+            roilMotionSystem.transitionRoilAngle(groupId, fromAngle, toAngle, duration)
     };
 }

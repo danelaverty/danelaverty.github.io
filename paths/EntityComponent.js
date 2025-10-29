@@ -22,7 +22,7 @@ const componentStyles = `
         cursor: url(black-dot.png), auto;
         cursor: auto;
         user-select: none;
-        transition: transform 0.3s ease;
+        transition: transform 0.3s ease, opacity 0.3s ease;
         transform-origin: center center;
         transform: translate(-50%, -50%);
         z-index: 10;
@@ -198,17 +198,16 @@ const componentStyles = `
         color: #FFF;
         font-size: 12px;
         text-align: center;
-        width: 120px;
+        max-width: 120px;
+        min-width: 40px;
         padding: 2px 4px;
         border-radius: 3px;
         cursor: text;
-        transition: background-color 0.2s ease;
-        position: absolute;
         top: 95%;
         background-color: transparent;
         z-index: 10;
         text-shadow: 1px 1px 1px black;
-        transition: transform 1s ease, opacity 1s ease, filter 1s ease;
+        transition: background-color 0.2s ease, transform 1s ease, opacity 1s ease, filter 1s ease;
     }
 
     .entity-container-emoji .entity-name {
@@ -449,15 +448,21 @@ bottom: 0;
         position: absolute;
         width: 100px;
         height: 1px;
-        background-color: rgba(255, 255, 155, .3);
+        background-color: rgba(255, 255, 155, .2);
         top: 50px;
-        display: none;
+        opacity: 0;
+        transition: opacity 0.3s ease;
     }
 
 
-    .roil-angle-side .awareness-line {
-        display: block; /* Show when roilAngle is 'side' */
+    .roil-angle-side.awareness-line-show .awareness-line {
+        opacity: 1;
     }
+
+.entity-container.hidden-for-solo {
+    opacity: 0 !important;
+    pointer-events: none;
+}
 
 `;
 
@@ -496,6 +501,10 @@ export const EntityComponent = {
             default: false
         },
         demoMode: {
+            type: Boolean,
+            default: false
+        },
+        isHiddenForSolo: {
             type: Boolean,
             default: false
         },
@@ -850,7 +859,9 @@ return {
             'group-member': groupMemberScale !== 1,
             'entity-container-emoji': entity.type === 'emoji',
             'entity-container-group': entity.type === 'group',
-            'roil-angle-side': entity.roilAngle === 'side'
+            'roil-angle-side': entity.roilAngle === 'side',
+            'awareness-line-show': entity.awarenessLine === 'show',
+            'hidden-for-solo': isHiddenForSolo,
         }"
         :data-entity-id="entity.id"
         @click="handleClick"
@@ -963,8 +974,8 @@ return {
         <!--EnergyIndicators 
             v-if="entityType === 'circle' && !demoMode && !isDrone"
             :energyTypes="circleEnergyTypes"
-        />
-        </div-->
+        /-->
+        </div>
     </div>
 `
 };
