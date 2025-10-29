@@ -3,7 +3,7 @@ import { computed, ref, watchEffect } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
 import { useCharacteristicsBarData } from './useCharacteristicsBarData.js';
 import { useCharacteristicsBarPickers } from './useCharacteristicsBarPickers.js';
-import { CYCLE_PROPERTY_CONFIGS, getPropertyValues, getPropertyDefault, getVisiblePropertiesForCircleTypes } from './CBCyclePropertyConfigs.js';
+import { CYCLE_PROPERTY_CONFIGS, getPropertyValues, getPropertyDefault, getVisiblePropertiesForCircles } from './CBCyclePropertyConfigs.js';
 
 export function useCharacteristicsBarState(dataHooks, pickerHooks) {
   const dataStore = useDataStore();
@@ -90,21 +90,17 @@ export function useCharacteristicsBarState(dataHooks, pickerHooks) {
     return selectedIds.map(id => dataStore.getCircle(id)).filter(Boolean);
   });
 
-  // UPDATED: Dynamically get cycleable properties with circle type filtering
+  // UPDATED: Dynamically get cycleable properties using the new displayIf system
   const cycleableProperties = computed(() => {
-    // Get the types of all selected circles
-    const selectedCircleTypes = getSelectedCircleObjects.value.map(circle => circle.type);
+    const selectedCircles = getSelectedCircleObjects.value;
     
     // If no circles selected, return empty array
-    if (selectedCircleTypes.length === 0) {
+    if (selectedCircles.length === 0) {
       return [];
     }
     
-    // Get unique circle types
-    const uniqueCircleTypes = [...new Set(selectedCircleTypes)];
-    
-    // Get properties visible for these circle types (all selected circles must match)
-    return getVisiblePropertiesForCircleTypes(uniqueCircleTypes);
+    // Get properties visible for these circles (all selected circles must match displayIf conditions)
+    return getVisiblePropertiesForCircles(selectedCircles);
   });
 
   // Generic function to get property value for single or multiple selection

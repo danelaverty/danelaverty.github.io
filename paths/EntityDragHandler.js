@@ -1,9 +1,10 @@
-// EntityDragHandler.js - CLONE SOLUTION WITH PERFECT POSITIONING
+// EntityDragHandler.js - ENHANCED: Auto-create/delete explicit connections for roil groups + Fix roil position jump
 import { onMounted } from './vue-composition-api.js';
 import { useDraggable } from './useDraggable.js';
 import { useConnectionDragUpdater } from './useConnections.js';
 import { CircleHandler, SquareHandler } from './EntityTypeHandler.js';
 import { DragStateManager } from './DragStateManager.js';
+import { roilMotionSystem } from './RoilMotionSystem.js';
 
 export class EntityDragHandler {
     constructor(elementRef, emit, dataStore, props, callbacks = {}) {
@@ -27,6 +28,12 @@ export class EntityDragHandler {
         
         // Track group member elements
         this.groupMemberElements = new Map();
+        
+        // NEW: Track roil connection creation to prevent duplicates
+        this.createdRoilConnection = false;
+        
+        // NEW: Track roil position adjustment
+        this.roilPositionAdjustment = { deltaX: 0, deltaY: 0 };
         
         // Initialize type-specific handler
         this.entityTypeHandler = this.createEntityTypeHandler();
@@ -81,6 +88,62 @@ export class EntityDragHandler {
         this.updateConnectionsForDrag = updateConnectionsForDrag;
     }
 
+    // NEW: Calculate roil position adjustment to prevent jump
+    calculateRoilPositionAdjustment() {
+        // Only applies to circles that are roil members
+        if (this.props.entityType !== 'circle' || !this.props.entity.belongsToID) {
+            return { deltaX: 0, deltaY: 0 };
+        }
+
+        const parentGroup = this.dataStore.getCircle(this.props.entity.belongsToID);
+        if (!parentGroup || parentGroup.roilMode !== 'on') {
+            return { deltaX: 0, deltaY: 0 };
+        }
+
+        // Get the element's current visual position
+        const element = this.elementRef.value;
+        if (!element) {
+            return { deltaX: 0, deltaY: 0 };
+        }
+
+        const computedStyle = getComputedStyle(element);
+        const visualLeft = parseFloat(computedStyle.left) || 0;
+        const visualTop = parseFloat(computedStyle.top) || 0;
+
+        // Calculate expected position based on stored x,y values
+        const centerX = this.props.viewerWidth / 2;
+        const expectedLeft = centerX + this.props.entity.x;
+        const expectedTop = this.props.entity.y;
+
+        // Calculate the delta between visual and expected positions
+        const deltaX = visualLeft - expectedLeft;
+        const deltaY = visualTop - expectedTop;
+
+        return { deltaX, deltaY };
+    }
+
+    // NEW: Apply roil position adjustment to prevent jump
+    applyRoilPositionAdjustment() {
+        if (this.roilPositionAdjustment.deltaX === 0 && this.roilPositionAdjustment.deltaY === 0) {
+            return;
+        }
+
+        // Adjust the entity's stored position by subtracting the visual offset
+        const adjustedX = this.props.entity.x + this.roilPositionAdjustment.deltaX;
+        const adjustedY = this.props.entity.y + this.roilPositionAdjustment.deltaY;
+
+        // Update the entity's position immediately
+        this.emit('update-position', {
+            id: this.props.entity.id,
+            x: adjustedX,
+            y: adjustedY
+        });
+
+        // Update the local props reference for consistency during drag
+        this.props.entity.x = adjustedX;
+        this.props.entity.y = adjustedY;
+    }
+
     detectGroupCircleUnderMouse(x, y, viewerId) {
         const circles = this.dataStore.getCirclesForViewer ? this.dataStore.getCirclesForViewer(viewerId) : [];
         
@@ -106,6 +169,67 @@ export class EntityDragHandler {
             }
         }
         return null;
+    }
+
+    // NEW: Create explicit connection between circle and roil group
+    createRoilConnection(circleId, groupId) {
+        const circle = this.dataStore.getCircle(circleId);
+        const group = this.dataStore.getCircle(groupId);
+        
+        if (!circle || !group) {
+            console.warn('Could not find circle or group for roil connection creation');
+            return false;
+        }
+        
+        // Check if connection already exists
+        const existingConnection = this.dataStore.getExplicitConnectionBetweenEntities(
+            circleId, 'circle', groupId, 'circle'
+        );
+        
+        if (existingConnection) {
+            return false;
+        }
+        
+        // Create the explicit connection using dataStore's explicit connection service
+        // We need to simulate a ctrl+shift+click to create the connection
+        // First, select the group
+        //this.dataStore.selectCircle(groupId, this.props.viewerId, false);
+        
+        // Then create connection to the circle
+        const result = this.handleExplicitConnectionCreation(circleId, [groupId]);
+        
+        return result;
+    }
+    
+    // NEW: Helper method to create explicit connections (similar to handleEntityCtrlClick)
+    handleExplicitConnectionCreation(clickedEntityId, selectedEntityIds) {
+        // We need access to the explicit connection service through the dataStore
+        // Since we don't have direct access, we'll emit an event to let the parent handle it
+        this.emit('create-roil-connection', {
+            clickedEntityId: clickedEntityId,
+            selectedEntityIds: selectedEntityIds,
+            viewerId: this.props.viewerId
+        });
+        return true;
+    }
+    
+    // NEW: Delete explicit connection between circle and group if it exists
+    deleteExistingGroupConnection(circleId, groupId) {
+        const existingConnection = this.dataStore.getExplicitConnectionBetweenEntities(
+            circleId, 'circle', groupId, 'circle'
+        );
+        
+        if (existingConnection) {
+            // Emit event to delete the connection
+            this.emit('delete-group-connection', {
+                connectionId: existingConnection.id,
+                circleId: circleId,
+                groupId: groupId
+            });
+            return true;
+        }
+        
+        return false;
     }
 
     // FIXED: Perfect positioning by copying all positioning attributes exactly
@@ -273,6 +397,13 @@ onDragStart(e) {
     // Reset membership tracking flags
     this.originalBelongsToID = null;
     this.hasRemovedMembership = false;
+    this.createdRoilConnection = false; // NEW: Reset roil connection flag
+    
+    // NEW: Calculate and apply roil position adjustment to prevent jump
+    this.roilPositionAdjustment = this.calculateRoilPositionAdjustment();
+    if (this.roilPositionAdjustment.deltaX !== 0 || this.roilPositionAdjustment.deltaY !== 0) {
+        this.applyRoilPositionAdjustment();
+    }
     
     // Store original membership but DON'T remove it yet (wait for actual movement)
     if (this.props.entityType === 'circle' && this.props.entity.belongsToID) {
@@ -294,6 +425,15 @@ onDragStart(e) {
         this.currentDragState = { deltaX, deltaY, isDragging: true };
 
         if (!this.hasRemovedMembership && this.originalBelongsToID && (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2)) {
+            // NEW: Check if we're removing from a roil group and create connection
+            if (this.props.entityType === 'circle' && !this.createdRoilConnection) {
+                const originalGroup = this.dataStore.getCircle(this.originalBelongsToID);
+                if (originalGroup && originalGroup.type === 'group' && originalGroup.roilMode === 'on') {
+                    this.createRoilConnection(this.props.entity.id, this.originalBelongsToID);
+                    this.createdRoilConnection = true;
+                }
+            }
+            
             this.dataStore.clearCircleBelongsTo(this.props.entity.id);
             this.hasRemovedMembership = true;
         }
@@ -393,6 +533,9 @@ onDragStart(e) {
             const groupCircle = this.detectGroupCircleUnderMouse(mouseX, mouseY, this.props.viewerId);
         
             if (groupCircle) {
+                // NEW: Before setting belongsTo, check if there's an existing explicit connection and delete it
+                this.deleteExistingGroupConnection(this.props.entity.id, groupCircle.id);
+                
                 this.dataStore.setCircleBelongsTo(this.props.entity.id, groupCircle.id);
             } else if (this.props.entity.belongsToID) {
                 this.dataStore.clearCircleBelongsTo(this.props.entity.id);
@@ -430,6 +573,9 @@ onDragStart(e) {
         }
 
         this.dragStateManager.reset();
+        
+        // NEW: Reset roil position adjustment
+        this.roilPositionAdjustment = { deltaX: 0, deltaY: 0 };
         
         this.emit('drag-end', {
             entityId: this.props.entity.id,

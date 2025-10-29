@@ -1,4 +1,4 @@
-// CircleViewer.js - Updated with cellular automaton system and manual cascade mode
+// CircleViewer.js - Updated with roil connection handlers
 import { onMounted, onUnmounted, computed, ref, watch, nextTick } from './vue-composition-api.js';
 import { useCircleViewerDragResize } from './CircleViewerDragResize.js';
 import { useCircleViewerSelection } from './CircleViewerSelection.js';
@@ -13,6 +13,7 @@ import { CellularAutomatonEngine } from './CellularAutomatonEngine.js';
 import { ShinynessEffectsTranslator } from './ShinynessEffectsTranslator.js';
 import { CAStepControl } from './CAStepControl.js';
 import { calculateGroupShapeScale } from './groupScaleCalculator.js';
+import { roilMotionSystem } from './RoilMotionSystem.js';
 import './CircleViewerStyles.js'; // Import styles
 
 export const CircleViewer = {
@@ -52,6 +53,8 @@ export const CircleViewer = {
         const state = useCircleViewerState(props);
         const dataStore = state.dataStore;
         const isDemoMode = computed(() => state.dataStore.isDemoMode());
+
+        const previousRoilAngles = ref(new Map());
 
         // Entity drag state management
         const entityDragState = ref({
@@ -103,6 +106,39 @@ const getCircleShinyness = (circleId) => {
     
     const state = cellularAutomaton.getCircleState(circleId);
     return state.shinyness;
+};
+
+const roilGroupSoloStates = computed(() => {
+    const soloStates = new Map();
+    
+    allCircles.value.forEach(circle => {
+        if (circle.belongsToID && circle.roilMemberDisplay === 'solo') {
+            console.log(`Found solo circle: ${circle.id} (${circle.name}) in group ${circle.belongsToID}`);
+            soloStates.set(circle.belongsToID, circle.id);
+        }
+    });
+    
+    console.log('Solo states map:', soloStates);
+    return soloStates;
+});
+
+// Helper function to check if a circle should be hidden due to solo mode
+const shouldHideForSoloMode = (circle) => {
+    if (!circle.belongsToID) return false;
+    
+    const soloCircleId = roilGroupSoloStates.value.get(circle.belongsToID);
+    const shouldHide = soloCircleId && soloCircleId !== circle.id;
+    
+    // Debug logging
+    if (soloCircleId) {
+        console.log(`Circle ${circle.id} (${circle.name}) in group ${circle.belongsToID}:`, {
+            soloCircleId,
+            shouldHide,
+            isTheSoloCircle: soloCircleId === circle.id
+        });
+    }
+    
+    return shouldHide;
 };
 
         const explicitConnectionService = new ExplicitConnectionService({
@@ -340,6 +376,28 @@ const isCirclePartiallyExcited = (circleId) => {
             }, 200); // 200ms debounce
         }, { deep: true });
 
+watch(
+    () => allCircles.value.filter(circle => circle.type === 'group' && circle.roilMode === 'on'),
+    (currentGroups, previousGroups) => {
+        currentGroups.forEach(group => {
+            const currentAngle = group.roilAngle;
+            const previousAngle = previousRoilAngles.value.get(group.id);
+            
+            // If roilAngle changed, trigger smooth transition
+            if (previousAngle && previousAngle !== currentAngle) {
+                console.log(`Detected roilAngle change for group ${group.id}: ${previousAngle} → ${currentAngle}`);
+                
+                // Import the roilMotionSystem and trigger transition
+                roilMotionSystem.transitionRoilAngle(group.id, previousAngle, currentAngle, 800);
+            }
+            
+            // Update tracking
+            previousRoilAngles.value.set(group.id, currentAngle);
+        });
+    },
+    { deep: true, immediate: true }
+);
+
         // Get connection energy classes
         const getConnectionEnergyClasses = (connectionId) => {
             // Force reactivity on automaton state
@@ -464,6 +522,22 @@ const handleCAStepSpecific = (index) => {
             }
         }, { deep: true });
 
+watch(
+    () => allCircles.value.filter(circle => circle.type === 'group' && circle.roilMode === 'on'),
+    (currentGroups) => {
+        currentGroups.forEach(group => {
+            const isAnimationPaused = group.roilAnimation === 'pause';
+            
+            if (isAnimationPaused) {
+                roilMotionSystem.pauseGroup(group.id);
+            } else {
+                roilMotionSystem.resumeGroup(group.id);
+            }
+        });
+    },
+    { deep: true, immediate: true }
+);
+
         onMounted(() => {
             dragResize.onMounted();
             
@@ -493,6 +567,35 @@ const handleCAStepSpecific = (index) => {
         // NEW: Handler to pass through open-document-viewer event from document reference circles
         const handleOpenDocumentViewer = (documentId) => {
             emit('open-document-viewer', documentId);
+        };
+
+        // NEW: Handlers for roil connection creation and deletion
+        const handleCreateRoilConnection = (event) => {
+            const { clickedEntityId, selectedEntityIds, viewerId } = event;
+            
+            // Use the explicit connection service to create connections
+            selectedEntityIds.forEach(selectedId => {
+                const result = explicitConnectionService.handleEntityCtrlClick(
+                    clickedEntityId, 'circle', [selectedId], 'circle', viewerId
+                );
+                
+                if (result && result.action === 'create') {
+                    console.log('Created roil connection:', result);
+                }
+            });
+        };
+
+        const handleDeleteGroupConnection = (event) => {
+            const { connectionId, circleId, groupId } = event;
+            
+            // Delete the explicit connection
+            const connections = explicitConnectionService.getConnectionsForEntity(circleId);
+            const connectionToDelete = connections.find(conn => conn.id === connectionId);
+            
+            if (connectionToDelete) {
+                const result = explicitConnectionService.deleteConnections([connectionToDelete]);
+                console.log('Deleted group connection:', result);
+            }
         };
 
         return {
@@ -536,6 +639,10 @@ const handleCAStepSpecific = (index) => {
             isCirclePartiallyExcited,
             handleOpenDocumentViewer, // NEW: Pass through document viewer opening
             droneCircles,
+            handleCreateRoilConnection, // NEW: Handle roil connection creation
+            handleDeleteGroupConnection, // NEW: Handle group connection deletion
+            shouldHideForSoloMode,
+            roilGroupSoloStates,
         };
     },
     components: {
@@ -612,30 +719,33 @@ const handleCAStepSpecific = (index) => {
 />
                 
                 <!-- Entity Rendering -->
-                <EntityComponent
-                    v-for="circle in allCircles"
-                    :key="circle.id"
-                    :entity="circle"
-                    entity-type="circle"
-                    :is-selected="dataStore.isCircleSelected(circle.id)"
-                    :data-store="dataStore"
-                    :viewer-width="viewerWidth"
-                    :viewer-id="viewerId"
-                    :is-dragging="entityDragState.isDragging && entityDragState.draggedEntityIds.includes(circle.id)"
-                    :drag-deltas="entityDragState.currentDeltas"
-                    :shinyness-effects="getShinynessEffectsForCircle(circle)"
-                    :is-partially-excited="isCirclePartiallyExcited(circle.id)"
-                    :demo-mode="isDemoMode"
-                    @select="handleCircleSelect"
-                    @update-position="handleCirclePositionUpdate"
-                    @update-name="handleCircleNameUpdate"
-                    @move-multiple="handleMoveMultiple"
-                    @drag-start="handleEntityDragStart"
-                    @drag-move="handleEntityDragMove"
-                    @drag-end="handleEntityDragEnd"
-                    @update-circle="handleCircleUpdate"
-                    @open-document-viewer="handleOpenDocumentViewer"
-                />
+<EntityComponent
+    v-for="circle in allCircles"
+    :key="circle.id"
+    :entity="circle"
+    entity-type="circle"
+    :is-selected="dataStore.isCircleSelected(circle.id)"
+    :data-store="dataStore"
+    :viewer-width="viewerWidth"
+    :viewer-id="viewerId"
+    :is-dragging="entityDragState.isDragging && entityDragState.draggedEntityIds.includes(circle.id)"
+    :drag-deltas="entityDragState.currentDeltas"
+    :shinyness-effects="getShinynessEffectsForCircle(circle)"
+    :is-partially-excited="isCirclePartiallyExcited(circle.id)"
+    :demo-mode="isDemoMode"
+    :is-hidden-for-solo="shouldHideForSoloMode(circle)"
+    @select="handleCircleSelect"
+    @update-position="handleCirclePositionUpdate"
+    @update-name="handleCircleNameUpdate"
+    @move-multiple="handleMoveMultiple"
+    @drag-start="handleEntityDragStart"
+    @drag-move="handleEntityDragMove"
+    @drag-end="handleEntityDragEnd"
+    @update-circle="handleCircleUpdate"
+    @open-document-viewer="handleOpenDocumentViewer"
+    @create-roil-connection="handleCreateRoilConnection"
+    @delete-group-connection="handleDeleteGroupConnection"
+/>
                 
                 <EntityComponent
                     v-for="droneCircle in droneCircles"
