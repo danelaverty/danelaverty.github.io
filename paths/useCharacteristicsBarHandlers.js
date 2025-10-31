@@ -26,6 +26,26 @@ export function useCharacteristicsBarHandlers(dataHooks, actionHooks, pickerHook
     }
   };
 
+const handleSecondaryColorSelect = (colorValue, isCtrlClick) => {
+  if (stateHooks.hasMultipleCirclesSelected.value) {
+    // Apply to all selected circles
+    const selectedIds = dataStore.getSelectedCircles();
+    selectedIds.forEach(circleId => {
+      const circle = dataStore.getCircle(circleId);
+      if (circle) {
+        const colorInfo = { color: colorValue };
+        actionHooks.selectSecondaryColor(colorInfo, isCtrlClick, circle, circle.secondaryColors || [circle.secondaryColor]);
+      }
+    });
+  } else {
+    const colorInfo = { color: colorValue };
+    actionHooks.selectSecondaryColor(colorInfo, isCtrlClick, dataHooks.selectedCircle.value, dataHooks.secondaryCircleColors.value);
+  }
+  if (!isCtrlClick) {
+    pickerHooks.closePickerAction('secondaryColor');
+  }
+};
+
   const handleTypeSelect = (typeInfo) => {
     if (stateHooks.hasMultipleCirclesSelected.value) {
       // Apply to all selected circles
@@ -274,6 +294,7 @@ const handleConnectionEnergySelect = (energyId, isCtrlClick) => {
 
   return {
     handleColorSelect,
+    handleSecondaryColorSelect,
     handleTypeSelect,
     handleEnergySelect,
     handlePropertyCycle,

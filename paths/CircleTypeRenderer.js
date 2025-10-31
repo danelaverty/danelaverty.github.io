@@ -1,4 +1,4 @@
-// CircleTypeRenderer.js - Fixed to properly handle multicolor glow circles and emoji circles
+// CircleTypeRenderer.js - Enhanced to pass roil member info and handle descent state cleanup
 import { injectComponentStyles } from './styleUtils.js';
 import { adjustBrightness, darken, lighten } from './colorUtils.js';
 import { SelectionRenderer } from './SelectionRenderer.js';
@@ -24,19 +24,31 @@ export const CircleTypeRenderer = {
      * @param {boolean} isSelected - Whether the circle is selected
      * @param {number} squareCount - Number of squares for this circle
      * @param {number} belongingCount - Number of circles belonging to this group (for group circles)
+     * @param {boolean} isRoilMember - Whether this circle is a member of a roil group
      */
     render(element, circle, isSelected = false, squareCount = null, belongingCount = null, isRoilMember = false) {
         if (!element) {
             return;
         }
         
-        // Clear existing content but preserve selection indicator
-        this.clearCircleContent(element);
-        
-        // Set CSS properties
+        // Set CSS properties first
         this.setColorProperties(element, circle);
         
         const currentType = circle.type || 'basic';
+        const previousType = element.dataset.circleType;
+        
+        // Check if this is just a color update for the same type
+        const isColorOnlyUpdate = previousType === currentType && 
+                                  element.querySelector('.circle-glow-container, .triangle-wrap, .gem-container, .emoji-circle-container, .shape-wrap, .group-circle-container');
+        
+        // Store the current type
+        element.dataset.circleType = currentType;
+        
+        // Only clear and recreate if the type changed or no content exists
+        if (!isColorOnlyUpdate) {
+            // Clear existing content but preserve selection indicator
+            this.clearCircleContent(element);
+        }
         
         // Handle multi-color class for gem type
         if (currentType === 'gem' && circle.colors && circle.colors.length > 1) {
@@ -54,9 +66,15 @@ export const CircleTypeRenderer = {
         // Delegate rendering to specific renderer
         switch (currentType) {
             case 'glow':
-                GlowCircleRenderer.render(element, circle, squareCount, isRoilMember);
+                if (isColorOnlyUpdate) {
+                    // Just update the colors without recreating elements
+                    GlowCircleRenderer.updateColors(element, circle);
+                } else {
+                    // NEW: Pass isRoilMember to the glow renderer
+                    GlowCircleRenderer.render(element, circle, squareCount, isRoilMember);
+                }
                 // FIXED: Ensure multicolor flow is properly handled for glow circles
-                this.ensureMulticolorGlowFlow(element, circle);
+                this.ensureMulticolorGlowFlow(element, circle, isRoilMember);
                 break;
             case 'triangle':
                 TriangleCircleRenderer.render(element, circle);
@@ -87,11 +105,17 @@ export const CircleTypeRenderer = {
     },
 
     /**
-     * FIXED: Ensure multicolor glow flow is working properly
+     * ENHANCED: Ensure multicolor glow flow is working properly with roil member awareness
      * This method verifies that multicolor glow circles have the color flow system active
      */
-    ensureMulticolorGlowFlow(element, circle) {
-        // Check if this is a multicolor glow circle
+    ensureMulticolorGlowFlow(element, circle, isRoilMember = false) {
+        // For roil members, the color flow is handled by the descent state listener
+        // We don't want to interfere with that system
+        if (isRoilMember) {
+            return;
+        }
+        
+        // Check if this is a multicolor glow circle (non-roil member)
         if (circle.colors && circle.colors.length > 1) {
             // Small delay to ensure the glow elements are rendered first
             setTimeout(() => {
@@ -119,6 +143,11 @@ export const CircleTypeRenderer = {
         
         if (selectionIndicator) {
             wasSelected = selectionIndicator.classList.contains('selected');
+        }
+        
+        // NEW: Clean up descent state listener for glow circles before clearing
+        if (element.classList.contains('circle-type-glow')) {
+            GlowCircleRenderer.cleanupDescentStateListener(element);
         }
         
         // FIXED: Stop any active color flow systems before clearing
@@ -208,9 +237,9 @@ export const CircleTypeRenderer = {
     },
 
     /**
-     * Update circle colors - FIXED to properly handle multicolor changes
+     * Update circle colors - ENHANCED to handle roil member state
      */
-    updateColors(element, circle) {
+    updateColors(element, circle, isRoilMember = false) {
         this.setColorProperties(element, circle);
         
         if (circle.type === 'glow') {
@@ -219,14 +248,28 @@ export const CircleTypeRenderer = {
         
         // Re-render to apply color changes, preserving selection state
         const isSelected = element._selectionIndicator?.classList.contains('selected') || false;
-        this.render(element, circle, isSelected);
+        
+        // NEW: Determine if this is a roil member if not explicitly provided
+        if (isRoilMember === false && circle.belongsToID) {
+            // Try to determine roil member status from data store
+            const dataStore = useDataStore();
+            const group = dataStore.getCircle(circle.belongsToID);
+            isRoilMember = group && group.roilMode === 'on';
+        }
+        
+        this.render(element, circle, isSelected, null, null, isRoilMember);
     },
 
     /**
-     * FIXED: Add cleanup method to properly stop color flow systems
+     * ENHANCED: Add cleanup method to properly stop color flow systems and descent listeners
      */
     cleanup(element) {
         if (!element) return;
+        
+        // NEW: Clean up descent state listener for glow circles
+        if (element.classList.contains('circle-type-glow')) {
+            GlowCircleRenderer.cleanupDescentStateListener(element);
+        }
         
         // Stop color flow system
         ColorFlowSystem.stop(element);
@@ -245,6 +288,12 @@ export const CircleTypeRenderer = {
                 }
             });
             element._facetCyclers = null;
+        }
+        
+        // Stop glow color cycling if it exists
+        const glowContainer = element.querySelector('.circle-glow-container');
+        if (glowContainer) {
+            GlowCircleRenderer.stopGlowColorCycling(glowContainer);
         }
         
         // Remove selection indicator

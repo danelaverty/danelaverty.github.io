@@ -1,4 +1,4 @@
-// RoilMotionSystem.js - Updated with smooth roilAngle transitions
+// RoilMotionSystem.js - Enhanced with clean descent color system
 export class RoilMotionSystem {
     constructor() {
         this.activeCircles = new Map(); 
@@ -19,9 +19,17 @@ export class RoilMotionSystem {
         // Store dataStore reference for group lookups
         this.dataStore = null;
         
-        // NEW: Track roilAngle transitions
+        // Track roilAngle transitions
         this.transitioningGroups = new Map(); // groupId -> { fromAngle, toAngle, startTime, duration }
         this.pausedForTransition = false;
+        
+        // Track roilComposure transitions and state
+        this.composureTransitions = new Map(); // groupId -> { fromComposure, toComposure, startTime, duration }
+        this.splayedGroups = new Map(); // groupId -> { originalPositions: Map<circleId, {x,y,z,scale,opacity}> }
+        this.pausedForComposure = new Map(); // groupId -> boolean (per-group pausing for splayed mode)
+        
+        // UPDATED: Track descent state for view layer communication (no longer swaps colors)
+        this.circleColorStates = new Map(); // circleId -> { isDescending: boolean, lastUpdate: timestamp }
     }
 
     setDataStore(dataStore) {
@@ -41,20 +49,23 @@ export class RoilMotionSystem {
         return { x: absoluteX, y: absoluteY };
     }
 
-    // NEW: Method to smoothly transition roilAngle
-    transitionRoilAngle(groupId, fromAngle, toAngle, duration = 800) {
+    // Enhanced method to smoothly transition roilAngle
+    transitionRoilAngle(groupId, fromAngle, toAngle, duration = 500) {
         if (!this.dataStore) return;
         
         const group = this.dataStore.getCircle(groupId);
         if (!group || group.roilMode !== 'on') return;
+        
+        // Don't transition roilAngle if group is currently splayed
+        if (this.splayedGroups.has(groupId)) {
+            return;
+        }
         
         // Get all circles in this roil group
         const groupMembers = Array.from(this.activeCircles.entries())
             .filter(([circleId, circle]) => circle.groupId === groupId);
         
         if (groupMembers.length === 0) return;
-        
-        console.log(`Starting roilAngle transition for group ${groupId}: ${fromAngle} → ${toAngle}`);
         
         // Store transition info
         this.transitioningGroups.set(groupId, {
@@ -86,7 +97,176 @@ export class RoilMotionSystem {
         }, duration + 50); // Small buffer to ensure transition completes
     }
 
-    // NEW: Calculate top position for a given roilAngle
+    // Method to smoothly transition roilComposure
+    transitionRoilComposure(groupId, fromComposure, toComposure, duration = 800) {
+        if (!this.dataStore) return;
+        
+        const group = this.dataStore.getCircle(groupId);
+        if (!group || group.roilMode !== 'on') return;
+        
+        // Get all circles in this roil group, excluding drones
+        const allGroupMembers = Array.from(this.activeCircles.entries())
+            .filter(([circleId, circle]) => circle.groupId === groupId);
+        
+        // Filter out drone circles - they should not be repositioned
+        const nonDroneMembers = allGroupMembers.filter(([circleId, circle]) => {
+            const circleData = this.dataStore.getCircle(circleId);
+            return circleData && circleData.type !== 'drone';
+        });
+        
+        if (allGroupMembers.length === 0) return;
+        
+        if (toComposure === 'splayed') {
+            this.transitionToSplayed(groupId, allGroupMembers, nonDroneMembers, duration);
+        } else if (fromComposure === 'splayed' && toComposure === 'retracted') {
+            this.transitionFromSplayed(groupId, allGroupMembers, nonDroneMembers, duration);
+        }
+    }
+
+    // Transition to splayed mode
+    transitionToSplayed(groupId, allGroupMembers, nonDroneMembers, duration) {
+        // Store original positions, scales, and opacities for ALL group members
+        const originalPositions = new Map();
+        allGroupMembers.forEach(([circleId, circle]) => {
+            originalPositions.set(circleId, {
+                x: circle.x,
+                y: circle.y,
+                z: circle.z,
+                scale: circle.currentScale || 1.0,
+                opacity: parseFloat(circle.element.style.opacity) || 1.0
+            });
+        });
+        
+        this.splayedGroups.set(groupId, { originalPositions });
+        
+        // Pause motion for this group (affects ALL members)
+        this.pausedForComposure.set(groupId, true);
+        
+        // Calculate splayed positions only for non-drone members
+        const groupPosition = this.getGroupAbsolutePosition(groupId, allGroupMembers[0][1].viewerWidth);
+        const splayedPositions = this.calculateSplayedPositions(nonDroneMembers, groupPosition);
+        
+        // Enable CSS transitions on non-drone members only
+        nonDroneMembers.forEach(([circleId, circle]) => {
+            const element = circle.element;
+            element.style.transition = `left ${duration}ms cubic-bezier(0.4, 0.0, 0.2, 1), top ${duration}ms cubic-bezier(0.4, 0.0, 0.2, 1), opacity ${duration}ms cubic-bezier(0.4, 0.0, 0.2, 1), transform ${duration}ms cubic-bezier(0.4, 0.0, 0.2, 1)`;
+        });
+        
+        // Apply splayed positions and reset scale/opacity for non-drone members only
+        nonDroneMembers.forEach(([circleId, circle], index) => {
+            const splayedPos = splayedPositions[index];
+            const element = circle.element;
+            
+            element.style.left = splayedPos.x + 'px';
+            element.style.top = splayedPos.y + 'px';
+            element.style.opacity = '1.0';
+            element.style.transform = 'translate(-50%, -50%) scale(1.0)';
+        });
+        
+        // Clean up transitions after duration (non-drone members only)
+        setTimeout(() => {
+            nonDroneMembers.forEach(([circleId, circle]) => {
+                circle.element.style.transition = '';
+            });
+        }, duration + 50);
+    }
+
+    // Transition from splayed back to retracted
+    transitionFromSplayed(groupId, allGroupMembers, nonDroneMembers, duration) {
+        const splayedData = this.splayedGroups.get(groupId);
+        if (!splayedData) return;
+        
+        const { originalPositions } = splayedData;
+        
+        // Enable CSS transitions on non-drone members only
+        nonDroneMembers.forEach(([circleId, circle]) => {
+            const element = circle.element;
+            element.style.transition = `left ${duration}ms cubic-bezier(0.4, 0.0, 0.2, 1), top ${duration}ms cubic-bezier(0.4, 0.0, 0.2, 1), opacity ${duration}ms cubic-bezier(0.4, 0.0, 0.2, 1), transform ${duration}ms cubic-bezier(0.4, 0.0, 0.2, 1)`;
+        });
+        
+        // Restore original positions, scales, and opacities for non-drone members only
+        nonDroneMembers.forEach(([circleId, circle]) => {
+            const original = originalPositions.get(circleId);
+            if (!original) return;
+            
+            const element = circle.element;
+            const group = this.dataStore.getCircle(groupId);
+            
+            // Restore original circle internal state
+            circle.x = original.x;
+            circle.y = original.y;
+            circle.z = original.z;
+            circle.currentScale = original.scale;
+            
+            // Apply restored positions with current roilAngle calculation
+            element.style.left = original.x + 'px';
+            element.style.top = this.calculateTopForAngle(circle, group.roilAngle) + 'px';
+            element.style.opacity = original.opacity.toString();
+            element.style.transform = `translate(-50%, -50%) scale(${(original.scale - 0.2).toFixed(3)})`;
+        });
+        
+        // Restore drone circle internal state but don't move them (they stay where they are)
+        allGroupMembers.forEach(([circleId, circle]) => {
+            const circleData = this.dataStore.getCircle(circleId);
+            if (circleData && circleData.type === 'drone') {
+                const original = originalPositions.get(circleId);
+                if (original) {
+                    // Restore internal state for drones but don't apply visual changes
+                    circle.x = original.x;
+                    circle.y = original.y;
+                    circle.z = original.z;
+                    circle.currentScale = original.scale;
+                }
+            }
+        });
+        
+        // Clean up after transition
+        setTimeout(() => {
+            // Remove CSS transitions from non-drone members
+            nonDroneMembers.forEach(([circleId, circle]) => {
+                circle.element.style.transition = '';
+            });
+            
+            // Clean up tracking data
+            this.splayedGroups.delete(groupId);
+            this.pausedForComposure.delete(groupId);
+            
+        }, duration + 50);
+    }
+
+    // Calculate splayed positions for group members
+    calculateSplayedPositions(groupMembers, groupPosition) {
+        const positions = [];
+        const leftColumnX = groupPosition.x - 60;  // 40px left of group center
+        const rightColumnX = groupPosition.x + 60; // 40px right of group center
+        
+        const memberCount = groupMembers.length;
+        const verticalSpacing = 70;
+        
+        // Calculate the number of rows (since we have 2 columns)
+        const numRows = Math.ceil(memberCount / 2);
+        
+        // Calculate offset to center the middle row on the group position
+        // The middle row index is Math.floor((numRows - 1) / 2)
+        const middleRowIndex = Math.floor((numRows - 1) / 2);
+        const centeringOffset = middleRowIndex * verticalSpacing;
+        const startY = groupPosition.y - (centeringOffset + verticalSpacing / 2);
+        
+        groupMembers.forEach(([circleId, circle], index) => {
+            // Alternate between left and right columns
+            const isLeftColumn = index % 2 === 0;
+            const columnIndex = Math.floor(index / 2); // This is the row index
+            
+            const x = isLeftColumn ? leftColumnX : rightColumnX;
+            const y = startY + (columnIndex * verticalSpacing);
+            
+            positions.push({ x, y });
+        });
+        
+        return positions;
+    }
+
+    // Calculate top position for a given roilAngle
     calculateTopForAngle(circle, roilAngle) {
         if (roilAngle === 'tilt') {
             return circle.y - (2 * circle.z);
@@ -95,34 +275,117 @@ export class RoilMotionSystem {
         }
     }
 
-    // NEW: Pause motion system for transitions
-    pauseMotionForTransition() {
-        this.pausedForTransition = true;
-        console.log('Motion system paused for roilAngle transition');
+    // Calculate descent state based on z-orbit phase
+    calculateDescentState(circle) {
+        // Normalize phase to 0-2π range
+        const normalizedPhase = (circle.zOrbitPhase % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+        return normalizedPhase < Math.PI;
     }
 
-pauseGroup(groupId) {
-    const group = this.roilGroups.get(groupId) || { isPaused: false };
-    group.isPaused = true;
-    this.roilGroups.set(groupId, group);
+    // NEW: Track descent state and notify view layer (no longer swaps colors in data)
+    updateCircleDescentState(circleId, circle) {
+        if (!this.dataStore || !circle.groupId) return;
+        
+        const group = this.dataStore.getCircle(circle.groupId);
+        if (!group || group.secondaryColorDescent !== 'shiftToSecondary') {
+            // Clear any existing descent state and notify view layer
+            this.circleColorStates.delete(circleId);
+            this.notifyViewLayerColorChange(circleId, false);
+            return;
+        }
+        
+        const circleData = this.dataStore.getCircle(circleId);
+        if (!circleData || !circleData.secondaryColors || circleData.secondaryColors.length === 0) {
+            // No secondary colors defined
+            this.circleColorStates.delete(circleId);
+            this.notifyViewLayerColorChange(circleId, false);
+            return;
+        }
+        
+        const isDescending = this.calculateDescentState(circle);
+        const colorState = this.circleColorStates.get(circleId) || { isDescending: !isDescending }; // Force update on first run
+        
+        // Only notify if descent state changed
+        if (colorState.isDescending !== isDescending) {
+            // Update tracking
+            this.circleColorStates.set(circleId, { 
+                isDescending: isDescending,
+                lastUpdate: Date.now()
+            });
+            
+            // Notify view layer to use secondary colors if descending
+            this.notifyViewLayerColorChange(circleId, isDescending);
+        }
+    }
+
+    // NEW: Notify view layer about color state changes via DOM communication
+notifyViewLayerColorChange(circleId, useSecondaryColors) {
+    // Find the circle element in the DOM
+    const circleElement = document.querySelector(`[data-entity-id="${circleId}"]`);
     
-    console.log(`Paused roil animation for group ${groupId}`);
-}
-
-resumeGroup(groupId) {
-    const group = this.roilGroups.get(groupId) || { isPaused: false };
-    group.isPaused = false;
-    this.roilGroups.set(groupId, group);
+    if (!circleElement) {
+        console.log(`🔔 No element found with data-entity-id="${circleId}"`);
+        return;
+    }
     
-    console.log(`Resumed roil animation for group ${groupId}`);
+    // Find the actual glow element that has the listener
+    const glowElement = circleElement.querySelector('.circle-glow-container')?.parentElement;
+    const targetElement = glowElement || circleElement;
+    
+    console.log(`🔔 notifyViewLayerColorChange for ${circleId}: useSecondaryColors=${useSecondaryColors}`);
+    console.log(`🔔 Container element:`, circleElement);
+    console.log(`🔔 Target element (with listener):`, targetElement);
+    console.log(`🔔 Target element has listener:`, !!targetElement?._roilColorStateListener);
+    
+    // Set a data attribute that the view layer can read
+    if (useSecondaryColors) {
+        circleElement.setAttribute('data-use-secondary-colors', 'true');
+    } else {
+        circleElement.removeAttribute('data-use-secondary-colors');
+    }
+    
+    console.log(`🔔 Set data attribute, dispatching event...`);
+    
+    // Trigger a custom event that the view layer can listen for
+    const event = new CustomEvent('roil-color-state-change', {
+        detail: { 
+            circleId, 
+            useSecondaryColors,
+            timestamp: Date.now()
+        }
+    });
+    
+    // Dispatch on the element that has the listener
+    targetElement.dispatchEvent(event);
+    
+    console.log(`🔔 Event dispatched for ${circleId} on`, targetElement);
 }
 
-isGroupPaused(groupId) {
-    const group = this.roilGroups.get(groupId);
-    return group ? group.isPaused : false;
-}
+    // Pause motion system for transitions
+    pauseMotionForTransition() {
+        this.pausedForTransition = true;
+    }
 
-    // NEW: Resume motion system after transition
+    pauseGroup(groupId) {
+        const group = this.roilGroups.get(groupId) || { isPaused: false };
+        group.isPaused = true;
+        this.roilGroups.set(groupId, group);
+    }
+
+    resumeGroup(groupId) {
+        const group = this.roilGroups.get(groupId) || { isPaused: false };
+        group.isPaused = false;
+        this.roilGroups.set(groupId, group);
+    }
+
+    isGroupPaused(groupId) {
+        const group = this.roilGroups.get(groupId);
+        const regularPause = group ? group.isPaused : false;
+        const composurePause = this.pausedForComposure.get(groupId) || false;
+        return regularPause || composurePause;
+    }
+
+    // Resume motion system after transition
     resumeMotionAfterTransition(groupId) {
         // Remove CSS transitions from group members
         const transitionInfo = this.transitioningGroups.get(groupId);
@@ -141,11 +404,10 @@ isGroupPaused(groupId) {
         // Resume motion system if no other transitions are active
         if (this.transitioningGroups.size === 0) {
             this.pausedForTransition = false;
-            console.log('Motion system resumed after roilAngle transition');
         }
     }
 
-    // MODIFIED: Check if motion system should be paused
+    // Check if motion system should be paused
     shouldPauseMotion() {
         return this.pausedForTransition;
     }
@@ -208,7 +470,7 @@ isGroupPaused(groupId) {
         }
     }
 
-    // MODIFIED: Skip updates during transitions
+    // Skip updates during transitions or when splayed
     updateAllCircles() {
         if (this.shouldPauseMotion()) {
             return; // Skip updates during roilAngle transitions
@@ -351,6 +613,9 @@ isGroupPaused(groupId) {
         this.activeCircles.delete(circleId);
         this.lastKnownPositions.delete(circleId);
         
+        // Clean up color state tracking
+        this.circleColorStates.delete(circleId);
+        
         if (this.activeCircles.size === 0) {
             this.stopMotion();
             this.stopHighFrequencyMonitoring();
@@ -381,12 +646,10 @@ isGroupPaused(groupId) {
         const { element, bounds } = circle;
         const group = this.dataStore.getCircle(circle.groupId);
 
-if (this.isGroupPaused(circle.groupId)) {
-        return;
-        // Don't update positions, but still apply current position
-        element.style.left = circle.x + 'px';
-        element.style.top = this.calculateTopForAngle(circle, group.roilAngle) + 'px';
-    }
+        // Don't update positions if group is paused (including splayed)
+        if (this.isGroupPaused(circle.groupId)) {
+            return;
+        }
         
         circle.time += 1;
         
@@ -413,6 +676,9 @@ if (this.isGroupPaused(circle.groupId)) {
         circle.x += (targetX - circle.x) * 0.08;
         circle.y += (targetY - circle.y) * 0.08;
         circle.z += (targetZ - circle.z) * 0.06;
+        
+        // NEW: Update descent state and notify view layer (no data modification)
+        this.updateCircleDescentState(circleId, circle);
         
         // Boundary constraints
         if (circle.x < bounds.minX) {
@@ -528,7 +794,13 @@ if (this.isGroupPaused(circle.groupId)) {
             currentFrame: this.frameCount,
             flickerReport: this.getFlickerReport(),
             pausedForTransition: this.pausedForTransition,
-            activeTransitions: this.transitioningGroups.size
+            activeTransitions: this.transitioningGroups.size,
+            splayedGroups: this.splayedGroups.size,
+            pausedForComposure: Array.from(this.pausedForComposure.entries()),
+            colorStateCount: this.circleColorStates.size, // Track descent states
+            activeDescentStates: Array.from(this.circleColorStates.entries())
+                .filter(([_, state]) => state.isDescending)
+                .map(([circleId, _]) => circleId)
         };
     }
 
@@ -539,6 +811,10 @@ if (this.isGroupPaused(circle.groupId)) {
         this.lastKnownPositions.clear();
         this.positionChanges = [];
         this.transitioningGroups.clear();
+        this.composureTransitions.clear();
+        this.splayedGroups.clear();
+        this.pausedForComposure.clear();
+        this.circleColorStates.clear(); // Clean up color states
     }
 }
 
@@ -552,8 +828,20 @@ if (typeof window !== 'undefined') {
         clearChanges: () => { roilMotionSystem.positionChanges = []; },
         enableDebug: () => { roilMotionSystem.debugMode = true; },
         disableDebug: () => { roilMotionSystem.debugMode = false; },
-        // NEW: Trigger manual roilAngle transitions
+        // Trigger manual roilAngle transitions
         transitionRoilAngle: (groupId, fromAngle, toAngle, duration) => 
-            roilMotionSystem.transitionRoilAngle(groupId, fromAngle, toAngle, duration)
+            roilMotionSystem.transitionRoilAngle(groupId, fromAngle, toAngle, duration),
+        // Trigger manual roilComposure transitions
+        transitionRoilComposure: (groupId, fromComposure, toComposure, duration) =>
+            roilMotionSystem.transitionRoilComposure(groupId, fromComposure, toComposure, duration),
+        // Debug descent color system
+        getColorStates: () => Array.from(roilMotionSystem.circleColorStates.entries()),
+        clearColorStates: () => roilMotionSystem.circleColorStates.clear(),
+        getActiveDescentCircles: () => Array.from(roilMotionSystem.circleColorStates.entries())
+            .filter(([_, state]) => state.isDescending)
+            .map(([circleId, _]) => circleId),
+        // Manual color state testing
+        testColorState: (circleId, useSecondaryColors) => 
+            roilMotionSystem.notifyViewLayerColorChange(circleId, useSecondaryColors)
     };
 }

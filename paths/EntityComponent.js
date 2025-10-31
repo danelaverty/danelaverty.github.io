@@ -51,7 +51,8 @@ const componentStyles = `
         transition: transform 1.0s cubic-bezier(0.2,-2,0.8,2), opacity 1.0s cubic-bezier(0.2,-2,0.8,2), filter 1.0s cubic-bezier(0.2,-2,0.8,2);
     }
 
-    .entity-container, .circle-type-glow {
+    .entity-container,
+    .circle-type-glow {
         mix-blend-mode: color-dodge;
     }
 
@@ -198,8 +199,9 @@ const componentStyles = `
         color: #FFF;
         font-size: 12px;
         text-align: center;
-        max-width: 120px;
-        min-width: 40px;
+        /*max-width: 120px;
+        min-width: 40px;*/
+        width: 120px;
         padding: 2px 4px;
         border-radius: 3px;
         cursor: text;
@@ -208,6 +210,7 @@ const componentStyles = `
         z-index: 10;
         text-shadow: 1px 1px 1px black;
         transition: background-color 0.2s ease, transform 1s ease, opacity 1s ease, filter 1s ease;
+        position: absolute;
     }
 
     .entity-container-emoji .entity-name {
@@ -531,6 +534,12 @@ export const EntityComponent = {
 
         const shapeRef = rendering.shapeRef;
 
+const isRoilMember = computed(() => {
+    return props.entityType === 'circle' && 
+           props.entity.belongsToID && 
+           props.dataStore?.getCircle(props.entity.belongsToID)?.roilMode === 'on';
+});
+
 // NEW: Beacon color cycling for document reference circles
 const beaconKeyframeId = ref(null);
 
@@ -840,6 +849,7 @@ return {
         groupCircleStyles,
         shouldShowBeacons,
         beaconAnimationStyles,
+        isRoilMember
     };
     },
     template: `

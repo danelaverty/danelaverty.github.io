@@ -19,6 +19,8 @@ export function useCharacteristicsBarState(dataHooks, pickerHooks) {
   const colorPickerRefTemplate = ref(null);
   const energyPickerRefTemplate = ref(null);
   const emojiPickerRefTemplate = ref(null);
+const secondaryColorDisplayRefTemplate = ref(null);
+const secondaryColorPickerRefTemplate = ref(null);
 
   // Watch for template ref assignments and update picker hooks
   watchEffect(() => {
@@ -80,6 +82,18 @@ export function useCharacteristicsBarState(dataHooks, pickerHooks) {
       pickerHooks.emojiPickerRef.value = emojiPickerRefTemplate.value.$el || emojiPickerRefTemplate.value;
     }
   });
+
+watchEffect(() => {
+  if (secondaryColorDisplayRefTemplate.value) {
+    pickerHooks.secondaryColorDisplayRef.value = secondaryColorDisplayRefTemplate.value.$el || secondaryColorDisplayRefTemplate.value;
+  }
+});
+
+watchEffect(() => {
+  if (secondaryColorPickerRefTemplate.value) {
+    pickerHooks.secondaryColorPickerRef.value = secondaryColorPickerRefTemplate.value.$el || secondaryColorPickerRefTemplate.value;
+  }
+});
 
   const hasMultipleCirclesSelected = computed(() => {
     return dataStore.hasMultipleCirclesSelected();
@@ -277,5 +291,8 @@ export function useCharacteristicsBarState(dataHooks, pickerHooks) {
     shouldShowCircleCharacteristicControls,
     shouldShowJumpToReferenceControl,
     shouldShowBreakReferenceControl,
+
+secondaryColorDisplayRefTemplate,
+    secondaryColorPickerRefTemplate,
   };
 }

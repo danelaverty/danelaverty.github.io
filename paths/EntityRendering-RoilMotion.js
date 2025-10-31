@@ -1,4 +1,4 @@
-// EntityRendering-RoilMotion.js - Updated to pass group positioning data to RoilMotionSystem
+// EntityRendering-RoilMotion.js - Enhanced to watch roilComposure changes and trigger transitions
 import { watch, onMounted, onUnmounted, nextTick } from './vue-composition-api.js';
 import { roilMotionSystem } from './RoilMotionSystem.js';
 import { useRoilState } from './EntityState-RoilExtension.js';
@@ -27,14 +27,45 @@ export const useRoilMotion = (props, state) => {
         }
     );
 
-watch(
-    () => props.entity.buoyancy,
-    (newBuoyancy) => {
-        if (roilState.isRoilMember.value && roilMotionSystem.activeCircles.has(props.entity.id)) {
-            roilMotionSystem.updateCircleBuoyancy(props.entity.id);
+    // Watch for buoyancy changes
+    watch(
+        () => props.entity.buoyancy,
+        (newBuoyancy) => {
+            if (roilState.isRoilMember.value && roilMotionSystem.activeCircles.has(props.entity.id)) {
+                roilMotionSystem.updateCircleBuoyancy(props.entity.id);
+            }
         }
-    }
-);
+    );
+
+    // NEW: Watch for roilComposure changes
+    watch(
+        () => {
+            // Watch the group's roilComposure property
+            const dataStore = state.dataStore || props.dataStore;
+            if (!dataStore || !roilState.isRoilMember.value) return null;
+            
+            const groupId = props.entity.belongsToID;
+            if (!groupId) return null;
+            
+            const group = dataStore.getCircle(groupId);
+            return group ? group.roilComposure : null;
+        },
+        (newComposure, oldComposure) => {
+            if (props.entityType !== 'circle' || !roilState.isRoilMember.value) return;
+            
+            const groupId = props.entity.belongsToID;
+            if (!groupId || !newComposure || !oldComposure) return;
+            
+            // Only trigger transition if this is an actual change
+            if (newComposure !== oldComposure) {
+                console.log(`Detected roilComposure change for group ${groupId}: ${oldComposure} → ${newComposure}`);
+                
+                nextTick(() => {
+                    roilMotionSystem.transitionRoilComposure(groupId, oldComposure, newComposure, 800);
+                });
+            }
+        }
+    );
 
     // Function to add circle to roil motion
     const addToRoilMotion = () => {
@@ -77,8 +108,8 @@ watch(
             props.entity.id, 
             state.elementRef.value, 
             bounds,
-            groupId,      // NEW: Pass group ID
-            viewerWidth   // NEW: Pass viewer width
+            groupId,      // Pass group ID
+            viewerWidth   // Pass viewer width
         );
 
         roilMotionSystem.updateCircleBuoyancy(props.entity.id);

@@ -6,6 +6,7 @@ export const useCharacteristicsBarPickers = () => {
   const { positionPicker } = usePickerPositioning();
   
   const isColorPickerOpen = ref(false);
+  const isSecondaryColorPickerOpen = ref(false);
   const isTypePickerOpen = ref(false);
   const isEnergyPickerOpen = ref(false);
   const isEmojiPickerOpen = ref(false);
@@ -13,6 +14,7 @@ export const useCharacteristicsBarPickers = () => {
   const isConnectionEnergyPickerOpen = ref(false);
   
   const colorPickerRef = ref(null);
+  const secondaryColorPickerRef = ref(null);
   const typePickerRef = ref(null);
   const energyPickerRef = ref(null);
   const emojiPickerRef = ref(null);
@@ -20,6 +22,7 @@ export const useCharacteristicsBarPickers = () => {
   const connectionEnergyPickerRef = ref(null);
   
   const colorDisplayRef = ref(null);
+  const secondaryColorDisplayRef = ref(null);
   const typeDisplayRef = ref(null);
   const energyDisplayRef = ref(null);
   const emojiDisplayRef = ref(null);
@@ -29,6 +32,7 @@ export const useCharacteristicsBarPickers = () => {
   // Close all pickers helper
   const closeAllPickers = () => {
     isColorPickerOpen.value = false;
+    isSecondaryColorPickerOpen.value = false;
     isTypePickerOpen.value = false;
     isEnergyPickerOpen.value = false;
     isCircleEmojiPickerOpen.value = false;
@@ -46,6 +50,16 @@ export const useCharacteristicsBarPickers = () => {
       positionColorPicker();
     }
   };
+
+const toggleSecondaryColorPicker = async () => {
+  closeAllPickers();
+  isSecondaryColorPickerOpen.value = true;
+  
+  if (isSecondaryColorPickerOpen.value) {
+    await nextTick();
+    positionSecondaryColorPicker();
+  }
+};
 
   const toggleTypePicker = async () => {
     closeAllPickers();
@@ -106,6 +120,14 @@ export const useCharacteristicsBarPickers = () => {
     positionPicker(colorPickerRef.value, colorDisplayRef.value, 600, 500);
   };
 
+const positionSecondaryColorPicker = () => {
+  if (!secondaryColorPickerRef.value || !secondaryColorDisplayRef.value) {
+    console.warn('Secondary color picker refs not available for positioning');
+    return;
+  }
+  positionPicker(secondaryColorPickerRef.value, secondaryColorDisplayRef.value, 600, 500);
+};
+
   const positionTypePicker = () => {
     if (!typePickerRef.value || !typeDisplayRef.value) {
       console.warn('Type picker refs not available for positioning');
@@ -157,6 +179,13 @@ export const useCharacteristicsBarPickers = () => {
           !colorDisplayRef.value.contains(e.target)) {
         isColorPickerOpen.value = false;
       }
+
+if (isSecondaryColorPickerOpen.value && 
+    secondaryColorPickerRef.value && secondaryColorDisplayRef.value &&
+    !secondaryColorPickerRef.value.contains(e.target) && 
+    !secondaryColorDisplayRef.value.contains(e.target)) {
+  isSecondaryColorPickerOpen.value = false;
+}
       
       if (isTypePickerOpen.value && 
           typePickerRef.value && typeDisplayRef.value &&
@@ -207,6 +236,9 @@ export const useCharacteristicsBarPickers = () => {
       case 'color':
         isColorPickerOpen.value = false;
         break;
+case 'secondaryColor':
+  isSecondaryColorPickerOpen.value = false;
+  break;
       case 'type':
         isTypePickerOpen.value = false;
         break;
@@ -260,6 +292,10 @@ export const useCharacteristicsBarPickers = () => {
     toggleEmojiPicker,
     toggleCircleEmojiPicker,
     toggleConnectionEnergyPicker,
-    closePickerAction
+    closePickerAction,
+isSecondaryColorPickerOpen,
+    secondaryColorPickerRef,
+    secondaryColorDisplayRef,
+    toggleSecondaryColorPicker,
   };
 };

@@ -43,6 +43,18 @@ export const useCharacteristicsBarData = () => {
     return selectedCircle.value.color ? [selectedCircle.value.color] : ['#4CAF50'];
   });
 
+const secondaryCircleColors = computed(() => {
+  if (!selectedCircle.value) return [];
+  
+  // Check if circle has multiple secondary colors
+  if (selectedCircle.value.secondaryColors && Array.isArray(selectedCircle.value.secondaryColors)) {
+    return selectedCircle.value.secondaryColors;
+  }
+  
+  // Fallback to single secondary color or default
+  return selectedCircle.value.secondaryColor ? [selectedCircle.value.secondaryColor] : ['#B3B3B3'];
+});
+
   // Get circle type
   const circleType = computed(() => {
     if (!selectedCircle.value) return 'basic';
@@ -117,6 +129,11 @@ const connectionEnergyTypes = computed(() => {
     return circleColors.value.includes(colorValue);
   };
 
+// Check secondary color selections
+const isSecondaryColorSelected = (colorValue) => {
+  return secondaryCircleColors.value.includes(colorValue);
+};
+
   const isTypeSelected = (typeId) => {
     return circleType.value === typeId;
   };
@@ -129,6 +146,7 @@ const connectionEnergyTypes = computed(() => {
     selectedCircle,
     isVisible,
     circleColors,
+    secondaryCircleColors,
     circleType,
     circleEnergyTypes,
       connectionEnergyTypes,
@@ -139,6 +157,7 @@ const connectionEnergyTypes = computed(() => {
     circleTypes,
     energyTypes,
     isColorSelected,
+    isSecondaryColorSelected,
     isTypeSelected,
     isEnergySelected,
     findColorInfo
