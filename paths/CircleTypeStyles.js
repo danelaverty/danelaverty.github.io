@@ -31,6 +31,7 @@ export const circleTypeStyles = `
         z-index: 1;
         animation: glow 6s ease 0s infinite alternate;
         pointer-events: none;
+        transition: background-color 0.8s ease-in-out;
     }
 
     @keyframes glow {

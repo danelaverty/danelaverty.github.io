@@ -64,6 +64,14 @@ export const CYCLE_PROPERTY_CONFIGS = {
     displayIf: { type: 'group', roilMode: 'on' }
   },
 
+  roilComposure: {
+    values: {
+      'retracted': { icon: '✊', label: 'Retracted', description: '', default: true },
+      'splayed': { icon: '🖐️', label: 'Splayed', description: '' },
+    },
+    displayIf: { type: 'group', roilMode: 'on' }
+  },
+
   roilAngle: {
     values: {
       'tilt': { icon: '▽', label: 'Tilt', description: '', default: true },
@@ -78,6 +86,14 @@ export const CYCLE_PROPERTY_CONFIGS = {
       'show': { icon: '-', label: 'Show', description: '' },
     },
       displayIf: { type: 'group', roilMode: 'on', roilAngle: 'side' }
+  },
+
+  secondaryColorDescent: {
+    values: {
+      'stayPrimary': { icon: '1', label: 'No Shift', description: '', default: true },
+      'shiftToSecondary': { icon: '2', label: 'Shift', description: '' },
+    },
+      displayIf: { type: 'group', roilMode: 'on', }
   },
 
   buoyancy: {

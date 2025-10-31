@@ -7,6 +7,7 @@ let entityStoreInstance = null;
 // Base defaults for core circle properties (non-cycleable)
 const BASE_CIRCLE_DEFAULTS = {
     colors: ['#B3B3B3'],
+    secondaryColors: ['#B3B3B3'],
     energyTypes: [],
     referenceID: null,
     documentReferenceID: null, // NEW: For document reference circles
@@ -387,6 +388,10 @@ function createEntityStore() {
 
                             if (updates.colors !== undefined) {
                                 refCircle.colors = [...entity.colors];
+                            }
+
+                            if (updates.secondaryColors !== undefined) {
+                                refCircle.secondaryColors = [...entity.secondaryColors];
                             }
 
                             if (updates.type !== undefined) {

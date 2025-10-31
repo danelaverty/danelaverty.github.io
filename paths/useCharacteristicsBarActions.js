@@ -40,6 +40,41 @@ export const useCharacteristicsBarActions = () => {
     }
   };
 
+const selectSecondaryColor = (colorInfo, isCtrlClick, selectedCircle, circleSecondaryColors) => {
+  if (!selectedCircle) return;
+  
+  const circleId = selectedCircle.id;
+  const currentColors = circleSecondaryColors;
+  
+  if (isCtrlClick) {
+    // Multi-color selection
+    let newColors;
+    if (currentColors.includes(colorInfo.color)) {
+      // Remove color if already selected (but keep at least one)
+      if (currentColors.length > 1) {
+        newColors = currentColors.filter(c => c !== colorInfo.color);
+      } else {
+        newColors = currentColors; // Don't remove the last color
+      }
+    } else {
+      // Add color
+      newColors = [...currentColors, colorInfo.color];
+    }
+    
+    // Update circle with multiple secondary colors
+    dataStore.updateCircle(circleId, {
+      secondaryColors: newColors,
+      secondaryColor: newColors[0], // Keep first color as primary
+    });
+  } else {
+    // Single color selection
+    dataStore.updateCircle(circleId, {
+      secondaryColor: colorInfo.color,
+      secondaryColors: [colorInfo.color],
+    });
+  }
+};
+
   const selectType = (typeInfo, selectedCircle) => {
     if (!selectedCircle) return;
     
@@ -180,6 +215,11 @@ export const useCharacteristicsBarActions = () => {
           const [colorInfo, isCtrlClick] = args;
           selectColor(colorInfo, isCtrlClick, circle, circle.colors || [circle.color]);
           break;
+
+case 'secondaryColor':
+  const [secondaryColorInfo, isCtrlClickSecondary] = args;
+  selectSecondaryColor(secondaryColorInfo, isCtrlClickSecondary, circle, circle.secondaryColors || [circle.secondaryColor]);
+  break;
           
         case 'type':
           const [typeInfo] = args;
@@ -205,6 +245,7 @@ export const useCharacteristicsBarActions = () => {
 
   return {
     selectColor,
+      selectSecondaryColor,
     selectType,
     selectEnergy,
     toggleActivation,

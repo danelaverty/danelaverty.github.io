@@ -79,6 +79,8 @@ export const CircleCharacteristicsBar = {
     return {
       // Data from hooks
       ...dataHooks,
+isSecondaryColorPickerOpen: pickerHooks.isSecondaryColorPickerOpen,
+    toggleSecondaryColorPicker: pickerHooks.toggleSecondaryColorPicker,
       ...recentEmojiHooks,
       
       // State from state hooks (includes cycleableProperties)
@@ -159,6 +161,13 @@ export const CircleCharacteristicsBar = {
                 :circleColors="circleColors"
                 :isPickerOpen="isColorPickerOpen"
                 @toggle="toggleColorPicker"
+            />
+
+            <ColorControl 
+                ref="secondaryColorDisplayRefTemplate"
+                :circleColors="secondaryCircleColors"
+                :isPickerOpen="isSecondaryColorPickerOpen"
+                @toggle="toggleSecondaryColorPicker"
             />
 
             <!-- Energy Control -->
@@ -265,6 +274,15 @@ export const CircleCharacteristicsBar = {
                 @selectColor="handleColorSelect"
                 @close="closePickerAction('color')"
             />
+
+<ColorPickerModal 
+    v-if="isSecondaryColorPickerOpen"
+    ref="secondaryColorPickerRefTemplate"
+    :colorFamilies="colorFamilies"
+    :isColorSelected="isSecondaryColorSelected"
+    @selectColor="handleSecondaryColorSelect"
+    @close="closePickerAction('secondaryColor')"
+/>
 
             <!-- Energy Picker Modal -->
             <EnergyPickerModal 

@@ -747,7 +747,7 @@ watch(
     @delete-group-connection="handleDeleteGroupConnection"
 />
                 
-                <EntityComponent
+                <!--EntityComponent
                     v-for="droneCircle in droneCircles"
                     :key="droneCircle.id"
                     :entity="droneCircle"
@@ -755,7 +755,7 @@ watch(
                     :is-drone="true"
                     :viewer-width="viewerWidth"
                     :viewer-id="viewerId"
-                />
+                /-->
 
                 <EntityControls 
                     entity-type="circle"
