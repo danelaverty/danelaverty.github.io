@@ -33,11 +33,6 @@ export const GroupCircleRenderer = {
         groupElement.style.borderColor = color;
         groupElement.style.backgroundColor = `color-mix(in srgb, ${color} 15%, transparent)`;
         
-        // NEW: Apply roil mode opacity
-        if (isRoilMode) {
-            groupElement.style.opacity = '0';
-        }
-        
         // Add member count display for collapsed groups
         if (isCollapsed && actualBelongingCount > 0) {
             const countElement = document.createElement('div');

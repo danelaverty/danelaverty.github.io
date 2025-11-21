@@ -561,23 +561,6 @@ export const circleTypeStyles = `
         z-index: 1;
     }
 
-    .group-circle-container {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        border: 2px solid var(--circle-color);
-        border-radius: 5px;
-        background-color: color-mix(in srgb, var(--circle-color) 10%, transparent);
-        pointer-events: none;
-        z-index: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 1;
-    }
-
 .circle-shape.circle-type-group {
     background: none !important;
     background-color: transparent !important;
@@ -600,6 +583,8 @@ export const circleTypeStyles = `
     position: absolute;
     top: 0;
     left: 0;
+        width: 100%;
+        height: 100%;
     min-width: 32px;
     min-height: 32px;
     border: 2px solid var(--circle-color);
@@ -612,6 +597,10 @@ export const circleTypeStyles = `
     justify-content: center;
     transition: width 0.3s ease, height 0.3s ease;
     box-shadow: 0 0 8px color-mix(in srgb, var(--circle-color) 20%, transparent);
+}
+
+.is-roil .group-circle-container {
+    opacity: 0;
 }
 
 .group-circle-container:hover {
@@ -715,19 +704,6 @@ export const circleTypeStyles = `
     to {
         opacity: 0.9;
         transform: translate(-50%, -50%) scale(1);
-    }
-}
-
-/* Accessibility improvements */
-@media (prefers-reduced-motion: reduce) {
-    .group-circle-container,
-    .group-member-count {
-        animation: none !important;
-        transition: none !important;
-    }
-    
-    .group-circle-container.collapsed:hover {
-        transform: none;
     }
 }
 

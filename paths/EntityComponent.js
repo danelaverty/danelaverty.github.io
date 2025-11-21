@@ -869,6 +869,7 @@ return {
             'group-member': groupMemberScale !== 1,
             'entity-container-emoji': entity.type === 'emoji',
             'entity-container-group': entity.type === 'group',
+            'is-roil': entity.roilMode === 'on',
             'roil-angle-side': entity.roilAngle === 'side',
             'awareness-line-show': entity.awarenessLine === 'show',
             'hidden-for-solo': isHiddenForSolo,
