@@ -113,12 +113,10 @@ const roilGroupSoloStates = computed(() => {
     
     allCircles.value.forEach(circle => {
         if (circle.belongsToID && circle.roilMemberDisplay === 'solo') {
-            console.log(`Found solo circle: ${circle.id} (${circle.name}) in group ${circle.belongsToID}`);
             soloStates.set(circle.belongsToID, circle.id);
         }
     });
     
-    console.log('Solo states map:', soloStates);
     return soloStates;
 });
 
@@ -128,15 +126,6 @@ const shouldHideForSoloMode = (circle) => {
     
     const soloCircleId = roilGroupSoloStates.value.get(circle.belongsToID);
     const shouldHide = soloCircleId && soloCircleId !== circle.id;
-    
-    // Debug logging
-    if (soloCircleId) {
-        console.log(`Circle ${circle.id} (${circle.name}) in group ${circle.belongsToID}:`, {
-            soloCircleId,
-            shouldHide,
-            isTheSoloCircle: soloCircleId === circle.id
-        });
-    }
     
     return shouldHide;
 };
@@ -190,7 +179,7 @@ const droneCircles = computed(() => {
         const spread = actualSize * 0.7; // 70% of the group's size
         
         // Generate exactly 5 drone circles per roil group
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < 5; i++) {
             const drone = {
                 id: `drone_${group.id}_${i}`,
                 type: 'glow', // Use glow type like feelings
@@ -385,7 +374,6 @@ watch(
             
             // If roilAngle changed, trigger smooth transition
             if (previousAngle && previousAngle !== currentAngle) {
-                console.log(`Detected roilAngle change for group ${group.id}: ${previousAngle} → ${currentAngle}`);
                 
                 // Import the roilMotionSystem and trigger transition
                 roilMotionSystem.transitionRoilAngle(group.id, previousAngle, currentAngle, 800);
@@ -578,10 +566,6 @@ watch(
                 const result = explicitConnectionService.handleEntityCtrlClick(
                     clickedEntityId, 'circle', [selectedId], 'circle', viewerId
                 );
-                
-                if (result && result.action === 'create') {
-                    console.log('Created roil connection:', result);
-                }
             });
         };
 
@@ -594,7 +578,6 @@ watch(
             
             if (connectionToDelete) {
                 const result = explicitConnectionService.deleteConnections([connectionToDelete]);
-                console.log('Deleted group connection:', result);
             }
         };
 
@@ -747,7 +730,7 @@ watch(
     @delete-group-connection="handleDeleteGroupConnection"
 />
                 
-                <!--EntityComponent
+                <EntityComponent
                     v-for="droneCircle in droneCircles"
                     :key="droneCircle.id"
                     :entity="droneCircle"
@@ -755,7 +738,7 @@ watch(
                     :is-drone="true"
                     :viewer-width="viewerWidth"
                     :viewer-id="viewerId"
-                /-->
+                />
 
                 <EntityControls 
                     entity-type="circle"

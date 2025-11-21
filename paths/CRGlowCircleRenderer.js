@@ -55,7 +55,6 @@ setupDescentStateListener(element, circle) {
     
     // Listen for roil color state changes
     const handleColorStateChange = (event) => {
-        console.log(`🎨 handleColorStateChange for ${circle.id}:`, event.detail);
         const { useSecondaryColors } = event.detail;
         this.updateColorsForDescentState(element, circle, useSecondaryColors);
     };
@@ -64,11 +63,8 @@ setupDescentStateListener(element, circle) {
     element._roilColorStateListener = handleColorStateChange;
     element.addEventListener('roil-color-state-change', handleColorStateChange);
     
-    console.log(`🎯 Set up descent state listener for ${circle.id}`);
-    
     // Check initial state from data attribute
     const useSecondaryColors = element.hasAttribute('data-use-secondary-colors');
-    console.log(`🎯 Initial state for ${circle.id}: useSecondaryColors=${useSecondaryColors}`);
     this.updateColorsForDescentState(element, circle, useSecondaryColors);
 },
 
@@ -76,13 +72,9 @@ setupDescentStateListener(element, circle) {
      * NEW: Update colors based on descent state
      */
     updateColorsForDescentState(element, circle, useSecondaryColors) {
-        console.log(`🎨 updateColorsForDescentState for ${circle.id}: useSecondaryColors=${useSecondaryColors}`);
-            
             const colorsToUse = useSecondaryColors ? 
                     (circle.secondaryColors || circle.colors) : 
                     circle.colors;
-            
-            console.log(`🎨 Colors to use:`, colorsToUse, 'vs main colors:', circle.colors);
             
         
         // Update the glow color cycling with the appropriate colors
@@ -97,14 +89,6 @@ setupDescentStateListener(element, circle) {
             if (glowElement && colorsToUse && colorsToUse.length > 0) {
                 const primaryColor = colorsToUse[0];
                 glowElement.style.backgroundColor = primaryColor;
-                // Clear any existing transition for immediate color change
-                glowElement.style.transition = 'none';
-                // Re-enable transitions after a frame for future changes
-                requestAnimationFrame(() => {
-                    if (glowElement) {
-                        glowElement.style.transition = '';
-                    }
-                });
             }
         }
         
@@ -208,8 +192,6 @@ setupDescentStateListener(element, circle) {
         
         const transitionDuration = (2 * transitionCoeff).toFixed(1);
         const cycleInterval = Math.round(3000 * intervalCoeff);
-        
-        console.log(`[GlowCircleRenderer] ${entityId}: transition=${transitionDuration}s, interval=${cycleInterval}ms, startColor=${startingColorIndex}`);
         
         // Set initial color to the random starting index
         let colorIndex = startingColorIndex;

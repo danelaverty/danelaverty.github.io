@@ -266,6 +266,14 @@ export class RoilMotionSystem {
         return positions;
     }
 
+    calculateLeftForAngle(circle, roilAngle) {
+        if (roilAngle === 'tilt') {
+            return circle.x;
+        } else { // 'side'
+            return circle.x;
+        }
+    }
+
     // Calculate top position for a given roilAngle
     calculateTopForAngle(circle, roilAngle) {
         if (roilAngle === 'tilt') {
@@ -282,7 +290,6 @@ export class RoilMotionSystem {
         return normalizedPhase < Math.PI;
     }
 
-    // NEW: Track descent state and notify view layer (no longer swaps colors in data)
     updateCircleDescentState(circleId, circle) {
         if (!this.dataStore || !circle.groupId) return;
         
@@ -318,13 +325,11 @@ export class RoilMotionSystem {
         }
     }
 
-    // NEW: Notify view layer about color state changes via DOM communication
 notifyViewLayerColorChange(circleId, useSecondaryColors) {
     // Find the circle element in the DOM
     const circleElement = document.querySelector(`[data-entity-id="${circleId}"]`);
     
     if (!circleElement) {
-        console.log(`🔔 No element found with data-entity-id="${circleId}"`);
         return;
     }
     
@@ -332,19 +337,12 @@ notifyViewLayerColorChange(circleId, useSecondaryColors) {
     const glowElement = circleElement.querySelector('.circle-glow-container')?.parentElement;
     const targetElement = glowElement || circleElement;
     
-    console.log(`🔔 notifyViewLayerColorChange for ${circleId}: useSecondaryColors=${useSecondaryColors}`);
-    console.log(`🔔 Container element:`, circleElement);
-    console.log(`🔔 Target element (with listener):`, targetElement);
-    console.log(`🔔 Target element has listener:`, !!targetElement?._roilColorStateListener);
-    
     // Set a data attribute that the view layer can read
     if (useSecondaryColors) {
         circleElement.setAttribute('data-use-secondary-colors', 'true');
     } else {
         circleElement.removeAttribute('data-use-secondary-colors');
     }
-    
-    console.log(`🔔 Set data attribute, dispatching event...`);
     
     // Trigger a custom event that the view layer can listen for
     const event = new CustomEvent('roil-color-state-change', {
@@ -357,8 +355,6 @@ notifyViewLayerColorChange(circleId, useSecondaryColors) {
     
     // Dispatch on the element that has the listener
     targetElement.dispatchEvent(event);
-    
-    console.log(`🔔 Event dispatched for ${circleId} on`, targetElement);
 }
 
     // Pause motion system for transitions
@@ -677,7 +673,6 @@ notifyViewLayerColorChange(circleId, useSecondaryColors) {
         circle.y += (targetY - circle.y) * 0.08;
         circle.z += (targetZ - circle.z) * 0.06;
         
-        // NEW: Update descent state and notify view layer (no data modification)
         this.updateCircleDescentState(circleId, circle);
         
         // Boundary constraints
@@ -704,7 +699,7 @@ notifyViewLayerColorChange(circleId, useSecondaryColors) {
         const scale = circle.minScale + (normalizedZ * (circle.maxScale - circle.minScale));
         
         // Apply styles - use current roilAngle from group
-        element.style.left = circle.x + 'px';
+        element.style.left = this.calculateLeftForAngle(circle, group.roilAngle) + 'px';
         element.style.top = this.calculateTopForAngle(circle, group.roilAngle) + 'px';
         element.style.transform = `translate(-50%, -50%) scale(${(scale - 0.2).toFixed(3)})`;
         element.style.opacity = scale * 2 - 1.5;

@@ -107,7 +107,7 @@ export const EntityControls = {
         });
 
         // Button handlers
-	const handleAddClick = () => {
+        const handleAddClick = () => {
             // For circle viewers, ensure a document is selected before adding
             if (props.entityType === 'circle' && props.viewerId) {
                 const documentId = dataStore.getCircleDocumentForViewer(props.viewerId);
@@ -117,7 +117,20 @@ export const EntityControls = {
                     dataStore.setCircleDocumentForViewer(props.viewerId, newDoc.id);
                 }
             }
-            emit('add-entity');
+            emit('add-entity', { entityType: 'normal' });
+        };
+
+        const handleAddRoilGroupClick = () => {
+            // For circle viewers, ensure a document is selected before adding
+            if (props.entityType === 'circle' && props.viewerId) {
+                const documentId = dataStore.getCircleDocumentForViewer(props.viewerId);
+                if (!documentId) {
+                    // No document selected - create a new one first
+                    const newDoc = dataStore.createCircleDocument();
+                    dataStore.setCircleDocumentForViewer(props.viewerId, newDoc.id);
+                }
+            }
+            emit('add-entity', { entityType: 'roilGroup' });
         };
 
         const handleDocumentClick = (event) => {
@@ -132,6 +145,32 @@ export const EntityControls = {
             });
         };
 
+const shouldShowMButton = computed(() => {
+    if (props.entityType !== 'circle' || !props.viewerId) return false;
+    
+    const selectedCircleIds = dataStore.getSelectedCircles();
+    if (selectedCircleIds.length !== 1) return false;
+    
+    // Get the actual circle object using the ID
+    const selectedCircle = dataStore.getCircle(selectedCircleIds[0]);
+    if (!selectedCircle) return false;
+    
+    return selectedCircle.type === 'group' && selectedCircle.roilMode === 'on';
+});
+
+// Add this handler
+const handleAddMemberClick = () => {
+    // Same document selection logic as other buttons
+    if (props.entityType === 'circle' && props.viewerId) {
+        const documentId = dataStore.getCircleDocumentForViewer(props.viewerId);
+        if (!documentId) {
+            const newDoc = dataStore.createCircleDocument();
+            dataStore.setCircleDocumentForViewer(props.viewerId, newDoc.id);
+        }
+    }
+    emit('add-entity', { entityType: 'roilMember' });
+};
+
         return {
             shouldShowControls,
             hasDocument,
@@ -139,7 +178,10 @@ export const EntityControls = {
             documentButtonRef,
             documentLabelRef,
             handleAddClick,
-            handleDocumentClick
+            handleAddRoilGroupClick,
+            handleDocumentClick,
+            shouldShowMButton,
+            handleAddMemberClick,
         };
     },
     template: `
@@ -152,7 +194,16 @@ export const EntityControls = {
                 class="entity-control-button entity-add-button"
                 @click="handleAddClick"
             >+</button>
-            
+            <!-- Add Roil Group Button -->
+            <button 
+                class="entity-control-button entity-add-button"
+                @click="handleAddRoilGroupClick"
+            >R</button>
+            <button 
+                v-if="shouldShowMButton"
+                class="entity-control-button entity-add-button"
+                @click="handleAddMemberClick"
+            >M</button>
         </div>
     `
 };

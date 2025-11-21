@@ -71,12 +71,66 @@ export function useCircleViewerEventHandlers(props, emit, dataStore) {
         }
     };
 
-    const handleAddCircle = () => {
+const handleAddCircle = (eventData) => {
+    const isRoilGroup = eventData?.entityType === 'roilGroup';
+    const isRoilMember = eventData?.entityType === 'roilMember';
+    
+    if (isRoilGroup) {
+        // Create a roil group
+        const circle = dataStore.createCircleInViewer(props.viewerId);
+        if (circle) {
+            dataStore.selectCircle(circle.id);
+            // Convert to group with roilMode on
+            dataStore.updateCircle(circle.id, {
+                type: 'group',
+                roilMode: 'on',
+                name: '',
+                secondaryColorDescent: 'shiftToSecondary',
+            });
+        }
+        return circle;
+    } else if (isRoilMember) {
+    // Create a roil member
+    const selectedCircles = dataStore.getSelectedCircles();
+    
+    if (selectedCircles.length !== 1) {
+        return null;
+    }
+    
+    const selectedGroup = dataStore.getCircle(selectedCircles[0]);
+    
+    if (selectedGroup.type !== 'group' || selectedGroup.roilMode !== 'on') {
+        return null;
+    }
+    
+    const circle = dataStore.createCircleInViewer(props.viewerId);
+        if (circle) {
+            // Generate random offset
+            const offsetX = Math.floor(Math.random() * 31) - 15; // -15 to +15
+            const offsetY = Math.floor(Math.random() * 31) - 15; // -15 to +15
+            
+            dataStore.updateCircle(circle.id, {
+                name: '',
+                type: 'glow',
+                x: selectedGroup.x + offsetX,
+                y: selectedGroup.y + offsetY,
+                colors: ['hsl(0, 100%, 80%)'],
+                secondaryColors: ['hsl(48, 100%, 80%)'],
+                belongsToID: selectedGroup.id
+            });
+            
+            dataStore.selectCircle(circle.id);
+        }
+        return circle;
+    } else {
+        // Regular circle creation (existing logic)
         const circle = dataStore.createCircleInViewer(props.viewerId);
         if (circle) {
             dataStore.selectCircle(circle.id);
         }
-    };
+        return circle;
+    }
+};
 
     const handleCircleDocumentChange = (documentId) => {
         if (documentId) {
