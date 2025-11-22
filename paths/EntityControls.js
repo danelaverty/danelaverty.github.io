@@ -171,6 +171,33 @@ const handleAddMemberClick = () => {
     emit('add-entity', { entityType: 'roilMember' });
 };
 
+// Add visibility logic for "A" button (same as "M" button)
+const shouldShowAButton = computed(() => {
+    if (props.entityType !== 'circle' || !props.viewerId) return false;
+    
+    const selectedCircleIds = dataStore.getSelectedCircles();
+    if (selectedCircleIds.length !== 1) return false;
+    
+    // Get the actual circle object using the ID
+    const selectedCircle = dataStore.getCircle(selectedCircleIds[0]);
+    if (!selectedCircle) return false;
+    
+    return selectedCircle.type === 'group' && selectedCircle.roilMode === 'on';
+});
+
+// Add handler for "A" button
+const handleAddAngryMemberClick = () => {
+    // Same document selection logic as other buttons
+    if (props.entityType === 'circle' && props.viewerId) {
+        const documentId = dataStore.getCircleDocumentForViewer(props.viewerId);
+        if (!documentId) {
+            const newDoc = dataStore.createCircleDocument();
+            dataStore.setCircleDocumentForViewer(props.viewerId, newDoc.id);
+        }
+    }
+    emit('add-entity', { entityType: 'angryMember' });
+};
+
         return {
             shouldShowControls,
             hasDocument,
@@ -182,6 +209,8 @@ const handleAddMemberClick = () => {
             handleDocumentClick,
             shouldShowMButton,
             handleAddMemberClick,
+            shouldShowAButton,
+            handleAddAngryMemberClick,
         };
     },
     template: `
@@ -204,6 +233,11 @@ const handleAddMemberClick = () => {
                 class="entity-control-button entity-add-button"
                 @click="handleAddMemberClick"
             >M</button>
+            <button 
+                v-if="shouldShowAButton"
+                class="entity-control-button entity-add-button"
+                @click="handleAddAngryMemberClick"
+            >A</button>
         </div>
     `
 };

@@ -765,4 +765,60 @@ export const circleTypeStyles = `
     /* Remove the animation from the container since individual layers now animate */
     animation: none;
 }
+
+.color-change-ripple {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 32px;
+    height: 32px;
+    border: 1px solid white;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 999;
+    animation: rippleExpand 0.6s ease-out forwards;
+}
+
+@keyframes rippleExpand {
+    0% {
+        transform: translate(-50%, -50%) scale(0.5);
+        opacity: 0.4;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(2.0);
+        opacity: 0;
+    }
+}
+
+.circle-type-glow {
+    perspective: 200px;
+}
+
+.circle-glow-container {
+    transform-style: preserve-3d;
+    transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+/* Flip state class - add this to the container when secondary colors should show */
+.circle-glow-container.roil-secondary-colors {
+    transform: rotateY(180deg);
+}
+
+.circle-glow {
+    backface-visibility: hidden;
+    animation: glow 6s ease 0s infinite alternate;
+    /* Allow background-color to change instantly (no transition) */
+    transition: background-color 0s;
+}
+
+/* Optional: Add subtle shadow during flip for more realism */
+.circle-glow-container {
+    transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1),
+                filter 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.circle-glow-container.roil-secondary-colors {
+    filter: drop-shadow(2px 0 4px rgba(0,0,0,0.2));
+}
 `;

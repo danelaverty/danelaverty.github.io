@@ -266,14 +266,6 @@ export class RoilMotionSystem {
         return positions;
     }
 
-    calculateLeftForAngle(circle, roilAngle) {
-        if (roilAngle === 'tilt') {
-            return circle.x;
-        } else { // 'side'
-            return circle.x;
-        }
-    }
-
     // Calculate top position for a given roilAngle
     calculateTopForAngle(circle, roilAngle) {
         if (roilAngle === 'tilt') {
@@ -290,71 +282,95 @@ export class RoilMotionSystem {
         return normalizedPhase < Math.PI;
     }
 
-    updateCircleDescentState(circleId, circle) {
-        if (!this.dataStore || !circle.groupId) return;
-        
-        const group = this.dataStore.getCircle(circle.groupId);
-        if (!group || group.secondaryColorDescent !== 'shiftToSecondary') {
-            // Clear any existing descent state and notify view layer
-            this.circleColorStates.delete(circleId);
-            this.notifyViewLayerColorChange(circleId, false);
-            return;
-        }
-        
-        const circleData = this.dataStore.getCircle(circleId);
-        if (!circleData || !circleData.secondaryColors || circleData.secondaryColors.length === 0) {
-            // No secondary colors defined
-            this.circleColorStates.delete(circleId);
-            this.notifyViewLayerColorChange(circleId, false);
-            return;
-        }
-        
-        const isDescending = this.calculateDescentState(circle);
-        const colorState = this.circleColorStates.get(circleId) || { isDescending: !isDescending }; // Force update on first run
-        
-        // Only notify if descent state changed
-        if (colorState.isDescending !== isDescending) {
-            // Update tracking
-            this.circleColorStates.set(circleId, { 
-                isDescending: isDescending,
-                lastUpdate: Date.now()
-            });
-            
-            // Notify view layer to use secondary colors if descending
-            this.notifyViewLayerColorChange(circleId, isDescending);
-        }
-    }
-
-notifyViewLayerColorChange(circleId, useSecondaryColors) {
-    // Find the circle element in the DOM
-    const circleElement = document.querySelector(`[data-entity-id="${circleId}"]`);
+updateCircleDescentState(circleId, circle) {
+    if (!this.dataStore || !circle.groupId) return;
     
-    if (!circleElement) {
+    const group = this.dataStore.getCircle(circle.groupId);
+    if (!group || group.secondaryColorDescent !== 'shiftToSecondary') {
+        // Only clear and notify if there was actually a previous state
+        if (this.circleColorStates.has(circleId)) {
+            this.circleColorStates.delete(circleId);
+            this.notifyViewLayerColorChange(circleId, false);
+        }
         return;
     }
     
-    // Find the actual glow element that has the listener
-    const glowElement = circleElement.querySelector('.circle-glow-container')?.parentElement;
-    const targetElement = glowElement || circleElement;
-    
-    // Set a data attribute that the view layer can read
-    if (useSecondaryColors) {
-        circleElement.setAttribute('data-use-secondary-colors', 'true');
-    } else {
-        circleElement.removeAttribute('data-use-secondary-colors');
+    const circleData = this.dataStore.getCircle(circleId);
+    if (!circleData || !circleData.secondaryColors || circleData.secondaryColors.length === 0) {
+        this.circleColorStates.delete(circleId);
+        this.notifyViewLayerColorChange(circleId, false);
+        return;
     }
     
-    // Trigger a custom event that the view layer can listen for
-    const event = new CustomEvent('roil-color-state-change', {
-        detail: { 
-            circleId, 
-            useSecondaryColors,
-            timestamp: Date.now()
-        }
-    });
+    const isDescending = this.calculateDescentState(circle);
+    const colorState = this.circleColorStates.get(circleId) || { isDescending: !isDescending };
     
-    // Dispatch on the element that has the listener
-    targetElement.dispatchEvent(event);
+    // Only notify if descent state changed
+    if (colorState.isDescending !== isDescending) {
+        this.circleColorStates.set(circleId, { 
+            isDescending: isDescending,
+            lastUpdate: Date.now()
+        });
+        
+        this.notifyViewLayerColorChange(circleId, isDescending);
+    }
+}
+
+notifyViewLayerColorChange(circleId, useSecondaryColors) {
+    const circleElement = document.querySelector(`[data-entity-id="${circleId}"]`);
+    if (!circleElement) return;
+    
+    const glowContainer = circleElement.querySelector('.circle-glow-container');
+    const glowElement = circleElement.querySelector('.circle-glow');
+    
+    if (glowContainer && glowElement) {
+        const circleData = this.dataStore.getCircle(circleId);
+        const primaryColor = circleData?.colors?.[0] || circleData?.color;
+        const secondaryColor = circleData?.secondaryColors?.[0];
+        
+        if (!primaryColor || !secondaryColor || primaryColor === secondaryColor) {
+            return; // No color change needed
+        }
+        
+        // Add flip class to trigger animation
+        if (useSecondaryColors) {
+            glowContainer.classList.add('roil-secondary-colors');
+        } else {
+            glowContainer.classList.remove('roil-secondary-colors');
+        }
+        
+        // Switch color at the midpoint of the flip (300ms into the 600ms animation)
+        setTimeout(() => {
+            const targetColor = useSecondaryColors ? secondaryColor : primaryColor;
+            glowElement.style.backgroundColor = targetColor;
+            
+            // Also update the CSS custom property for consistency
+            circleElement.style.setProperty('--circle-color', targetColor);
+        }, 300); // Half of the 600ms flip duration
+        
+    }
+    
+    // Dispatch event for other systems
+    const event = new CustomEvent('roil-color-state-change', {
+        detail: { circleId, useSecondaryColors, timestamp: Date.now() }
+    });
+    circleElement.dispatchEvent(event);
+    
+    // Optional ripple effect for 'side' roilAngle
+    const circleData = this.dataStore.getCircle(circleId);
+    const group = circleData?.belongsToID ? this.dataStore.getCircle(circleData.belongsToID) : null;
+    
+    if (group?.roilAngle === 'side') {
+        const primaryColor = circleData?.colors?.[0] || circleData?.color;
+        const secondaryColor = circleData?.secondaryColors?.[0];
+        
+        if (primaryColor && secondaryColor && primaryColor !== secondaryColor) {
+            const ripple = document.createElement('div');
+            ripple.className = 'color-change-ripple';
+            circleElement.appendChild(ripple);
+            setTimeout(() => ripple.remove(), 600);
+        }
+    }
 }
 
     // Pause motion system for transitions
@@ -638,6 +654,22 @@ notifyViewLayerColorChange(circleId, useSecondaryColors) {
         this.stopHighFrequencyMonitoring();
     }
 
+calculateOrbitProgress(circle) {
+    // Method 1: Based on actual Y position (more accurate for your use case)
+    const currentY = circle.y;
+    const baseY = circle.baseY;
+    const orbitRadius = circle.orbitRadius;
+    
+    // Calculate the actual range of Y values
+    const minY = baseY - orbitRadius; // Top of orbit (apex)
+    const maxY = baseY + orbitRadius; // Bottom of orbit (nadir)
+    
+    // Calculate progress: 0 at apex (minY), 1 at nadir (maxY)
+    const orbitProgress = Math.max(0, Math.min(1, (currentY - minY) / (maxY - minY)));
+    
+    return orbitProgress;
+}
+
     updateCirclePosition(circle, circleId) {
         const { element, bounds } = circle;
         const group = this.dataStore.getCircle(circle.groupId);
@@ -652,20 +684,32 @@ notifyViewLayerColorChange(circleId, useSecondaryColors) {
         circle.orbitPhase += circle.orbitSpeed * group.roilSpeed;
         const orbitX = Math.cos(circle.orbitPhase) * circle.orbitRadius;
         const orbitY = Math.sin(circle.orbitPhase) * circle.orbitRadius;
-        
+
         circle.driftPhase += circle.driftSpeed;
         const driftX = 0;
         const driftY = 0;
         
         circle.zOrbitPhase += circle.zOrbitSpeed * group.roilSpeed;
         const zOrbit = Math.cos(circle.zOrbitPhase) * circle.zOrbitRadius;
+
+let circularOffsetX = 0;
+if (group && group.roilAngle === 'side') {
+    // Use the same phase as z-orbit to create synchronized circular motion
+    // zOrbitPhase ranges from 0 to 2π, we want x offset to follow sin curve
+    // sin(phase) gives us the horizontal component of circular motion
+    const horizontalRadius = circle.orbitRadius * 4.8; // Scale the horizontal motion
+    circularOffsetX = Math.sin(circle.zOrbitPhase) * horizontalRadius;
+}
+
+// Apply the circular offset to targetX
+const targetX = circle.baseX + orbitX + driftX + circularOffsetX;
         
         circle.zDriftPhase += circle.zDriftSpeed;
         const zDrift = 0;
         
         const verticalOffset = Math.sin(circle.time * 0.01) * circle.verticalBias * 5;
         
-        const targetX = circle.baseX + orbitX + driftX;
+        //const targetX = circle.baseX + orbitX + driftX;
         const targetY = circle.baseY + orbitY + driftY + verticalOffset;
         const targetZ = circle.baseZ + zOrbit + zDrift;
         
@@ -699,7 +743,7 @@ notifyViewLayerColorChange(circleId, useSecondaryColors) {
         const scale = circle.minScale + (normalizedZ * (circle.maxScale - circle.minScale));
         
         // Apply styles - use current roilAngle from group
-        element.style.left = this.calculateLeftForAngle(circle, group.roilAngle) + 'px';
+        element.style.left = circle.x + 'px';
         element.style.top = this.calculateTopForAngle(circle, group.roilAngle) + 'px';
         element.style.transform = `translate(-50%, -50%) scale(${(scale - 0.2).toFixed(3)})`;
         element.style.opacity = scale * 2 - 1.5;

@@ -74,6 +74,7 @@ export function useCircleViewerEventHandlers(props, emit, dataStore) {
 const handleAddCircle = (eventData) => {
     const isRoilGroup = eventData?.entityType === 'roilGroup';
     const isRoilMember = eventData?.entityType === 'roilMember';
+    const isAngryMember = eventData?.entityType === 'angryMember';
     
     if (isRoilGroup) {
         // Create a roil group
@@ -90,20 +91,20 @@ const handleAddCircle = (eventData) => {
         }
         return circle;
     } else if (isRoilMember) {
-    // Create a roil member
-    const selectedCircles = dataStore.getSelectedCircles();
-    
-    if (selectedCircles.length !== 1) {
-        return null;
-    }
-    
-    const selectedGroup = dataStore.getCircle(selectedCircles[0]);
-    
-    if (selectedGroup.type !== 'group' || selectedGroup.roilMode !== 'on') {
-        return null;
-    }
-    
-    const circle = dataStore.createCircleInViewer(props.viewerId);
+        // Create a roil member
+        const selectedCircles = dataStore.getSelectedCircles();
+        
+        if (selectedCircles.length !== 1) {
+            return null;
+        }
+        
+        const selectedGroup = dataStore.getCircle(selectedCircles[0]);
+        
+        if (selectedGroup.type !== 'group' || selectedGroup.roilMode !== 'on') {
+            return null;
+        }
+        
+        const circle = dataStore.createCircleInViewer(props.viewerId);
         if (circle) {
             // Generate random offset
             const offsetX = Math.floor(Math.random() * 31) - 15; // -15 to +15
@@ -116,6 +117,40 @@ const handleAddCircle = (eventData) => {
                 y: selectedGroup.y + offsetY,
                 colors: ['hsl(0, 100%, 80%)'],
                 secondaryColors: ['hsl(48, 100%, 80%)'],
+                belongsToID: selectedGroup.id
+            });
+            
+            dataStore.selectCircle(circle.id);
+        }
+        return circle;
+    } else if (isAngryMember) {
+        // Create an angry member (similar to roil member but with different properties)
+        const selectedCircles = dataStore.getSelectedCircles();
+        
+        if (selectedCircles.length !== 1) {
+            return null;
+        }
+        
+        const selectedGroup = dataStore.getCircle(selectedCircles[0]);
+        
+        if (selectedGroup.type !== 'group' || selectedGroup.roilMode !== 'on') {
+            return null;
+        }
+        
+        const circle = dataStore.createCircleInViewer(props.viewerId);
+        if (circle) {
+            // Generate random offset
+            const offsetX = Math.floor(Math.random() * 31) - 15; // -15 to +15
+            const offsetY = Math.floor(Math.random() * 31) - 15; // -15 to +15
+            
+            dataStore.updateCircle(circle.id, {
+                name: '',
+                type: 'glow',
+                x: selectedGroup.x + offsetX,
+                y: selectedGroup.y + offsetY,
+                buoyancy: 'buoyant',
+                colors: ['hsl(0, 100%, 60%)'],
+                secondaryColors: ['hsl(0, 100%, 60%)'],
                 belongsToID: selectedGroup.id
             });
             
