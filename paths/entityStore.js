@@ -9,6 +9,7 @@ const BASE_CIRCLE_DEFAULTS = {
     colors: ['#B3B3B3'],
     secondaryColors: ['#B3B3B3'],
     energyTypes: [],
+    secondaryName: '',
     referenceID: null,
     documentReferenceID: null, // NEW: For document reference circles
     belongsToID: null,
@@ -16,6 +17,7 @@ const BASE_CIRCLE_DEFAULTS = {
     type: 'basic',
     emoji: null,
     emojiForEmojiType: 'A',
+    demandEmoji: null,
     sizeMode: () => getPropertyDefault('sizeMode'),
     manualWidth: null,
     manualHeight: null,

@@ -16,25 +16,44 @@ export const CircleEmojiControl = {
     selectedCircles: {
       type: Array,
       default: () => []
-    }
+    },
+      propertyName: {
+      type: String,
+      default: 'emoji'
+    },
   },
   
   emits: ['toggle'],
   
   computed: {
-    displayEmoji() {
-      if (this.hasMultipleCirclesSelected) {
-        // For multiple selection, show a generic emoji or the first circle's emoji
-        if (this.selectedCircles.length > 0) {
-          const firstCircle = this.selectedCircles[0];
-          return firstCircle?.emoji || '🧑🏼';
-        }
-        return '🧑🏼'; // Default fallback
+displayEmoji() {
+  console.log('propertyName:', this.propertyName);
+  console.log('selected circle:', this.selectedCircle);
+  let propertyValue = this.selectedCircle?.[this.propertyName];
+  console.log('property value:', propertyValue);
+  
+  // Handle case where an object was stored instead of string
+  if (typeof propertyValue === 'object' && propertyValue !== null) {
+    propertyValue = propertyValue.emoji || '🧽';
+  }
+  
+  if (this.hasMultipleCirclesSelected) {
+    if (this.selectedCircles.length > 0) {
+      const firstCircle = this.selectedCircles[0];
+      let firstValue = firstCircle?.[this.propertyName] || '🧽';
+      
+      // Handle object case for multiple selection too
+      if (typeof firstValue === 'object' && firstValue !== null) {
+        firstValue = firstValue.emoji || '🧽';
       }
       
-      // Single selection - use the selected circle's emoji
-      return this.selectedCircle?.emoji || '🧑🏼';
-    },
+      return firstValue;
+    }
+    return '🧽';
+  }
+  
+  return propertyValue || '🧽';
+},
     
     displayTitle() {
       if (this.hasMultipleCirclesSelected) {

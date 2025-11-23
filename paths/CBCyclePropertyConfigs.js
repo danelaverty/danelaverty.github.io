@@ -58,6 +58,8 @@ export const CYCLE_PROPERTY_CONFIGS = {
   roilSpeed: {
     values: {
       1: { icon: '1x', label: '1x', description: '', default: true },
+      2: { icon: '2x', label: '2x', description: '' },
+      3: { icon: '3x', label: '3x', description: '' },
       5: { icon: '5x', label: '5x', description: '' },
       10: { icon: '10x', label: '10x', description: '' },
     },

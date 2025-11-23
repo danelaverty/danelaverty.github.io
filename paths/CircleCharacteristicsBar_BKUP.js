@@ -1,9 +1,15 @@
-// CircleCharacteristicsBar.js - Migrated to use the new dynamic system
+// CircleCharacteristicsBar.js - Main component for circle characteristics bar
 import { injectComponentStyles } from './styleUtils.js';
-import { useCharacteristicsBarBridge } from './useCharacteristicsBarBridge.js';
-import { CONTROL_REGISTRY } from './controlRegistry.js'; // Import registry for template access
+import { useCharacteristicsBarData } from './useCharacteristicsBarData.js';
+import { useCharacteristicsBarActions } from './useCharacteristicsBarActions.js';
+import { useCharacteristicsBarPickers } from './useCharacteristicsBarPickers.js';
+import { useRecentEmojis } from './useRecentEmojis.js';
+import { useCharacteristicsBarState } from './useCharacteristicsBarState.js';
+import { useCharacteristicsBarHandlers } from './useCharacteristicsBarHandlers.js';
 import { EmojiRenderer } from './EmojiRenderer.js';
+import { EmojiService } from './emojiService.js';
 import { EmojiVariantService } from './EmojiVariantService.js';
+import { getEnergyTypeColor } from './energyTypes.js';
 import { CBConnectionDirectionalityControl } from './CBConnectionDirectionalityControl.js';
 import { CBConnectionEnergyControl } from './CBConnectionEnergyControl.js';
 import { getPropertyConfig } from './CBCyclePropertyConfigs.js';
@@ -17,7 +23,7 @@ import { pickerSpecificStyles } from './cbPickerStyles.js';
 
 // Import sub-components
 import { TypeControl } from './CBTypeControl.js';
-import { CircleEmojiControl } from './CBCircleEmojiControl.js'; // Use your existing component
+import { CircleEmojiControl } from './CBCircleEmojiControl.js';
 import { ColorControl } from './CBColorControl.js';
 import { EnergyControl } from './CBEnergyControl.js';
 import { CBCyclePropertyControl } from './CBCyclePropertyControl.js';
@@ -50,30 +56,63 @@ injectComponentStyles('circle-characteristics-bar', componentStyles);
 
 export const CircleCharacteristicsBar = {
   setup() {
-    // Use the bridge which combines dynamic system with legacy compatibility
-    const characteristics = useCharacteristicsBarBridge();
+    // Get all hooks
+    const dataHooks = useCharacteristicsBarData();
+    const actionHooks = useCharacteristicsBarActions();
+    const pickerHooks = useCharacteristicsBarPickers();
+    const recentEmojiHooks = useRecentEmojis();
+    
+    // Get state (which manages template refs and computed properties)
+    const stateHooks = useCharacteristicsBarState(dataHooks, pickerHooks);
+    
+    // Get handlers (which use all the other hooks)
+    const handlers = useCharacteristicsBarHandlers(
+      dataHooks,
+      actionHooks,
+      pickerHooks,
+      recentEmojiHooks,
+      stateHooks
+    );
+
+    const getEmojiDisplayTitle = (emojiData, context) => {
+      return EmojiService.getDisplayTitle(emojiData, context);
+    };
 
     return {
-      // Everything from the bridge (includes all your existing methods and computed properties)
-      ...characteristics,
+      // Data from hooks
+      ...dataHooks,
+isSecondaryColorPickerOpen: pickerHooks.isSecondaryColorPickerOpen,
+    toggleSecondaryColorPicker: pickerHooks.toggleSecondaryColorPicker,
+        isSecondaryNamePickerOpen: pickerHooks.isSecondaryNamePickerOpen,
+          toggleSecondaryNamePicker: pickerHooks.toggleSecondaryNamePicker,
+      ...recentEmojiHooks,
+      
+      // State from state hooks (includes cycleableProperties)
+      ...stateHooks,
+      
+      // Handlers
+      ...handlers,
       
       // Utilities
+      getEmojiDisplayTitle,
+      getEnergyTypeColor,
       getPropertyConfig,
       EmojiVariantService,
-      CONTROL_REGISTRY, // For template access
       
-      // Helper function to assign refs properly
-      assignDisplayRef: (controlName) => (el) => {
-        if (el) {
-          characteristics.getDisplayRef(controlName).value = el.$el || el;
-        }
-      },
-      
-      assignPickerRef: (controlName) => (el) => {
-        if (el) {
-          characteristics.getControlRef(controlName).value = el.$el || el;
-        }
-      },
+      // Picker hooks
+      isColorPickerOpen: pickerHooks.isColorPickerOpen,
+      isTypePickerOpen: pickerHooks.isTypePickerOpen,
+      isEnergyPickerOpen: pickerHooks.isEnergyPickerOpen,
+      isEmojiPickerOpen: pickerHooks.isEmojiPickerOpen,
+      isCircleEmojiPickerOpen: pickerHooks.isCircleEmojiPickerOpen,
+      isConnectionEnergyPickerOpen: pickerHooks.isConnectionEnergyPickerOpen,
+      toggleColorPicker: pickerHooks.toggleColorPicker,
+      toggleTypePicker: pickerHooks.toggleTypePicker,
+      toggleEnergyPicker: pickerHooks.toggleEnergyPicker,
+      toggleEmojiPicker: pickerHooks.toggleEmojiPicker,
+      toggleCircleEmojiPicker: pickerHooks.toggleCircleEmojiPicker,
+      toggleConnectionEnergyPicker: pickerHooks.toggleConnectionEnergyPicker,
+      closePickerAction: pickerHooks.closePickerAction,
     };
   },
   
@@ -95,8 +134,8 @@ export const CircleCharacteristicsBar = {
     EmojiPickerModal,
     CBConnectionDirectionalityControl,
     CBConnectionEnergyControl,
-    CBSecondaryNameControl,
-    CBSecondaryNamePickerModal,
+      CBSecondaryNameControl,
+      CBSecondaryNamePickerModal,
   },
   
   template: `
@@ -105,7 +144,7 @@ export const CircleCharacteristicsBar = {
         <template v-if="shouldShowCircleCharacteristicControls">
             <!-- Type Control -->
             <TypeControl 
-                :ref="assignDisplayRef('type')"
+                ref="typeDisplayRefTemplate"
                 :currentTypeInfo="currentTypeInfo"
                 :isPickerOpen="isTypePickerOpen"
                 @toggle="toggleTypePicker"
@@ -114,51 +153,39 @@ export const CircleCharacteristicsBar = {
             <!-- Circle Emoji Control -->
             <CircleEmojiControl 
                 v-if="isCircleEmojiPickerVisible"
-                :ref="assignDisplayRef('circleEmoji')"
+                ref="circleEmojiDisplayRefTemplate"
                 :selectedCircle="selectedCircle"
                 :hasMultipleCirclesSelected="hasMultipleCirclesSelected"
                 :selectedCircles="getSelectedCircleObjects"
                 :isPickerOpen="isCircleEmojiPickerOpen"
-                :propertyName="'emoji'"
                 @toggle="toggleCircleEmojiPicker"
-            />
-
-            <!-- Demand Emoji Control -->
-            <CircleEmojiControl 
-                :ref="assignDisplayRef('demandEmoji')"
-                :selectedCircle="selectedCircle"
-                :hasMultipleCirclesSelected="hasMultipleCirclesSelected"
-                :selectedCircles="getSelectedCircleObjects"
-                :isPickerOpen="isDemandEmojiPickerOpen"
-                :propertyName="'demandEmoji'"
-                @toggle="toggleDemandEmojiPicker"
             />
 
             <!-- Color Control -->
             <ColorControl 
-                :ref="assignDisplayRef('color')"
+                ref="colorDisplayRefTemplate"
                 :circleColors="circleColors"
                 :isPickerOpen="isColorPickerOpen"
                 @toggle="toggleColorPicker"
             />
 
             <ColorControl 
-                :ref="assignDisplayRef('secondaryColor')"
+                ref="secondaryColorDisplayRefTemplate"
                 :circleColors="secondaryCircleColors"
                 :isPickerOpen="isSecondaryColorPickerOpen"
                 @toggle="toggleSecondaryColorPicker"
             />
 
-            <CBSecondaryNameControl 
-                :ref="assignDisplayRef('secondaryName')"
-                :secondaryName="secondaryName"
-                :isPickerOpen="isSecondaryNamePickerOpen"
-                @toggle="toggleSecondaryNamePicker"
-            />
+<CBSecondaryNameControl 
+    ref="secondaryNameDisplayRefTemplate"
+    :secondaryName="secondaryName"
+    :isPickerOpen="isSecondaryNamePickerOpen"
+    @toggle="toggleSecondaryNamePicker"
+/>
 
             <!-- Energy Control -->
             <EnergyControl 
-                :ref="assignDisplayRef('energy')"
+                ref="energyDisplayRefTemplate"
                 :circleEnergyTypes="circleEnergyTypes"
                 :isPickerOpen="isEnergyPickerOpen"
                 :getEnergyTypeColor="getEnergyTypeColor"
@@ -212,7 +239,7 @@ export const CircleCharacteristicsBar = {
         <template v-if="shouldShowEmojiControls">
             <!-- Emoji Control -->
             <EmojiControl 
-                :ref="assignDisplayRef('emoji')"
+                ref="emojiDisplayRefTemplate"
                 :causeEmoji="causeEmoji"
                 :isPickerOpen="isEmojiPickerOpen"
                 :getEmojiDisplayTitle="getEmojiDisplayTitle"
@@ -235,62 +262,53 @@ export const CircleCharacteristicsBar = {
             <!-- Type Picker Modal -->
             <TypePickerModal 
                 v-if="isTypePickerOpen"
-                :ref="assignPickerRef('type')"
+                ref="typePickerRefTemplate"
                 :circleTypes="circleTypes"
                 :isTypeSelected="isTypeSelected"
                 @selectType="handleTypeSelect"
                 @close="closePickerAction('type')"
             />
 
-            <CBSecondaryNamePickerModal 
-                v-if="isSecondaryNamePickerOpen && shouldShowCircleCharacteristicControls"
-                :ref="assignPickerRef('secondaryName')"
-                :currentSecondaryName="secondaryName"
-                @selectSecondaryName="handleSecondaryNameSelect"
-                @close="closePickerAction('secondaryName')"
-            />
+<CBSecondaryNamePickerModal 
+    v-if="isSecondaryNamePickerOpen && shouldShowCircleCharacteristicControls"
+    ref="secondaryNamePickerRefTemplate"
+    :currentSecondaryName="secondaryName"
+    @selectSecondaryName="handleSecondaryNameSelect"
+    @close="closePickerAction('secondaryName')"
+/>
 
             <!-- Circle Emoji Picker Modal -->
             <CircleEmojiPickerModal 
                 v-if="isCircleEmojiPickerOpen"
-                :ref="assignPickerRef('circleEmoji')"
+                ref="circleEmojiPickerRefTemplate"
                 :currentEmoji="getCurrentCircleEmoji"
                 @selectCircleEmoji="handleCircleEmojiSelect"
                 @close="closePickerAction('circleEmoji')"
-            />
-
-            <!-- Demand Emoji Picker Modal -->
-            <CircleEmojiPickerModal 
-                v-if="isDemandEmojiPickerOpen"
-                :ref="assignPickerRef('demandEmoji')"
-                :currentEmoji="getEmojiValue('demandEmoji')"
-                @selectCircleEmoji="handleDemandEmojiSelect"
-                @close="closePickerAction('demandEmoji')"
             />
             
             <!-- Color Picker Modal -->
             <ColorPickerModal 
                 v-if="isColorPickerOpen"
-                :ref="assignPickerRef('color')"
+                ref="colorPickerRefTemplate"
                 :colorFamilies="colorFamilies"
                 :isColorSelected="isColorSelected"
                 @selectColor="handleColorSelect"
                 @close="closePickerAction('color')"
             />
 
-            <ColorPickerModal 
-                v-if="isSecondaryColorPickerOpen"
-                :ref="assignPickerRef('secondaryColor')"
-                :colorFamilies="colorFamilies"
-                :isColorSelected="isSecondaryColorSelected"
-                @selectColor="handleSecondaryColorSelect"
-                @close="closePickerAction('secondaryColor')"
-            />
+<ColorPickerModal 
+    v-if="isSecondaryColorPickerOpen"
+    ref="secondaryColorPickerRefTemplate"
+    :colorFamilies="colorFamilies"
+    :isColorSelected="isSecondaryColorSelected"
+    @selectColor="handleSecondaryColorSelect"
+    @close="closePickerAction('secondaryColor')"
+/>
 
             <!-- Energy Picker Modal -->
             <EnergyPickerModal 
                 v-if="isEnergyPickerOpen"
-                :ref="assignPickerRef('energy')"
+                ref="energyPickerRefTemplate"
                 :energyTypes="energyTypes"
                 :isEnergySelected="isEnergySelected"
                 @selectEnergy="handleEnergySelect"
@@ -301,7 +319,7 @@ export const CircleCharacteristicsBar = {
         <!-- Emoji Picker Modal (Only available for single selection) -->
         <EmojiPickerModal 
             v-if="isEmojiPickerOpen && shouldShowEmojiControls"
-            :ref="assignPickerRef('emoji')"
+            ref="emojiPickerRefTemplate"
             :emojisByCategory="emojisByCategory"
             :getEmojiDisplayTitle="getEmojiDisplayTitle"
             @selectEmoji="handleEmojiSelect"
@@ -312,7 +330,7 @@ export const CircleCharacteristicsBar = {
         <!-- Connection Energy Picker Modal (Only available when connection is selected) -->
         <EnergyPickerModal 
             v-if="isConnectionEnergyPickerOpen && shouldShowExplicitConnectionControls"
-            :ref="assignPickerRef('connectionEnergy')"
+            ref="connectionEnergyPickerRefTemplate"
             :energyTypes="energyTypes"
             :isEnergySelected="isConnectionEnergySelected"
             @selectEnergy="handleConnectionEnergySelect"
