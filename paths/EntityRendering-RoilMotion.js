@@ -68,52 +68,60 @@ export const useRoilMotion = (props, state) => {
     );
 
     // Function to add circle to roil motion
-    const addToRoilMotion = () => {
-        if (!shapeRef.value || !roilState.isRoilMember.value) return;
+const addToRoilMotion = () => {
+    if (!shapeRef.value || !roilState.isRoilMember.value) return;
 
-        // Ensure dataStore is available to RoilMotionSystem
-        const dataStore = state.dataStore || props.dataStore;
-        if (!dataStore) {
-            console.warn('No dataStore available for roil motion positioning');
-            return;
-        }
+    // Ensure dataStore is available to RoilMotionSystem
+    const dataStore = state.dataStore || props.dataStore;
+    if (!dataStore) {
+        console.warn('No dataStore available for roil motion positioning');
+        return;
+    }
 
-        // Set dataStore reference on roilMotionSystem (safe to call multiple times)
-        roilMotionSystem.setDataStore(dataStore);
+    // Set dataStore reference on roilMotionSystem (safe to call multiple times)
+    roilMotionSystem.setDataStore(dataStore);
 
-        // Get group ID from the entity
-        const groupId = props.entity.belongsToID;
-        if (!groupId) {
-            console.warn('Roil member has no group ID:', props.entity.id);
-            return;
-        }
+    // Get group ID from the entity
+    const groupId = props.entity.belongsToID;
+    if (!groupId) {
+        console.warn('Roil member has no group ID:', props.entity.id);
+        return;
+    }
 
-        // Get viewer width for positioning calculations
-        const viewerWidth = props.viewerWidth;
-        if (!viewerWidth) {
-            console.warn('No viewer width available for roil positioning');
-            return;
-        }
+    // Get viewer width for positioning calculations
+    const viewerWidth = props.viewerWidth;
+    if (!viewerWidth) {
+        console.warn('No viewer width available for roil positioning');
+        return;
+    }
 
-        // Set bounds relative to the group (these will be relative offsets from group position)
-        const bounds = {
-            minX: -30,
-            maxX: 30,
-            minY: -30,
-            maxY: 30
-        };
-        
-        // Pass group ID and viewer width to enable proper positioning
-        roilMotionSystem.addCircle(
-            props.entity.id, 
-            state.elementRef.value, 
-            bounds,
-            groupId,      // Pass group ID
-            viewerWidth   // Pass viewer width
-        );
+    // NEW: Get viewerId for inventory checking
+    const viewerId = props.viewerId;
+    if (!viewerId) {
+        console.warn('No viewer ID available for roil positioning');
+        return;
+    }
 
-        roilMotionSystem.updateCircleBuoyancy(props.entity.id);
+    // Set bounds relative to the group (these will be relative offsets from group position)
+    const bounds = {
+        minX: -30,
+        maxX: 30,
+        minY: -30,
+        maxY: 30
     };
+    
+    // Pass group ID, viewer width, and viewerId to enable proper positioning and inventory checking
+    roilMotionSystem.addCircle(
+        props.entity.id, 
+        state.elementRef.value, 
+        bounds,
+        groupId,      // Pass group ID
+        viewerWidth,  // Pass viewer width
+        viewerId      // NEW: Pass viewer ID for inventory checking
+    );
+
+    roilMotionSystem.updateCircleBuoyancy(props.entity.id);
+};
 
     // Function to remove circle from roil motion
     const removeFromRoilMotion = () => {
