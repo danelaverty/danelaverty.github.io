@@ -1,4 +1,4 @@
-// RoilMotionSystem.js - Enhanced with clean descent color system
+// RoilMotionSystem.js - Refactored with simple event point system
 export class RoilMotionSystem {
     constructor() {
         this.activeCircles = new Map(); 
@@ -8,7 +8,7 @@ export class RoilMotionSystem {
         this.isRunning = false;
         this.tickRate = 50;
         
-        // High-frequency monitoring
+        // High-frequency monitoring (kept for debugging)
         this.debugMode = true;
         this.lastKnownPositions = new Map();
         this.positionChanges = [];
@@ -20,20 +20,288 @@ export class RoilMotionSystem {
         this.dataStore = null;
         
         // Track roilAngle transitions
-        this.transitioningGroups = new Map(); // groupId -> { fromAngle, toAngle, startTime, duration }
+        this.transitioningGroups = new Map();
         this.pausedForTransition = false;
         
         // Track roilComposure transitions and state
-        this.composureTransitions = new Map(); // groupId -> { fromComposure, toComposure, startTime, duration }
-        this.splayedGroups = new Map(); // groupId -> { originalPositions: Map<circleId, {x,y,z,scale,opacity}> }
-        this.pausedForComposure = new Map(); // groupId -> boolean (per-group pausing for splayed mode)
+        this.composureTransitions = new Map();
+        this.splayedGroups = new Map();
+        this.pausedForComposure = new Map();
         
-        // UPDATED: Track descent state for view layer communication (no longer swaps colors)
-        this.circleColorStates = new Map(); // circleId -> { isDescending: boolean, lastUpdate: timestamp }
+        // NEW: Simple event point system
+        this.eventPoints = new Map(); // circleId -> { lastAngle, points: [{ angle, action }] }
     }
 
     setDataStore(dataStore) {
         this.dataStore = dataStore;
+    }
+
+    // NEW: Set up event points for a circle
+    setupEventPoints(circleId, element) {
+        if (!this.dataStore) return;
+        
+        const circleData = this.dataStore.getCircle(circleId);
+        if (!circleData) return;
+
+        const points = [];
+        
+        // Set up thought bubble event points if circle has demandEmoji
+        if (circleData.demandEmoji && circleData.demandEmoji.trim() !== '') {
+            points.push(
+                {
+                    angle: 180,
+                    action: {
+                        type: 'show',
+                        selector: '.demand-emoji-thought-balloon',
+                        opacity: '0.8'
+                    }
+                },
+                {
+                    angle: 270,
+                    action: {
+                        type: 'hide',
+                        selector: '.demand-emoji-thought-balloon'
+                    }
+                }
+            );
+        }
+
+        // Set up color flip event points if circle has secondary colors
+        const group = circleData.belongsToID ? this.dataStore.getCircle(circleData.belongsToID) : null;
+        if (group?.secondaryColorDescent === 'shiftToSecondary' && 
+            circleData.secondaryColors && circleData.secondaryColors.length > 0) {
+            points.push(
+                {
+                    angle: 270,
+                    action: { type: 'flipToSecondary' }
+                },
+                {
+                    angle: 90,
+                    action: { type: 'flipToPrimary' }
+                }
+            );
+        }
+
+        if (points.length > 0) {
+            this.eventPoints.set(circleId, {
+                element,
+                lastAngle: -1,
+                points
+            });
+        }
+    }
+
+    // NEW: Check event points for a circle
+    checkEventPoints(circleId, circle) {
+        const eventData = this.eventPoints.get(circleId);
+        if (!eventData) return;
+
+        const currentAngle = this.calculateClockPosition(circle);
+        const { lastAngle, points, element } = eventData;
+
+        // Skip if angle hasn't changed enough
+        if (Math.abs(currentAngle - lastAngle) < 3) return;
+
+        // Check each event point
+        points.forEach(point => {
+            if (this.didCrossAngle(lastAngle, currentAngle, point.angle)) {
+                this.executeEventAction(circleId, element, point.action, currentAngle);
+            }
+        });
+
+        eventData.lastAngle = currentAngle;
+    }
+
+    // NEW: Check if we crossed a specific angle going clockwise
+    didCrossAngle(fromAngle, toAngle, targetAngle) {
+        if (fromAngle < 0) return false; // First update, no crossing
+
+        // Normalize angles
+        fromAngle = (fromAngle + 360) % 360;
+        toAngle = (toAngle + 360) % 360;
+        targetAngle = (targetAngle + 360) % 360;
+
+        if (fromAngle <= toAngle) {
+            // No wrap-around: simple range check
+            return fromAngle < targetAngle && targetAngle <= toAngle;
+        } else {
+            // Wrap-around case (e.g., from 350° to 10°)
+            return (fromAngle < targetAngle) || (targetAngle <= toAngle);
+        }
+    }
+
+executeEventAction(circleId, element, action, currentAngle) {
+    switch (action.type) {
+        case 'show':
+            const showElement = element.querySelector(action.selector);
+            if (showElement) {
+                showElement.style.opacity = action.opacity || '0.8';
+            }
+            break;
+
+        case 'hide':
+            const hideElement = element.querySelector(action.selector);
+            if (hideElement && action.selector === '.demand-emoji-thought-balloon') {
+                // Special handling for thought balloon - create coin-pop effect
+                this.createCoinPopEffect(element, hideElement);
+                // Then hide the original
+                hideElement.style.opacity = '0';
+            } else if (hideElement) {
+                // Regular hide for other elements
+                hideElement.style.opacity = '0';
+            }
+            break;
+
+        case 'flipToSecondary':
+            element.setAttribute('data-use-secondary-colors', 'true');
+            this.triggerColorFlip(element, true);
+            break;
+
+        case 'flipToPrimary':
+            element.removeAttribute('data-use-secondary-colors');
+            this.triggerColorFlip(element, false);
+            break;
+    }
+
+    // Emit a single, meaningful event
+    element.dispatchEvent(new CustomEvent('event-point-crossed', {
+        detail: { circleId, action, angle: currentAngle }
+    }));
+
+    if (this.debugMode) {
+        console.log(`🎯 Event point: Circle ${circleId} at ${currentAngle.toFixed(1)}° - ${action.type}`);
+    }
+}
+
+createCoinPopEffect(circleElement, thoughtBalloonElement) {
+    // Extract the demand emoji from the thought balloon
+    const demandEmojiElement = thoughtBalloonElement.querySelector('span');
+    if (!demandEmojiElement) return;
+    
+    const demandEmoji = demandEmojiElement.textContent;
+    
+    // Create the popping emoji div
+    const popEmoji = document.createElement('div');
+    popEmoji.className = 'demand-emoji-pop';
+    popEmoji.textContent = demandEmoji;
+    
+    // Style the pop emoji
+    popEmoji.style.cssText = `
+        position: absolute;
+        top: -15px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 24px;
+        z-index: 15;
+        pointer-events: none;
+        opacity: 1;
+        transition: all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        text-shadow: 
+            0 0 3px rgba(255, 255, 255, 0.8),
+            0 0 6px rgba(255, 255, 255, 0.6),
+            0 0 9px rgba(255, 255, 255, 0.4);
+    `;
+    
+    // Add it to the circle element
+    circleElement.appendChild(popEmoji);
+    
+    // Trigger the upward glide animation
+    requestAnimationFrame(() => {
+        popEmoji.style.top = '-45px';
+        popEmoji.style.opacity = '0';
+        popEmoji.style.transform = 'translateX(-50%) scale(1.2)';
+    });
+    
+    // Remove the element after animation completes
+    setTimeout(() => {
+        if (popEmoji.parentNode) {
+            popEmoji.parentNode.removeChild(popEmoji);
+        }
+    }, 850);
+    
+    // Optional: Add a subtle bounce effect to the original circle
+    this.addCircleBounceEffect(circleElement);
+}
+
+addCircleBounceEffect(circleElement) {
+    const glowContainer = circleElement.querySelector('.circle-glow-container');
+    if (!glowContainer) return;
+    
+    // Store original transform
+    const originalTransform = glowContainer.style.transform || '';
+    
+    // Add bounce class temporarily
+    glowContainer.style.transition = 'transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
+    glowContainer.style.transform = originalTransform + ' scale(1.1)';
+    
+    setTimeout(() => {
+        glowContainer.style.transform = originalTransform;
+        
+        // Clean up transition after animation
+        setTimeout(() => {
+            glowContainer.style.transition = '';
+        }, 300);
+    }, 150);
+}
+
+    // NEW: Handle color flipping (consolidated from your existing logic)
+    triggerColorFlip(element, useSecondary) {
+        const glowContainer = element.querySelector('.circle-glow-container');
+        const glowElement = element.querySelector('.circle-glow');
+        
+        if (!glowContainer || !glowElement) return;
+
+        const circleId = element.dataset.entityId;
+        const circleData = this.dataStore?.getCircle(circleId);
+        if (!circleData) return;
+
+        const primaryColor = circleData.colors?.[0] || circleData.color;
+        const secondaryColor = circleData.secondaryColors?.[0];
+        
+        if (!primaryColor || !secondaryColor || primaryColor === secondaryColor) {
+            return;
+        }
+
+        // Add flip animation class
+        if (useSecondary) {
+            glowContainer.classList.add('roil-secondary-colors');
+        } else {
+            glowContainer.classList.remove('roil-secondary-colors');
+        }
+
+        // Switch color at animation midpoint
+        setTimeout(() => {
+            const targetColor = useSecondary ? secondaryColor : primaryColor;
+            glowElement.style.backgroundColor = targetColor;
+            element.style.setProperty('--circle-color', targetColor);
+        }, 300);
+
+        // Handle name switching if applicable
+        if (circleData.secondaryName?.trim()) {
+            const nameElement = element.querySelector('.entity-name.circle-name');
+            if (nameElement) {
+                setTimeout(() => {
+                    nameElement.textContent = useSecondary ? circleData.secondaryName : circleData.name;
+                    nameElement.classList.toggle('roil-secondary-name', useSecondary);
+                }, 300);
+            }
+        }
+
+        // Optional ripple effect for 'side' roilAngle
+        const group = circleData?.belongsToID ? this.dataStore.getCircle(circleData.belongsToID) : null;
+        if (group?.roilAngle === 'side') {
+            const ripple = document.createElement('div');
+            ripple.className = 'color-change-ripple';
+            element.appendChild(ripple);
+            setTimeout(() => ripple.remove(), 600);
+        }
+    }
+
+    // Calculate clock-face position in degrees (0° = 12:00, 90° = 3:00, etc.)
+    calculateClockPosition(circle) {
+        const normalizedPhase = (circle.zOrbitPhase % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+        let degrees = (normalizedPhase * 180 / Math.PI - 90 + 360) % 360;
+        return degrees;
     }
 
     getGroupAbsolutePosition(groupId, viewerWidth) {
@@ -56,18 +324,13 @@ export class RoilMotionSystem {
         const group = this.dataStore.getCircle(groupId);
         if (!group || group.roilMode !== 'on') return;
         
-        // Don't transition roilAngle if group is currently splayed
-        if (this.splayedGroups.has(groupId)) {
-            return;
-        }
+        if (this.splayedGroups.has(groupId)) return;
         
-        // Get all circles in this roil group
         const groupMembers = Array.from(this.activeCircles.entries())
             .filter(([circleId, circle]) => circle.groupId === groupId);
         
         if (groupMembers.length === 0) return;
         
-        // Store transition info
         this.transitioningGroups.set(groupId, {
             fromAngle,
             toAngle,
@@ -76,25 +339,21 @@ export class RoilMotionSystem {
             members: groupMembers.map(([id]) => id)
         });
         
-        // Pause the motion system temporarily
         this.pauseMotionForTransition();
         
-        // Enable CSS transitions on all group members
         groupMembers.forEach(([circleId, circle]) => {
             const element = circle.element;
             element.style.transition = `top ${duration}ms cubic-bezier(0.4, 0.0, 0.2, 1)`;
         });
         
-        // Apply new positions immediately (CSS will animate)
         groupMembers.forEach(([circleId, circle]) => {
             const newTop = this.calculateTopForAngle(circle, toAngle);
             circle.element.style.top = newTop + 'px';
         });
         
-        // Resume motion system after transition completes
         setTimeout(() => {
             this.resumeMotionAfterTransition(groupId);
-        }, duration + 50); // Small buffer to ensure transition completes
+        }, duration + 50);
     }
 
     // Method to smoothly transition roilComposure
@@ -104,11 +363,9 @@ export class RoilMotionSystem {
         const group = this.dataStore.getCircle(groupId);
         if (!group || group.roilMode !== 'on') return;
         
-        // Get all circles in this roil group, excluding drones
         const allGroupMembers = Array.from(this.activeCircles.entries())
             .filter(([circleId, circle]) => circle.groupId === groupId);
         
-        // Filter out drone circles - they should not be repositioned
         const nonDroneMembers = allGroupMembers.filter(([circleId, circle]) => {
             const circleData = this.dataStore.getCircle(circleId);
             return circleData && circleData.type !== 'drone';
@@ -125,7 +382,6 @@ export class RoilMotionSystem {
 
     // Transition to splayed mode
     transitionToSplayed(groupId, allGroupMembers, nonDroneMembers, duration) {
-        // Store original positions, scales, and opacities for ALL group members
         const originalPositions = new Map();
         allGroupMembers.forEach(([circleId, circle]) => {
             originalPositions.set(circleId, {
@@ -138,21 +394,16 @@ export class RoilMotionSystem {
         });
         
         this.splayedGroups.set(groupId, { originalPositions });
-        
-        // Pause motion for this group (affects ALL members)
         this.pausedForComposure.set(groupId, true);
         
-        // Calculate splayed positions only for non-drone members
         const groupPosition = this.getGroupAbsolutePosition(groupId, allGroupMembers[0][1].viewerWidth);
         const splayedPositions = this.calculateSplayedPositions(nonDroneMembers, groupPosition);
         
-        // Enable CSS transitions on non-drone members only
         nonDroneMembers.forEach(([circleId, circle]) => {
             const element = circle.element;
             element.style.transition = `left ${duration}ms cubic-bezier(0.4, 0.0, 0.2, 1), top ${duration}ms cubic-bezier(0.4, 0.0, 0.2, 1), opacity ${duration}ms cubic-bezier(0.4, 0.0, 0.2, 1), transform ${duration}ms cubic-bezier(0.4, 0.0, 0.2, 1)`;
         });
         
-        // Apply splayed positions and reset scale/opacity for non-drone members only
         nonDroneMembers.forEach(([circleId, circle], index) => {
             const splayedPos = splayedPositions[index];
             const element = circle.element;
@@ -163,7 +414,6 @@ export class RoilMotionSystem {
             element.style.transform = 'translate(-50%, -50%) scale(1.0)';
         });
         
-        // Clean up transitions after duration (non-drone members only)
         setTimeout(() => {
             nonDroneMembers.forEach(([circleId, circle]) => {
                 circle.element.style.transition = '';
@@ -178,13 +428,11 @@ export class RoilMotionSystem {
         
         const { originalPositions } = splayedData;
         
-        // Enable CSS transitions on non-drone members only
         nonDroneMembers.forEach(([circleId, circle]) => {
             const element = circle.element;
             element.style.transition = `left ${duration}ms cubic-bezier(0.4, 0.0, 0.2, 1), top ${duration}ms cubic-bezier(0.4, 0.0, 0.2, 1), opacity ${duration}ms cubic-bezier(0.4, 0.0, 0.2, 1), transform ${duration}ms cubic-bezier(0.4, 0.0, 0.2, 1)`;
         });
         
-        // Restore original positions, scales, and opacities for non-drone members only
         nonDroneMembers.forEach(([circleId, circle]) => {
             const original = originalPositions.get(circleId);
             if (!original) return;
@@ -192,26 +440,22 @@ export class RoilMotionSystem {
             const element = circle.element;
             const group = this.dataStore.getCircle(groupId);
             
-            // Restore original circle internal state
             circle.x = original.x;
             circle.y = original.y;
             circle.z = original.z;
             circle.currentScale = original.scale;
             
-            // Apply restored positions with current roilAngle calculation
             element.style.left = original.x + 'px';
             element.style.top = this.calculateTopForAngle(circle, group.roilAngle) + 'px';
             element.style.opacity = original.opacity.toString();
             element.style.transform = `translate(-50%, -50%) scale(${(original.scale - 0.2).toFixed(3)})`;
         });
         
-        // Restore drone circle internal state but don't move them (they stay where they are)
         allGroupMembers.forEach(([circleId, circle]) => {
             const circleData = this.dataStore.getCircle(circleId);
             if (circleData && circleData.type === 'drone') {
                 const original = originalPositions.get(circleId);
                 if (original) {
-                    // Restore internal state for drones but don't apply visual changes
                     circle.x = original.x;
                     circle.y = original.y;
                     circle.z = original.z;
@@ -220,42 +464,32 @@ export class RoilMotionSystem {
             }
         });
         
-        // Clean up after transition
         setTimeout(() => {
-            // Remove CSS transitions from non-drone members
             nonDroneMembers.forEach(([circleId, circle]) => {
                 circle.element.style.transition = '';
             });
             
-            // Clean up tracking data
             this.splayedGroups.delete(groupId);
             this.pausedForComposure.delete(groupId);
-            
         }, duration + 50);
     }
 
     // Calculate splayed positions for group members
     calculateSplayedPositions(groupMembers, groupPosition) {
         const positions = [];
-        const leftColumnX = groupPosition.x - 60;  // 40px left of group center
-        const rightColumnX = groupPosition.x + 60; // 40px right of group center
+        const leftColumnX = groupPosition.x - 60;
+        const rightColumnX = groupPosition.x + 60;
         
         const memberCount = groupMembers.length;
         const verticalSpacing = 70;
-        
-        // Calculate the number of rows (since we have 2 columns)
         const numRows = Math.ceil(memberCount / 2);
-        
-        // Calculate offset to center the middle row on the group position
-        // The middle row index is Math.floor((numRows - 1) / 2)
         const middleRowIndex = Math.floor((numRows - 1) / 2);
         const centeringOffset = middleRowIndex * verticalSpacing;
         const startY = groupPosition.y - (centeringOffset + verticalSpacing / 2);
         
         groupMembers.forEach(([circleId, circle], index) => {
-            // Alternate between left and right columns
             const isLeftColumn = index % 2 === 0;
-            const columnIndex = Math.floor(index / 2); // This is the row index
+            const columnIndex = Math.floor(index / 2);
             
             const x = isLeftColumn ? leftColumnX : rightColumnX;
             const y = startY + (columnIndex * verticalSpacing);
@@ -274,123 +508,6 @@ export class RoilMotionSystem {
             return 250 - (5 * circle.z);
         }
     }
-
-    // Calculate descent state based on z-orbit phase
-    calculateDescentState(circle) {
-        // Normalize phase to 0-2π range
-        const normalizedPhase = (circle.zOrbitPhase % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
-        return normalizedPhase < Math.PI;
-    }
-
-updateCircleDescentState(circleId, circle) {
-    if (!this.dataStore || !circle.groupId) return;
-    
-    const group = this.dataStore.getCircle(circle.groupId);
-    if (!group || group.secondaryColorDescent !== 'shiftToSecondary') {
-        // Only clear and notify if there was actually a previous state
-        if (this.circleColorStates.has(circleId)) {
-            this.circleColorStates.delete(circleId);
-            this.notifyViewLayerColorChange(circleId, false);
-        }
-        return;
-    }
-    
-    const circleData = this.dataStore.getCircle(circleId);
-    if (!circleData || !circleData.secondaryColors || circleData.secondaryColors.length === 0) {
-        this.circleColorStates.delete(circleId);
-        this.notifyViewLayerColorChange(circleId, false);
-        return;
-    }
-    
-    const isDescending = this.calculateDescentState(circle);
-    const colorState = this.circleColorStates.get(circleId) || { isDescending: !isDescending };
-    
-    // Only notify if descent state changed
-    if (colorState.isDescending !== isDescending) {
-        this.circleColorStates.set(circleId, { 
-            isDescending: isDescending,
-            lastUpdate: Date.now()
-        });
-        
-        this.notifyViewLayerColorChange(circleId, isDescending);
-    }
-}
-
-notifyViewLayerColorChange(circleId, useSecondaryColors) {
-    const circleElement = document.querySelector(`[data-entity-id="${circleId}"]`);
-    if (!circleElement) return;
-    
-    const glowContainer = circleElement.querySelector('.circle-glow-container');
-    const glowElement = circleElement.querySelector('.circle-glow');
-    
-    if (glowContainer && glowElement) {
-        const circleData = this.dataStore.getCircle(circleId);
-        const primaryColor = circleData?.colors?.[0] || circleData?.color;
-        const secondaryColor = circleData?.secondaryColors?.[0];
-        
-        if (!primaryColor || !secondaryColor || primaryColor === secondaryColor) {
-            return; // No color change needed
-        }
-        
-        // Add flip class to trigger animation
-        if (useSecondaryColors) {
-            glowContainer.classList.add('roil-secondary-colors');
-        } else {
-            glowContainer.classList.remove('roil-secondary-colors');
-        }
-        
-        // Switch color at the midpoint of the flip (300ms into the 600ms animation)
-        setTimeout(() => {
-            const targetColor = useSecondaryColors ? secondaryColor : primaryColor;
-            glowElement.style.backgroundColor = targetColor;
-            
-            // Also update the CSS custom property for consistency
-            circleElement.style.setProperty('--circle-color', targetColor);
-        }, 300); // Half of the 600ms flip duration
-        
-    }
-    
-    // NEW: Handle name switching for circles with secondary names
-    const circleData = this.dataStore.getCircle(circleId);
-    if (circleData && circleData.secondaryName && circleData.secondaryName.trim() !== '') {
-        const nameElement = circleElement.querySelector('.entity-name.circle-name');
-        if (nameElement) {
-            // Switch name at the same time as color (300ms into flip)
-            setTimeout(() => {
-                const targetName = useSecondaryColors ? circleData.secondaryName : circleData.name;
-                nameElement.textContent = targetName;
-                
-                // Add a subtle visual indicator that the name has switched
-                if (useSecondaryColors) {
-                    nameElement.classList.add('roil-secondary-name');
-                } else {
-                    nameElement.classList.remove('roil-secondary-name');
-                }
-            }, 300); // Same timing as color change
-        }
-    }
-    
-    // Dispatch event for other systems
-    const event = new CustomEvent('roil-color-state-change', {
-        detail: { circleId, useSecondaryColors, timestamp: Date.now() }
-    });
-    circleElement.dispatchEvent(event);
-    
-    // Optional ripple effect for 'side' roilAngle
-    const group = circleData?.belongsToID ? this.dataStore.getCircle(circleData.belongsToID) : null;
-    
-    if (group?.roilAngle === 'side') {
-        const primaryColor = circleData?.colors?.[0] || circleData?.color;
-        const secondaryColor = circleData?.secondaryColors?.[0];
-        
-        if (primaryColor && secondaryColor && primaryColor !== secondaryColor) {
-            const ripple = document.createElement('div');
-            ripple.className = 'color-change-ripple';
-            circleElement.appendChild(ripple);
-            setTimeout(() => ripple.remove(), 600);
-        }
-    }
-}
 
     // Pause motion system for transitions
     pauseMotionForTransition() {
@@ -418,7 +535,6 @@ notifyViewLayerColorChange(circleId, useSecondaryColors) {
 
     // Resume motion system after transition
     resumeMotionAfterTransition(groupId) {
-        // Remove CSS transitions from group members
         const transitionInfo = this.transitioningGroups.get(groupId);
         if (transitionInfo) {
             transitionInfo.members.forEach(circleId => {
@@ -429,10 +545,8 @@ notifyViewLayerColorChange(circleId, useSecondaryColors) {
             });
         }
         
-        // Remove transition tracking
         this.transitioningGroups.delete(groupId);
         
-        // Resume motion system if no other transitions are active
         if (this.transitioningGroups.size === 0) {
             this.pausedForTransition = false;
         }
@@ -495,6 +609,9 @@ notifyViewLayerColorChange(circleId, useSecondaryColors) {
             timestamp: Date.now()
         });
 
+        // NEW: Set up event points for this circle
+        this.setupEventPoints(circleId, element);
+
         if (this.activeCircles.size === 1) {
             this.startMotion();
             this.startHighFrequencyMonitoring();
@@ -504,7 +621,7 @@ notifyViewLayerColorChange(circleId, useSecondaryColors) {
     // Skip updates during transitions or when splayed
     updateAllCircles() {
         if (this.shouldPauseMotion()) {
-            return; // Skip updates during roilAngle transitions
+            return;
         }
         
         this.lastUpdateFrameCount = this.frameCount;
@@ -517,6 +634,9 @@ notifyViewLayerColorChange(circleId, useSecondaryColors) {
             }
             
             this.updateCirclePosition(circle, circleId);
+            
+            // NEW: Check event points instead of continuous state tracking
+            this.checkEventPoints(circleId, circle);
         });
     }
 
@@ -569,17 +689,6 @@ notifyViewLayerColorChange(circleId, useSecondaryColors) {
                         elementInfo: this.getElementInfo(element)
                     };
                     
-                    let level = 'frame';
-                    let prefix = 'Frame change';
-                    
-                    if (!changeData.ourUpdate && !changeData.matchesExpected && (deltaX > 5 || deltaY > 5)) {
-                        level = 'immediate';
-                        prefix = 'FLICKER DETECTED - External position change';
-                    } else if (changeData.ourUpdate || changeData.matchesExpected) {
-                        level = 'expected';
-                        prefix = 'Expected motion';
-                    }
-                    
                     this.positionChanges.push(changeData);
                     if (this.positionChanges.length > this.maxChanges) {
                         this.positionChanges.shift();
@@ -625,15 +734,6 @@ notifyViewLayerColorChange(circleId, useSecondaryColors) {
             const deltaX = Math.abs(actualX - expectedX);
             const deltaY = Math.abs(actualY - expectedY);
         }, 0);
-        
-        requestAnimationFrame(() => {
-            const computedStyle = getComputedStyle(element);
-            const actualX = parseFloat(computedStyle.left) || 0;
-            const actualY = parseFloat(computedStyle.top) || 0;
-            
-            const deltaX = Math.abs(actualX - expectedX);
-            const deltaY = Math.abs(actualY - expectedY);
-        });
     }
 
     removeCircle(circleId) {
@@ -644,8 +744,8 @@ notifyViewLayerColorChange(circleId, useSecondaryColors) {
         this.activeCircles.delete(circleId);
         this.lastKnownPositions.delete(circleId);
         
-        // Clean up color state tracking
-        this.circleColorStates.delete(circleId);
+        // NEW: Clean up event points
+        this.eventPoints.delete(circleId);
         
         if (this.activeCircles.size === 0) {
             this.stopMotion();
@@ -673,22 +773,6 @@ notifyViewLayerColorChange(circleId, useSecondaryColors) {
         this.stopHighFrequencyMonitoring();
     }
 
-calculateOrbitProgress(circle) {
-    // Method 1: Based on actual Y position (more accurate for your use case)
-    const currentY = circle.y;
-    const baseY = circle.baseY;
-    const orbitRadius = circle.orbitRadius;
-    
-    // Calculate the actual range of Y values
-    const minY = baseY - orbitRadius; // Top of orbit (apex)
-    const maxY = baseY + orbitRadius; // Bottom of orbit (nadir)
-    
-    // Calculate progress: 0 at apex (minY), 1 at nadir (maxY)
-    const orbitProgress = Math.max(0, Math.min(1, (currentY - minY) / (maxY - minY)));
-    
-    return orbitProgress;
-}
-
     updateCirclePosition(circle, circleId) {
         const { element, bounds } = circle;
         const group = this.dataStore.getCircle(circle.groupId);
@@ -711,32 +795,25 @@ calculateOrbitProgress(circle) {
         circle.zOrbitPhase += circle.zOrbitSpeed * group.roilSpeed;
         const zOrbit = Math.cos(circle.zOrbitPhase) * circle.zOrbitRadius;
 
-let circularOffsetX = 0;
-if (group && group.roilAngle === 'side') {
-    // Use the same phase as z-orbit to create synchronized circular motion
-    // zOrbitPhase ranges from 0 to 2π, we want x offset to follow sin curve
-    // sin(phase) gives us the horizontal component of circular motion
-    const horizontalRadius = circle.orbitRadius * 4.8; // Scale the horizontal motion
-    circularOffsetX = Math.sin(circle.zOrbitPhase) * horizontalRadius;
-}
+        let circularOffsetX = 0;
+        if (group && group.roilAngle === 'side') {
+            const horizontalRadius = circle.orbitRadius * 4.8;
+            circularOffsetX = Math.sin(circle.zOrbitPhase) * horizontalRadius;
+        }
 
-// Apply the circular offset to targetX
-const targetX = circle.baseX + orbitX + driftX + circularOffsetX;
+        const targetX = circle.baseX + orbitX + driftX + circularOffsetX;
         
         circle.zDriftPhase += circle.zDriftSpeed;
         const zDrift = 0;
         
         const verticalOffset = Math.sin(circle.time * 0.01) * circle.verticalBias * 5;
         
-        //const targetX = circle.baseX + orbitX + driftX;
         const targetY = circle.baseY + orbitY + driftY + verticalOffset;
         const targetZ = circle.baseZ + zOrbit + zDrift;
         
         circle.x += (targetX - circle.x) * 0.08;
         circle.y += (targetY - circle.y) * 0.08;
         circle.z += (targetZ - circle.z) * 0.06;
-        
-        this.updateCircleDescentState(circleId, circle);
         
         // Boundary constraints
         if (circle.x < bounds.minX) {
@@ -855,10 +932,15 @@ const targetX = circle.baseX + orbitX + driftX + circularOffsetX;
             activeTransitions: this.transitioningGroups.size,
             splayedGroups: this.splayedGroups.size,
             pausedForComposure: Array.from(this.pausedForComposure.entries()),
-            colorStateCount: this.circleColorStates.size, // Track descent states
-            activeDescentStates: Array.from(this.circleColorStates.entries())
-                .filter(([_, state]) => state.isDescending)
-                .map(([circleId, _]) => circleId)
+            // NEW: Event point debugging
+            eventPointCount: this.eventPoints.size,
+            circlesWithEvents: Array.from(this.eventPoints.keys()),
+            eventPointSummary: Array.from(this.eventPoints.entries()).map(([circleId, data]) => ({
+                circleId,
+                pointCount: data.points.length,
+                lastAngle: data.lastAngle,
+                points: data.points.map(p => `${p.angle}°:${p.action.type}`)
+            }))
         };
     }
 
@@ -872,13 +954,13 @@ const targetX = circle.baseX + orbitX + driftX + circularOffsetX;
         this.composureTransitions.clear();
         this.splayedGroups.clear();
         this.pausedForComposure.clear();
-        this.circleColorStates.clear(); // Clean up color states
+        this.eventPoints.clear(); // NEW: Clean up event points
     }
 }
 
 export const roilMotionSystem = new RoilMotionSystem();
 
-// Global debug interface
+// Global debug interface - UPDATED with event point debugging
 if (typeof window !== 'undefined') {
     window.roilDebug = {
         getFlickerReport: () => roilMotionSystem.getFlickerReport(),
@@ -886,20 +968,68 @@ if (typeof window !== 'undefined') {
         clearChanges: () => { roilMotionSystem.positionChanges = []; },
         enableDebug: () => { roilMotionSystem.debugMode = true; },
         disableDebug: () => { roilMotionSystem.debugMode = false; },
+        
         // Trigger manual roilAngle transitions
         transitionRoilAngle: (groupId, fromAngle, toAngle, duration) => 
             roilMotionSystem.transitionRoilAngle(groupId, fromAngle, toAngle, duration),
+        
         // Trigger manual roilComposure transitions
         transitionRoilComposure: (groupId, fromComposure, toComposure, duration) =>
             roilMotionSystem.transitionRoilComposure(groupId, fromComposure, toComposure, duration),
-        // Debug descent color system
-        getColorStates: () => Array.from(roilMotionSystem.circleColorStates.entries()),
-        clearColorStates: () => roilMotionSystem.circleColorStates.clear(),
-        getActiveDescentCircles: () => Array.from(roilMotionSystem.circleColorStates.entries())
-            .filter(([_, state]) => state.isDescending)
-            .map(([circleId, _]) => circleId),
-        // Manual color state testing
-        testColorState: (circleId, useSecondaryColors) => 
-            roilMotionSystem.notifyViewLayerColorChange(circleId, useSecondaryColors)
+        
+        // NEW: Event point debugging
+        getEventPoints: () => Array.from(roilMotionSystem.eventPoints.entries()),
+        getEventPointsForCircle: (circleId) => roilMotionSystem.eventPoints.get(circleId),
+        clearEventPoints: () => roilMotionSystem.eventPoints.clear(),
+        
+        // Test event point crossing
+        testEventPoint: (circleId, angle) => {
+            const eventData = roilMotionSystem.eventPoints.get(circleId);
+            if (!eventData) return 'No event points for this circle';
+            
+            const point = eventData.points.find(p => Math.abs(p.angle - angle) < 10);
+            if (!point) return `No event point near ${angle}°`;
+            
+            roilMotionSystem.executeEventAction(circleId, eventData.element, point.action, angle);
+            return `Triggered ${point.action.type} at ${angle}°`;
+        },
+        
+        // Force setup event points for a circle
+        forceSetupEventPoints: (circleId) => {
+            const circle = roilMotionSystem.activeCircles.get(circleId);
+            if (!circle) return 'Circle not found';
+            
+            roilMotionSystem.setupEventPoints(circleId, circle.element);
+            return `Set up event points for ${circleId}`;
+        },
+        
+        // Utility to convert clock position to human-readable time
+        clockToTime: (degrees) => {
+            const hours = Math.floor(degrees / 30);
+            const minutes = Math.floor((degrees % 30) * 2);
+            return `${hours === 0 ? 12 : hours}:${minutes.toString().padStart(2, '0')}`;
+        },
+        
+        // Show all circles with their current angles and event points
+        showEventStatus: () => {
+            const results = [];
+            roilMotionSystem.eventPoints.forEach((eventData, circleId) => {
+                const circle = roilMotionSystem.activeCircles.get(circleId);
+                const currentAngle = circle ? roilMotionSystem.calculateClockPosition(circle) : -1;
+                
+                results.push({
+                    circleId,
+                    currentAngle: currentAngle.toFixed(1),
+                    currentTime: window.roilDebug.clockToTime(currentAngle),
+                    eventPoints: eventData.points.map(p => ({
+                        angle: p.angle,
+                        time: window.roilDebug.clockToTime(p.angle),
+                        action: p.action.type
+                    }))
+                });
+            });
+            
+            return results;
+        }
     };
 }

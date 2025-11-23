@@ -1,4 +1,4 @@
-// renderers/GlowCircleRenderer.js - Enhanced with descent state listener for clean color switching
+// renderers/GlowCircleRenderer.js - Enhanced with clock-face thought bubble visibility
 import { ParticleSystem } from './ParticleSystem.js';
 import { ChakraFormSystem } from './ChakraFormSystem.js';
 import { ColorFlowSystem } from './ColorFlowSystem.js';
@@ -20,7 +20,12 @@ export const GlowCircleRenderer = {
         glowElement.className = 'circle-glow';
         glowContainer.appendChild(glowElement);
 
-        // NEW: Set up descent state listener for roil members
+        // Add demand emoji thought balloon if present
+        if (circle.demandEmoji && typeof circle.demandEmoji == 'string' && circle.demandEmoji.trim() !== '') {
+            this.createDemandEmojiThoughtBalloon(element, circle.demandEmoji, isRoilMember);
+        }
+
+        // Set up descent state listener for roil members
         if (isRoilMember) {
             this.setupDescentStateListener(element, circle);
         } else {
@@ -44,38 +49,130 @@ export const GlowCircleRenderer = {
         if (hasMultipleColors && !isRoilMember) {
             ColorFlowSystem.start(element, circle.colors);
         }
+        
+        // Auto-initialize thought bubble listeners after DOM settles
+        if (isRoilMember && circle.demandEmoji && typeof circle.demandEmoji == 'string' && circle.demandEmoji.trim() !== '') {
+            this.autoInitializeListeners();
+        }
     },
 
     /**
-     * NEW: Set up descent state listener for a glow circle
+     * Create demand emoji thought balloon with clock-face visibility support
      */
-setupDescentStateListener(element, circle) {
-    // Store reference to the circle data for the listener
-    element._roilCircleData = circle;
-    
-    // Listen for roil color state changes
-    const handleColorStateChange = (event) => {
-        const { useSecondaryColors } = event.detail;
-        this.updateColorsForDescentState(element, circle, useSecondaryColors);
-    };
-    
-    // Store listener reference for cleanup
-    element._roilColorStateListener = handleColorStateChange;
-    element.addEventListener('roil-color-state-change', handleColorStateChange);
-    
-    // Check initial state from data attribute
-    const useSecondaryColors = element.hasAttribute('data-use-secondary-colors');
-    this.updateColorsForDescentState(element, circle, useSecondaryColors);
-},
+    createDemandEmojiThoughtBalloon(element, demandEmoji, isRoilMember = false) {
+        const thoughtBalloon = document.createElement('div');
+        thoughtBalloon.className = 'demand-emoji-thought-balloon';
+        
+        // Style the thought balloon container
+        thoughtBalloon.style.cssText = `
+            position: absolute;
+            top: -25px;
+            right: -25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            pointer-events: none;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: opacity 0.3s ease-in-out;
+            opacity: 0.8;
+        `;
+        
+        // Create the thought balloon emoji (larger)
+        const balloonElement = document.createElement('span');
+        balloonElement.textContent = '💭';
+        balloonElement.style.cssText = `
+            font-size: 32px;
+            position: relative;
+            display: inline-block;
+        `;
+        
+        // Create the demand emoji (smaller, positioned inside)
+        const demandElement = document.createElement('span');
+        demandElement.textContent = demandEmoji;
+        demandElement.style.cssText = `
+            font-size: 20px;
+            position: absolute;
+            top: 45%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 11;
+        `;
+        
+        thoughtBalloon.appendChild(demandElement);
+        thoughtBalloon.appendChild(balloonElement);
+        element.appendChild(thoughtBalloon);
+    },
 
     /**
-     * NEW: Update colors based on descent state
+     * Initialize thought bubble position listeners for all existing thought balloons
+     */
+    initializeThoughtBubbleListeners() {
+        document.querySelectorAll('.demand-emoji-thought-balloon').forEach(balloon => {
+            const element = balloon.closest('[data-entity-id]');
+            if (element && element.dataset.entityId && !element._thoughtBubblePositionListener) {
+                const handlePositionChange = (event) => {
+                    const { clockPosition } = event.detail;
+                    this.updateThoughtBubbleVisibility(balloon, clockPosition);
+                };
+                
+                element._thoughtBubblePositionListener = handlePositionChange;
+                element.addEventListener('roil-position-change', handlePositionChange);
+            }
+        });
+    },
+    
+    /**
+     * Auto-initialize listeners after a delay (handles timing issues)
+     */
+    autoInitializeListeners() {
+        setTimeout(() => {
+            this.initializeThoughtBubbleListeners();
+        }, 1000);
+    },
+
+    /**
+     * Update thought bubble visibility based on clock position
+     */
+    updateThoughtBubbleVisibility(thoughtBalloon, clockPosition) {
+        // Visible between 9:00 (270°) and 1:00 (30°), centered around 12:00
+        const isInVisibleRange = clockPosition >= 180 && clockPosition < 270;
+        const targetOpacity = isInVisibleRange ? '0.8' : '0';
+        
+        if (thoughtBalloon.style.opacity !== targetOpacity) {
+            thoughtBalloon.style.opacity = targetOpacity;
+        }
+    },
+
+    /**
+     * Set up descent state listener for a glow circle
+     */
+    setupDescentStateListener(element, circle) {
+        // Store reference to the circle data for the listener
+        element._roilCircleData = circle;
+        
+        // Listen for roil color state changes
+        const handleColorStateChange = (event) => {
+            const { useSecondaryColors } = event.detail;
+            this.updateColorsForDescentState(element, circle, useSecondaryColors);
+        };
+        
+        // Store listener reference for cleanup
+        element._roilColorStateListener = handleColorStateChange;
+        element.addEventListener('roil-color-state-change', handleColorStateChange);
+        
+        // Check initial state from data attribute
+        const useSecondaryColors = element.hasAttribute('data-use-secondary-colors');
+        this.updateColorsForDescentState(element, circle, useSecondaryColors);
+    },
+
+    /**
+     * Update colors based on descent state
      */
     updateColorsForDescentState(element, circle, useSecondaryColors) {
-            const colorsToUse = useSecondaryColors ? 
-                    (circle.secondaryColors || circle.colors) : 
-                    circle.colors;
-            
+        const colorsToUse = useSecondaryColors ? 
+                (circle.secondaryColors || circle.colors) : 
+                circle.colors;
         
         // Update the glow color cycling with the appropriate colors
         const glowContainer = element.querySelector('.circle-glow-container');
@@ -100,7 +197,7 @@ setupDescentStateListener(element, circle) {
     },
 
     /**
-     * NEW: Clean up descent state listener
+     * Clean up descent state listener
      */
     cleanupDescentStateListener(element) {
         if (element._roilColorStateListener) {
@@ -111,8 +208,17 @@ setupDescentStateListener(element, circle) {
     },
 
     /**
+     * Clean up thought bubble position listener
+     */
+    cleanupThoughtBubblePositionListener(element) {
+        if (element._thoughtBubblePositionListener) {
+            element.removeEventListener('roil-position-change', element._thoughtBubblePositionListener);
+            element._thoughtBubblePositionListener = null;
+        }
+    },
+
+    /**
      * Update colors for existing glow circle without recreating elements
-     * Enhanced to handle descent state listening
      */
     updateColors(element, circle) {
         if (!element) return;
@@ -126,7 +232,7 @@ setupDescentStateListener(element, circle) {
             return;
         }
 
-        // NEW: Check if this element has descent state listening active
+        // Check if this element has descent state listening active
         if (element._roilColorStateListener) {
             // For roil members, check current descent state and update accordingly
             const useSecondaryColors = element.hasAttribute('data-use-secondary-colors');
@@ -152,10 +258,6 @@ setupDescentStateListener(element, circle) {
                 ColorFlowSystem.start(element, circle.colors);
             }
         }
-
-        // Note: ChakraFormSystem and ParticleSystem don't have updateColors methods
-        // so they will pick up the new colors via CSS variables automatically
-        // If needed, these systems could be recreated, but that might affect other animations
     },
 
     /**
