@@ -98,6 +98,14 @@ export const CYCLE_PROPERTY_CONFIGS = {
       displayIf: { type: 'group', roilMode: 'on', }
   },
 
+  checkInventory: {
+    values: {
+      'no': { icon: '👍', label: 'no', description: '', default: true },
+      'yes': { icon: '🍖', label: 'yes', description: '' },
+    },
+      displayIf: { type: 'group', roilMode: 'on', }
+  },
+
   buoyancy: {
     values: {
       'normal': { icon: '↕', label: 'Normal', description: '', default: true },

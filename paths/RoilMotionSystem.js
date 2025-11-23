@@ -36,81 +36,146 @@ export class RoilMotionSystem {
         this.dataStore = dataStore;
     }
 
-    // NEW: Set up event points for a circle
-    setupEventPoints(circleId, element) {
-        if (!this.dataStore) return;
-        
-        const circleData = this.dataStore.getCircle(circleId);
-        if (!circleData) return;
-
-        const points = [];
-        
-        // Set up thought bubble event points if circle has demandEmoji
-        if (circleData.demandEmoji && circleData.demandEmoji.trim() !== '') {
-            points.push(
-                {
-                    angle: 180,
-                    action: {
-                        type: 'show',
-                        selector: '.demand-emoji-thought-balloon',
-                        opacity: '0.8'
-                    }
-                },
-                {
-                    angle: 270,
-                    action: {
-                        type: 'hide',
-                        selector: '.demand-emoji-thought-balloon'
-                    }
-                }
-            );
-        }
-
-        // Set up color flip event points if circle has secondary colors
-        const group = circleData.belongsToID ? this.dataStore.getCircle(circleData.belongsToID) : null;
-        if (group?.secondaryColorDescent === 'shiftToSecondary' && 
-            circleData.secondaryColors && circleData.secondaryColors.length > 0) {
-            points.push(
-                {
-                    angle: 270,
-                    action: { type: 'flipToSecondary' }
-                },
-                {
-                    angle: 90,
-                    action: { type: 'flipToPrimary' }
-                }
-            );
-        }
-
-        if (points.length > 0) {
-            this.eventPoints.set(circleId, {
-                element,
-                lastAngle: -1,
-                points
-            });
-        }
+checkInventoryForEmoji(targetEmoji, viewerId) {
+    if (!this.dataStore) {
+        console.warn('❌ No dataStore available for inventory check');
+        return false;
+    }
+    
+    if (!targetEmoji || !viewerId) {
+        console.warn(`❌ Missing parameters - emoji: "${targetEmoji}", viewerId: "${viewerId}"`);
+        return false;
     }
 
-    // NEW: Check event points for a circle
-    checkEventPoints(circleId, circle) {
-        const eventData = this.eventPoints.get(circleId);
-        if (!eventData) return;
-
-        const currentAngle = this.calculateClockPosition(circle);
-        const { lastAngle, points, element } = eventData;
-
-        // Skip if angle hasn't changed enough
-        if (Math.abs(currentAngle - lastAngle) < 3) return;
-
-        // Check each event point
-        points.forEach(point => {
-            if (this.didCrossAngle(lastAngle, currentAngle, point.angle)) {
-                this.executeEventAction(circleId, element, point.action, currentAngle);
-            }
+    try {
+        // Get all circles in the current viewer
+        const circlesInViewer = this.dataStore.getCirclesForViewer(viewerId);
+        
+        // Find all emoji-type circles that belong to groups
+        const inventoryItems = circlesInViewer.filter(circle => {
+            const isEmojiType = circle.type === 'emoji';
+            const belongsToGroup = circle.belongsToID !== null;
+            const matchesEmoji = circle.emoji === targetEmoji;
+            
+            return isEmojiType && belongsToGroup && matchesEmoji;
         });
 
-        eventData.lastAngle = currentAngle;
+        const hasInventory = inventoryItems.length > 0;
+        
+        return hasInventory;
+        
+    } catch (error) {
+        console.error('💥 Error checking inventory:', error);
+        return false;
     }
+}
+
+
+setupEventPoints(circleId, element) {
+    if (!this.dataStore) {
+        console.warn('❌ No dataStore for setupEventPoints');
+        return;
+    }
+    
+    const circleData = this.dataStore.getCircle(circleId);
+    if (!circleData) {
+        console.warn(`❌ No circle data found for: ${circleId}`);
+        return;
+    }
+
+    const points = [];
+    
+    // Get the group that this circle belongs to (if any)
+    const group = circleData.belongsToID ? this.dataStore.getCircle(circleData.belongsToID) : null;
+    const shouldCheckInventory = group?.checkInventory === 'yes';
+    
+    // Get the viewerId from the active circles map
+    const activeCircle = this.activeCircles.get(circleId);
+    const viewerId = activeCircle?.viewerId;
+    
+    if (!viewerId) {
+        console.warn(`❌ No viewerId found for circle ${circleId} - inventory checking will fail`);
+    }
+    
+    // Set up thought bubble event points if circle has demandEmoji
+    if (circleData.demandEmoji && circleData.demandEmoji.trim() !== '') {
+        points.push(
+            {
+                angle: 180,
+                action: {
+                    type: 'show',
+                    selector: '.demand-emoji-thought-balloon',
+                    opacity: '0.8'
+                }
+            },
+            {
+                angle: 270,
+                action: {
+                    type: 'hide',
+                    selector: '.demand-emoji-thought-balloon'
+                },
+                executeIf: shouldCheckInventory ? () => {
+                    const result = this.checkInventoryForEmoji(circleData.demandEmoji, viewerId);
+                    return result;
+                } : undefined
+            }
+        );
+    }
+
+    // Set up color flip event points if circle has secondary colors
+    if (group?.secondaryColorDescent === 'shiftToSecondary' && 
+        circleData.secondaryColors && circleData.secondaryColors.length > 0) {
+        
+        points.push(
+            {
+                angle: 270,
+                action: { 
+                    type: 'flipToSecondary'
+                },
+                executeIf: shouldCheckInventory ? () => {
+                    const result = this.checkInventoryForEmoji(circleData.demandEmoji, viewerId);
+                    return result;
+                } : undefined
+            },
+            {
+                angle: 90,
+                action: { 
+                    type: 'flipToPrimary'
+                }
+                // Note: flipToPrimary doesn't need inventory check - always allow return to primary
+            }
+        );
+    }
+
+    if (points.length > 0) {
+        this.eventPoints.set(circleId, {
+            element,
+            lastAngle: -1,
+            points
+        });
+    }
+}
+
+checkEventPoints(circleId, circle) {
+    const eventData = this.eventPoints.get(circleId);
+    if (!eventData) return;
+
+    const currentAngle = this.calculateClockPosition(circle);
+    const { lastAngle, points, element } = eventData;
+
+    // Skip if angle hasn't changed enough
+    if (Math.abs(currentAngle - lastAngle) < 3) return;
+
+    // Check each event point
+    points.forEach(point => {
+        if (this.didCrossAngle(lastAngle, currentAngle, point.angle)) {
+            // Pass the entire point object instead of just the action
+            this.executeEventAction(circleId, element, point, currentAngle);
+        }
+    });
+
+    eventData.lastAngle = currentAngle;
+}
 
     // NEW: Check if we crossed a specific angle going clockwise
     didCrossAngle(fromAngle, toAngle, targetAngle) {
@@ -130,25 +195,38 @@ export class RoilMotionSystem {
         }
     }
 
-executeEventAction(circleId, element, action, currentAngle) {
+executeEventAction(circleId, element, point, currentAngle) {
+    const action = point.action;
+    
+    // Check if point has an executeIf condition
+    if (point.executeIf && typeof point.executeIf === 'function') {
+        const shouldExecute = point.executeIf();
+        
+        if (!shouldExecute) {
+            return; // Don't execute the action
+        }
+    }
+
+    // Original executeEventAction logic continues here...
     switch (action.type) {
         case 'show':
             const showElement = element.querySelector(action.selector);
             if (showElement) {
                 showElement.style.opacity = action.opacity || '0.8';
+            } else {
+                console.warn(`⚠️ Could not find element to show: ${action.selector}`);
             }
             break;
 
         case 'hide':
             const hideElement = element.querySelector(action.selector);
             if (hideElement && action.selector === '.demand-emoji-thought-balloon') {
-                // Special handling for thought balloon - create coin-pop effect
                 this.createCoinPopEffect(element, hideElement);
-                // Then hide the original
                 hideElement.style.opacity = '0';
             } else if (hideElement) {
-                // Regular hide for other elements
                 hideElement.style.opacity = '0';
+            } else {
+                console.warn(`⚠️ Could not find element to hide: ${action.selector}`);
             }
             break;
 
@@ -167,10 +245,6 @@ executeEventAction(circleId, element, action, currentAngle) {
     element.dispatchEvent(new CustomEvent('event-point-crossed', {
         detail: { circleId, action, angle: currentAngle }
     }));
-
-    if (this.debugMode) {
-        console.log(`🎯 Event point: Circle ${circleId} at ${currentAngle.toFixed(1)}° - ${action.type}`);
-    }
 }
 
 createCoinPopEffect(circleElement, thoughtBalloonElement) {
@@ -557,66 +631,67 @@ addCircleBounceEffect(circleElement) {
         return this.pausedForTransition;
     }
 
-    addCircle(circleId, element, groupBounds = null, groupId = null, viewerWidth = null) {
-        if (!element || this.activeCircles.has(circleId)) return;
+addCircle(circleId, element, groupBounds = null, groupId = null, viewerWidth = null, viewerId = null) {
+    if (!element || this.activeCircles.has(circleId)) return;
 
-        let groupOffset = { x: 0, y: 0 };
-        if (groupId && viewerWidth) {
-            groupOffset = this.getGroupAbsolutePosition(groupId, viewerWidth);
-        }
-
-        const bounds = groupBounds || {
-            minX: -50, maxX: 50, minY: -50, maxY: 50
-        };
-
-        const baseX = groupOffset.x;
-        const baseY = groupOffset.y;
-
-        this.activeCircles.set(circleId, {
-            element,
-            bounds,
-            x: baseX,
-            y: baseY,
-            z: 0,
-            baseX: baseX,
-            baseY: baseY,
-            baseZ: 0,
-            groupId: groupId,
-            viewerWidth: viewerWidth,
-            orbitRadius: 8 + Math.random() * 20 * 2,
-            orbitSpeed: 0.008 + Math.random() * 0.015,
-            orbitPhase: Math.random() * Math.PI * 2,
-            driftSpeed: 0.002 + Math.random() * 0.005,
-            driftPhase: Math.random() * Math.PI * 2,
-            driftRadius: 15 + Math.random() * 25 * 2,
-            zOrbitRadius: 10 + Math.random() * 15,
-            zOrbitSpeed: 0.005 + Math.random() * 0.01,
-            zOrbitPhase: Math.random() * Math.PI * 2,
-            zDriftSpeed: 0.001 + Math.random() * 0.003,
-            zDriftPhase: Math.random() * Math.PI * 2,
-            zDriftRadius: 8 + Math.random() * 12,
-            baseScale: 1.0,
-            minScale: 0.6,
-            maxScale: 1.4,
-            verticalBias: (Math.random() - 0.5) * 0.3,
-            time: Math.random() * 100
-        });
-
-        this.lastKnownPositions.set(circleId, {
-            x: baseX,
-            y: baseY,
-            frame: this.frameCount,
-            timestamp: Date.now()
-        });
-
-        // NEW: Set up event points for this circle
-        this.setupEventPoints(circleId, element);
-
-        if (this.activeCircles.size === 1) {
-            this.startMotion();
-            this.startHighFrequencyMonitoring();
-        }
+    let groupOffset = { x: 0, y: 0 };
+    if (groupId && viewerWidth) {
+        groupOffset = this.getGroupAbsolutePosition(groupId, viewerWidth);
     }
+
+    const bounds = groupBounds || {
+        minX: -50, maxX: 50, minY: -50, maxY: 50
+    };
+
+    const baseX = groupOffset.x;
+    const baseY = groupOffset.y;
+
+    this.activeCircles.set(circleId, {
+        element,
+        bounds,
+        x: baseX,
+        y: baseY,
+        z: 0,
+        baseX: baseX,
+        baseY: baseY,
+        baseZ: 0,
+        groupId: groupId,
+        viewerWidth: viewerWidth,
+        viewerId: viewerId, // NEW: Store viewerId for inventory checking
+        orbitRadius: 8 + Math.random() * 20 * 2,
+        orbitSpeed: 0.008 + Math.random() * 0.015,
+        orbitPhase: Math.random() * Math.PI * 2,
+        driftSpeed: 0.002 + Math.random() * 0.005,
+        driftPhase: Math.random() * Math.PI * 2,
+        driftRadius: 15 + Math.random() * 25 * 2,
+        zOrbitRadius: 10 + Math.random() * 15,
+        zOrbitSpeed: 0.005 + Math.random() * 0.01,
+        zOrbitPhase: Math.random() * Math.PI * 2,
+        zDriftSpeed: 0.001 + Math.random() * 0.003,
+        zDriftPhase: Math.random() * Math.PI * 2,
+        zDriftRadius: 8 + Math.random() * 12,
+        baseScale: 1.0,
+        minScale: 0.6,
+        maxScale: 1.4,
+        verticalBias: (Math.random() - 0.5) * 0.3,
+        time: Math.random() * 100
+    });
+
+    this.lastKnownPositions.set(circleId, {
+        x: baseX,
+        y: baseY,
+        frame: this.frameCount,
+        timestamp: Date.now()
+    });
+
+    // Set up event points for this circle
+    this.setupEventPoints(circleId, element);
+
+    if (this.activeCircles.size === 1) {
+        this.startMotion();
+        this.startHighFrequencyMonitoring();
+    }
+}
 
     // Skip updates during transitions or when splayed
     updateAllCircles() {
@@ -1032,4 +1107,68 @@ if (typeof window !== 'undefined') {
             return results;
         }
     };
+
+if (typeof window !== 'undefined') {
+    // Add new debug methods for inventory system
+    window.roilDebug = {
+        ...window.roilDebug, // Keep existing methods
+        
+        // NEW: Inventory debugging
+        checkInventory: (emoji, viewerId) => {
+            return roilMotionSystem.checkInventoryForEmoji(emoji, viewerId);
+        },
+        
+        getInventoryItems: (viewerId) => {
+            if (!roilMotionSystem.dataStore) return [];
+            const circlesInViewer = roilMotionSystem.dataStore.getCirclesForViewer(viewerId);
+            return circlesInViewer.filter(circle => 
+                circle.type === 'emoji' && 
+                circle.belongsToID !== null
+            ).map(circle => ({
+                id: circle.id,
+                emoji: circle.emoji,
+                name: circle.name,
+                groupId: circle.belongsToID
+            }));
+        },
+        
+        testInventoryCheck: (demandEmoji, viewerId) => {
+            const hasInventory = roilMotionSystem.checkInventoryForEmoji(demandEmoji, viewerId);
+            const inventoryItems = window.roilDebug.getInventoryItems(viewerId);
+            const matchingItems = inventoryItems.filter(item => item.emoji === demandEmoji);
+            
+            return {
+                demandEmoji,
+                viewerId,
+                hasInventory,
+                matchingItems,
+                allInventoryItems: inventoryItems
+            };
+        },
+        
+        // Test a full inventory scenario
+        simulateInventoryEvent: (circleId, targetAngle) => {
+            const circle = roilMotionSystem.activeCircles.get(circleId);
+            if (!circle) return 'Circle not found in active circles';
+            
+            const circleData = roilMotionSystem.dataStore?.getCircle(circleId);
+            if (!circleData) return 'Circle data not found';
+            
+            const group = circleData.belongsToID ? roilMotionSystem.dataStore.getCircle(circleData.belongsToID) : null;
+            
+            const inventoryCheck = group?.checkInventory === 'yes' ? 
+                roilMotionSystem.checkInventoryForEmoji(circleData.demandEmoji, circle.viewerId) : 
+                'N/A (checkInventory is off)';
+            
+            return {
+                circleId,
+                demandEmoji: circleData.demandEmoji,
+                groupCheckInventory: group?.checkInventory,
+                inventoryCheckResult: inventoryCheck,
+                viewerId: circle.viewerId,
+                message: `Circle ${circleId} wants ${circleData.demandEmoji}. Inventory check: ${inventoryCheck}`
+            };
+        }
+    };
+}
 }
