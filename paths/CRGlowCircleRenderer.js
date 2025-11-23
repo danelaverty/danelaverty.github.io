@@ -1,4 +1,4 @@
-// renderers/GlowCircleRenderer.js - Enhanced with clock-face thought bubble visibility
+// renderers/GlowCircleRenderer.js - Enhanced with satisfaction lock support
 import { ParticleSystem } from './ParticleSystem.js';
 import { ChakraFormSystem } from './ChakraFormSystem.js';
 import { ColorFlowSystem } from './ColorFlowSystem.js';
@@ -20,14 +20,21 @@ export const GlowCircleRenderer = {
         glowElement.className = 'circle-glow';
         glowContainer.appendChild(glowElement);
 
-        // Add demand emoji thought balloon if present
+        // Add demand emoji display if present
         if (circle.demandEmoji && typeof circle.demandEmoji == 'string' && circle.demandEmoji.trim() !== '') {
-            this.createDemandEmojiThoughtBalloon(element, circle.demandEmoji, isRoilMember);
+            if (circle.satisfactionLocked === 'yes') {
+                this.createDemandEmojiLock(element, circle.demandEmoji, circle);
+            } else {
+                this.createDemandEmojiThoughtBalloon(element, circle.demandEmoji, isRoilMember, circle);
+            }
         }
 
-        // Set up descent state listener for roil members
-        if (isRoilMember) {
+        // Set up descent state listener for roil members (unless satisfaction locked)
+        if (isRoilMember && circle.satisfactionLocked !== 'yes') {
             this.setupDescentStateListener(element, circle);
+        } else if (isRoilMember && circle.satisfactionLocked === 'yes') {
+            // For satisfaction locked circles, force secondary state immediately
+            this.initializeSatisfactionLockedState(element, circle);
         } else {
             // For non-roil members, use normal color handling
             const hasMultipleColors = circle.colors && circle.colors.length > 1;
@@ -50,20 +57,112 @@ export const GlowCircleRenderer = {
             ColorFlowSystem.start(element, circle.colors);
         }
         
-        // Auto-initialize thought bubble listeners after DOM settles
-        if (isRoilMember && circle.demandEmoji && typeof circle.demandEmoji == 'string' && circle.demandEmoji.trim() !== '') {
+        // Auto-initialize thought bubble listeners after DOM settles (only for non-locked circles)
+        if (isRoilMember && circle.demandEmoji && typeof circle.demandEmoji == 'string' && 
+            circle.demandEmoji.trim() !== '' && circle.satisfactionLocked !== 'yes') {
             this.autoInitializeListeners();
+        }
+    },
+
+    /**
+     * Initialize satisfaction locked state (permanent secondary colors)
+     */
+    initializeSatisfactionLockedState(element, circle) {
+        // Force the element to use secondary colors permanently
+        element.setAttribute('data-use-secondary-colors', 'true');
+        element.setAttribute('data-satisfaction-locked', 'true');
+        
+        // Immediately apply secondary colors
+        const secondaryColor = circle.secondaryColors?.[0];
+        const glowElement = element.querySelector('.circle-glow');
+        
+        if (glowElement && secondaryColor) {
+            glowElement.style.backgroundColor = secondaryColor;
+            element.style.setProperty('--circle-color', secondaryColor);
+        }
+        
+        // Add visual indicator class for satisfaction locked state
+        element.classList.add('satisfaction-locked');
+    },
+
+    /**
+     * Create permanent demand emoji lock (for satisfactionLocked circles)
+     */
+    createDemandEmojiLock(element, demandEmoji, circle) {
+        const lockContainer = document.createElement('div');
+        lockContainer.className = 'demand-emoji-lock';
+        
+        // Style the lock container (always visible)
+        lockContainer.style.cssText = `
+            position: absolute;
+            top: -25px;
+            right: -25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            pointer-events: none;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            opacity: 0.9;
+        `;
+        
+        // Create the lock emoji (larger)
+        const lockElement = document.createElement('span');
+        lockElement.textContent = '🔒';
+        lockElement.style.cssText = `
+            font-size: 32px;
+            position: relative;
+            display: inline-block;
+            filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.5));
+        `;
+        
+        // Create the demand emoji (smaller, positioned inside)
+        const demandElement = document.createElement('span');
+        demandElement.textContent = demandEmoji;
+        demandElement.style.cssText = `
+            font-size: 18px;
+            position: absolute;
+            top: 55%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 11;
+        `;
+        
+        lockContainer.appendChild(demandElement);
+        lockContainer.appendChild(lockElement);
+        element.appendChild(lockContainer);
+    },
+
+    /**
+     * Update thought balloon visibility based on angrified state
+     */
+    updateThoughtBalloonAngrifiedState(element, circle) {
+        // Skip if satisfaction locked
+        if (circle.satisfactionLocked === 'yes') return;
+        
+        const thoughtBalloon = element.querySelector('.demand-emoji-thought-balloon');
+        if (thoughtBalloon) {
+            if (circle.angrified === 'yes') {
+                thoughtBalloon.classList.add('angrified');
+            } else {
+                thoughtBalloon.classList.remove('angrified');
+            }
         }
     },
 
     /**
      * Create demand emoji thought balloon with clock-face visibility support
      */
-    createDemandEmojiThoughtBalloon(element, demandEmoji, isRoilMember = false) {
+    createDemandEmojiThoughtBalloon(element, demandEmoji, isRoilMember = false, circle = {}) {
         const thoughtBalloon = document.createElement('div');
         thoughtBalloon.className = 'demand-emoji-thought-balloon';
         
-        // Style the thought balloon container
+        // Add angrified class if needed
+        if (circle.angrified === 'yes') {
+            thoughtBalloon.classList.add('angrified');
+        }
+        
+        // Style the thought balloon container (no inline opacity)
         thoughtBalloon.style.cssText = `
             position: absolute;
             top: -25px;
@@ -232,6 +331,21 @@ export const GlowCircleRenderer = {
             return;
         }
 
+        // Handle satisfaction locked state
+        if (circle.satisfactionLocked === 'yes') {
+            this.initializeSatisfactionLockedState(element, circle);
+            
+            // Update to lock emoji if needed
+            const existingThoughtBalloon = element.querySelector('.demand-emoji-thought-balloon');
+            const existingLock = element.querySelector('.demand-emoji-lock');
+            
+            if (existingThoughtBalloon && !existingLock && circle.demandEmoji) {
+                existingThoughtBalloon.remove();
+                this.createDemandEmojiLock(element, circle.demandEmoji, circle);
+            }
+            return;
+        }
+
         // Check if this element has descent state listening active
         if (element._roilColorStateListener) {
             // For roil members, check current descent state and update accordingly
@@ -256,6 +370,28 @@ export const GlowCircleRenderer = {
             ColorFlowSystem.stop(element);
             if (hasMultipleColors) {
                 ColorFlowSystem.start(element, circle.colors);
+            }
+        }
+
+        // Update thought balloon visibility based on angrified state (skip if satisfaction locked)
+        if (circle.satisfactionLocked !== 'yes') {
+            this.updateThoughtBalloonAngrifiedState(element, circle);
+        }
+
+        // Handle switching between lock and thought balloon
+        const existingThoughtBalloon = element.querySelector('.demand-emoji-thought-balloon');
+        const existingLock = element.querySelector('.demand-emoji-lock');
+        
+        if (circle.demandEmoji && circle.demandEmoji.trim() !== '') {
+            if (circle.satisfactionLocked === 'yes' && existingThoughtBalloon && !existingLock) {
+                // Switch from thought balloon to lock
+                existingThoughtBalloon.remove();
+                this.createDemandEmojiLock(element, circle.demandEmoji, circle);
+            } else if (circle.satisfactionLocked !== 'yes' && existingLock && !existingThoughtBalloon) {
+                // Switch from lock to thought balloon
+                existingLock.remove();
+                this.createDemandEmojiThoughtBalloon(element, circle.demandEmoji, true, circle);
+                this.autoInitializeListeners();
             }
         }
     },
