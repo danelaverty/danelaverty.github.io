@@ -467,6 +467,10 @@ bottom: 0;
     pointer-events: none;
 }
 
+.demand-emoji-thought-balloon.angrified {
+    opacity: 0 !important;
+    }
+
 `;
 
 injectComponentStyles('entity-component', componentStyles);
@@ -538,6 +542,24 @@ const isRoilMember = computed(() => {
     return props.entityType === 'circle' && 
            props.entity.belongsToID && 
            props.dataStore?.getCircle(props.entity.belongsToID)?.roilMode === 'on';
+});
+
+const displayName = computed(() => {
+    // For satisfaction locked circles, show secondary name if available
+    if (props.entityType === 'circle' && 
+        props.entity.satisfactionLocked === 'yes' && 
+        props.entity.secondaryName?.trim()) {
+        return props.entity.secondaryName;
+    }
+    
+    // Otherwise, show regular name
+    return props.entity.name;
+});
+
+const isShowingSecondaryName = computed(() => {
+    return props.entityType === 'circle' && 
+           props.entity.satisfactionLocked === 'yes' && 
+           props.entity.secondaryName?.trim();
 });
 
 // NEW: Beacon color cycling for document reference circles
@@ -849,7 +871,9 @@ return {
         groupCircleStyles,
         shouldShowBeacons,
         beaconAnimationStyles,
-        isRoilMember
+        isRoilMember,
+        displayName,
+        isShowingSecondaryName,
     };
     },
     template: `
@@ -967,8 +991,9 @@ return {
         <!-- Energy indicators for circles -->
         
         <div 
+            v-if="entity.angrified !== 'yes'"
             ref="nameRef"
-            :class="nameClasses"
+            :class="[nameClasses, { 'roil-secondary-name': isShowingSecondaryName }]"
             @click="handleNameClick"
             @blur="handleBlur"
             @keydown="handleNameKeydown"
@@ -978,7 +1003,7 @@ return {
                 filter: shinynessEffects.filter || 'saturate(1.0)'
             }"
         >
-        {{ entity.name }}
+        {{ displayName }}
         <!--span v-if="Object.keys(energyDistance).length > 0" style="color: #888; font-size: 12px;">
             {{ 'E: ' + energyDistance['exciter'] }}
         </span-->

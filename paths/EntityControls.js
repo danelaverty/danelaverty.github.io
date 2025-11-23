@@ -145,58 +145,119 @@ export const EntityControls = {
             });
         };
 
-const shouldShowMButton = computed(() => {
-    if (props.entityType !== 'circle' || !props.viewerId) return false;
-    
-    const selectedCircleIds = dataStore.getSelectedCircles();
-    if (selectedCircleIds.length !== 1) return false;
-    
-    // Get the actual circle object using the ID
-    const selectedCircle = dataStore.getCircle(selectedCircleIds[0]);
-    if (!selectedCircle) return false;
-    
-    return selectedCircle.type === 'group' && selectedCircle.roilMode === 'on';
-});
+        const shouldShowMButton = computed(() => {
+            if (props.entityType !== 'circle' || !props.viewerId) return false;
+            
+            const selectedCircleIds = dataStore.getSelectedCircles();
+            if (selectedCircleIds.length !== 1) return false;
+            
+            // Get the actual circle object using the ID
+            const selectedCircle = dataStore.getCircle(selectedCircleIds[0]);
+            if (!selectedCircle) return false;
+            
+            return selectedCircle.type === 'group' && selectedCircle.roilMode === 'on';
+        });
 
-// Add this handler
-const handleAddMemberClick = () => {
-    // Same document selection logic as other buttons
-    if (props.entityType === 'circle' && props.viewerId) {
-        const documentId = dataStore.getCircleDocumentForViewer(props.viewerId);
-        if (!documentId) {
-            const newDoc = dataStore.createCircleDocument();
-            dataStore.setCircleDocumentForViewer(props.viewerId, newDoc.id);
-        }
-    }
-    emit('add-entity', { entityType: 'roilMember' });
-};
+        // Add this handler
+        const handleAddMemberClick = () => {
+            // Same document selection logic as other buttons
+            if (props.entityType === 'circle' && props.viewerId) {
+                const documentId = dataStore.getCircleDocumentForViewer(props.viewerId);
+                if (!documentId) {
+                    const newDoc = dataStore.createCircleDocument();
+                    dataStore.setCircleDocumentForViewer(props.viewerId, newDoc.id);
+                }
+            }
+            emit('add-entity', { entityType: 'roilMember' });
+        };
 
-// Add visibility logic for "A" button (same as "M" button)
-const shouldShowAButton = computed(() => {
-    if (props.entityType !== 'circle' || !props.viewerId) return false;
-    
-    const selectedCircleIds = dataStore.getSelectedCircles();
-    if (selectedCircleIds.length !== 1) return false;
-    
-    // Get the actual circle object using the ID
-    const selectedCircle = dataStore.getCircle(selectedCircleIds[0]);
-    if (!selectedCircle) return false;
-    
-    return selectedCircle.type === 'group' && selectedCircle.roilMode === 'on';
-});
+        // Add visibility logic for "A" button (same as "M" button)
+        const shouldShowAButton = computed(() => {
+            if (props.entityType !== 'circle' || !props.viewerId) return false;
+            
+            const selectedCircleIds = dataStore.getSelectedCircles();
+            if (selectedCircleIds.length !== 1) return false;
+            
+            // Get the actual circle object using the ID
+            const selectedCircle = dataStore.getCircle(selectedCircleIds[0]);
+            if (!selectedCircle) return false;
+            
+            return selectedCircle.type === 'group' && selectedCircle.roilMode === 'on';
+        });
 
-// Add handler for "A" button
-const handleAddAngryMemberClick = () => {
-    // Same document selection logic as other buttons
-    if (props.entityType === 'circle' && props.viewerId) {
-        const documentId = dataStore.getCircleDocumentForViewer(props.viewerId);
-        if (!documentId) {
-            const newDoc = dataStore.createCircleDocument();
-            dataStore.setCircleDocumentForViewer(props.viewerId, newDoc.id);
-        }
-    }
-    emit('add-entity', { entityType: 'angryMember' });
-};
+        // Add handler for "A" button
+        const handleAddAngryMemberClick = () => {
+            // Same document selection logic as other buttons
+            if (props.entityType === 'circle' && props.viewerId) {
+                const documentId = dataStore.getCircleDocumentForViewer(props.viewerId);
+                if (!documentId) {
+                    const newDoc = dataStore.createCircleDocument();
+                    dataStore.setCircleDocumentForViewer(props.viewerId, newDoc.id);
+                }
+            }
+            emit('add-entity', { entityType: 'angryMember' });
+        };
+
+        // NEW: Check if any selected circles are glow-type roil members
+        const shouldShowArrowButtons = computed(() => {
+            if (props.entityType !== 'circle' || !props.viewerId) return false;
+            
+            const selectedCircleIds = dataStore.getSelectedCircles();
+            if (selectedCircleIds.length === 0) return false;
+            
+            // Check if any selected circle is a glow-type that belongs to a roil group
+            return selectedCircleIds.some(circleId => {
+                const circle = dataStore.getCircle(circleId);
+                if (!circle || circle.type !== 'glow' || !circle.belongsToID) return false;
+                
+                const parentGroup = dataStore.getCircle(circle.belongsToID);
+                return parentGroup && parentGroup.type === 'group' && parentGroup.roilMode === 'on';
+            });
+        });
+
+        // NEW: Handler for making circles angry
+        const handleMakeAngryClick = () => {
+            const selectedCircleIds = dataStore.getSelectedCircles();
+            
+            selectedCircleIds.forEach(circleId => {
+                const circle = dataStore.getCircle(circleId);
+                if (!circle || circle.type !== 'glow' || !circle.belongsToID) return;
+                
+                const parentGroup = dataStore.getCircle(circle.belongsToID);
+                if (!parentGroup || parentGroup.type !== 'group' || parentGroup.roilMode !== 'on') return;
+                
+                // Apply angry properties
+                dataStore.updateCircle(circleId, {
+                    buoyancy: 'buoyant',
+                    angrified: 'yes',
+                    colors: ['hsl(0, 100%, 60%)'],
+                    secondaryColors: ['hsl(0, 100%, 60%)']
+                });
+            });
+        };
+
+        // NEW: Handler for making circles normal
+        const handleMakeNormalClick = () => {
+            const selectedCircleIds = dataStore.getSelectedCircles();
+            
+            selectedCircleIds.forEach(circleId => {
+                const circle = dataStore.getCircle(circleId);
+                if (!circle || circle.type !== 'glow' || !circle.belongsToID) return;
+                
+                const parentGroup = dataStore.getCircle(circle.belongsToID);
+                if (!parentGroup || parentGroup.type !== 'group' || parentGroup.roilMode !== 'on') return;
+                
+                // Apply normal properties (remove buoyancy, set normal colors)
+                const updates = {
+                    buoyancy: 'normal',
+                    angrified: 'no',
+                    colors: ['hsl(0, 100%, 80%)'],
+                    secondaryColors: ['hsl(48, 100%, 80%)']
+                };
+                
+                dataStore.updateCircle(circleId, updates);
+            });
+        };
 
         return {
             shouldShowControls,
@@ -211,6 +272,9 @@ const handleAddAngryMemberClick = () => {
             handleAddMemberClick,
             shouldShowAButton,
             handleAddAngryMemberClick,
+            shouldShowArrowButtons,
+            handleMakeAngryClick,
+            handleMakeNormalClick,
         };
     },
     template: `
@@ -238,6 +302,17 @@ const handleAddAngryMemberClick = () => {
                 class="entity-control-button entity-add-button"
                 @click="handleAddAngryMemberClick"
             >A</button>
+            <!-- NEW: Arrow buttons for making selected roil members angry/normal -->
+            <button 
+                v-if="shouldShowArrowButtons"
+                class="entity-control-button entity-add-button"
+                @click="handleMakeAngryClick"
+            >↑</button>
+            <button 
+                v-if="shouldShowArrowButtons"
+                class="entity-control-button entity-add-button"
+                @click="handleMakeNormalClick"
+            >↓</button>
         </div>
     `
 };

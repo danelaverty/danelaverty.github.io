@@ -115,6 +115,22 @@ export const CYCLE_PROPERTY_CONFIGS = {
     displayIf: { type: 'glow' }
   },
 
+  angrified: {
+    values: {
+      'no': { icon: '😌', label: 'no', description: '', default: true },
+      'yes': { icon: '😡', label: 'yes', description: '' },
+    },
+      displayIf: { type: 'glow' }
+  },
+
+  satisfactionLocked: {
+    values: {
+      'no': { icon: '🔓', label: 'no', description: '', default: true },
+      'yes': { icon: '🔒', label: 'yes', description: '' },
+    },
+      displayIf: { type: 'glow' }
+  },
+
   roilMemberDisplay: {
     values: {
       'normal': { icon: '∴', label: 'Normal', description: '', default: true },

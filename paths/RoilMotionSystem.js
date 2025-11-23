@@ -73,13 +73,19 @@ checkInventoryForEmoji(targetEmoji, viewerId) {
 
 setupEventPoints(circleId, element) {
     if (!this.dataStore) {
-        console.warn('❌ No dataStore for setupEventPoints');
+        console.warn('⌦ No dataStore for setupEventPoints');
         return;
     }
     
     const circleData = this.dataStore.getCircle(circleId);
     if (!circleData) {
-        console.warn(`❌ No circle data found for: ${circleId}`);
+        console.warn(`⌦ No circle data found for: ${circleId}`);
+        return;
+    }
+
+    // Skip event points entirely for satisfaction locked circles
+    if (circleData.satisfactionLocked === 'yes') {
+        console.log(`🔒 Circle ${circleId} is satisfaction locked - skipping event points`);
         return;
     }
 
@@ -94,7 +100,7 @@ setupEventPoints(circleId, element) {
     const viewerId = activeCircle?.viewerId;
     
     if (!viewerId) {
-        console.warn(`❌ No viewerId found for circle ${circleId} - inventory checking will fail`);
+        console.warn(`⌦ No viewerId found for circle ${circleId} - inventory checking will fail`);
     }
     
     // Set up thought bubble event points if circle has demandEmoji
@@ -198,6 +204,13 @@ checkEventPoints(circleId, circle) {
 executeEventAction(circleId, element, point, currentAngle) {
     const action = point.action;
     
+    // Double-check: Skip all event actions for satisfaction locked circles
+    const circleData = this.dataStore?.getCircle(circleId);
+    if (circleData?.satisfactionLocked === 'yes') {
+        console.log(`🔒 Skipping event action for satisfaction locked circle: ${circleId}`);
+        return;
+    }
+    
     // Check if point has an executeIf condition
     if (point.executeIf && typeof point.executeIf === 'function') {
         const shouldExecute = point.executeIf();
@@ -248,6 +261,14 @@ executeEventAction(circleId, element, point, currentAngle) {
 }
 
 createCoinPopEffect(circleElement, thoughtBalloonElement) {
+    const circleId = circleElement.dataset.entityId;
+    const circleData = this.dataStore?.getCircle(circleId);
+    
+    // Skip coin pop effect for angrified OR satisfaction locked circles
+    if (circleData && (circleData.angrified === 'yes' || circleData.satisfactionLocked === 'yes')) {
+        return;
+    }
+    
     // Extract the demand emoji from the thought balloon
     const demandEmojiElement = thoughtBalloonElement.querySelector('span');
     if (!demandEmojiElement) return;
@@ -657,7 +678,7 @@ addCircle(circleId, element, groupBounds = null, groupId = null, viewerWidth = n
         baseZ: 0,
         groupId: groupId,
         viewerWidth: viewerWidth,
-        viewerId: viewerId, // NEW: Store viewerId for inventory checking
+        viewerId: viewerId,
         orbitRadius: 8 + Math.random() * 20 * 2,
         orbitSpeed: 0.008 + Math.random() * 0.015,
         orbitPhase: Math.random() * Math.PI * 2,
@@ -684,7 +705,7 @@ addCircle(circleId, element, groupBounds = null, groupId = null, viewerWidth = n
         timestamp: Date.now()
     });
 
-    // Set up event points for this circle
+    // Set up event points for this circle (will be skipped if satisfaction locked)
     this.setupEventPoints(circleId, element);
 
     if (this.activeCircles.size === 1) {
@@ -959,7 +980,7 @@ addCircle(circleId, element, groupBounds = null, groupId = null, viewerWidth = n
 
         const buoyancyMap = {
             'normal': 0.8,
-            'buoyant': 1.5,
+            'buoyant': 1.8,
             'antibuoyant': 0.3,
         };
 
