@@ -350,6 +350,26 @@ notifyViewLayerColorChange(circleId, useSecondaryColors) {
         
     }
     
+    // NEW: Handle name switching for circles with secondary names
+    const circleData = this.dataStore.getCircle(circleId);
+    if (circleData && circleData.secondaryName && circleData.secondaryName.trim() !== '') {
+        const nameElement = circleElement.querySelector('.entity-name.circle-name');
+        if (nameElement) {
+            // Switch name at the same time as color (300ms into flip)
+            setTimeout(() => {
+                const targetName = useSecondaryColors ? circleData.secondaryName : circleData.name;
+                nameElement.textContent = targetName;
+                
+                // Add a subtle visual indicator that the name has switched
+                if (useSecondaryColors) {
+                    nameElement.classList.add('roil-secondary-name');
+                } else {
+                    nameElement.classList.remove('roil-secondary-name');
+                }
+            }, 300); // Same timing as color change
+        }
+    }
+    
     // Dispatch event for other systems
     const event = new CustomEvent('roil-color-state-change', {
         detail: { circleId, useSecondaryColors, timestamp: Date.now() }
@@ -357,7 +377,6 @@ notifyViewLayerColorChange(circleId, useSecondaryColors) {
     circleElement.dispatchEvent(event);
     
     // Optional ripple effect for 'side' roilAngle
-    const circleData = this.dataStore.getCircle(circleId);
     const group = circleData?.belongsToID ? this.dataStore.getCircle(circleData.belongsToID) : null;
     
     if (group?.roilAngle === 'side') {

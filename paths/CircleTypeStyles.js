@@ -821,4 +821,9 @@ export const circleTypeStyles = `
 .circle-glow-container.roil-secondary-colors {
     filter: drop-shadow(2px 0 4px rgba(0,0,0,0.2));
 }
+
+/* Roil secondary name styling */
+.entity-name.roil-secondary-name {
+    color: #FFD700; /* Golden color to indicate secondary state */
+}
 `;
