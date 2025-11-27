@@ -27,7 +27,7 @@ export const CYCLE_PROPERTY_CONFIGS = {
     values: {
       'receives': { icon: '⚈', label: 'Receives', description: 'Receives connections - Click to cycle to Gives', default: true },
       'gives': { icon: '⚌', label: 'Gives', description: 'Gives connections - Click to cycle to Refuses' },
-      'refuses': { icon: '⚏', label: 'Refuses', description: 'Refuses connections - Click to cycle to Receives' }
+      'refuses': { icon: '⚉', label: 'Refuses', description: 'Refuses connections - Click to cycle to Receives' }
     }
   },
 
@@ -41,8 +41,18 @@ export const CYCLE_PROPERTY_CONFIGS = {
 
   roilMode: {
     values: {
-      'off': { icon: '🌷', label: 'Normal', description: '', default: true },
-      'on': { icon: '🌀', label: 'Roil', description: '' }
+      'off': { 
+        icon: '🌀', 
+        label: 'Normal', 
+        description: '', 
+        default: true,
+        cssStyle: 'opacity: 0.4; filter: saturate(0.2);'
+      },
+      'on': { 
+        icon: '🌀', 
+        label: 'Roil', 
+        description: '' 
+      }
     },
     displayIf: { type: 'group' }
   },
@@ -69,7 +79,7 @@ export const CYCLE_PROPERTY_CONFIGS = {
   roilComposure: {
     values: {
       'retracted': { icon: '✊', label: 'Retracted', description: '', default: true },
-      'splayed': { icon: '🖐️', label: 'Splayed', description: '' },
+      'splayed': { icon: '🖖', label: 'Splayed', description: '' },
     },
     displayIf: { type: 'group', roilMode: 'on' }
   },
@@ -90,6 +100,14 @@ export const CYCLE_PROPERTY_CONFIGS = {
       displayIf: { type: 'group', roilMode: 'on', roilAngle: 'side' }
   },
 
+  showSeismograph: {
+    values: {
+      'no': { icon: '📈', label: 'no', description: '', default: true, cssStyle: 'opacity: 0.4; filter: saturate(0.2);'}, 
+      'yes': { icon: '📈', label: 'yes', description: '' },
+    },
+      displayIf: { type: 'group', roilMode: 'on', }
+  },
+
   secondaryColorDescent: {
     values: {
       'stayPrimary': { icon: '1', label: 'No Shift', description: '', default: true },
@@ -100,8 +118,8 @@ export const CYCLE_PROPERTY_CONFIGS = {
 
   checkInventory: {
     values: {
-      'no': { icon: '👍', label: 'no', description: '', default: true },
-      'yes': { icon: '🍖', label: 'yes', description: '' },
+      'no': { icon: '👎', label: 'no', description: '', default: true },
+      'yes': { icon: '👍', label: 'yes', description: '' },
     },
       displayIf: { type: 'group', roilMode: 'on', }
   },
@@ -181,7 +199,7 @@ export const getPropertyConfig = (propertyName) => {
   return CYCLE_PROPERTY_CONFIGS[propertyName] || {};
 };
 
-// New function to get the values configuration for a specific property value
+// Function to get the values configuration for a specific property value
 export const getPropertyValueConfig = (propertyName, value) => {
   const config = CYCLE_PROPERTY_CONFIGS[propertyName];
   if (!config) return {};
@@ -190,7 +208,13 @@ export const getPropertyValueConfig = (propertyName, value) => {
   return values[value] || {};
 };
 
-// NEW: Function to check if a property should be visible based on circle properties
+// NEW: Function to get CSS style for a specific property value
+export const getPropertyValueCssStyle = (propertyName, value) => {
+  const valueConfig = getPropertyValueConfig(propertyName, value);
+  return valueConfig.cssStyle || '';
+};
+
+// Function to check if a property should be visible based on circle properties
 export const isPropertyVisibleForCircle = (propertyName, circle) => {
   const config = CYCLE_PROPERTY_CONFIGS[propertyName];
   if (!config) return false;
@@ -219,7 +243,7 @@ export const isPropertyVisibleForCircle = (propertyName, circle) => {
   return true;
 };
 
-// NEW: Function to check if a property should be visible for multiple circles
+// Function to check if a property should be visible for multiple circles
 export const isPropertyVisibleForCircles = (propertyName, circles) => {
   if (!circles || circles.length === 0) {
     return false;
@@ -229,7 +253,7 @@ export const isPropertyVisibleForCircles = (propertyName, circles) => {
   return circles.every(circle => isPropertyVisibleForCircle(propertyName, circle));
 };
 
-// NEW: Function to get all properties visible for given circles
+// Function to get all properties visible for given circles
 export const getVisiblePropertiesForCircles = (circles) => {
   return Object.keys(CYCLE_PROPERTY_CONFIGS).filter(propertyName => 
     isPropertyVisibleForCircles(propertyName, circles)

@@ -1,6 +1,8 @@
-// entityStore.js - Enhanced with dynamic cycleable property defaults
+// entityStore.js - Enhanced with dynamic cycleable property defaults and mood value support
 import { reactive } from './vue-composition-api.js';
 import { getPropertyDefault, cycleProperty, validatePropertyValue, CYCLE_PROPERTY_CONFIGS } from './CBCyclePropertyConfigs.js';
+import { getMoodValueForColor } from './colorFamilies.js';
+import { enhanceEntityStoreWithMoodSystem } from './MoodValueSystem.js';
 
 let entityStoreInstance = null;
 
@@ -10,6 +12,8 @@ const BASE_CIRCLE_DEFAULTS = {
     secondaryColors: ['#B3B3B3'],
     energyTypes: [],
     secondaryName: '',
+    moodValue: undefined,        // NEW: Mood value based on color
+    secondaryMoodValue: undefined, // NEW: Mood value based on secondary color
     referenceID: null,
     documentReferenceID: null, // NEW: For document reference circles
     belongsToID: null,
@@ -62,38 +66,43 @@ const getSquareDefault = (key) => {
 
 // Helper to ensure circle has all required properties with defaults
 const ensureCircleDefaults = (circle) => {
-    // Dynamically ensure all properties from CIRCLE_DEFAULTS exist with proper values
-    Object.keys(CIRCLE_DEFAULTS).forEach(key => {
-        const defaultValue = CIRCLE_DEFAULTS[key];
-        const resolvedDefault = typeof defaultValue === 'function' ? defaultValue() : defaultValue;
-        
-        // Special handling for emoji based on type
-        if (key === 'emoji') {
-            if (circle.emoji === undefined) {
-                circle.emoji = circle.type === 'emoji' && !circle.emoji 
-                    ? getCircleDefault('emojiForEmojiType') 
-                    : resolvedDefault;
+        // Dynamically ensure all properties from CIRCLE_DEFAULTS exist with proper values
+        Object.keys(CIRCLE_DEFAULTS).forEach(key => {
+            const defaultValue = CIRCLE_DEFAULTS[key];
+            const resolvedDefault = typeof defaultValue === 'function' ? defaultValue() : defaultValue;
+            
+            // Special handling for emoji based on type
+            if (key === 'emoji') {
+                if (circle.emoji === undefined) {
+                    circle.emoji = circle.type === 'emoji' && !circle.emoji 
+                        ? getCircleDefault('emojiForEmojiType') 
+                        : resolvedDefault;
+                }
+                return;
             }
-            return;
-        }
-        
-        // Skip emojiForEmojiType as it's just a default constant, not a stored property
-        if (key === 'emojiForEmojiType') {
-            return;
-        }
-        
-        // For cycleable properties, validate the value
-        if (validatePropertyValue(key, circle[key])) {
-            // Value is valid, keep it
-            return;
-        }
-        
-        // For all other properties, set if undefined or invalid
-        if (circle[key] === undefined) {
-            circle[key] = Array.isArray(resolvedDefault) ? [...resolvedDefault] : resolvedDefault;
-        }
-    });
-};
+            
+            // Skip emojiForEmojiType as it's just a default constant, not a stored property
+            if (key === 'emojiForEmojiType') {
+                return;
+            }
+            
+            // Skip mood values - they're calculated by the mood system
+            if (key === 'moodValue' || key === 'secondaryMoodValue') {
+                return;
+            }
+            
+            // For cycleable properties, validate the value
+            if (validatePropertyValue(key, circle[key])) {
+                // Value is valid, keep it
+                return;
+            }
+            
+            // For all other properties, set if undefined or invalid
+            if (circle[key] === undefined) {
+                circle[key] = Array.isArray(resolvedDefault) ? [...resolvedDefault] : resolvedDefault;
+            }
+        });
+    };
 
 // Helper to ensure square has all required properties with defaults
 const ensureSquareDefaults = (square) => {
@@ -124,6 +133,8 @@ function createEntityStore() {
         nextCircleId: 1,
         nextSquareId: 1
     });
+
+    let moodSystem = null;
 
     // NEW: Debounced activation check queue
     const activationCheckQueue = new Map(); // circleId -> true
@@ -210,7 +221,7 @@ function createEntityStore() {
     };
 
     // Generic entity operations
-    const createEntity = (entityType, documentId, containerWidth, containerHeight, viewerWidths = [], documentStore = null) => {
+const createEntity = (entityType, documentId, containerWidth, containerHeight, viewerWidths = [], documentStore = null) => {
         const id = `${entityType}_${entityType === 'circle' ? data.nextCircleId++ : data.nextSquareId++}`;
         
         let position;
@@ -220,7 +231,7 @@ function createEntityStore() {
         } else {
             const actualHeight = containerHeight || (window.innerHeight - 120);
             position = generateRandomPosition(containerWidth - 40, actualHeight);
-	    position.x -= containerWidth / 2;
+            position.x -= containerWidth / 2;
         }
 
         const entity = {
@@ -257,6 +268,8 @@ function createEntityStore() {
             if (entity.type === 'emoji') {
                 entity.emoji = getCircleDefault('emojiForEmojiType');
             }
+            
+            // Mood values will be calculated by the mood system after creation
         }
 
         // Add square-specific properties
@@ -271,6 +284,12 @@ function createEntityStore() {
 
         const store = entityType === 'circle' ? data.circles : data.squares;
         store.set(id, entity);
+        
+        // Notify mood system of new circle creation
+        if (entityType === 'circle' && moodSystem) {
+            moodSystem.onCircleCreated(id);
+        }
+        
         return entity;
     };
 
@@ -288,18 +307,21 @@ function createEntityStore() {
         return Array.from(data.circles.values()).filter(circle => circle.belongsToID === groupId);
     };
 
-    // UPDATED: Enhanced with member activation logic and callback parameter
-    const setCircleBelongsTo = (circleId, groupId, updateCallback = null) => {
+const setCircleBelongsTo = (circleId, groupId, updateCallback = null) => {
         const circle = data.circles.get(circleId);
         if (circle) {
+            const oldGroupId = circle.belongsToID;
             circle.belongsToID = groupId;
             
-            // NEW: Check member activation for the circle that joined the group
+            // Check member activation
             checkAndUpdateMemberActivation(circleId, updateCallback);
-            
-            // NEW: Check member activation for the group that gained a member
             if (groupId) {
                 checkAndUpdateMemberActivation(groupId, updateCallback);
+            }
+            
+            // Notify mood system
+            if (moodSystem) {
+                moodSystem.onCircleGroupMembershipChanged(circleId, oldGroupId, groupId);
             }
             
             return circle;
@@ -307,19 +329,21 @@ function createEntityStore() {
         return null;
     };
 
-    // UPDATED: Enhanced with member activation logic and callback parameter
-    const clearCircleBelongsTo = (circleId, updateCallback = null) => {
+const clearCircleBelongsTo = (circleId, updateCallback = null) => {
         const circle = data.circles.get(circleId);
         if (circle) {
             const formerGroupId = circle.belongsToID;
             circle.belongsToID = null;
             
-            // NEW: Check member activation for the circle that left the group
+            // Check member activation
             checkAndUpdateMemberActivation(circleId, updateCallback);
-            
-            // NEW: Check member activation for the group that lost a member
             if (formerGroupId) {
                 checkAndUpdateMemberActivation(formerGroupId, updateCallback);
+            }
+            
+            // Notify mood system
+            if (moodSystem) {
+                moodSystem.onCircleGroupMembershipChanged(circleId, formerGroupId, null);
             }
             
             return circle;
@@ -350,89 +374,121 @@ function createEntityStore() {
     const cycleCircleShinynessReceiveMode = (id) => cycleCircleProperty(id, 'shinynessReceiveMode');
     const cycleCircleConnectible = (id) => cycleCircleProperty(id, 'connectible');
 
-    const updateEntity = (entityType, id, updates) => {
+const updateEntity = (entityType, id, updates) => {
         const store = entityType === 'circle' ? data.circles : data.squares;
         const entity = store.get(id);
-        if (entity) {
-            // NEW: Prevent name updates for document reference circles
-            if (entityType === 'circle' && entity.documentReferenceID !== null && updates.name !== undefined) {
-                // Don't allow direct name updates for document reference circles
-                // Name should only be updated via document name changes
-                const filteredUpdates = { ...updates };
-                delete filteredUpdates.name;
-                Object.assign(entity, filteredUpdates);
-            } else {
-                Object.assign(entity, updates);
-            }
-            
-            // For circles, ensure all properties have defaults
-            if (entityType === 'circle') {
-                // Ensure all required properties exist with defaults
-                ensureCircleDefaults(entity);
-                
-                // Handle emoji when type changes to/from 'emoji'
-                if (updates.type === 'emoji' && !entity.emoji) {
-                    entity.emoji = getCircleDefault('emojiForEmojiType');
-                } else if (updates.type && updates.type !== 'emoji') {
-                    // Don't clear emoji when changing away from emoji type - keep it for future use
-                }
+        if (!entity) return null;
 
-                // NEW: Only cascade to circle references (referenceID), not document references (documentReferenceID)
-                if (entityType === 'circle' && entity.referenceID === null && entity.documentReferenceID === null) {
-                    // This is an original circle (not a reference), cascade changes to its circle references
-                    const referencedCircles = getReferencedCircles(id);
-
-                    if (referencedCircles.length > 0) {
-                        referencedCircles.forEach(refCircle => {
-                            if (updates.name !== undefined) {
-                                refCircle.name = entity.name;
-                            }
-
-                            if (updates.colors !== undefined) {
-                                refCircle.colors = [...entity.colors];
-                            }
-
-                            if (updates.secondaryColors !== undefined) {
-                                refCircle.secondaryColors = [...entity.secondaryColors];
-                            }
-
-                            if (updates.type !== undefined) {
-                                refCircle.type = entity.type;
-                                // Handle emoji for type changes
-                                if (entity.type === 'emoji' && !refCircle.emoji) {
-                                    refCircle.emoji = entity.emoji || getCircleDefault('emojiForEmojiType');
-                                }
-                            }
-
-                            if (updates.emoji !== undefined) {
-                                refCircle.emoji = entity.emoji;
-                            }
-
-                            if (updates.energyTypes !== undefined) {
-                                refCircle.energyTypes = [...entity.energyTypes];
-                            }
-
-                            // Handle all cycleable properties
-                            Object.keys(CYCLE_PROPERTY_CONFIGS).forEach(prop => {
-                                if (updates[prop] !== undefined) {
-                                    refCircle[prop] = entity[prop];
-                                }
-                            });
-
-                            if (updates.collapsed !== undefined) {
-                                refCircle.collapsed = entity.collapsed;
-                            }
-
-                            // Ensure all referenced circles have required properties with defaults
-                            ensureCircleDefaults(refCircle);
-                        });
-                    }
-                }
-            }
-            
+        if (entityType !== 'circle') {
+            Object.assign(entity, updates);
             return entity;
         }
-        return null;
+
+        // For circles, track what changed for mood system notification
+        const oldColors = entity.colors ? [...entity.colors] : undefined;
+        const oldSecondaryColors = entity.secondaryColors ? [...entity.secondaryColors] : undefined;
+        const oldType = entity.type;
+        const oldBelongsToID = entity.belongsToID;
+
+        // Handle document reference circle name protection
+        if (entity.documentReferenceID !== null && updates.name !== undefined) {
+            const filteredUpdates = { ...updates };
+            delete filteredUpdates.name;
+            Object.assign(entity, filteredUpdates);
+        } else {
+            Object.assign(entity, updates);
+        }
+
+        // Ensure all required properties exist with defaults
+        ensureCircleDefaults(entity);
+
+        // Handle emoji when type changes to/from 'emoji'
+        if (updates.type === 'emoji' && !entity.emoji) {
+            entity.emoji = getCircleDefault('emojiForEmojiType');
+        }
+
+        // Cascade to circle references (not document references)
+        if (entity.referenceID === null && entity.documentReferenceID === null) {
+            const referencedCircles = getReferencedCircles(id);
+
+            if (referencedCircles.length > 0) {
+                referencedCircles.forEach(refCircle => {
+                    if (updates.name !== undefined) {
+                        refCircle.name = entity.name;
+                    }
+
+                    if (updates.colors !== undefined) {
+                        refCircle.colors = [...entity.colors];
+                    }
+
+                    if (updates.secondaryColors !== undefined) {
+                        refCircle.secondaryColors = [...entity.secondaryColors];
+                    }
+
+                    if (updates.type !== undefined) {
+                        refCircle.type = entity.type;
+                        if (entity.type === 'emoji' && !refCircle.emoji) {
+                            refCircle.emoji = entity.emoji || getCircleDefault('emojiForEmojiType');
+                        }
+                    }
+
+                    if (updates.emoji !== undefined) {
+                        refCircle.emoji = entity.emoji;
+                    }
+
+                    if (updates.energyTypes !== undefined) {
+                        refCircle.energyTypes = [...entity.energyTypes];
+                    }
+
+                    // Handle all cycleable properties
+                    Object.keys(CYCLE_PROPERTY_CONFIGS).forEach(prop => {
+                        if (updates[prop] !== undefined) {
+                            refCircle[prop] = entity[prop];
+                        }
+                    });
+
+                    if (updates.collapsed !== undefined) {
+                        refCircle.collapsed = entity.collapsed;
+                    }
+
+                    ensureCircleDefaults(refCircle);
+                });
+
+                // Notify mood system about referenced circle updates
+                if (moodSystem) {
+                    referencedCircles.forEach(refCircle => {
+                        if (updates.colors !== undefined) {
+                            moodSystem.onCircleColorsChanged(refCircle.id);
+                        }
+                        if (updates.type !== undefined) {
+                            moodSystem.onCircleTypeChanged(refCircle.id);
+                        }
+                    });
+                }
+            }
+        }
+
+        // Notify mood system of relevant changes
+        if (moodSystem) {
+            const colorsChanged = updates.colors !== undefined && 
+                JSON.stringify(updates.colors) !== JSON.stringify(oldColors);
+            const secondaryColorsChanged = updates.secondaryColors !== undefined && 
+                JSON.stringify(updates.secondaryColors) !== JSON.stringify(oldSecondaryColors);
+            const typeChanged = updates.type !== undefined && updates.type !== oldType;
+            const membershipChanged = updates.belongsToID !== undefined && updates.belongsToID !== oldBelongsToID;
+
+            if (colorsChanged || secondaryColorsChanged) {
+                moodSystem.onCircleColorsChanged(id);
+            }
+            if (typeChanged) {
+                moodSystem.onCircleTypeChanged(id);
+            }
+            if (membershipChanged) {
+                moodSystem.onCircleGroupMembershipChanged(id, oldBelongsToID, updates.belongsToID);
+            }
+        }
+
+        return entity;
     };
 
     const deleteEntity = (entityType, id) => {
@@ -456,12 +512,11 @@ function createEntityStore() {
     const updateCircle = (id, updates) => updateEntity('circle', id, updates);
     const updateSquare = (id, updates) => updateEntity('square', id, updates);
     
-    // UPDATED: Enhanced with member activation logic
-    const deleteCircle = (id, updateCallback = null) => {
+const deleteCircle = (id, updateCallback = null) => {
         const circle = getCircle(id);
         if (!circle) return false;
         
-        // NEW: Track group membership before deletion for activation logic
+        // Track info for mood system and activation logic
         const formerGroupId = circle.belongsToID;
         const wasGroup = circle.type === 'group';
         let formerMembers = [];
@@ -470,34 +525,33 @@ function createEntityStore() {
             formerMembers = getCirclesBelongingToGroup(id);
         }
         
-        // If this is an original circle (not a reference), convert all its references to normal circles
+        // Convert references to normal circles
         if (circle.referenceID === null) {
             const referencedCircles = getReferencedCircles(id);
             referencedCircles.forEach(refCircle => {
-                // Convert referenced circle to normal circle by clearing its referenceID
                 refCircle.referenceID = null;
             });
         }
         
-        // Now delete the circle
+        // Delete the circle
         const deleted = data.circles.delete(id);
         
         if (deleted) {
-            // NEW: Handle member activation after deletion
-            
-            // If deleted circle was a member of a group, check the group's activation
+            // Handle member activation after deletion
             if (formerGroupId) {
                 checkAndUpdateMemberActivation(formerGroupId, updateCallback);
             }
             
-            // If deleted circle was a group, check all former members' activation
             if (wasGroup && formerMembers.length > 0) {
                 formerMembers.forEach(member => {
-                    // Clear the belongsToID since the group is gone
                     member.belongsToID = null;
-                    // Check member activation
                     checkAndUpdateMemberActivation(member.id, updateCallback);
                 });
+            }
+            
+            // Notify mood system
+            if (moodSystem) {
+                moodSystem.onCircleDeleted(id, !!formerGroupId, wasGroup);
             }
         }
         
@@ -562,11 +616,11 @@ function createEntityStore() {
         nextSquareId: data.nextSquareId
     });
 
-    const deserialize = (savedData) => {
+const deserialize = (savedData) => {
         if (savedData.circles) {
             data.circles = new Map(savedData.circles);
             
-            // Ensure all circles have the required properties with defaults (now includes all cycleable properties)
+            // Ensure all circles have required properties with defaults
             data.circles.forEach((circle, id) => {
                 ensureCircleDefaults(circle);
             });
@@ -574,16 +628,21 @@ function createEntityStore() {
         if (savedData.squares) {
             data.squares = new Map(savedData.squares);
             
-            // Ensure all squares have the required properties with defaults
+            // Ensure all squares have required properties with defaults
             data.squares.forEach((square, id) => {
                 ensureSquareDefaults(square);
             });
         }
         if (savedData.nextCircleId) data.nextCircleId = savedData.nextCircleId;
         if (savedData.nextSquareId) data.nextSquareId = savedData.nextSquareId;
+
+        // After deserializing, recalculate all mood values
+        if (moodSystem) {
+            moodSystem.recalculateNow();
+        }
     };
 
-    return {
+const entityStore = {
         data,
         // Generic methods
         createEntity,
@@ -607,30 +666,35 @@ function createEntityStore() {
         // Reference ID utilities
         isReferencedCircle,
         getReferencedCircles,
-        // NEW: Document reference utilities
+        // Document reference utilities
         isDocumentReferenceCircle,
         getDocumentReferenceCircles,
-        // Group collapsed utilities
+        // Group utilities
         toggleGroupCollapsed,
-        // Activation, activationTriggers, and connectible cycling utilities
+        getCirclesBelongingToGroup,
+        setCircleBelongsTo,
+        clearCircleBelongsTo,
+        // Activation utilities
         cycleCircleActivation,
         cycleCircleActivationTriggers,
         cycleCircleShinynessReceiveMode,
         cycleCircleConnectible,
+        checkAndUpdateMemberActivation,
+        cycleCircleProperty,
         // Utilities
         generateRandomPosition,
         // Serialization
         serialize,
-        deserialize,
-
-        getCirclesBelongingToGroup,
-        setCircleBelongsTo,
-        clearCircleBelongsTo,
-        
-        // NEW: Expose member activation function for potential external use
-        checkAndUpdateMemberActivation,
-        cycleCircleProperty,
+        deserialize
     };
+
+    // Initialize and enhance entity store with mood system
+    moodSystem = enhanceEntityStoreWithMoodSystem(entityStore);
+
+    // Start the mood system
+    moodSystem.start();
+
+    return entityStore;
 }
 
 export function useEntityStore() {

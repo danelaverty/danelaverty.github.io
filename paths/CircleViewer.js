@@ -13,7 +13,9 @@ import { CellularAutomatonEngine } from './CellularAutomatonEngine.js';
 import { ShinynessEffectsTranslator } from './ShinynessEffectsTranslator.js';
 import { CAStepControl } from './CAStepControl.js';
 import { calculateGroupShapeScale } from './groupScaleCalculator.js';
-import { roilMotionSystem } from './RoilMotionSystem.js';
+import { roilMotionSystem } from './RoilMotionCore.js';
+import { SeismographComponent } from './SeismographComponent.js';
+import { GroupCircleRenderer } from './CRGroupCircleRenderer.js';
 import './CircleViewerStyles.js'; // Import styles
 
 export const CircleViewer = {
@@ -524,6 +526,42 @@ watch(
         });
     },
     { deep: true, immediate: true }
+);
+
+// Roil system property watcher with debugging
+watch(
+    () => allCircles.value.reduce((map, c) => {
+        if (c.type === 'group' && c.roilMode === 'on') {
+            map.set(c.id, { 
+                secondaryColorDescent: c.secondaryColorDescent, 
+                checkInventory: c.checkInventory 
+            });
+        }
+        return map;
+    }, new Map()),
+    (newMap, oldMap) => {
+        newMap.forEach((props, groupId) => {
+            const oldProps = oldMap?.get(groupId);
+            if (oldProps && (props.secondaryColorDescent !== oldProps.secondaryColorDescent || 
+                           props.checkInventory !== oldProps.checkInventory)) {
+                
+                // Refresh event points for group members
+                const groupMembers = dataStore.getCirclesBelongingToGroup(groupId);
+                
+                groupMembers.forEach(member => {
+                    const element = document.querySelector(`[data-entity-id="${member.id}"]`);
+                    if (element && roilMotionSystem.activeCircles.has(member.id)) {
+                        
+                        // IMPORTANT: Clear existing event points first
+                        roilMotionSystem.eventPoints.delete(member.id);
+                        
+                        // Then re-setup with new properties
+                        roilMotionSystem.setupEventPoints(member.id, element);
+                    }
+                });
+            }
+        });
+    }
 );
 
         onMounted(() => {

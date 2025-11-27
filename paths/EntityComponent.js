@@ -1,5 +1,5 @@
 // EntityComponent.js - Main entity component shell with template (UPDATED: Add group shape scaling and collapsed group member count display)
-import { computed, ref, watch, onUnmounted } from './vue-composition-api.js';
+import { computed, ref, watch, onMounted, onUnmounted, nextTick } from './vue-composition-api.js';
 import { injectComponentStyles } from './styleUtils.js';
 import { EmojiRenderer } from './EmojiRenderer.js';
 import { EnergyIndicators } from './EnergyIndicators.js';
@@ -462,6 +462,14 @@ bottom: 0;
         opacity: 1;
     }
 
+.seismograph-chart {
+    display: none;
+}
+
+.entity-container.show-seismograph .seismograph-chart {
+    display: block !important;
+}
+
 .entity-container.hidden-for-solo {
     opacity: 0 !important;
     pointer-events: none;
@@ -469,6 +477,53 @@ bottom: 0;
 
 .demand-emoji-thought-balloon.angrified {
     opacity: 0 !important;
+    }
+
+.entity-mood-value {
+        color: #AAA;
+        font-size: 10px;
+        text-align: center;
+        width: 120px;
+        padding: 2px 4px;
+        border-radius: 3px;
+        top: 130%;
+        background-color: transparent;
+        z-index: 10;
+        text-shadow: 1px 1px 1px black;
+        position: absolute;
+        pointer-events: none;
+    }
+
+.entity-z-position {
+        color: #AAA;
+        font-family: monospace;
+        font-size: 9px;
+        text-align: center;
+        width: 120px;
+        padding: 2px 4px;
+        border-radius: 3px;
+        top: 160%;
+        background-color: transparent;
+        z-index: 10;
+        text-shadow: 1px 1px 1px black;
+        position: absolute;
+        pointer-events: none;
+    }
+
+.entity-group-mood-value {
+        color: #AAA;
+        font-family: monospace;
+        font-size: 9px;
+        text-align: center;
+        width: 120px;
+        padding: 2px 4px;
+        border-radius: 3px;
+        top: 190%;
+        background-color: transparent;
+        z-index: 10;
+        text-shadow: 1px 1px 1px black;
+        position: absolute;
+        pointer-events: none;
     }
 
 `;
@@ -537,12 +592,81 @@ export const EntityComponent = {
         const interactions = useEntityInteractions(props, emit, state);
 
         const shapeRef = rendering.shapeRef;
+        const useSecondaryColors = ref(false);
 
 const isRoilMember = computed(() => {
     return props.entityType === 'circle' && 
            props.entity.belongsToID && 
            props.dataStore?.getCircle(props.entity.belongsToID)?.roilMode === 'on';
 });
+
+const displayGroupMoodValue = ref(undefined);
+
+const updateGroupMoodValue = () => {
+    if (props.entityType === 'circle' && props.entity.type === 'group' && props.dataStore?.moodSystem) {
+        try {
+            const newMoodValue = props.dataStore.moodSystem.calculateGroupMoodValue(props.entity.id);
+            if (typeof newMoodValue === 'number' && !isNaN(newMoodValue)) {
+                displayGroupMoodValue.value = newMoodValue;
+            } else {
+                displayGroupMoodValue.value = undefined;
+            }
+        } catch (error) {
+            console.warn(`Error calculating group mood value for ${props.entity.id}:`, error);
+            displayGroupMoodValue.value = undefined;
+        }
+    } else {
+        displayGroupMoodValue.value = undefined;
+    }
+};
+
+const currentZPosition = ref(0);
+
+const displayZPosition = computed(() => {
+    return currentZPosition.value;
+});
+
+const groupMoodValue = ref(undefined);
+const displayMoodValue = computed(() => {
+    if (props.entityType !== 'circle') return undefined;
+    
+    // For groups, use the polling-based ref value
+    if (props.entity.type === 'group') {
+        return groupMoodValue.value;
+    }
+    
+    // For individual circles, keep the existing computed logic
+    // For satisfaction locked circles with secondary colors, use secondaryMoodValue
+    if (props.entity.satisfactionLocked === 'yes' && 
+        props.entity.secondaryColors?.length > 0) {
+        return props.entity.secondaryMoodValue;
+    }
+    
+    // For roil members using secondary colors, use secondaryMoodValue
+    if (isRoilMember.value && useSecondaryColors.value) {
+        return props.entity.secondaryMoodValue;
+    }
+    
+    // Otherwise use primary mood value
+    return props.entity.moodValue;
+});
+
+const initializeGroupMoodValue = () => {
+    if (props.entityType === 'circle' && props.entity.type === 'group') {
+        // Calculate initial mood value using the mood system if available
+        if (props.dataStore?.moodSystem) {
+            try {
+                const initialValue = props.dataStore.moodSystem.calculateGroupMoodValue(props.entity.id);
+                groupMoodValue.value = typeof initialValue === 'number' && !isNaN(initialValue) ? initialValue : undefined;
+            } catch (error) {
+                console.warn(`Error calculating initial group mood value for ${props.entity.id}:`, error);
+                groupMoodValue.value = undefined;
+            }
+        } else {
+            groupMoodValue.value = undefined;
+        }
+    }
+};
 
 const displayName = computed(() => {
     // For satisfaction locked circles, show secondary name if available
@@ -668,13 +792,102 @@ watch(beaconColors, (newColors) => {
     injectBeaconKeyframes(newColors);
 }, { immediate: true });
 
-// Cleanup keyframes on unmount
-onUnmounted(() => {
-    if (beaconKeyframeId.value) {
-        const styleElement = document.getElementById(beaconKeyframeId.value);
-        if (styleElement) {
-            styleElement.remove();
+onMounted(async () => {
+    // Wait for the next tick to ensure DOM is ready
+    await nextTick();
+    
+    // Find the element by data-entity-id instead of using the ref
+    const element = document.querySelector(`[data-entity-id="${props.entity.id}"]`);
+    
+    if (!element) {
+        return;
+    }
+    
+    // Initialize group mood value for groups
+    initializeGroupMoodValue();
+    
+    // NEW: Set up group mood value listener for groups only
+    let moodSystemListener = null;
+    if (props.entityType === 'circle' && props.entity.type === 'group' && props.dataStore?.moodSystem) {
+        moodSystemListener = (details) => {
+            // Update group mood value when mood system emits changes
+            try {
+                const newMoodValue = props.dataStore.moodSystem.calculateGroupMoodValue(props.entity.id);
+                if (typeof newMoodValue === 'number' && !isNaN(newMoodValue)) {
+                    groupMoodValue.value = newMoodValue;
+                } else {
+                    groupMoodValue.value = undefined;
+                }
+            } catch (error) {
+                console.warn(`Error updating group mood value for ${props.entity.id}:`, error);
+                groupMoodValue.value = undefined;
+            }
+        };
+        
+        // Subscribe to mood system updates
+        props.dataStore.moodSystem.addListener(moodSystemListener);
+    }
+    
+    // EXISTING CODE: Listen for event-point-crossed events which handle color flipping
+    const handleEventPointCrossed = (event) => {
+        const { action } = event.detail;
+        if (action.type === 'flipToSecondary') {
+            useSecondaryColors.value = true;
+        } else if (action.type === 'flipToPrimary') {
+            useSecondaryColors.value = false;
         }
+    };
+    
+    element.addEventListener('event-point-crossed', handleEventPointCrossed);
+    
+    const handleRoilColorFlip = (event) => {
+        const { useSecondary } = event.detail;
+        useSecondaryColors.value = useSecondary;
+    };
+    
+    element.addEventListener('roil-color-flip', handleRoilColorFlip);
+    
+    // Check initial state from DOM attribute
+    const checkInitialState = () => {
+        useSecondaryColors.value = element.hasAttribute('data-use-secondary-colors');
+    };
+    
+    // Check initial state and set up periodic checking as fallback
+    checkInitialState();
+    const stateCheckInterval = setInterval(checkInitialState, 1000);
+    
+    // Store cleanup functions for onUnmounted to access
+    window._entityCleanup = window._entityCleanup || {};
+    window._entityCleanup[props.entity.id] = () => {
+        element.removeEventListener('event-point-crossed', handleEventPointCrossed);
+        element.removeEventListener('roil-color-flip', handleRoilColorFlip);
+        clearInterval(stateCheckInterval);
+        
+        if (groupMoodInterval) {
+            clearInterval(groupMoodInterval);
+        }
+        
+        // Clean up mood system listener
+        if (moodSystemListener && props.dataStore?.moodSystem) {
+            props.dataStore.moodSystem.removeListener(moodSystemListener);
+        }
+    };
+
+    let groupMoodInterval = null;
+
+    // Set up periodic updates for group mood value
+    if (props.entityType === 'circle' && props.entity.type === 'group') {
+        groupMoodInterval = setInterval(updateGroupMoodValue, 1000); // Same interval as z-position
+        updateGroupMoodValue(); // Initial update
+    }
+
+});
+
+// Register onUnmounted outside the async function
+onUnmounted(() => {
+    if (window._entityCleanup && window._entityCleanup[props.entity.id]) {
+        window._entityCleanup[props.entity.id]();
+        delete window._entityCleanup[props.entity.id];
     }
 });
 
@@ -874,6 +1087,9 @@ return {
         isRoilMember,
         displayName,
         isShowingSecondaryName,
+        displayMoodValue,
+        displayGroupMoodValue,
+        updateGroupMoodValue,
     };
     },
     template: `
@@ -896,6 +1112,7 @@ return {
             'is-roil': entity.roilMode === 'on',
             'roil-angle-side': entity.roilAngle === 'side',
             'awareness-line-show': entity.awarenessLine === 'show',
+            'show-seismograph': entity.showSeismograph === 'yes',
             'hidden-for-solo': isHiddenForSolo,
         }"
         :data-entity-id="entity.id"
@@ -1012,6 +1229,18 @@ return {
             :energyTypes="circleEnergyTypes"
         /-->
         </div>
+<!--div 
+            v-if="entityType === 'circle' && displayMoodValue !== undefined && entity.angrified !== 'yes'"
+            class="entity-mood-value"
+        >
+            {{ displayMoodValue.toFixed(2) }}
+        </div>
+<div 
+            v-if="entityType === 'circle' && entity.type === 'group' && displayGroupMoodValue !== undefined"
+            class="entity-group-mood-value"
+        >
+            {{ displayGroupMoodValue.toFixed(2) }}
+        </div-->
     </div>
 `
 };

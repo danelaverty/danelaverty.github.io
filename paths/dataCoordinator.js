@@ -1,4 +1,4 @@
-// dataCoordinator.js - Enhanced with auto-creation of roil members
+// dataCoordinator.js - Enhanced with auto-creation of roil members and MoodValueSystem integration
 import { useEntityStore } from './entityStore.js';
 import { useDocumentStore } from './documentStore.js';
 import { useUIStore } from './uiStore.js';
@@ -125,14 +125,17 @@ function createDataCoordinator() {
         };
     };
 
+    // UPDATED: Enhanced updateCircle - no manual mood handling needed
     const updateCircle = (id, updates) => {
         const result = entityStore.updateCircle(id, updates);
-        saveToStorage();
-        triggerAutomatonIfActive();
+        if (result) {
+            saveToStorage();
+            triggerAutomatonIfActive();
+        }
         return result;
     };
 
-    // NEW: Helper function to create roil members for empty groups
+    // UPDATED: Simplified createRoilMembersIfNeeded - mood system handles everything
     const createRoilMembersIfNeeded = (groupId, newRoilMode) => {
         // Only create members when switching TO roil mode
         if (newRoilMode !== 'on') return;
@@ -144,14 +147,9 @@ function createDataCoordinator() {
         const existingMembers = entityStore.getCirclesBelongingToGroup(groupId);
         if (existingMembers.length > 0) return;
         
-const targetDocumentId = group.documentId;
-if (!targetDocumentId) {
-    console.warn('Group has no documentId:', groupId);
-    return;
-}
-        
+        const targetDocumentId = group.documentId;
         if (!targetDocumentId) {
-            console.warn('Could not find document for roil group', groupId);
+            console.warn('Group has no documentId:', groupId);
             return;
         }
         
@@ -160,8 +158,8 @@ if (!targetDocumentId) {
         
         for (let i = 0; i < 4; i++) {
             // Generate random offset from -8 to +8
-            const offsetX = (Math.random() - 0.5) * 16; // -8 to +8
-            const offsetY = (Math.random() - 0.5) * 16; // -8 to +8
+            const offsetX = (Math.random() - 0.5) * 16;
+            const offsetY = (Math.random() - 0.5) * 16;
             
             // Create the circle
             const newCircle = entityStore.createCircle(targetDocumentId, 800, 600, documentStore);
@@ -177,6 +175,9 @@ if (!targetDocumentId) {
                 belongsToID: groupId
             });
         }
+        
+        // No manual mood value recalculation needed - the mood system 
+        // automatically handles this through the updateCircle calls above
     };
 
     // Enhanced cycle function that handles roil member creation
@@ -218,6 +219,16 @@ if (!targetDocumentId) {
 
     // Generate all cycle methods dynamically
     const cycleMethods = generateCycleMethods();
+
+    // NEW: Mood system utilities for the API
+    const recalculateMoodValues = () => {
+        const result = entityStore.recalculateMoodValues();
+        if (result && result.changedCircles > 0) {
+            saveToStorage();
+            triggerAutomatonIfActive();
+        }
+        return result;
+    };
 
     // Return unified API that combines data access with business logic
     return {
@@ -477,6 +488,46 @@ if (!targetDocumentId) {
             return result;
         },
         getAllGlobalProperties: uiStore.getAllGlobalProperties,
+
+        // NEW: Mood system utilities
+        recalculateMoodValues: recalculateMoodValues,
+        getMoodSystemStatus: () => entityStore.getMoodSystemStatus(),
+        validateMoodValues: () => entityStore.validateMoodValues(),
+
+        // NEW: Advanced mood system operations for debugging/admin use
+        forceMoodRecalculation: () => {
+            // Force immediate synchronous recalculation
+            const result = entityStore.moodSystem.recalculateNow();
+            if (result && result.changedCircles > 0) {
+                saveToStorage();
+                triggerAutomatonIfActive();
+            }
+            return result;
+        },
+
+        getMoodValueForCircle: (circleId) => {
+            const circle = entityStore.getCircle(circleId);
+            return circle ? entityStore.moodSystem.calculateMoodValue(circle) : undefined;
+        },
+
+        getDependentCircles: (circleId) => {
+            return entityStore.moodSystem.getDependentCircles(circleId);
+        },
+
+// NEW: Mood system utilities
+recalculateMoodValues: recalculateMoodValues,
+getMoodSystemStatus: () => entityStore.getMoodSystemStatus(),
+validateMoodValues: () => entityStore.validateMoodValues(),
+
+// NEW: Mood system listener management (for seismographs)
+addMoodSystemListener: (callback) => entityStore.moodSystem?.addListener(callback),
+removeMoodSystemListener: (callback) => entityStore.moodSystem?.removeListener(callback),
+startMoodSystem: () => entityStore.moodSystem?.start(),
+stopMoodSystem: () => entityStore.moodSystem?.stop(),
+setMoodUpdateInterval: (intervalMs) => entityStore.moodSystem?.setUpdateInterval(intervalMs),
+
+// NEW: Direct mood system reference for components that need it
+get moodSystem() { return entityStore.moodSystem; },
     };
 }
 
@@ -485,4 +536,137 @@ export function useDataStore() {
         dataCoordinatorInstance = createDataCoordinator();
     }
     return dataCoordinatorInstance;
+}
+
+// NEW: Enhanced debugging utilities that work with the mood system
+if (typeof window !== 'undefined') {
+    window.moodDebug = {
+        status: () => {
+            const dataStore = useDataStore();
+            return dataStore.getMoodSystemStatus();
+        },
+
+        validate: () => {
+            const dataStore = useDataStore();
+            const issues = dataStore.validateMoodValues();
+            if (issues.length > 0) {
+                console.table(issues);
+                console.warn(`Found ${issues.length} mood value inconsistencies`);
+            } else {
+                console.log('✅ All mood values are correct');
+            }
+            return issues;
+        },
+
+        recalculate: () => {
+            const dataStore = useDataStore();
+            const result = dataStore.forceMoodRecalculation();
+            console.log(`Recalculated mood values for ${result.changedCircles}/${result.totalCircles} circles`);
+            return result;
+        },
+
+        showGroupMoods: () => {
+            const dataStore = useDataStore();
+            // Get current document (you might need to adapt this based on your UI state)
+            const viewers = dataStore.getVisibleCircleViewers();
+            if (viewers.length === 0) {
+                console.log('No viewers available');
+                return [];
+            }
+            
+            const circles = dataStore.getCirclesForViewer(viewers[0].id);
+            const groups = circles.filter(c => c.type === 'group');
+            
+            const groupInfo = groups.map(group => {
+                const members = dataStore.getCirclesBelongingToGroup(group.id);
+                const memberMoods = members.map(m => ({
+                    name: m.name || '(unnamed)',
+                    mood: m.moodValue,
+                    colors: m.colors
+                }));
+                
+                return {
+                    groupName: group.name,
+                    groupMood: group.moodValue,
+                    memberCount: members.length,
+                    members: memberMoods,
+                    calculatedMood: dataStore.getMoodValueForCircle(group.id)
+                };
+            });
+            
+            console.table(groupInfo);
+            return groupInfo;
+        },
+
+        testScenario: () => {
+            console.log('🧪 Testing mood value scenario...');
+            
+            const dataStore = useDataStore();
+            const viewers = dataStore.getVisibleCircleViewers();
+            if (viewers.length === 0) {
+                console.error('No viewers available for testing');
+                return;
+            }
+            
+            // Create a test group
+            const group = dataStore.createCircleInViewer(viewers[0].id, 400, 300);
+            dataStore.updateCircle(group.id, { 
+                name: 'Test Group',
+                type: 'group',
+                colors: ['hsl(0, 0%, 70%)'] // Neutral color
+            });
+            
+            console.log(`Created group ${group.id} with mood: ${group.moodValue}`);
+            
+            // Create test members with different moods
+            const member1 = dataStore.createCircleInViewer(viewers[0].id, 380, 280);
+            dataStore.updateCircle(member1.id, {
+                name: 'Happy Member',
+                colors: ['hsl(48, 100%, 50%)'], // Great = 1.0
+                belongsToID: group.id
+            });
+            
+            const member2 = dataStore.createCircleInViewer(viewers[0].id, 420, 280);
+            dataStore.updateCircle(member2.id, {
+                name: 'Sad Member', 
+                colors: ['hsl(0, 100%, 60%)'], // Bad = 0.3
+                belongsToID: group.id
+            });
+            
+            // Check final group mood
+            const finalGroup = dataStore.getCircle(group.id);
+            const expectedMood = (1.0 + 0.3) / 2; // 0.65
+            
+            console.log(`Group mood after adding members: ${finalGroup.moodValue}`);
+            console.log(`Expected mood: ${expectedMood}`);
+            console.log(`Match: ${Math.abs(finalGroup.moodValue - expectedMood) < 0.01 ? '✅' : '❌'}`);
+            
+            return {
+                groupId: group.id,
+                groupMood: finalGroup.moodValue,
+                expectedMood: expectedMood,
+                members: [
+                    { id: member1.id, mood: member1.moodValue },
+                    { id: member2.id, mood: member2.moodValue }
+                ]
+            };
+        },
+
+        cleanup: () => {
+            // Clean up test circles (delete all circles with "Test" in the name)
+            const dataStore = useDataStore();
+            const viewers = dataStore.getVisibleCircleViewers();
+            if (viewers.length === 0) return;
+            
+            const circles = dataStore.getCirclesForViewer(viewers[0].id);
+            const testCircles = circles.filter(c => c.name.includes('Test'));
+            
+            testCircles.forEach(circle => {
+                dataStore.deleteCircle(circle.id);
+            });
+            
+            console.log(`Cleaned up ${testCircles.length} test circles`);
+            return testCircles.length;
+        }
+    };
 }

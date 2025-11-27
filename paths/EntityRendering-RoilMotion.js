@@ -1,6 +1,6 @@
 // EntityRendering-RoilMotion.js - Enhanced to watch roilComposure changes and trigger transitions
 import { watch, onMounted, onUnmounted, nextTick } from './vue-composition-api.js';
-import { roilMotionSystem } from './RoilMotionSystem.js';
+import { roilMotionSystem } from './RoilMotionCore.js';
 import { useRoilState } from './EntityState-RoilExtension.js';
 
 export const useRoilMotion = (props, state) => {
