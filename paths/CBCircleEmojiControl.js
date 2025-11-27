@@ -27,10 +27,7 @@ export const CircleEmojiControl = {
   
   computed: {
 displayEmoji() {
-  console.log('propertyName:', this.propertyName);
-  console.log('selected circle:', this.selectedCircle);
   let propertyValue = this.selectedCircle?.[this.propertyName];
-  console.log('property value:', propertyValue);
   
   // Handle case where an object was stored instead of string
   if (typeof propertyValue === 'object' && propertyValue !== null) {

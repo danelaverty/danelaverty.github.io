@@ -71,7 +71,7 @@ const nameClasses = computed(() => {
             props.entity.referenceID,
             state.squareCount.value,
             state.belongingCirclesCount?.value,
-            state.groupMemberScale?.value,
+            //state.groupMemberScale?.value,
             props.isSelected
         ],
         (newValues, oldValues) => {

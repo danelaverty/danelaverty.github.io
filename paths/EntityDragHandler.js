@@ -4,7 +4,6 @@ import { useDraggable } from './useDraggable.js';
 import { useConnectionDragUpdater } from './useConnections.js';
 import { CircleHandler, SquareHandler } from './EntityTypeHandler.js';
 import { DragStateManager } from './DragStateManager.js';
-import { roilMotionSystem } from './RoilMotionSystem.js';
 
 export class EntityDragHandler {
     constructor(elementRef, emit, dataStore, props, callbacks = {}) {

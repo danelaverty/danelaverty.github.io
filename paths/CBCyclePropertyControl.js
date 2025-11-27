@@ -1,6 +1,6 @@
 // CBCyclePropertyControl.js - Generic control for cycleable properties
 
-import { getPropertyConfig, getPropertyValueConfig, validatePropertyValue } from './CBCyclePropertyConfigs.js';
+import { getPropertyConfig, getPropertyValueConfig, getPropertyValueCssStyle, validatePropertyValue } from './CBCyclePropertyConfigs.js';
 
 export const CBCyclePropertyControl = {
   props: {
@@ -48,6 +48,10 @@ export const CBCyclePropertyControl = {
     cssClassPrefix() {
       // Convert camelCase to kebab-case for CSS classes
       return this.propertyName.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+    },
+    
+    customStyle() {
+      return getPropertyValueCssStyle(this.propertyName, this.propertyValue);
     }
   },
   
@@ -61,7 +65,7 @@ export const CBCyclePropertyControl = {
   template: `
     <div class="characteristic-control" @click="$emit('cycle')" :title="propertyTitle">
         <div :class="[cssClassPrefix + '-display', propertyValue]">
-            <div :class="cssClassPrefix + '-icon'">{{ propertyIcon }}</div>
+            <div :class="cssClassPrefix + '-icon'" :style="customStyle">{{ propertyIcon }}</div>
         </div>
     </div>
   `
