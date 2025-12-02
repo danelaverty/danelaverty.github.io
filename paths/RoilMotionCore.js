@@ -64,7 +64,7 @@ export class RoilMotionCore {
         if (roilAngle === 'tilt') {
             return circle.y - (2 * circle.z);
         } else { // 'side'
-            return 250 - (5 * circle.z);
+            return 350 - (8 * circle.z);
         }
     }
 
@@ -247,7 +247,8 @@ export class RoilMotionCore {
         element.style.left = circle.x + 'px';
         element.style.top = this.calculateTopForAngle(circle, group.roilAngle) + 'px';
         element.style.transform = `translate(-50%, -50%) scale(${(scale - 0.2).toFixed(3)})`;
-        element.style.opacity = scale * 2 - 1.5;
+        var elementOpacity = scale * 2 - 1.8;
+        element.style.opacity = elementOpacity;
         
         circle.currentScale = scale;
     }
@@ -367,69 +368,3 @@ export class RoilMotionCore {
 
 // Create and export the singleton instance
 export const roilMotionSystem = new RoilMotionCore();
-
-// Global debug interface
-if (typeof window !== 'undefined') {
-    window.roilDebug = {
-        getDebugInfo: () => roilMotionSystem.getDebugInfo(),
-        
-        // Transition debugging
-        transitionRoilAngle: (groupId, fromAngle, toAngle, duration) => 
-            roilMotionSystem.transitionRoilAngle(groupId, fromAngle, toAngle, duration),
-        
-        transitionRoilComposure: (groupId, fromComposure, toComposure, duration) =>
-            roilMotionSystem.transitionRoilComposure(groupId, fromComposure, toComposure, duration),
-        
-        // Event point debugging
-        getEventPoints: () => Array.from(roilMotionSystem.eventSystem.eventPoints.entries()),
-        getEventPointsForCircle: (circleId) => roilMotionSystem.eventSystem.eventPoints.get(circleId),
-        
-        // Inventory debugging
-        checkInventory: (emoji, viewerId) => {
-            return roilMotionSystem.checkInventoryForEmoji(emoji, viewerId);
-        },
-        
-        getInventoryItems: (viewerId) => {
-            if (!roilMotionSystem.dataStore) return [];
-            const circlesInViewer = roilMotionSystem.dataStore.getCirclesForViewer(viewerId);
-            return circlesInViewer.filter(circle => 
-                circle.type === 'emoji' && 
-                circle.belongsToID !== null
-            ).map(circle => ({
-                id: circle.id,
-                emoji: circle.emoji,
-                name: circle.name,
-                groupId: circle.belongsToID
-            }));
-        },
-        
-        // Utility to convert clock position to human-readable time
-        clockToTime: (degrees) => {
-            const hours = Math.floor(degrees / 30);
-            const minutes = Math.floor((degrees % 30) * 2);
-            return `${hours === 0 ? 12 : hours}:${minutes.toString().padStart(2, '0')}`;
-        },
-        
-        // Show all circles with their current angles and event points
-        showEventStatus: () => {
-            const results = [];
-            roilMotionSystem.eventSystem.eventPoints.forEach((eventData, circleId) => {
-                const circle = roilMotionSystem.activeCircles.get(circleId);
-                const currentAngle = circle ? roilMotionSystem.calculateClockPosition(circle) : -1;
-                
-                results.push({
-                    circleId,
-                    currentAngle: currentAngle.toFixed(1),
-                    currentTime: window.roilDebug.clockToTime(currentAngle),
-                    eventPoints: eventData.points.map(p => ({
-                        angle: p.angle,
-                        time: window.roilDebug.clockToTime(p.angle),
-                        action: p.action.type
-                    }))
-                });
-            });
-            
-            return results;
-        }
-    };
-}
