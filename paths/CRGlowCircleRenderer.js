@@ -122,7 +122,7 @@ export const GlowCircleRenderer = {
         demandElement.style.cssText = `
             font-size: 18px;
             position: absolute;
-            top: 55%;
+            top: 65%;
             left: 50%;
             transform: translate(-50%, -50%);
             z-index: 11;
@@ -179,13 +179,40 @@ export const GlowCircleRenderer = {
         
         // Create the thought balloon emoji (larger)
         const balloonElement = document.createElement('span');
-        balloonElement.textContent = '💭';
         balloonElement.style.cssText = `
             font-size: 32px;
             position: relative;
             display: inline-block;
+            width: 24px;
+            height: 24px;
         `;
-        
+
+        // Create the bubble body
+        const bubbleBody = document.createElement('div');
+        bubbleBody.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: white;
+            border-radius: 5px;
+        `;
+        balloonElement.appendChild(bubbleBody);
+
+        // Create the speech bubble tail (right-pointing triangle)
+        const bubbleTail = document.createElement('div');
+        bubbleTail.style.cssText = `
+            position: absolute;
+            bottom: -5px;
+            right: 9px;
+            width: 0;
+            height: 0;
+            border-top: 0.25em solid transparent;
+            border-bottom: 0.25em solid transparent;
+            border-left: 0.25em solid white;
+        `;
+        balloonElement.appendChild(bubbleTail);        
         // Create the demand emoji (smaller, positioned inside)
         const demandElement = document.createElement('span');
         demandElement.textContent = demandEmoji;

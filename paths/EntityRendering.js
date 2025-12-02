@@ -59,36 +59,45 @@ const nameClasses = computed(() => {
     return classes;
 });
 
-    // Watch for changes that should trigger re-rendering
-    watch(
-        () => [
-            props.entity.type, 
-            props.entity.color, 
-            props.entity.colors, 
-            props.entity.emoji,
-            props.entity.energyTypes,
-            props.entity.activation,
-            props.entity.referenceID,
-            state.squareCount.value,
-            state.belongingCirclesCount?.value,
-            //state.groupMemberScale?.value,
-            props.isSelected
-        ],
-        (newValues, oldValues) => {
-            if (props.entityType === 'circle' && shapeRef.value) {
-                const hasActualChanges = newValues.some((val, index) => 
-                    JSON.stringify(val) !== JSON.stringify(oldValues?.[index])
-                );
-                
-                if (hasActualChanges) {
-                    nextTick(() => {
-                        CircleTypeRenderer.render(shapeRef.value, props.entity, props.isSelected, state.squareCount.value, state.belongingCirclesCount?.value, roilMotion.isRoilMember.value);
-                    });
-                }
+// Watch for isSelected changes specifically
+watch(
+    () => props.isSelected,
+    (newValue, oldValue) => {
+        if (props.entityType === 'circle' && shapeRef.value) {
+            // Skip rendering for glow circles when only selection changes
+            if (props.entity.type === 'glow') {
+                return;
             }
-        },
-        { deep: true }
-    );
+            
+            nextTick(() => {
+                CircleTypeRenderer.render(shapeRef.value, props.entity, props.isSelected, state.squareCount.value, state.belongingCirclesCount?.value, roilMotion.isRoilMember.value);
+            });
+        }
+    }
+);
+
+// Watch for all other changes
+watch(
+    () => [
+        props.entity.type, 
+        props.entity.color, 
+        props.entity.colors, 
+        props.entity.emoji,
+        props.entity.energyTypes,
+        props.entity.activation,
+        props.entity.referenceID,
+        state.squareCount.value,
+        state.belongingCirclesCount?.value
+    ],
+    () => {
+        if (props.entityType === 'circle' && shapeRef.value) {
+            nextTick(() => {
+                CircleTypeRenderer.render(shapeRef.value, props.entity, props.isSelected, state.squareCount.value, state.belongingCirclesCount?.value, roilMotion.isRoilMember.value);
+            });
+        }
+    },
+    { deep: true }
+);
 
     // Watch for selection changes - handled centrally by SelectionRenderer
     watch(
