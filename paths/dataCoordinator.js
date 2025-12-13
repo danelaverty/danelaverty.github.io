@@ -125,14 +125,74 @@ function createDataCoordinator() {
         };
     };
 
-    // UPDATED: Enhanced updateCircle - no manual mood handling needed
-    const updateCircle = (id, updates) => {
+  const updateCircle = (id, updates) => {
+        const circle = entityStore.getCircle(id);
+        if (!circle) return null;
+        
+        // Track activation changes for exciter logic
+        const oldActivation = circle.activation;
+        
         const result = entityStore.updateCircle(id, updates);
+        
         if (result) {
+            // NEW: Handle exciter buoyancy updates
+            const newActivation = result.activation;
+            const activationChanged = oldActivation !== newActivation;
+            const isExciter = result.energyTypes && result.energyTypes.includes('exciter');
+            
+            if (activationChanged && isExciter) {
+                updateBuoyancyForConnectedCircles(id, newActivation);
+            }
+            
             saveToStorage();
             triggerAutomatonIfActive();
         }
         return result;
+    };
+
+const updateBuoyancyForConnectedCircles = (exciterId, newActivation) => {
+        // Get all connections where this exciter is the source
+        const connections = explicitConnectionService.getConnectionsForEntity(exciterId);
+        
+        connections.forEach(connection => {
+            let targetCircleId = null;
+            
+            // Determine if this exciter is the source based on connection directionality
+            if (connection.entity1Id === exciterId) {
+                // Exciter is entity1
+                const directionality = connection.directionality || 'none';
+                if (directionality === 'out' || directionality === 'both' || directionality === 'none') {
+                    targetCircleId = connection.entity2Id;
+                }
+            } else if (connection.entity2Id === exciterId) {
+                // Exciter is entity2  
+                const directionality = connection.directionality || 'none';
+                if (directionality === 'in' || directionality === 'both' || directionality === 'none') {
+                    targetCircleId = connection.entity1Id;
+                }
+            }
+            
+            if (targetCircleId) {
+                const targetCircle = entityStore.getCircle(targetCircleId);
+                if (targetCircle) {
+                    let newBuoyancy;
+                    
+                    if (newActivation === 'activated') {
+                        newBuoyancy = 'buoyant';
+                    } else if (newActivation === 'inactive' || newActivation === 'inert') {
+                        newBuoyancy = 'antibuoyant';
+                    } else {
+                        // Handle any other activation states by defaulting to antibuoyant
+                        newBuoyancy = 'antibuoyant';
+                    }
+                    
+                    // Update the target circle's buoyancy
+                    // Use entityStore.updateCircle directly to avoid infinite recursion
+                    entityStore.updateCircle(targetCircleId, { buoyancy: newBuoyancy });
+                }
+                console.log(targetCircle.buoyancy);
+            }
+        });
     };
 
     // UPDATED: Simplified createRoilMembersIfNeeded - mood system handles everything

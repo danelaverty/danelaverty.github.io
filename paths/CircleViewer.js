@@ -46,7 +46,9 @@ export const CircleViewer = {
         'drag-enter',
         'drag-leave',
         'drop',
-        'open-document-viewer' // NEW: For document reference circles
+        'open-document-viewer',
+        'create-roil-connection',
+        'delete-group-connection',
     ],
     setup(props, { emit }) {
         let shinyCirclesDebounceTimeout = null;

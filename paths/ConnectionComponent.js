@@ -581,6 +581,7 @@ const potentialEnergyDebugInfo = computed(() => {
             // Set default values
             if (isExplicit) {
                 strokeColor = props.demoMode ? 'rgba(70, 70, 70, 0)' : 'rgba(70, 70, 70, .3)';
+                //strokeColor = 'rgba(70, 70, 70, .3)';
                 strokeWidth = '2.5px';
             } else if (isCircleType) {
                 strokeColor = '#505050';

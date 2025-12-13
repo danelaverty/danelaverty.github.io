@@ -145,6 +145,13 @@ export const EntityControls = {
             });
         };
 
+        const shouldShowRButton = computed(() => {
+            const selectedCircleIds = dataStore.getSelectedCircles();
+            if (selectedCircleIds.length !== 0) return false;
+
+            return true;
+        });
+
         const shouldShowMButton = computed(() => {
             if (props.entityType !== 'circle' || !props.viewerId) return false;
             
@@ -229,7 +236,6 @@ export const EntityControls = {
                 // Apply angry properties
                 dataStore.updateCircle(circleId, {
                     buoyancy: 'buoyant',
-                    angrified: 'yes',
                     colors: ['hsl(0, 100%, 60%)'],
                     secondaryColors: ['hsl(0, 100%, 60%)']
                 });
@@ -250,7 +256,6 @@ export const EntityControls = {
                 // Apply normal properties (remove buoyancy, set normal colors)
                 const updates = {
                     buoyancy: 'normal',
-                    angrified: 'no',
                     colors: ['hsl(0, 100%, 80%)'],
                     secondaryColors: ['hsl(48, 100%, 80%)']
                 };
@@ -268,6 +273,7 @@ export const EntityControls = {
             handleAddClick,
             handleAddRoilGroupClick,
             handleDocumentClick,
+            shouldShowRButton,
             shouldShowMButton,
             handleAddMemberClick,
             shouldShowAButton,
@@ -289,6 +295,7 @@ export const EntityControls = {
             >+</button>
             <!-- Add Roil Group Button -->
             <button 
+                v-if="shouldShowRButton"
                 class="entity-control-button entity-add-button"
                 @click="handleAddRoilGroupClick"
             >R</button>

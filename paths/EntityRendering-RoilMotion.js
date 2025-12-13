@@ -58,8 +58,6 @@ export const useRoilMotion = (props, state) => {
             
             // Only trigger transition if this is an actual change
             if (newComposure !== oldComposure) {
-                console.log(`Detected roilComposure change for group ${groupId}: ${oldComposure} → ${newComposure}`);
-                
                 nextTick(() => {
                     roilMotionSystem.transitionRoilComposure(groupId, oldComposure, newComposure, 800);
                 });
@@ -74,7 +72,6 @@ const addToRoilMotion = () => {
     // Ensure dataStore is available to RoilMotionSystem
     const dataStore = state.dataStore || props.dataStore;
     if (!dataStore) {
-        console.warn('No dataStore available for roil motion positioning');
         return;
     }
 
@@ -84,21 +81,18 @@ const addToRoilMotion = () => {
     // Get group ID from the entity
     const groupId = props.entity.belongsToID;
     if (!groupId) {
-        console.warn('Roil member has no group ID:', props.entity.id);
         return;
     }
 
     // Get viewer width for positioning calculations
     const viewerWidth = props.viewerWidth;
     if (!viewerWidth) {
-        console.warn('No viewer width available for roil positioning');
         return;
     }
 
     // NEW: Get viewerId for inventory checking
     const viewerId = props.viewerId;
     if (!viewerId) {
-        console.warn('No viewer ID available for roil positioning');
         return;
     }
 

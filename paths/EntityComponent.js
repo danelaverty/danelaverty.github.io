@@ -14,15 +14,42 @@ const connectionManager = new ConnectionManager();
 
 // Component styles - updated to support bold squares, indicator emojis, reference circles, animation copies, group shape scaling, and collapsed group member count
 const componentStyles = `
+
+.is-buoyant .demand-emoji-thought-balloon {
+    opacity: 1 !important;
+}
+
+.is-antibuoyant .demand-emoji-thought-balloon {
+    opacity: 0 !important;
+}
+
+.hide-name-in-roil .entity-name {
+font-size: 10px !important;
+color: #ccA;
+opacity: 1;
+transition: opacity 4s ease;
+}
+
+.group-member.hide-name-in-roil .entity-name {
+opacity: 0 !important;
+}
+
+.has-buoyant-sibling.is-not-buoyant {
+    filter: opacity(.3) saturate(.2);
+}
+
+.app-demo-mode .entity-container {
+        cursor: url(black-dot.png), auto;
+}
+
     .entity-container {
         position: absolute;
         display: flex;
         flex-direction: column;
         align-items: center;
-        cursor: url(black-dot.png), auto;
         cursor: auto;
         user-select: none;
-        transition: transform 0.3s ease, opacity 0.3s ease;
+        transition: transform 0.3s ease, opacity 0.3s ease, filter: 0.3s ease;
         transform-origin: center center;
         transform: translate(-50%, -50%);
         z-index: 10;
@@ -51,8 +78,8 @@ const componentStyles = `
         transition: transform 1.0s cubic-bezier(0.2,-2,0.8,2), opacity 1.0s cubic-bezier(0.2,-2,0.8,2), filter 1.0s cubic-bezier(0.2,-2,0.8,2);
     }
 
-    .entity-container,
-    .circle-type-glow {
+    .viewer-content .entity-container,
+    .viewer-content .circle-type-glow {
         mix-blend-mode: color-dodge;
     }
 
@@ -205,7 +232,7 @@ const componentStyles = `
         padding: 2px 4px;
         border-radius: 3px;
         cursor: text;
-        top: 95%;
+        top: 70%;
         background-color: transparent;
         z-index: 10;
         text-shadow: 1px 1px 1px black;
@@ -351,6 +378,10 @@ const componentStyles = `
         box-shadow: none !important;
     }
 
+    .app-demo-mode .group-selection-handle {
+    opacity: 0;
+    }
+
 
 .beacon-container {
 position: absolute;
@@ -475,10 +506,6 @@ bottom: 0;
     pointer-events: none;
 }
 
-.demand-emoji-thought-balloon.angrified {
-    opacity: 0 !important;
-    }
-
 .entity-mood-value {
         color: #AAA;
         font-size: 10px;
@@ -580,7 +607,10 @@ export const EntityComponent = {
         EnergyIndicators,
         GroupResizeHandles,
     },
-    emits: ['select', 'update-position', 'update-name', 'update-circle', 'move-multiple', 'drag-start', 'drag-move', 'drag-end'],
+    emits: ['select', 'update-position', 'update-name', 'update-circle', 'move-multiple', 'drag-start', 'drag-move', 'drag-end',
+        'create-roil-connection',
+        'delete-group-connection',
+    ],
     setup(props, { emit }) {
         // Use state management composable
         const state = useEntityState(props);
@@ -593,6 +623,19 @@ export const EntityComponent = {
 
         const shapeRef = rendering.shapeRef;
         const useSecondaryColors = ref(false);
+
+const hasBuoyantSibling = computed(() => {
+    // Only applies to group members
+    if (props.entityType !== 'circle' || !props.entity.belongsToID) {
+        return false;
+    }
+    
+    // Get all members of the group (including this entity)
+    const groupMembers = props.dataStore?.getCirclesBelongingToGroup(props.entity.belongsToID) || [];
+    
+    // Check if any member has buoyancy: 'buoyant'
+    return groupMembers.some(member => member.buoyancy === 'buoyant');
+});
 
 const isRoilMember = computed(() => {
     return props.entityType === 'circle' && 
@@ -1085,6 +1128,7 @@ return {
         shouldShowBeacons,
         beaconAnimationStyles,
         isRoilMember,
+        hasBuoyantSibling,
         displayName,
         isShowingSecondaryName,
         displayMoodValue,
@@ -1092,6 +1136,9 @@ return {
         updateGroupMoodValue,
     };
     },
+    //transform: (groupMemberScale !== 1 && !isRoilMember) ? 'translate(-50%, -50%) scale(' + groupMemberScale + ')' : undefined
+    // ^^^ This line was in :style below under pointerEvents but it causes issues by overwriting the scale applied in RoilMotionCore 
+    // whenever the CircleViewer or a Circle in it is clicked.
     template: `
     <div 
         ref="elementRef"
@@ -1101,7 +1148,6 @@ return {
             ...circleStyles,
             ...squareStyles,
             pointerEvents: isDrone ? 'none' : 'auto',
-            transform: groupMemberScale !== 1 ? 'translate(-50%, -50%) scale(' + groupMemberScale + ')' : undefined
         }"
         :class="{
             'animation-copy': isAnimationCopy,
@@ -1110,10 +1156,15 @@ return {
             'entity-container-emoji': entity.type === 'emoji',
             'entity-container-group': entity.type === 'group',
             'is-roil': entity.roilMode === 'on',
+            'is-not-buoyant': entity.buoyancy !== 'buoyant',
+            'is-buoyant': entity.buoyancy === 'buoyant',
+            'is-antibuoyant': entity.buoyancy === 'antibuoyant',
+            'hide-name-in-roil': entity.hideNameInRoil === 'yes',
             'roil-angle-side': entity.roilAngle === 'side',
             'awareness-line-show': entity.awarenessLine === 'show',
             'show-seismograph': entity.showSeismograph === 'yes',
             'hidden-for-solo': isHiddenForSolo,
+            'has-buoyant-sibling': hasBuoyantSibling,
         }"
         :data-entity-id="entity.id"
         @click="handleClick"
@@ -1208,7 +1259,6 @@ return {
         <!-- Energy indicators for circles -->
         
         <div 
-            v-if="entity.angrified !== 'yes'"
             ref="nameRef"
             :class="[nameClasses, { 'roil-secondary-name': isShowingSecondaryName }]"
             @click="handleNameClick"
@@ -1230,7 +1280,7 @@ return {
         /-->
         </div>
 <!--div 
-            v-if="entityType === 'circle' && displayMoodValue !== undefined && entity.angrified !== 'yes'"
+            v-if="entityType === 'circle' && displayMoodValue !== undefined"
             class="entity-mood-value"
         >
             {{ displayMoodValue.toFixed(2) }}

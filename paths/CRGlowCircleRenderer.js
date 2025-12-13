@@ -44,12 +44,12 @@ export const GlowCircleRenderer = {
         }
 
         // Create particles - hide for drones AND roil members
-        if (!circle.isDrone && !isRoilMember) {
+        /*if (!circle.isDrone && !isRoilMember) {
             ParticleSystem.create(element, circle);
-        }
+        }*/
 
         // Create chakra form
-        ChakraFormSystem.create(element, circle, squareCount);
+        //ChakraFormSystem.create(element, circle, squareCount);
 
         // Handle multi-color flow overlay if multiple colors (initial setup)
         const hasMultipleColors = circle.colors && circle.colors.length > 1;
@@ -134,39 +134,17 @@ export const GlowCircleRenderer = {
     },
 
     /**
-     * Update thought balloon visibility based on angrified state
-     */
-    updateThoughtBalloonAngrifiedState(element, circle) {
-        // Skip if satisfaction locked
-        if (circle.satisfactionLocked === 'yes') return;
-        
-        const thoughtBalloon = element.querySelector('.demand-emoji-thought-balloon');
-        if (thoughtBalloon) {
-            if (circle.angrified === 'yes') {
-                thoughtBalloon.classList.add('angrified');
-            } else {
-                thoughtBalloon.classList.remove('angrified');
-            }
-        }
-    },
-
-    /**
      * Create demand emoji thought balloon with clock-face visibility support
      */
     createDemandEmojiThoughtBalloon(element, demandEmoji, isRoilMember = false, circle = {}) {
         const thoughtBalloon = document.createElement('div');
         thoughtBalloon.className = 'demand-emoji-thought-balloon';
         
-        // Add angrified class if needed
-        if (circle.angrified === 'yes') {
-            thoughtBalloon.classList.add('angrified');
-        }
-        
         // Style the thought balloon container (no inline opacity)
         thoughtBalloon.style.cssText = `
             position: absolute;
-            top: -25px;
-            right: -25px;
+            top: -19px;
+            right: -13px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -398,11 +376,6 @@ export const GlowCircleRenderer = {
             if (hasMultipleColors) {
                 ColorFlowSystem.start(element, circle.colors);
             }
-        }
-
-        // Update thought balloon visibility based on angrified state (skip if satisfaction locked)
-        if (circle.satisfactionLocked !== 'yes') {
-            this.updateThoughtBalloonAngrifiedState(element, circle);
         }
 
         // Handle switching between lock and thought balloon
