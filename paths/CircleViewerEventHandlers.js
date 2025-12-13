@@ -86,7 +86,7 @@ const handleAddCircle = (eventData) => {
                 type: 'group',
                 roilMode: 'on',
                 roilAngle: 'side',
-                roilSpeed: 3,
+                roilSpeed: '3',
                 name: '',
                 secondaryColorDescent: 'shiftToSecondary',
             });
@@ -121,8 +121,6 @@ const handleAddCircle = (eventData) => {
                 secondaryColors: ['hsl(48, 100%, 80%)'],
                 belongsToID: selectedGroup.id
             });
-            
-            dataStore.selectCircle(circle.id);
         }
         return circle;
     } else if (isAngryMember) {
@@ -151,13 +149,10 @@ const handleAddCircle = (eventData) => {
                 x: selectedGroup.x + offsetX,
                 y: selectedGroup.y + offsetY,
                 buoyancy: 'buoyant',
-                angrified: 'yes',
                 colors: ['hsl(0, 100%, 60%)'],
                 secondaryColors: ['hsl(0, 100%, 60%)'],
                 belongsToID: selectedGroup.id
             });
-            
-            dataStore.selectCircle(circle.id);
         }
         return circle;
     } else {

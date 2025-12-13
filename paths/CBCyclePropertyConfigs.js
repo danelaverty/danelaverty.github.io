@@ -67,11 +67,12 @@ export const CYCLE_PROPERTY_CONFIGS = {
 
   roilSpeed: {
     values: {
-      1: { icon: '1x', label: '1x', description: '', default: true },
-      2: { icon: '2x', label: '2x', description: '' },
-      3: { icon: '3x', label: '3x', description: '' },
-      5: { icon: '5x', label: '5x', description: '' },
-      10: { icon: '10x', label: '10x', description: '' },
+      '1': { icon: '1x', label: '1x', description: '', default: true },
+      '1.5': { icon: '1.5x', label: '1.5x', description: '' },
+      '2': { icon: '2x', label: '2x', description: '' },
+      '3': { icon: '3x', label: '3x', description: '' },
+      '5': { icon: '5x', label: '5x', description: '' },
+      '10': { icon: '10x', label: '10x', description: '' },
     },
     displayIf: { type: 'group', roilMode: 'on' }
   },
@@ -124,6 +125,14 @@ export const CYCLE_PROPERTY_CONFIGS = {
       displayIf: { type: 'group', roilMode: 'on', }
   },
 
+  hideNameInRoil: {
+    values: {
+      'no': { icon: 'N', label: 'no', description: '', default: true },
+      'yes': { icon: 'Y', label: 'yes', description: '' },
+    },
+    displayIf: { type: 'glow' }
+  },
+
   buoyancy: {
     values: {
       'normal': { icon: '↕', label: 'Normal', description: '', default: true },
@@ -131,14 +140,6 @@ export const CYCLE_PROPERTY_CONFIGS = {
       'antibuoyant': { icon: '↓', label: 'Antibuoyant', description: '' },
     },
     displayIf: { type: 'glow' }
-  },
-
-  angrified: {
-    values: {
-      'no': { icon: '😌', label: 'no', description: '', default: true },
-      'yes': { icon: '😡', label: 'yes', description: '' },
-    },
-      displayIf: { type: 'glow' }
   },
 
   satisfactionLocked: {

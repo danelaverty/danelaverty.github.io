@@ -201,12 +201,14 @@ export class RoilEventSystem {
                 break;
 
             case 'hide':
-                const hideElement = element.querySelector(action.selector);
-                if (hideElement && action.selector === '.demand-emoji-thought-balloon') {
-                    this.createCoinPopEffect(element, hideElement);
-                    hideElement.style.opacity = '0';
-                } else if (hideElement) {
-                    hideElement.style.opacity = '0';
+                if (circleData.buoyancy !== 'buoyant') {
+                    const hideElement = element.querySelector(action.selector);
+                    if (hideElement && action.selector === '.demand-emoji-thought-balloon') {
+                        this.createCoinPopEffect(element, hideElement);
+                        hideElement.style.opacity = '0';
+                    } else if (hideElement) {
+                        hideElement.style.opacity = '0';
+                    }
                 }
                 break;
 
@@ -237,8 +239,8 @@ export class RoilEventSystem {
         const circleId = circleElement.dataset.entityId;
         const circleData = this.dataStore?.getCircle(circleId);
         
-        // Skip coin pop effect for angrified OR satisfaction locked circles
-        if (circleData && (circleData.angrified === 'yes' || circleData.satisfactionLocked === 'yes')) {
+        // Skip coin pop effect for satisfaction locked circles
+        if (circleData && circleData.satisfactionLocked === 'yes') {
             return;
         }
         
@@ -272,7 +274,7 @@ export class RoilEventSystem {
         
         // Add it to the circle element
         circleElement.appendChild(popEmoji);
-        
+
         // Trigger the upward glide animation
         requestAnimationFrame(() => {
             popEmoji.style.top = '-45px';
@@ -286,30 +288,6 @@ export class RoilEventSystem {
                 popEmoji.parentNode.removeChild(popEmoji);
             }
         }, 850);
-        
-        // Optional: Add a subtle bounce effect to the original circle
-        this.addCircleBounceEffect(circleElement);
-    }
-
-    addCircleBounceEffect(circleElement) {
-        const glowContainer = circleElement.querySelector('.circle-glow-container');
-        if (!glowContainer) return;
-        
-        // Store original transform
-        const originalTransform = glowContainer.style.transform || '';
-        
-        // Add bounce class temporarily
-        glowContainer.style.transition = 'transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
-        glowContainer.style.transform = originalTransform + ' scale(1.1)';
-        
-        setTimeout(() => {
-            glowContainer.style.transform = originalTransform;
-            
-            // Clean up transition after animation
-            setTimeout(() => {
-                glowContainer.style.transition = '';
-            }, 300);
-        }, 150);
     }
 
     // Handle color flipping (consolidated from your existing logic)

@@ -64,7 +64,7 @@ export class RoilMotionCore {
         if (roilAngle === 'tilt') {
             return circle.y - (2 * circle.z);
         } else { // 'side'
-            return 350 - (8 * circle.z);
+            return 290 - (8 * circle.z);
         }
     }
 
@@ -246,8 +246,8 @@ export class RoilMotionCore {
         // Apply styles - use current roilAngle from group
         element.style.left = circle.x + 'px';
         element.style.top = this.calculateTopForAngle(circle, group.roilAngle) + 'px';
-        element.style.transform = `translate(-50%, -50%) scale(${(scale - 0.2).toFixed(3)})`;
-        var elementOpacity = scale * 2 - 1.8;
+        element.style.transform = `translate(-50%, -50%) scale(${(scale - 0.3).toFixed(3)})`;
+        var elementOpacity = scale * 2.8 - 2.6;
         element.style.opacity = elementOpacity;
         
         circle.currentScale = scale;
@@ -269,15 +269,38 @@ export class RoilMotionCore {
         });
     }
 
-    setCircleBuoyancy(circleId, buoyancy) {
-        const circle = this.activeCircles.get(circleId);
-        if (circle) {
-            circle.verticalBias = (buoyancy - 0.5) * 0.5;
-            circle.orbitRadius = 8 + (1 - buoyancy) * 15;
-            circle.zOrbitRadius = 10 + (1 - buoyancy) * 10;
-            circle.baseZ = (buoyancy - 0.5) * 20;
+setCircleBuoyancy(circleId, buoyancy) {
+    const circle = this.activeCircles.get(circleId);
+    if (circle) {
+        circle.verticalBias = (buoyancy - 0.5) * 0.5;
+        circle.baseZ = (buoyancy - 0.5) * 20;
+        
+        // Get the buoyancy type from dataStore to set orbit sizes
+        const dataStoreCircle = this.dataStore.getCircle(circleId);
+        if (dataStoreCircle) {
+            const buoyancyType = dataStoreCircle.buoyancy;
+            
+            switch(buoyancyType) {
+                case 'normal':
+                    circle.orbitRadius = 11;
+                    circle.zOrbitRadius = 12;
+                    break;
+                case 'buoyant':
+                    circle.orbitRadius = -4;  // This seems odd - might want to use Math.abs?
+                    circle.zOrbitRadius = -2;
+                    break;
+                case 'antibuoyant':
+                    circle.orbitRadius = -4;
+                    circle.zOrbitRadius = -2;
+                    break;
+                default:
+                    // Fallback to normal
+                    circle.orbitRadius = 11;
+                    circle.zOrbitRadius = 12;
+            }
         }
     }
+}
 
     updateCircleBuoyancy(circleId) {
         const circle = this.activeCircles.get(circleId);
@@ -289,10 +312,10 @@ export class RoilMotionCore {
         const buoyancyMap = {
             'normal': 0.8,
             'buoyant': 1.8,
-            'antibuoyant': 0.3,
+            'antibuoyant': 0.2,
         };
 
-        const buoyancyValue = buoyancyMap[dataStoreCircle.buoyancy] ?? 0.5;
+        const buoyancyValue = buoyancyMap[dataStoreCircle.buoyancy] ?? 0.8;
         this.setCircleBuoyancy(circleId, buoyancyValue);
     }
 
