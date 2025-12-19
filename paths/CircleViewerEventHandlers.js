@@ -88,7 +88,7 @@ const handleAddCircle = (eventData) => {
                 roilAngle: 'side',
                 roilSpeed: '3',
                 name: '',
-                secondaryColorDescent: 'shiftToSecondary',
+                secondaryColorDescent: 'shiftToSecondary', // This might be removable in future
             });
         }
         return circle;
@@ -112,19 +112,45 @@ const handleAddCircle = (eventData) => {
             const offsetX = Math.floor(Math.random() * 31) - 15; // -15 to +15
             const offsetY = Math.floor(Math.random() * 31) - 15; // -15 to +15
             
+            // First update with basic properties
             dataStore.updateCircle(circle.id, {
                 name: '',
                 type: 'glow',
                 x: selectedGroup.x + offsetX,
                 y: selectedGroup.y + offsetY,
                 colors: ['hsl(0, 100%, 80%)'],
-                secondaryColors: ['hsl(48, 100%, 80%)'],
-                belongsToID: selectedGroup.id
+                belongsToID: selectedGroup.id,
+                triggerAngle: 180,
             });
+            
+            // Create a flipped state and set it as the flipped state
+            const updatedCircle = dataStore.getCircle(circle.id);
+            if (updatedCircle) {
+                const flippedStateID = updatedCircle.nextStateID;
+                const newStates = {
+                    ...updatedCircle.states,
+                    [flippedStateID]: {
+                        stateID: flippedStateID,
+                        name: '',
+                        color: 'hsl(48, 100%, 80%)', // Yellow flipped color
+                        circleEmoji: null,
+                        demandEmoji: null,
+                        causeEmoji: null,
+                        buoyancy: 'normal',
+                        triggerAngle: 0,
+                    }
+                };
+                
+                dataStore.updateCircle(circle.id, {
+                    states: newStates,
+                    nextStateID: flippedStateID + 1,
+                    flippedStateID: flippedStateID
+                });
+            }
         }
         return circle;
     } else if (isAngryMember) {
-        // Create an angry member (similar to roil member but with different properties)
+        // Create an angry member
         const selectedCircles = dataStore.getSelectedCircles();
         
         if (selectedCircles.length !== 1) {
@@ -143,14 +169,14 @@ const handleAddCircle = (eventData) => {
             const offsetX = Math.floor(Math.random() * 31) - 15; // -15 to +15
             const offsetY = Math.floor(Math.random() * 31) - 15; // -15 to +15
             
+            // First update with basic properties
             dataStore.updateCircle(circle.id, {
                 name: '',
                 type: 'glow',
                 x: selectedGroup.x + offsetX,
                 y: selectedGroup.y + offsetY,
                 buoyancy: 'buoyant',
-                colors: ['hsl(0, 100%, 60%)'],
-                secondaryColors: ['hsl(0, 100%, 60%)'],
+                colors: ['hsl(0, 100%, 60%)'], // Red color
                 belongsToID: selectedGroup.id
             });
         }

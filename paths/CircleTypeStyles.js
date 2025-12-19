@@ -805,6 +805,23 @@ export const circleTypeStyles = `
     transform: rotateY(180deg);
 }
 
+@keyframes flipAnimation {
+    0% {
+        transform: rotateY(0deg);
+    }
+    50% {
+        transform: rotateY(180deg);
+    }
+    100% {
+        transform: rotateY(0deg);
+    }
+}
+
+/* Add this class for triggering the animation */
+.circle-glow-container.flip-once {
+    animation: flipAnimation 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
 .circle-glow {
     backface-visibility: hidden;
     animation: glow 6s ease 0s infinite alternate;

@@ -634,7 +634,6 @@ export const EntityComponent = {
         const interactions = useEntityInteractions(props, emit, state);
 
         const shapeRef = rendering.shapeRef;
-        const useSecondaryColors = ref(false);
 
 const hasBuoyantSibling = computed(() => {
     // Only applies to group members
@@ -690,19 +689,6 @@ const displayMoodValue = computed(() => {
         return groupMoodValue.value;
     }
     
-    // For individual circles, keep the existing computed logic
-    // For satisfaction locked circles with secondary colors, use secondaryMoodValue
-    if (props.entity.satisfactionLocked === 'yes' && 
-        props.entity.secondaryColors?.length > 0) {
-        return props.entity.secondaryMoodValue;
-    }
-    
-    // For roil members using secondary colors, use secondaryMoodValue
-    if (isRoilMember.value && useSecondaryColors.value) {
-        return props.entity.secondaryMoodValue;
-    }
-    
-    // Otherwise use primary mood value
     return props.entity.moodValue;
 });
 
@@ -724,27 +710,11 @@ const initializeGroupMoodValue = () => {
 };
 
 const displayName = computed(() => {
-    // For satisfaction locked circles, show secondary name if available
-    if (props.entityType === 'circle' && 
-        props.entity.satisfactionLocked === 'yes' && 
-        props.entity.secondaryName?.trim()) {
-        return props.entity.secondaryName;
-    }
-    
-    // Otherwise, show regular name
     return props.entity.name;
 });
 
-const isShowingSecondaryName = computed(() => {
-    return props.entityType === 'circle' && 
-           props.entity.satisfactionLocked === 'yes' && 
-           props.entity.secondaryName?.trim();
-});
-
-// NEW: Beacon color cycling for document reference circles
 const beaconKeyframeId = ref(null);
 
-// Generate beacon colors from shinyCircles
 const beaconColors = computed(() => {
     const shinyCircles = state.documentShinyCircles.value;
     
@@ -883,28 +853,42 @@ onMounted(async () => {
         props.dataStore.moodSystem.addListener(moodSystemListener);
     }
     
-    // EXISTING CODE: Listen for event-point-crossed events which handle color flipping
-    const handleEventPointCrossed = (event) => {
-        const { action } = event.detail;
-        if (action.type === 'flipToSecondary') {
-            useSecondaryColors.value = true;
-        } else if (action.type === 'flipToPrimary') {
-            useSecondaryColors.value = false;
-        }
-    };
+const handleFlipAnimation = (event) => {
+    const glowContainer = element.querySelector('.circle-glow-container');
     
-    element.addEventListener('event-point-crossed', handleEventPointCrossed);
+    if (!glowContainer) return;
     
-    const handleRoilColorFlip = (event) => {
-        const { useSecondary } = event.detail;
-        useSecondaryColors.value = useSecondary;
-    };
+    // Remove any existing animation class first
+    glowContainer.classList.remove('flip-once');
     
-    element.addEventListener('roil-color-flip', handleRoilColorFlip);
+    // Force reflow
+    glowContainer.offsetHeight;
     
+    // Add the animation class to trigger the single flip
+    glowContainer.classList.add('flip-once');
+    
+    // Add ripple effect for 'side' roilAngle groups at animation midpoint
+    const circle = props.dataStore.getCircle(props.entity.id);
+    const group = circle?.belongsToID ? props.dataStore.getCircle(circle.belongsToID) : null;
+    if (group?.roilAngle === 'side') {
+        setTimeout(() => {
+            const ripple = document.createElement('div');
+            ripple.className = 'color-change-ripple';
+            element.appendChild(ripple);
+            setTimeout(() => ripple.remove(), 600);
+        }, 300); // Add ripple at animation midpoint when color changes
+    }
+    
+    // Remove the animation class after it completes
+    setTimeout(() => {
+        glowContainer.classList.remove('flip-once');
+    }, 600);
+};
+
+element.addEventListener('start-flip-animation', handleFlipAnimation);
+
     // Check initial state from DOM attribute
     const checkInitialState = () => {
-        useSecondaryColors.value = element.hasAttribute('data-use-secondary-colors');
     };
     
     // Check initial state and set up periodic checking as fallback
@@ -914,8 +898,7 @@ onMounted(async () => {
     // Store cleanup functions for onUnmounted to access
     window._entityCleanup = window._entityCleanup || {};
     window._entityCleanup[props.entity.id] = () => {
-        element.removeEventListener('event-point-crossed', handleEventPointCrossed);
-        element.removeEventListener('roil-color-flip', handleRoilColorFlip);
+        element.removeEventListener('start-flip-animation', handleFlipAnimation);
         clearInterval(stateCheckInterval);
         
         if (groupMoodInterval) {
@@ -1108,16 +1091,17 @@ const groupCircleStyles = computed(() => {
         finalSize = props.entity.manualWidth; // Assuming width === height for circles
     }
     // Priority 2: Auto-sizing based on member count when expanded
-    else if (!props.entity.collapsed && state.belongingCirclesCount?.value > 0) {
+    else if (!props.entity.collapsed && state.belongingCirclesCount?.value > 0 && props.entity.roilMode != 'on') {
         const scale = state.groupShapeScale?.value || 1;
         finalSize = baseSize * scale;
     }
     // Priority 3: Collapsed state uses normal size (finalSize stays at baseSize)
     
-    finalSize *= 1.5;
+    //finalSize *= 1.5;
     
     const color = props.entity.colors?.[0] || props.entity.color || '#4CAF50';
     
+    //console.log(finalSize);
     return {
         width: `${finalSize}px`,
         height: `${finalSize}px`,
@@ -1145,7 +1129,6 @@ return {
         isRoilMember,
         hasBuoyantSibling,
         displayName,
-        isShowingSecondaryName,
         displayMoodValue,
         displayGroupMoodValue,
         updateGroupMoodValue,
@@ -1277,7 +1260,7 @@ return {
         
         <div 
             ref="nameRef"
-            :class="[nameClasses, { 'roil-secondary-name': isShowingSecondaryName }]"
+            :class="[nameClasses]"
             @click="handleNameClick"
             @blur="handleBlur"
             @keydown="handleNameKeydown"

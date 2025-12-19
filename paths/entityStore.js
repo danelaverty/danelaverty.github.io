@@ -38,6 +38,7 @@ const BASE_CIRCLE_DEFAULTS = {
     }),
     currentStateID: 0,
     nextStateID: 1,
+    flippedStateID: null,
 };
 
 // Generate dynamic defaults by combining base defaults with cycleable properties
@@ -118,7 +119,8 @@ const syncBasePropertiesToCurrentState = (circle, updatedProperties) => {
         'circleEmoji': 'circleEmoji',
         'demandEmoji': 'demandEmoji',
         'causeEmoji': 'causeEmoji',
-        'buoyancy': 'buoyancy'
+        'buoyancy': 'buoyancy',
+        'triggerAngle': 'triggerAngle',
     };
     
     Object.keys(propertyMappings).forEach(baseProperty => {

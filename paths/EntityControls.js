@@ -438,20 +438,6 @@ export const EntityControls = {
                     @toggle="toggleColorPicker"
                 />
 
-                <ColorControl 
-                    :ref="assignDisplayRef('secondaryColor')"
-                    :circleColors="secondaryCircleColors"
-                    :isPickerOpen="isSecondaryColorPickerOpen"
-                    @toggle="toggleSecondaryColorPicker"
-                />
-
-                <CBSecondaryNameControl 
-                    :ref="assignDisplayRef('secondaryName')"
-                    :secondaryName="secondaryName"
-                    :isPickerOpen="isSecondaryNamePickerOpen"
-                    @toggle="toggleSecondaryNamePicker"
-                />
-
                 <!-- Energy Control -->
                 <EnergyControl 
                     :ref="assignDisplayRef('energy')"

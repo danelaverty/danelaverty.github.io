@@ -6,6 +6,20 @@ import { injectComponentStyles } from './styleUtils.js';
 import { useStateCharacteristicsBarBridge } from './useStateCharacteristicsBarBridge.js';
 
 const statesModalStyles = `
+.characteristic-control.action-button.set-flipped {
+    background: #9C27B0;
+    border-color: #7B1FA2;
+    color: white;
+}
+
+.characteristic-control.action-button.set-flipped:hover {
+    background: #AD42C4;
+}
+
+.characteristic-control.action-button.set-flipped.is-flipped {
+    background: #E91E63;
+    border-color: #C2185B;
+}
 .states-modal {
     background: #2a2a2a;
     border: 1px solid #666;
@@ -95,6 +109,23 @@ const statesModalStyles = `
     background: #555;
 }
 
+/* Trigger angle dropdown styling */
+.trigger-angle-select {
+    width: 100%;
+    background: #444;
+    border: 1px solid #666;
+    border-radius: 4px;
+    color: white;
+    padding: 4px;
+    font-size: 9px;
+}
+
+.trigger-angle-select:focus {
+    outline: none;
+    border-color: #007acc;
+    background: #555;
+}
+
 /* Action button styling */
 .characteristic-control.action-button {
     width: 24px;
@@ -165,17 +196,26 @@ export const CBStatesPickerModal = {
         // Create a computed ref for the selected circle to pass to the bridge
         const selectedCircleRef = computed(() => props.selectedCircle);
 
-        // State update function to pass to the bridge
-const updateStateProperty = (stateID, property, value) => {
-    const currentStates = { ...props.selectedCircle.states };
-    currentStates[stateID] = {
-        ...currentStates[stateID],
-        [property]: value
-    };
+        // Trigger angle options
+        const triggerAngleOptions = [
+            { label: '-', value: null },
+            { label: '12:00', value: 0 },
+            { label: '3:00', value: 90 },
+            { label: '6:00', value: 180 },
+            { label: '9:00', value: 270 }
+        ];
 
-    // Update the states and trigger state synchronization
-    dataStore.updateCircle(props.selectedCircle.id, { states: currentStates });
-};
+        // State update function to pass to the bridge
+        const updateStateProperty = (stateID, property, value) => {
+            const currentStates = { ...props.selectedCircle.states };
+            currentStates[stateID] = {
+                ...currentStates[stateID],
+                [property]: value
+            };
+
+            // Update the states and trigger state synchronization
+            dataStore.updateCircle(props.selectedCircle.id, { states: currentStates });
+        };
 
         // Initialize the state-specific characteristics bridge
         const statesBridge = useStateCharacteristicsBarBridge(selectedCircleRef, updateStateProperty);
@@ -184,14 +224,12 @@ const updateStateProperty = (stateID, property, value) => {
         const emitPickerState = () => {
             emit('picker-state-change', {
                 isColorPickerOpen: statesBridge.isColorPickerOpen.value,
-                isCircleEmojiPickerOpen: statesBridge.isCircleEmojiPickerOpen.value,
                 isDemandEmojiPickerOpen: statesBridge.isDemandEmojiPickerOpen.value,
                 isCauseEmojiPickerOpen: statesBridge.isCauseEmojiPickerOpen.value,
                 currentEditingStateID: statesBridge.currentEditingStateID.value,
                 currentEditingProperty: statesBridge.currentEditingProperty.value,
                 // Include handler functions
                 handleColorSelect: statesBridge.handleColorSelect,
-                handleCircleEmojiSelect: statesBridge.handleCircleEmojiSelect,
                 handleDemandEmojiSelect: statesBridge.handleDemandEmojiSelect,
                 handleCauseEmojiSelect: statesBridge.handleCauseEmojiSelect,
                 closePickerAction: statesBridge.closePickerAction,
@@ -204,7 +242,6 @@ const updateStateProperty = (stateID, property, value) => {
         // Watch for picker state changes and emit them
         watch([
             statesBridge.isColorPickerOpen,
-            statesBridge.isCircleEmojiPickerOpen,
             statesBridge.isDemandEmojiPickerOpen,
             statesBridge.isCauseEmojiPickerOpen
         ], () => {
@@ -245,10 +282,10 @@ const updateStateProperty = (stateID, property, value) => {
                 stateID: newStateID,
                 name: '???',
                 color: '#B3B3B3',
-                circleEmoji: null,
                 demandEmoji: null,
                 causeEmoji: null,
-                buoyancy: 'normal'
+                buoyancy: 'normal',
+                triggerAngle: null  // New states default to no trigger
             };
 
             dataStore.updateCircle(circle.id, {
@@ -288,6 +325,17 @@ const updateStateProperty = (stateID, property, value) => {
             updateStateProperty(stateID, 'buoyancy', newValue);
         };
 
+        const updateTriggerAngle = (stateID, newValue) => {
+            // Convert string to number or null
+            const triggerAngle = newValue === 'null' || newValue === null ? null : parseInt(newValue);
+            updateStateProperty(stateID, 'triggerAngle', triggerAngle);
+        };
+
+        const getTriggerAngleLabel = (triggerAngle) => {
+            const option = triggerAngleOptions.find(opt => opt.value === triggerAngle);
+            return option ? option.label : '-';
+        };
+
         return {
             sortedStates,
             currentStateID,
@@ -295,11 +343,14 @@ const updateStateProperty = (stateID, property, value) => {
             buoyancyValues,
             buoyancyIcons,
             colorFamilies,
+            triggerAngleOptions,
             updateStateProperty,
             addNewState,
             deleteState,
             activateState,
             cycleBuoyancy,
+            updateTriggerAngle,
+            getTriggerAngleLabel,
 
             // Expose all the bridge functionality
             ...statesBridge
@@ -312,13 +363,12 @@ const updateStateProperty = (stateID, property, value) => {
                 <table class="states-table">
                     <thead>
                         <tr>
-                            <th>State ID</th>
                             <th>Name</th>
                             <th>Color</th>
-                            <th>Circle Emoji</th>
-                            <th>Demand Emoji</th>
-                            <th>Cause Emoji</th>
+                            <th>Cause</th>
+                            <th>Demand</th>
                             <th>Buoyancy</th>
+                            <th>Trigger</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -329,8 +379,6 @@ const updateStateProperty = (stateID, property, value) => {
                             :key="state.stateID"
                             :class="{ 'current-state': state.stateID === currentStateID }"
                         >
-                            <td>{{ state.stateID }}</td>
-                            
                             <!-- Name -->
                             <td>
                                 <div class="state-control">
@@ -358,16 +406,16 @@ const updateStateProperty = (stateID, property, value) => {
                                 </div>
                             </td>
                             
-                            <!-- Circle Emoji -->
+                            <!-- Cause Emoji -->
                             <td>
                                 <div class="state-control">
                                     <div 
                                         class="characteristic-control"
-                                        @click="openCircleEmojiPicker(state.stateID)"
-                                        :title="state.circleEmoji ? 'Circle Emoji: ' + state.circleEmoji : 'No circle emoji'"
+                                        @click="openCauseEmojiPicker(state.stateID)"
+                                        :title="state.causeEmoji ? 'Cause Emoji: ' + state.causeEmoji : 'No cause emoji'"
                                     >
                                         <div :class="['emoji-display', 'circle-emoji-display-control', { 'picker-open': false }]">
-                                            <div style="color: white;" class="circle-emoji-display">{{ state.circleEmoji || '-' }}</div>
+                                            <div style="color: white;" class="circle-emoji-display">{{ state.causeEmoji || '-' }}</div>
                                         </div>
                                     </div>
                                 </div>
@@ -388,21 +436,6 @@ const updateStateProperty = (stateID, property, value) => {
                                 </div>
                             </td>
                             
-                            <!-- Cause Emoji -->
-                            <td>
-                                <div class="state-control">
-                                    <div 
-                                        class="characteristic-control"
-                                        @click="openCauseEmojiPicker(state.stateID)"
-                                        :title="state.causeEmoji ? 'Cause Emoji: ' + state.causeEmoji : 'No cause emoji'"
-                                    >
-                                        <div :class="['emoji-display', 'circle-emoji-display-control', { 'picker-open': false }]">
-                                            <div style="color: white;" class="circle-emoji-display">{{ state.causeEmoji || '-' }}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </td>
-                            
                             <!-- Buoyancy -->
                             <td>
                                 <div class="state-control">
@@ -415,6 +448,26 @@ const updateStateProperty = (stateID, property, value) => {
                                             <div class="buoyancy-icon">{{ buoyancyIcons[state.buoyancy] || '?' }}</div>
                                         </div>
                                     </div>
+                                </div>
+                            </td>
+                            
+                            <!-- NEW: Trigger Angle -->
+                            <td>
+                                <div class="state-control">
+                                    <select 
+                                        class="trigger-angle-select"
+                                        :value="state.triggerAngle"
+                                        @change="updateTriggerAngle(state.stateID, $event.target.value)"
+                                        :title="'Trigger at angle: ' + getTriggerAngleLabel(state.triggerAngle)"
+                                    >
+                                        <option 
+                                            v-for="option in triggerAngleOptions" 
+                                            :key="option.label"
+                                            :value="option.value"
+                                        >
+                                            {{ option.label }}
+                                        </option>
+                                    </select>
                                 </div>
                             </td>
                             
