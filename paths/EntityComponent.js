@@ -15,11 +15,23 @@ const connectionManager = new ConnectionManager();
 // Component styles - updated to support bold squares, indicator emojis, reference circles, animation copies, group shape scaling, and collapsed group member count
 const componentStyles = `
 
+.emoji-type.inactive {
+    filter: saturate(0.2) opacity(0.5);
+}
+
 .is-buoyant .demand-emoji-thought-balloon {
     opacity: 1 !important;
 }
 
 .is-antibuoyant .demand-emoji-thought-balloon {
+    opacity: 0 !important;
+}
+
+.is-buoyant .cause-emoji-thought-balloon {
+    opacity: 1 !important;
+}
+
+.is-antibuoyant .cause-emoji-thought-balloon {
     opacity: 0 !important;
 }
 
@@ -49,7 +61,7 @@ opacity: 0 !important;
         align-items: center;
         cursor: auto;
         user-select: none;
-        transition: transform 0.3s ease, opacity 0.3s ease, filter: 0.3s ease;
+        transition: transform 0.3s ease, opacity 0.3s ease, filter 0.3s ease;
         transform-origin: center center;
         transform: translate(-50%, -50%);
         z-index: 10;
@@ -78,7 +90,7 @@ opacity: 0 !important;
         transition: transform 1.0s cubic-bezier(0.2,-2,0.8,2), opacity 1.0s cubic-bezier(0.2,-2,0.8,2), filter 1.0s cubic-bezier(0.2,-2,0.8,2);
     }
 
-    .viewer-content .entity-container,
+    /*.viewer-content .entity-container,*/
     .viewer-content .circle-type-glow {
         mix-blend-mode: color-dodge;
     }
@@ -1004,7 +1016,8 @@ const beaconAnimationStyles = computed(() => {
                    state.collapsedMemberCount.value > 0;
         });
 
-const showRadiusIndicator = computed(() => { return props.isDragging && (props.dragDeltas.deltaX !== 0 || props.dragDeltas.deltaY !== 0); });
+//const showRadiusIndicator = computed(() => { return props.isDragging && (props.dragDeltas.deltaX !== 0 || props.dragDeltas.deltaY !== 0); });
+const showRadiusIndicator = computed(() => { return false; });
 
 const radiusIndicatorStyles = computed(() => {
     let connectionDistance;
@@ -1101,6 +1114,8 @@ const groupCircleStyles = computed(() => {
     }
     // Priority 3: Collapsed state uses normal size (finalSize stays at baseSize)
     
+    finalSize *= 1.5;
+    
     const color = props.entity.colors?.[0] || props.entity.color || '#4CAF50';
     
     return {
@@ -1150,6 +1165,8 @@ return {
             pointerEvents: isDrone ? 'none' : 'auto',
         }"
         :class="{
+            'inactive': entity.activation == 'inactive',
+            'emoji-type': entity.type == 'emoji',
             'animation-copy': isAnimationCopy,
             'animation-dimmed': isAnimationDimmed,
             'group-member': groupMemberScale !== 1,

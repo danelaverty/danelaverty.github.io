@@ -1,4 +1,3 @@
-// CircleViewer.js - Updated with roil connection handlers
 import { onMounted, onUnmounted, computed, ref, watch, nextTick } from './vue-composition-api.js';
 import { useCircleViewerDragResize } from './CircleViewerDragResize.js';
 import { useCircleViewerSelection } from './CircleViewerSelection.js';
@@ -319,6 +318,14 @@ const isCirclePartiallyExcited = (circleId) => {
     return partiallyExcitedCircles.value.has(circleId);
 };
 
+// Add a timestamp that updates during roil animation
+const animationTimestamp = ref(Date.now());
+
+// Update this timestamp when connections need to refresh
+const updateConnectionPositions = () => {
+    animationTimestamp.value = Date.now();
+};
+
         // Shiny circles list for display
         const shinyCirclesList = computed(() => {
             if (!state.viewerProperties?.value?.shinynessMode) {
@@ -530,7 +537,7 @@ watch(
     { deep: true, immediate: true }
 );
 
-// Roil system property watcher with debugging
+// Roil system property watcher
 watch(
     () => allCircles.value.reduce((map, c) => {
         if (c.type === 'group' && c.roilMode === 'on') {
@@ -580,6 +587,10 @@ watch(
                     cellularAutomaton.triggerImmediateIteration();
                 });
             }
+
+            dataStore.setConnectionUpdateTrigger(() => {
+                animationTimestamp.value = Date.now();
+            });
         });
 
         onUnmounted(() => {
@@ -629,6 +640,8 @@ watch(
             visibleCircles,
             allCircles,
             shinyCirclesList,
+            animationTimestamp,
+            updateConnectionPositions,
             explicitConnections,
             allConnections,
             handleViewerClick,
@@ -733,6 +746,7 @@ watch(
     v-for="connection in allConnections"
     :key="connection.id"
     :connection="connection"
+    :animation-timestamp="animationTimestamp"
     :connection-energy-classes="getConnectionEnergyClasses(connection.id)"
     :viewer-width="viewerWidth"
     :entity-drag-state="entityDragState"

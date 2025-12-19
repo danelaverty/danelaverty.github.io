@@ -1,4 +1,4 @@
-// controls/CircleEmojiControl.js - Updated to handle multiple circle selection
+// controls/CircleEmojiControl.js - Updated to handle multiple circle selection and fix object display issue
 export const CircleEmojiControl = {
   props: {
     selectedCircle: {
@@ -17,7 +17,7 @@ export const CircleEmojiControl = {
       type: Array,
       default: () => []
     },
-      propertyName: {
+    propertyName: {
       type: String,
       default: 'emoji'
     },
@@ -26,31 +26,38 @@ export const CircleEmojiControl = {
   emits: ['toggle'],
   
   computed: {
-displayEmoji() {
-  let propertyValue = this.selectedCircle?.[this.propertyName];
-  
-  // Handle case where an object was stored instead of string
-  if (typeof propertyValue === 'object' && propertyValue !== null) {
-    propertyValue = propertyValue.emoji || '🧽';
-  }
-  
-  if (this.hasMultipleCirclesSelected) {
-    if (this.selectedCircles.length > 0) {
-      const firstCircle = this.selectedCircles[0];
-      let firstValue = firstCircle?.[this.propertyName] || '🧽';
+    displayEmoji() {
+      let propertyValue = this.selectedCircle?.[this.propertyName];
       
-      // Handle object case for multiple selection too
-      if (typeof firstValue === 'object' && firstValue !== null) {
-        firstValue = firstValue.emoji || '🧽';
+      // Fix: Handle case where an object was stored instead of string
+      if (typeof propertyValue === 'object' && propertyValue !== null) {
+        // If it's an object with an emoji property, use that
+        propertyValue = propertyValue.emoji || '';
       }
       
-      return firstValue;
-    }
-    return '🧽';
-  }
-  
-  return propertyValue || '🧽';
-},
+      if (this.hasMultipleCirclesSelected) {
+        if (this.selectedCircles.length > 0) {
+          const firstCircle = this.selectedCircles[0];
+          let firstValue = firstCircle?.[this.propertyName] || '';
+          
+          // Handle object case for multiple selection too
+          if (typeof firstValue === 'object' && firstValue !== null) {
+            firstValue = firstValue.emoji || '';
+          }
+          
+          return firstValue || '-';
+        }
+        return '-';
+      }
+      
+      // Return the property value if it exists and is a string, otherwise default
+      if (propertyValue && typeof propertyValue === 'string') {
+        return propertyValue;
+      }
+      
+      // If propertyValue is empty string, null, or undefined, show default
+      return '-';
+    },
     
     displayTitle() {
       if (this.hasMultipleCirclesSelected) {

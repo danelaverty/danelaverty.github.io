@@ -6,6 +6,7 @@ import { SeismographComponent } from './SeismographComponent.js';
 export const GroupCircleRenderer = {
     render(element, circle, belongingCirclesCount = null) {
         if (!element) return;
+        element.querySelectorAll('.group-circle-container, .awareness-line').forEach(el => el.remove());
         
         const color = circle.colors[0] || '#4CAF50';
         

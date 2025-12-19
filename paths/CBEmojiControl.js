@@ -24,9 +24,6 @@ export const EmojiControl = {
   },
   
   template: `
-    <!-- Emoji Separator (as a spacer, not a control) -->
-    <div style="width: 2px; height: 32px; background-color: rgba(255, 255, 255, 0.2); border-radius: 1px; margin: 0 4px; flex-shrink: 0;"></div>
-    
     <!-- Cause Emoji Control -->
     <div class="characteristic-control"
          @click="$emit('selectQuickEmoji', causeEmoji)"

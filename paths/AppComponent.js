@@ -1,4 +1,3 @@
-// AppComponent.js - Updated with square multi-select and ctrl+shift+click explicit connections
 import { ref, computed, onMounted, onUnmounted } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
 import { useRectangleSelection } from './useRectangleSelection.js';
@@ -7,7 +6,7 @@ import { EntityComponent } from './EntityComponent.js';
 import { EntityControls } from './EntityControls.js';
 import { CircleViewer } from './CircleViewer.js';
 import { DocumentsDock } from './DocumentsDock.js';
-import { CircleCharacteristicsBar } from './CircleCharacteristicsBar.js';
+import { SquareCharacteristicsBar } from './SquareCharacteristicsBar.js';
 import { SquareDocumentTabs } from './SquareDocumentTabs.js';
 import { SharedDropdown } from './SharedDropdown.js';
 import { IndicatorEmojiPicker } from './IndicatorEmojiPicker.js';
@@ -18,10 +17,48 @@ import { createViewerManager } from './viewerManager.js';
 import { createEntityHandlers } from './entityHandlers.js';
 import { createSquareSelectionHandlers } from './rectangleSelectionHandlers.js';
 
+// Import picker modal components
+import { TypePickerModal } from './CBTypePickerModal.js';
+import { CircleEmojiPickerModal } from './CBCircleEmojiPickerModal.js';
+import { CBStatesPickerModal } from './CBStatesPickerModal.js';
+import { ColorPickerModal } from './CBColorPickerModal.js';
+import { EnergyPickerModal } from './CBEnergyPickerModal.js';
+import { CBSecondaryNamePickerModal } from './CBSecondaryNamePickerModal.js';
+
+// Import needed utilities for characteristics bridge
+import { useCharacteristicsBarBridge } from './useCharacteristicsBarBridge.js';
+import { modalStyles } from './cbModalStyles.js';
+import { pickerSpecificStyles } from './cbPickerStyles.js';
+import { injectComponentStyles } from './styleUtils.js';
+
+// Inject picker modal styles at app level
+const pickerModalStyles = `
+    /* Global picker modal positioning */
+    .app-global-picker-modal {
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        z-index: 9999 !important;
+    }
+
+    /* Include all modal styles */
+    ${modalStyles}
+    ${pickerSpecificStyles}
+`;
+
+injectComponentStyles('app-picker-modals', pickerModalStyles);
+
 export const App = {
     setup() {
         const dataStore = useDataStore();
         const squareViewerContentRef = ref(null);
+
+        const statePickerBridge = ref(null);
+
+        const handleStatePickerChange = (pickerState) => {
+            statePickerBridge.value = pickerState;
+        };
 
         const isDemoMode = computed(() => dataStore.isDemoMode());
 
@@ -34,6 +71,9 @@ export const App = {
             getCirclesForViewer: dataStore.getCirclesForViewer,
             saveToStorage: dataStore.saveToStorage
         });
+
+        // Get characteristics bridge for global picker state
+        const characteristics = useCharacteristicsBarBridge();
 
         // Square drag state management
         const squareDragState = ref({
@@ -216,8 +256,6 @@ export const App = {
                     id, 'square', selectedSquareIds, selectedEntityType
                 );
                 
-                console.log('Square explicit connection result:', result);
-                
                 // Don't change selection when ctrl+shift-clicking for connections
                 return;
             }
@@ -372,7 +410,21 @@ export const App = {
                 handleSquareSelect: handleSquareSelectWithMultiSelect // Override with multi-select version
             },
             ...viewerManager,
-            isDemoMode
+            isDemoMode,
+            
+            // Expose characteristics bridge functionality for global pickers
+            ...characteristics,
+            
+            // Ensure shouldShowCircleCharacteristicControls is properly exposed
+            shouldShowCircleCharacteristicControls: computed(() => {
+                if (characteristics.selectedCircles.value.length > 1) {
+                    return true; // Always show for multiple selection
+                }
+                const circle = characteristics.selectedCircles.value[0];
+                return circle && !circle.referenceID; // Hide only if it's a reference circle
+            }),
+            statePickerBridge,
+            handleStatePickerChange,
         };
     },
     components: {
@@ -380,11 +432,18 @@ export const App = {
         EntityControls,
         CircleViewer,
         DocumentsDock,
-        CircleCharacteristicsBar,
+        SquareCharacteristicsBar,
         SquareDocumentTabs,
         SharedDropdown,
         IndicatorEmojiPicker,
-        ConnectionComponent
+        ConnectionComponent,
+        // Add picker modal components
+        TypePickerModal,
+        CircleEmojiPickerModal,
+        ColorPickerModal,
+        EnergyPickerModal,
+        CBSecondaryNamePickerModal,
+        CBStatesPickerModal,
     },
     template: `
         <div :class="['app-container', { 'has-documents-dock': true, 'app-demo-mode': isDemoMode }]">
@@ -414,7 +473,7 @@ export const App = {
                 <!-- Square Viewer -->
                 <div class="square-viewer" @click="handleSquareViewerContainerClick">
                     <!-- Circle Characteristics Bar -->
-                    <CircleCharacteristicsBar />
+                    <SquareCharacteristicsBar />
                     
                     <!-- Square Document Tabs - Only show when exactly one circle is selected -->
                     <SquareDocumentTabs 
@@ -472,6 +531,138 @@ export const App = {
                     @select="handleIndicatorPickerSelect"
                 />
             </div>
+
+<!-- States Picker Modal -->
+<CBStatesPickerModal 
+    v-if="isStatesPickerOpen && selectedCircle"
+    :selectedCircle="selectedCircle"
+    class="app-global-picker-modal"
+    style="z-index: 8999 !important;"
+    @close="closePickerAction('states')"
+    @picker-state-change="handleStatePickerChange"
+/>
+
+<!-- State-Specific Global Picker Modals -->
+<template v-if="statePickerBridge">
+    <ColorPickerModal 
+        v-if="statePickerBridge.isColorPickerOpen"
+        :colorFamilies="statePickerBridge.colorFamilies"
+        :isColorSelected="statePickerBridge.isColorSelected"
+        class="app-global-picker-modal"
+        @selectColor="statePickerBridge.handleColorSelect"
+        @close="() => statePickerBridge.closePickerAction('color')"
+    />
+
+    <CircleEmojiPickerModal 
+        v-if="statePickerBridge.isCircleEmojiPickerOpen"
+        :currentEmoji="statePickerBridge.getCurrentEmoji('circleEmoji')"
+        class="app-global-picker-modal"
+        @selectCircleEmoji="statePickerBridge.handleCircleEmojiSelect"
+        @close="() => statePickerBridge.closePickerAction('circleEmoji')"
+    />
+
+    <CircleEmojiPickerModal 
+        v-if="statePickerBridge.isDemandEmojiPickerOpen"
+        :currentEmoji="statePickerBridge.getCurrentEmoji('demandEmoji')"
+        class="app-global-picker-modal"
+        @selectCircleEmoji="statePickerBridge.handleDemandEmojiSelect"
+        @close="() => statePickerBridge.closePickerAction('demandEmoji')"
+    />
+
+    <CircleEmojiPickerModal 
+        v-if="statePickerBridge.isCauseEmojiPickerOpen"
+        :currentEmoji="statePickerBridge.getCurrentEmoji('causeEmoji')"
+        class="app-global-picker-modal"
+        @selectCircleEmoji="statePickerBridge.handleCauseEmojiSelect"
+        @close="() => statePickerBridge.closePickerAction('causeEmoji')"
+    />
+</template>
+
+            <!-- Global Picker Modals - Positioned at app level to avoid clipping -->
+            <template v-if="shouldShowCircleCharacteristicControls">
+                <!-- Type Picker Modal -->
+                <TypePickerModal 
+                    v-if="isTypePickerOpen"
+                    :circleTypes="circleTypes"
+                    :isTypeSelected="isTypeSelected"
+                    class="app-global-picker-modal"
+                    @selectType="handleTypeSelect"
+                    @close="closePickerAction('type')"
+                />
+
+                <!-- Secondary Name Picker Modal -->
+                <CBSecondaryNamePickerModal 
+                    v-if="isSecondaryNamePickerOpen"
+                    :currentSecondaryName="secondaryName"
+                    class="app-global-picker-modal"
+                    @selectSecondaryName="handleSecondaryNameSelect"
+                    @close="closePickerAction('secondaryName')"
+                />
+
+                <!-- Circle Emoji Picker Modals -->
+                <CircleEmojiPickerModal 
+                    v-if="isCircleEmojiPickerOpen"
+                    :currentEmoji="getCurrentCircleEmoji"
+                    class="app-global-picker-modal"
+                    @selectCircleEmoji="handleCircleEmojiSelect"
+                    @close="closePickerAction('circleEmoji')"
+                />
+
+                <CircleEmojiPickerModal 
+                    v-if="isCauseEmojiPickerOpen"
+                    :currentEmoji="getEmojiValue('causeEmoji')"
+                    class="app-global-picker-modal"
+                    @selectCircleEmoji="handleCauseEmojiSelect"
+                    @close="closePickerAction('causeEmoji')"
+                />
+                
+                <CircleEmojiPickerModal 
+                    v-if="isDemandEmojiPickerOpen"
+                    :currentEmoji="getEmojiValue('demandEmoji')"
+                    class="app-global-picker-modal"
+                    @selectCircleEmoji="handleDemandEmojiSelect"
+                    @close="closePickerAction('demandEmoji')"
+                />
+                
+                <!-- Color Picker Modals -->
+                <ColorPickerModal 
+                    v-if="isColorPickerOpen"
+                    :colorFamilies="colorFamilies"
+                    :isColorSelected="isColorSelected"
+                    class="app-global-picker-modal"
+                    @selectColor="handleColorSelect"
+                    @close="closePickerAction('color')"
+                />
+
+                <ColorPickerModal 
+                    v-if="isSecondaryColorPickerOpen"
+                    :colorFamilies="colorFamilies"
+                    :isColorSelected="isSecondaryColorSelected"
+                    class="app-global-picker-modal"
+                    @selectColor="handleSecondaryColorSelect"
+                    @close="closePickerAction('secondaryColor')"
+                />
+
+                <!-- Energy Picker Modal -->
+                <EnergyPickerModal 
+                    v-if="isEnergyPickerOpen"
+                    :energyTypes="energyTypes"
+                    :isEnergySelected="isEnergySelected"
+                    class="app-global-picker-modal"
+                    @selectEnergy="handleEnergySelect"
+                    @close="closePickerAction('energy')"
+                />
+                
+                <!-- Connection Energy Picker Modal -->
+                <EnergyPickerModal 
+                    v-if="isConnectionEnergyPickerOpen"
+                    :energyTypes="energyTypes"
+                    :isEnergySelected="isConnectionEnergySelected"
+                    class="app-global-picker-modal"
+                    @selectEnergy="handleConnectionEnergySelect"
+                    @close="closePickerAction('connectionEnergy')"
+                />
+            </template>
         </div>
     `
 };

@@ -21,6 +21,7 @@ function createDataCoordinator() {
 
     // Automaton trigger function (set by CircleViewer)
     let automatonTrigger = null;
+    let connectionUpdateTrigger = null;
     
     const setAutomatonTrigger = (triggerFn) => {
         automatonTrigger = triggerFn;
@@ -31,6 +32,16 @@ function createDataCoordinator() {
             automatonTrigger();
         }
     };
+
+const setConnectionUpdateTrigger = (triggerFn) => {
+    connectionUpdateTrigger = triggerFn;
+};
+
+const triggerConnectionUpdateIfActive = () => {
+    if (connectionUpdateTrigger) {
+        connectionUpdateTrigger();
+    }
+};
 
     // 1. Create a placeholder for saveToStorage that will be set later
     let saveToStorageRef = null;
@@ -125,47 +136,52 @@ function createDataCoordinator() {
         };
     };
 
-  const updateCircle = (id, updates) => {
-        const circle = entityStore.getCircle(id);
-        if (!circle) return null;
+const updateCircle = (id, updates) => {
+    
+    const circle = entityStore.getCircle(id);
+    if (!circle) {
+        return null;
+    }
+    
+    // Track activation changes for energy type logic
+    const oldActivation = circle.activation;
+    
+    const result = entityStore.updateCircle(id, updates);
+    
+    if (result) {
+        // NEW: Handle exciter and dampener buoyancy updates
+        const newActivation = result.activation;
+        const activationChanged = oldActivation !== newActivation;
+        const isExciter = result.energyTypes && result.energyTypes.includes('exciter');
+        const isDampener = result.energyTypes && result.energyTypes.includes('dampener');
         
-        // Track activation changes for exciter logic
-        const oldActivation = circle.activation;
-        
-        const result = entityStore.updateCircle(id, updates);
-        
-        if (result) {
-            // NEW: Handle exciter buoyancy updates
-            const newActivation = result.activation;
-            const activationChanged = oldActivation !== newActivation;
-            const isExciter = result.energyTypes && result.energyTypes.includes('exciter');
-            
-            if (activationChanged && isExciter) {
-                updateBuoyancyForConnectedCircles(id, newActivation);
-            }
-            
-            saveToStorage();
-            triggerAutomatonIfActive();
+        if (activationChanged && (isExciter || isDampener)) {
+            const energyType = isExciter ? 'exciter' : 'dampener';
+            updateBuoyancyForConnectedCircles(id, newActivation, energyType);
         }
-        return result;
-    };
+        
+        saveToStorage();
+        triggerAutomatonIfActive();
+    }
+    return result;
+};
 
-const updateBuoyancyForConnectedCircles = (exciterId, newActivation) => {
-        // Get all connections where this exciter is the source
-        const connections = explicitConnectionService.getConnectionsForEntity(exciterId);
+    const updateBuoyancyForConnectedCircles = (sourceCircleId, newActivation, energyType) => {
+        // Get all connections where this circle is the source
+        const connections = explicitConnectionService.getConnectionsForEntity(sourceCircleId);
         
         connections.forEach(connection => {
             let targetCircleId = null;
             
-            // Determine if this exciter is the source based on connection directionality
-            if (connection.entity1Id === exciterId) {
-                // Exciter is entity1
+            // Determine if this circle is the source based on connection directionality
+            if (connection.entity1Id === sourceCircleId) {
+                // Source circle is entity1
                 const directionality = connection.directionality || 'none';
                 if (directionality === 'out' || directionality === 'both' || directionality === 'none') {
                     targetCircleId = connection.entity2Id;
                 }
-            } else if (connection.entity2Id === exciterId) {
-                // Exciter is entity2  
+            } else if (connection.entity2Id === sourceCircleId) {
+                // Source circle is entity2  
                 const directionality = connection.directionality || 'none';
                 if (directionality === 'in' || directionality === 'both' || directionality === 'none') {
                     targetCircleId = connection.entity1Id;
@@ -177,20 +193,30 @@ const updateBuoyancyForConnectedCircles = (exciterId, newActivation) => {
                 if (targetCircle) {
                     let newBuoyancy;
                     
-                    if (newActivation === 'activated') {
-                        newBuoyancy = 'buoyant';
-                    } else if (newActivation === 'inactive' || newActivation === 'inert') {
-                        newBuoyancy = 'antibuoyant';
-                    } else {
-                        // Handle any other activation states by defaulting to antibuoyant
-                        newBuoyancy = 'antibuoyant';
+                    if (energyType === 'exciter') {
+                        // Exciter logic: activated → buoyant, inactive/inert → antibuoyant
+                        if (newActivation === 'activated') {
+                            newBuoyancy = 'buoyant';
+                        } else if (newActivation === 'inactive' || newActivation === 'inert') {
+                            newBuoyancy = 'antibuoyant';
+                        } else {
+                            newBuoyancy = 'antibuoyant';
+                        }
+                    } else if (energyType === 'dampener') {
+                        // Dampener logic: activated → antibuoyant, inactive/inert → buoyant
+                        if (newActivation === 'activated') {
+                            newBuoyancy = 'antibuoyant';
+                        } else if (newActivation === 'inactive' || newActivation === 'inert') {
+                            newBuoyancy = 'buoyant';
+                        } else {
+                            newBuoyancy = 'buoyant';
+                        }
                     }
                     
                     // Update the target circle's buoyancy
                     // Use entityStore.updateCircle directly to avoid infinite recursion
                     entityStore.updateCircle(targetCircleId, { buoyancy: newBuoyancy });
                 }
-                console.log(targetCircle.buoyancy);
             }
         });
     };
@@ -535,6 +561,8 @@ const updateBuoyancyForConnectedCircles = (exciterId, newActivation) => {
 
         // Automaton trigger management
         setAutomatonTrigger,
+        setConnectionUpdateTrigger,
+        triggerConnectionUpdateIfActive,
 
         getGlobalProperty: uiStore.getGlobalProperty,
         setGlobalProperty: (propertyKey, value) => {
@@ -612,8 +640,6 @@ if (typeof window !== 'undefined') {
             if (issues.length > 0) {
                 console.table(issues);
                 console.warn(`Found ${issues.length} mood value inconsistencies`);
-            } else {
-                console.log('✅ All mood values are correct');
             }
             return issues;
         },
@@ -621,7 +647,6 @@ if (typeof window !== 'undefined') {
         recalculate: () => {
             const dataStore = useDataStore();
             const result = dataStore.forceMoodRecalculation();
-            console.log(`Recalculated mood values for ${result.changedCircles}/${result.totalCircles} circles`);
             return result;
         },
 
@@ -630,7 +655,6 @@ if (typeof window !== 'undefined') {
             // Get current document (you might need to adapt this based on your UI state)
             const viewers = dataStore.getVisibleCircleViewers();
             if (viewers.length === 0) {
-                console.log('No viewers available');
                 return [];
             }
             
@@ -658,60 +682,6 @@ if (typeof window !== 'undefined') {
             return groupInfo;
         },
 
-        testScenario: () => {
-            console.log('🧪 Testing mood value scenario...');
-            
-            const dataStore = useDataStore();
-            const viewers = dataStore.getVisibleCircleViewers();
-            if (viewers.length === 0) {
-                console.error('No viewers available for testing');
-                return;
-            }
-            
-            // Create a test group
-            const group = dataStore.createCircleInViewer(viewers[0].id, 400, 300);
-            dataStore.updateCircle(group.id, { 
-                name: 'Test Group',
-                type: 'group',
-                colors: ['hsl(0, 0%, 70%)'] // Neutral color
-            });
-            
-            console.log(`Created group ${group.id} with mood: ${group.moodValue}`);
-            
-            // Create test members with different moods
-            const member1 = dataStore.createCircleInViewer(viewers[0].id, 380, 280);
-            dataStore.updateCircle(member1.id, {
-                name: 'Happy Member',
-                colors: ['hsl(48, 100%, 50%)'], // Great = 1.0
-                belongsToID: group.id
-            });
-            
-            const member2 = dataStore.createCircleInViewer(viewers[0].id, 420, 280);
-            dataStore.updateCircle(member2.id, {
-                name: 'Sad Member', 
-                colors: ['hsl(0, 100%, 60%)'], // Bad = 0.3
-                belongsToID: group.id
-            });
-            
-            // Check final group mood
-            const finalGroup = dataStore.getCircle(group.id);
-            const expectedMood = (1.0 + 0.3) / 2; // 0.65
-            
-            console.log(`Group mood after adding members: ${finalGroup.moodValue}`);
-            console.log(`Expected mood: ${expectedMood}`);
-            console.log(`Match: ${Math.abs(finalGroup.moodValue - expectedMood) < 0.01 ? '✅' : '❌'}`);
-            
-            return {
-                groupId: group.id,
-                groupMood: finalGroup.moodValue,
-                expectedMood: expectedMood,
-                members: [
-                    { id: member1.id, mood: member1.moodValue },
-                    { id: member2.id, mood: member2.moodValue }
-                ]
-            };
-        },
-
         cleanup: () => {
             // Clean up test circles (delete all circles with "Test" in the name)
             const dataStore = useDataStore();
@@ -725,7 +695,6 @@ if (typeof window !== 'undefined') {
                 dataStore.deleteCircle(circle.id);
             });
             
-            console.log(`Cleaned up ${testCircles.length} test circles`);
             return testCircles.length;
         }
     };

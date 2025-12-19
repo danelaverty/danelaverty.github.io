@@ -306,7 +306,11 @@ export const ConnectionComponent = {
         demoMode: {
             type: Boolean,
             default: false
-        }
+        },
+        animationTimestamp: {
+            type: Number,
+            default: 0
+        },
     },
     setup(props) {
         const isExplicitConnection = computed(() => {
@@ -496,24 +500,41 @@ const potentialEnergyDebugInfo = computed(() => {
             return entity.activation === 'inactive';
         };
 
-        // Helper function to get entity position with drag adjustments
-        const getEntityPosition = (entity, entityType) => {
-            // Check if this entity is currently being dragged
-            const isDragging = props.entityDragState.isDragging;
-            const draggedIds = props.entityDragState.draggedEntityIds || [];
-            const isEntityBeingDragged = isDragging && draggedIds.includes(entity.id);
-            
-            if (isEntityBeingDragged) {
-                // Apply drag deltas to the entity's position
-                return {
-                    x: entity.x + props.entityDragState.currentDeltas.deltaX,
-                    y: entity.y + props.entityDragState.currentDeltas.deltaY
-                };
-            }
-            
-            // Return the entity's current position without modifications
-            return { x: entity.x, y: entity.y };
+const getEntityPosition = (entity, entityType) => {
+    // Check if this entity is currently being dragged
+    const isDragging = props.entityDragState.isDragging;
+    const draggedIds = props.entityDragState.draggedEntityIds || [];
+    const isEntityBeingDragged = isDragging && draggedIds.includes(entity.id);
+    
+    if (isEntityBeingDragged) {
+        // Apply drag deltas to the entity's position
+        return {
+            x: entity.x + props.entityDragState.currentDeltas.deltaX,
+            y: entity.y + props.entityDragState.currentDeltas.deltaY
         };
+    }
+    
+    // NEW: During roil animation, read actual DOM position
+    const entityElement = document.querySelector(`[data-entity-id="${entity.id}"]`);
+    if (entityElement && entityElement.style.left && entityElement.style.top) {
+        const domLeft = parseFloat(entityElement.style.left) || 0;
+        const domTop = parseFloat(entityElement.style.top) || 0;
+        
+        // Convert DOM position back to entity coordinate space
+        const isCircleType = entityType === 'circle' || entityType.startsWith('circle-') || entityType.startsWith('explicit-circle');
+        if (isCircleType && props.viewerWidth) {
+            const centerX = props.viewerWidth / 2;
+            return {
+                x: domLeft - centerX,
+                y: domTop
+            };
+        }
+        return { x: domLeft, y: domTop };
+    }
+    
+    // Fallback to stored position
+    return { x: entity.x, y: entity.y };
+};
 
         const getArrowColor = computed(() => {
             const { entityType } = props.connection;
@@ -545,6 +566,7 @@ const potentialEnergyDebugInfo = computed(() => {
         });
 
         const lineStyle = computed(() => {
+            const _ = props.animationTimestamp;
             const { entity1, entity2, entityType } = props.connection;
             
             const pos1 = getEntityPosition(entity1, entityType);
@@ -580,8 +602,8 @@ const potentialEnergyDebugInfo = computed(() => {
             
             // Set default values
             if (isExplicit) {
-                strokeColor = props.demoMode ? 'rgba(70, 70, 70, 0)' : 'rgba(70, 70, 70, .3)';
-                //strokeColor = 'rgba(70, 70, 70, .3)';
+                //strokeColor = props.demoMode ? 'rgba(70, 70, 70, 0)' : 'rgba(70, 70, 70, .3)';
+                strokeColor = 'rgba(70, 70, 70, .3)';
                 strokeWidth = '2.5px';
             } else if (isCircleType) {
                 strokeColor = '#505050';

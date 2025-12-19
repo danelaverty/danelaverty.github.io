@@ -1,4 +1,4 @@
-// entityStore.js - Enhanced with dynamic cycleable property defaults and mood value support
+// entityStore.js - Enhanced with state-to-base property synchronization
 import { reactive } from './vue-composition-api.js';
 import { getPropertyDefault, cycleProperty, validatePropertyValue, CYCLE_PROPERTY_CONFIGS } from './CBCyclePropertyConfigs.js';
 import { getMoodValueForColor } from './colorFamilies.js';
@@ -25,6 +25,19 @@ const BASE_CIRCLE_DEFAULTS = {
     sizeMode: () => getPropertyDefault('sizeMode'),
     manualWidth: null,
     manualHeight: null,
+    states: () => ({
+        0: {
+            stateID: 0,
+            name: '???',
+            color: '#B3B3B3',
+            circleEmoji: null,
+            demandEmoji: null,
+            causeEmoji: null,
+            buoyancy: 'normal'
+        }
+    }),
+    currentStateID: 0,
+    nextStateID: 1,
 };
 
 // Generate dynamic defaults by combining base defaults with cycleable properties
@@ -64,45 +77,153 @@ const getSquareDefault = (key) => {
     return SQUARE_DEFAULTS[key];
 };
 
-// Helper to ensure circle has all required properties with defaults
-const ensureCircleDefaults = (circle) => {
-        // Dynamically ensure all properties from CIRCLE_DEFAULTS exist with proper values
-        Object.keys(CIRCLE_DEFAULTS).forEach(key => {
-            const defaultValue = CIRCLE_DEFAULTS[key];
-            const resolvedDefault = typeof defaultValue === 'function' ? defaultValue() : defaultValue;
-            
-            // Special handling for emoji based on type
-            if (key === 'emoji') {
-                if (circle.emoji === undefined) {
-                    circle.emoji = circle.type === 'emoji' && !circle.emoji 
-                        ? getCircleDefault('emojiForEmojiType') 
-                        : resolvedDefault;
-                }
-                return;
-            }
-            
-            // Skip emojiForEmojiType as it's just a default constant, not a stored property
-            if (key === 'emojiForEmojiType') {
-                return;
-            }
-            
-            // Skip mood values - they're calculated by the mood system
-            if (key === 'moodValue' || key === 'secondaryMoodValue') {
-                return;
-            }
-            
-            // For cycleable properties, validate the value
-            if (validatePropertyValue(key, circle[key])) {
-                // Value is valid, keep it
-                return;
-            }
-            
-            // For all other properties, set if undefined or invalid
-            if (circle[key] === undefined) {
-                circle[key] = Array.isArray(resolvedDefault) ? [...resolvedDefault] : resolvedDefault;
-            }
-        });
+// NEW: State-to-base property synchronization
+const syncCurrentStateToBaseProperties = (circle) => {
+    if (!circle.states || !circle.states[circle.currentStateID]) {
+        return;
+    }
+    
+    const currentState = circle.states[circle.currentStateID];
+    
+    // Sync state properties to base properties
+    circle.name = currentState.name;
+    circle.color = currentState.color;
+    circle.circleEmoji = currentState.circleEmoji;
+    circle.demandEmoji = currentState.demandEmoji;
+    circle.causeEmoji = currentState.causeEmoji;
+    circle.buoyancy = currentState.buoyancy;
+    
+    // Also update colors array to maintain compatibility with color system
+    if (currentState.color) {
+        circle.colors = [currentState.color];
+    }
+};
+
+// NEW: Base-to-state property synchronization (inverse direction)
+const syncBasePropertiesToCurrentState = (circle, updatedProperties) => {
+    if (!circle.states || !circle.states[circle.currentStateID]) {
+        return false;
+    }
+    
+    const currentState = circle.states[circle.currentStateID];
+    
+    let stateUpdated = false;
+    const newStateProperties = {};
+    
+    // Define the bidirectional property mappings
+    const propertyMappings = {
+        'name': 'name',
+        'color': 'color',
+        'colors': 'color', // colors[0] maps to state color
+        'circleEmoji': 'circleEmoji',
+        'demandEmoji': 'demandEmoji',
+        'causeEmoji': 'causeEmoji',
+        'buoyancy': 'buoyancy'
     };
+    
+    Object.keys(propertyMappings).forEach(baseProperty => {
+        const stateProperty = propertyMappings[baseProperty];
+        
+        if (updatedProperties.hasOwnProperty(baseProperty)) {
+            let newValue = updatedProperties[baseProperty];
+            
+            // Special handling for colors array - use first color
+            if (baseProperty === 'colors' && Array.isArray(newValue) && newValue.length > 0) {
+                newValue = newValue[0];
+            }
+            
+            // Only update if the value actually changed
+            if (currentState[stateProperty] !== newValue) {
+                newStateProperties[stateProperty] = newValue;
+                stateUpdated = true;
+            }
+        }
+    });
+    
+    // If any state properties need updating, create a new state object to trigger reactivity
+    if (stateUpdated) {
+        const oldStates = circle.states;
+        circle.states = {
+            ...circle.states,
+            [circle.currentStateID]: {
+                ...currentState,
+                ...newStateProperties
+            }
+        };
+    }
+    
+    return stateUpdated;
+};
+
+// Helper to ensure circle has all required properties with defaults
+const ensureCircleDefaults = (circle, skipStateSync = false) => {
+    if (!circle.states || typeof circle.states !== 'object') {
+        circle.states = {
+            0: {
+                stateID: 0,
+                name: '???',
+                color: '#B3B3B3',
+                circleEmoji: null,
+                demandEmoji: null,
+                causeEmoji: null,
+                buoyancy: 'normal'
+            }
+        };
+    }
+
+    // Ensure currentStateID exists and is valid
+    if (circle.currentStateID === undefined || !circle.states[circle.currentStateID]) {
+        const availableStateIDs = Object.keys(circle.states).map(id => parseInt(id));
+        circle.currentStateID = availableStateIDs.length > 0 ? Math.min(...availableStateIDs) : 0;
+    }
+
+    // Ensure nextStateID exists
+    if (circle.nextStateID === undefined) {
+        const stateIDs = Object.keys(circle.states).map(id => parseInt(id));
+        circle.nextStateID = stateIDs.length > 0 ? Math.max(...stateIDs) + 1 : 1;
+    }
+
+    Object.keys(CIRCLE_DEFAULTS).forEach(key => {
+        const defaultValue = CIRCLE_DEFAULTS[key];
+        const resolvedDefault = typeof defaultValue === 'function' ? defaultValue() : defaultValue;
+
+        // Special handling for emoji based on type
+        if (key === 'emoji') {
+            if (circle.emoji === undefined) {
+                circle.emoji = circle.type === 'emoji' && !circle.emoji 
+                    ? getCircleDefault('emojiForEmojiType') 
+                    : resolvedDefault;
+            }
+            return;
+        }
+
+        // Skip emojiForEmojiType as it's just a default constant, not a stored property
+        if (key === 'emojiForEmojiType') {
+            return;
+        }
+
+        // Skip mood values - they're calculated by the mood system
+        if (key === 'moodValue' || key === 'secondaryMoodValue') {
+            return;
+        }
+
+        // For cycleable properties, validate the value
+        if (validatePropertyValue(key, circle[key])) {
+            // Value is valid, keep it
+            return;
+        }
+
+        // For all other properties, set if undefined or invalid
+        if (circle[key] === undefined) {
+            circle[key] = Array.isArray(resolvedDefault) ? [...resolvedDefault] : resolvedDefault;
+        }
+    });
+    
+    // NEW: Only sync state to base if we're not in the middle of a base property update
+    if (!skipStateSync) {
+        syncCurrentStateToBaseProperties(circle);
+    }
+};
 
 // Helper to ensure square has all required properties with defaults
 const ensureSquareDefaults = (square) => {
@@ -270,6 +391,9 @@ const createEntity = (entityType, documentId, containerWidth, containerHeight, v
             }
             
             // Mood values will be calculated by the mood system after creation
+            
+            // NEW: Ensure state synchronization for new circles
+            ensureCircleDefaults(entity);
         }
 
         // Add square-specific properties
@@ -389,6 +513,12 @@ const updateEntity = (entityType, id, updates) => {
         const oldSecondaryColors = entity.secondaryColors ? [...entity.secondaryColors] : undefined;
         const oldType = entity.type;
         const oldBelongsToID = entity.belongsToID;
+        const oldCurrentStateID = entity.currentStateID;
+
+        // NEW: Determine sync strategy before applying updates
+        const stateIDChanged = updates.currentStateID !== undefined && updates.currentStateID !== oldCurrentStateID;
+        const statesUpdated = updates.states !== undefined;
+        const isBasePropertyUpdate = !stateIDChanged && !statesUpdated;
 
         // Handle document reference circle name protection
         if (entity.documentReferenceID !== null && updates.name !== undefined) {
@@ -399,12 +529,23 @@ const updateEntity = (entityType, id, updates) => {
             Object.assign(entity, updates);
         }
 
-        // Ensure all required properties exist with defaults
-        ensureCircleDefaults(entity);
+        // NEW: Skip state sync in ensureCircleDefaults if this is a base property update
+        ensureCircleDefaults(entity, isBasePropertyUpdate);
 
         // Handle emoji when type changes to/from 'emoji'
         if (updates.type === 'emoji' && !entity.emoji) {
             entity.emoji = getCircleDefault('emojiForEmojiType');
+        }
+
+        // NEW: Handle bidirectional state synchronization
+        
+        // If currentStateID changed or states were directly updated, sync state to base
+        if (stateIDChanged || statesUpdated) {
+            syncCurrentStateToBaseProperties(entity);
+        } 
+        // If base properties were updated (and it wasn't a state sync operation), sync base to state
+        else {
+            const basePropertiesUpdated = syncBasePropertiesToCurrentState(entity, updates);
         }
 
         // Cascade to circle references (not document references)
@@ -450,14 +591,31 @@ const updateEntity = (entityType, id, updates) => {
                     if (updates.collapsed !== undefined) {
                         refCircle.collapsed = entity.collapsed;
                     }
+                    
+                    // NEW: Also sync state changes to referenced circles
+                    if (updates.currentStateID !== undefined) {
+                        refCircle.currentStateID = entity.currentStateID;
+                        syncCurrentStateToBaseProperties(refCircle);
+                    }
+                    
+                    if (updates.states !== undefined) {
+                        refCircle.states = JSON.parse(JSON.stringify(entity.states)); // Deep copy
+                        syncCurrentStateToBaseProperties(refCircle);
+                    }
+                    
+                    // NEW: If base properties were updated, sync those to referenced circle states too
+                    if (!stateIDChanged && !statesUpdated) {
+                        syncBasePropertiesToCurrentState(refCircle, updates);
+                    }
 
-                    ensureCircleDefaults(refCircle);
+                    // NEW: Use skipStateSync for referenced circles too during base property updates
+                    ensureCircleDefaults(refCircle, isBasePropertyUpdate);
                 });
 
                 // Notify mood system about referenced circle updates
                 if (moodSystem) {
                     referencedCircles.forEach(refCircle => {
-                        if (updates.colors !== undefined) {
+                        if (updates.colors !== undefined || stateIDChanged || statesUpdated) {
                             moodSystem.onCircleColorsChanged(refCircle.id);
                         }
                         if (updates.type !== undefined) {
@@ -476,8 +634,12 @@ const updateEntity = (entityType, id, updates) => {
                 JSON.stringify(updates.secondaryColors) !== JSON.stringify(oldSecondaryColors);
             const typeChanged = updates.type !== undefined && updates.type !== oldType;
             const membershipChanged = updates.belongsToID !== undefined && updates.belongsToID !== oldBelongsToID;
+            
+            // NEW: Also trigger mood updates when state changes affect color
+            const stateColorChanged = (stateIDChanged || statesUpdated) && 
+                entity.states && entity.states[entity.currentStateID];
 
-            if (colorsChanged || secondaryColorsChanged) {
+            if (colorsChanged || secondaryColorsChanged || stateColorChanged) {
                 moodSystem.onCircleColorsChanged(id);
             }
             if (typeChanged) {
@@ -685,7 +847,10 @@ const entityStore = {
         generateRandomPosition,
         // Serialization
         serialize,
-        deserialize
+        deserialize,
+        // NEW: State synchronization utilities (for debugging/admin use)
+        syncCurrentStateToBaseProperties,
+        syncBasePropertiesToCurrentState
     };
 
     // Initialize and enhance entity store with mood system

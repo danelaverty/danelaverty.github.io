@@ -1,4 +1,4 @@
-// renderers/GlowCircleRenderer.js - Enhanced with satisfaction lock support
+// renderers/GlowCircleRenderer.js - Enhanced with satisfaction lock support and cause emoji
 import { ParticleSystem } from './ParticleSystem.js';
 import { ChakraFormSystem } from './ChakraFormSystem.js';
 import { ColorFlowSystem } from './ColorFlowSystem.js';
@@ -27,6 +27,11 @@ export const GlowCircleRenderer = {
             } else {
                 this.createDemandEmojiThoughtBalloon(element, circle.demandEmoji, isRoilMember, circle);
             }
+        }
+
+        // Add cause emoji display if present
+        if (circle.causeEmoji && typeof circle.causeEmoji == 'string' && circle.causeEmoji.trim() !== '') {
+            this.createCauseEmojiThoughtBalloon(element, circle.causeEmoji, isRoilMember, circle);
         }
 
         // Set up descent state listener for roil members (unless satisfaction locked)
@@ -58,8 +63,9 @@ export const GlowCircleRenderer = {
         }
         
         // Auto-initialize thought bubble listeners after DOM settles (only for non-locked circles)
-        if (isRoilMember && circle.demandEmoji && typeof circle.demandEmoji == 'string' && 
-            circle.demandEmoji.trim() !== '' && circle.satisfactionLocked !== 'yes') {
+        if (isRoilMember && ((circle.demandEmoji && typeof circle.demandEmoji == 'string' && 
+            circle.demandEmoji.trim() !== '') || (circle.causeEmoji && typeof circle.causeEmoji == 'string' && 
+            circle.causeEmoji.trim() !== '')) && circle.satisfactionLocked !== 'yes') {
             this.autoInitializeListeners();
         }
     },
@@ -134,13 +140,13 @@ export const GlowCircleRenderer = {
     },
 
     /**
-     * Create demand emoji thought balloon with clock-face visibility support
+     * Create demand emoji thought balloon with clock-face visibility support (top-right position)
      */
     createDemandEmojiThoughtBalloon(element, demandEmoji, isRoilMember = false, circle = {}) {
         const thoughtBalloon = document.createElement('div');
         thoughtBalloon.className = 'demand-emoji-thought-balloon';
         
-        // Style the thought balloon container (no inline opacity)
+        // Style the thought balloon container (no inline opacity) - positioned top-right
         thoughtBalloon.style.cssText = `
             position: absolute;
             top: -19px;
@@ -155,6 +161,40 @@ export const GlowCircleRenderer = {
             opacity: 0.8;
         `;
         
+        this.createThoughtBubbleContent(thoughtBalloon, demandEmoji, 'right');
+        element.appendChild(thoughtBalloon);
+    },
+
+    /**
+     * Create cause emoji thought balloon with clock-face visibility support (top-left position)
+     */
+    createCauseEmojiThoughtBalloon(element, causeEmoji, isRoilMember = false, circle = {}) {
+        const thoughtBalloon = document.createElement('div');
+        thoughtBalloon.className = 'cause-emoji-thought-balloon';
+        
+        // Style the thought balloon container (no inline opacity) - positioned top-left
+        thoughtBalloon.style.cssText = `
+            position: absolute;
+            top: -19px;
+            left: -13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            pointer-events: none;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: opacity 0.3s ease-in-out;
+            opacity: 0.8;
+        `;
+        
+        this.createThoughtBubbleContent(thoughtBalloon, causeEmoji, 'left');
+        element.appendChild(thoughtBalloon);
+    },
+
+    /**
+     * Create the content for a thought bubble with appropriate tail direction
+     */
+    createThoughtBubbleContent(thoughtBalloon, emoji, tailDirection = 'right') {
         // Create the thought balloon emoji (larger)
         const balloonElement = document.createElement('span');
         balloonElement.style.cssText = `
@@ -178,23 +218,51 @@ export const GlowCircleRenderer = {
         `;
         balloonElement.appendChild(bubbleBody);
 
-        // Create the speech bubble tail (right-pointing triangle)
+        // Create the tail (direction and style depends on position)
         const bubbleTail = document.createElement('div');
-        bubbleTail.style.cssText = `
-            position: absolute;
-            bottom: -5px;
-            right: 9px;
-            width: 0;
-            height: 0;
-            border-top: 0.25em solid transparent;
-            border-bottom: 0.25em solid transparent;
-            border-left: 0.25em solid white;
-        `;
-        balloonElement.appendChild(bubbleTail);        
-        // Create the demand emoji (smaller, positioned inside)
-        const demandElement = document.createElement('span');
-        demandElement.textContent = demandEmoji;
-        demandElement.style.cssText = `
+        if (tailDirection === 'right') {
+            // Right-pointing triangle for demand emoji (speech bubble style)
+            bubbleTail.style.cssText = `
+                position: absolute;
+                bottom: -5px;
+                right: 9px;
+                width: 0;
+                height: 0;
+                border-top: 0.25em solid transparent;
+                border-bottom: 0.25em solid transparent;
+                border-left: 0.25em solid white;
+            `;
+        } else {
+            // Circular tail for cause emoji (thought bubble style)
+            bubbleTail.style.cssText = `
+                position: absolute;
+                bottom: -3px;
+                left: 9px;
+                width: 8px;
+                height: 8px;
+                background-color: white;
+                border-radius: 50%;
+            `;
+            
+            // Add a smaller circle for classic thought bubble appearance
+            const smallerCircle = document.createElement('div');
+            smallerCircle.style.cssText = `
+                position: absolute;
+                bottom: -7px;
+                left: 14px;
+                width: 4px;
+                height: 4px;
+                background-color: white;
+                border-radius: 50%;
+            `;
+            balloonElement.appendChild(smallerCircle);
+        }
+        balloonElement.appendChild(bubbleTail);
+        
+        // Create the emoji (smaller, positioned inside)
+        const emojiElement = document.createElement('span');
+        emojiElement.textContent = emoji;
+        emojiElement.style.cssText = `
             font-size: 20px;
             position: absolute;
             top: 45%;
@@ -203,16 +271,16 @@ export const GlowCircleRenderer = {
             z-index: 11;
         `;
         
-        thoughtBalloon.appendChild(demandElement);
+        thoughtBalloon.appendChild(emojiElement);
         thoughtBalloon.appendChild(balloonElement);
-        element.appendChild(thoughtBalloon);
     },
 
     /**
      * Initialize thought bubble position listeners for all existing thought balloons
      */
     initializeThoughtBubbleListeners() {
-        document.querySelectorAll('.demand-emoji-thought-balloon').forEach(balloon => {
+        // Handle both demand and cause emoji thought balloons
+        document.querySelectorAll('.demand-emoji-thought-balloon, .cause-emoji-thought-balloon').forEach(balloon => {
             const element = balloon.closest('[data-entity-id]');
             if (element && element.dataset.entityId && !element._thoughtBubblePositionListener) {
                 const handlePositionChange = (event) => {
@@ -239,8 +307,19 @@ export const GlowCircleRenderer = {
      * Update thought bubble visibility based on clock position
      */
     updateThoughtBubbleVisibility(thoughtBalloon, clockPosition) {
-        // Visible between 9:00 (270°) and 1:00 (30°), centered around 12:00
-        const isInVisibleRange = clockPosition >= 180 && clockPosition < 270;
+        let isInVisibleRange;
+        
+        if (thoughtBalloon.classList.contains('demand-emoji-thought-balloon')) {
+            // Demand emoji (top-right): Visible between 9:00 (270°) and 1:00 (30°), centered around 12:00
+            isInVisibleRange = clockPosition >= 180 && clockPosition < 270;
+        } else if (thoughtBalloon.classList.contains('cause-emoji-thought-balloon')) {
+            // Cause emoji (top-left): Visible between 11:00 (330°) and 3:00 (90°), centered around 12:00
+            isInVisibleRange = clockPosition >= 270 || clockPosition < 90;
+        } else {
+            // Default behavior for unknown balloon types
+            isInVisibleRange = clockPosition >= 180 && clockPosition < 270;
+        }
+        
         const targetOpacity = isInVisibleRange ? '0.8' : '0';
         
         if (thoughtBalloon.style.opacity !== targetOpacity) {
@@ -378,21 +457,41 @@ export const GlowCircleRenderer = {
             }
         }
 
-        // Handle switching between lock and thought balloon
-        const existingThoughtBalloon = element.querySelector('.demand-emoji-thought-balloon');
+        // Handle switching between lock and thought balloon for demand emoji
+        const existingDemandThoughtBalloon = element.querySelector('.demand-emoji-thought-balloon');
         const existingLock = element.querySelector('.demand-emoji-lock');
         
         if (circle.demandEmoji && circle.demandEmoji.trim() !== '') {
-            if (circle.satisfactionLocked === 'yes' && existingThoughtBalloon && !existingLock) {
+            if (circle.satisfactionLocked === 'yes' && existingDemandThoughtBalloon && !existingLock) {
                 // Switch from thought balloon to lock
-                existingThoughtBalloon.remove();
+                existingDemandThoughtBalloon.remove();
                 this.createDemandEmojiLock(element, circle.demandEmoji, circle);
-            } else if (circle.satisfactionLocked !== 'yes' && existingLock && !existingThoughtBalloon) {
+            } else if (circle.satisfactionLocked !== 'yes' && existingLock && !existingDemandThoughtBalloon) {
                 // Switch from lock to thought balloon
                 existingLock.remove();
                 this.createDemandEmojiThoughtBalloon(element, circle.demandEmoji, true, circle);
                 this.autoInitializeListeners();
             }
+        }
+
+        // Handle cause emoji thought balloon updates
+        const existingCauseThoughtBalloon = element.querySelector('.cause-emoji-thought-balloon');
+        
+        if (circle.causeEmoji && circle.causeEmoji.trim() !== '') {
+            if (!existingCauseThoughtBalloon) {
+                // Add cause emoji thought balloon if it doesn't exist
+                this.createCauseEmojiThoughtBalloon(element, circle.causeEmoji, true, circle);
+                this.autoInitializeListeners();
+            } else {
+                // Update existing cause emoji if it changed
+                const existingEmoji = existingCauseThoughtBalloon.querySelector('span');
+                if (existingEmoji && existingEmoji.textContent !== circle.causeEmoji) {
+                    existingEmoji.textContent = circle.causeEmoji;
+                }
+            }
+        } else if (existingCauseThoughtBalloon) {
+            // Remove cause emoji thought balloon if causeEmoji is empty/null
+            existingCauseThoughtBalloon.remove();
         }
     },
 
