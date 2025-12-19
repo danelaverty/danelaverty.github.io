@@ -251,7 +251,16 @@ export class RoilMotionCore {
         element.style.opacity = elementOpacity;
         
         circle.currentScale = scale;
+
+        this.updateConnectionsForCircle(circleId, circle);
     }
+
+updateConnectionsForCircle(circleId, circle) {
+    // Use the dataStore's connection update trigger
+    if (this.dataStore && this.dataStore.triggerConnectionUpdateIfActive) {
+        this.dataStore.triggerConnectionUpdateIfActive();
+    }
+}
 
     updateCircleBasePosition(circleId, newX, newY) {
         const circle = this.activeCircles.get(circleId);
@@ -300,6 +309,20 @@ setCircleBuoyancy(circleId, buoyancy) {
             }
         }
     }
+}
+
+updateViewerWidth(viewerId, newViewerWidth) {
+    this.activeCircles.forEach((circle, circleId) => {
+        // Only update circles that belong to the resized viewer
+        if (circle.viewerId === viewerId && circle.groupId && circle.viewerWidth) {
+            // Update the stored viewer width
+            circle.viewerWidth = newViewerWidth;
+            
+            // Recalculate and update the base position
+            const newGroupOffset = this.getGroupAbsolutePosition(circle.groupId, newViewerWidth);
+            circle.baseX = newGroupOffset.x;
+        }
+    });
 }
 
     updateCircleBuoyancy(circleId) {

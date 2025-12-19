@@ -77,6 +77,17 @@ export const CONTROL_REGISTRY = {
     condition: (circles) => circles.every(c => c.type === 'emoji' && !c.referenceID)
   },
 
+  causeEmoji: {
+    type: 'emoji',
+    property: 'causeEmoji', 
+    defaultValue: null,
+    component: 'CircleEmojiControl',
+    picker: 'CircleEmojiPickerModal',
+    pickerConfig: { width: 600, height: 500 },
+    displayName: 'Cause Emoji'
+    // No condition = shows for all circles
+  },
+
   demandEmoji: {
     type: 'emoji',
     property: 'demandEmoji', 
@@ -112,7 +123,18 @@ export const CONTROL_REGISTRY = {
     displayName: 'Connection Energy',
     condition: (circles, connections) => connections.length === 1,
     entityType: 'connection'
-  }
+  },
+
+    states: {
+        type: 'states',
+        property: 'states',
+        defaultValue: {},
+        component: 'CBStatesControl',
+        picker: 'CBStatesPickerModal',
+        pickerConfig: { width: 800, height: 600 },
+        displayName: 'States',
+        condition: (circles) => circles.length === 1,
+    },
 };
 
 // Helper to register new controls

@@ -1,4 +1,4 @@
-// pickers/CircleEmojiPickerModal.js - Updated with dynamic tab generation
+// pickers/CircleEmojiPickerModal.js - Fixed to emit string values consistently
 import { emojiCategories } from './emojiFullSet.js';
 import { EmojiVariantService } from './EmojiVariantService.js';
 import { injectComponentStyles } from './styleUtils.js';
@@ -273,7 +273,10 @@ export const CircleEmojiPickerModal = {
     },
 
     cleanEmoji(emoji) {
-      if (!emoji) return '';
+      // Fix: Ensure emoji is a string before calling string methods
+      if (!emoji || typeof emoji !== 'string') {
+        return '';
+      }
       
       // Remove common skin tone modifiers
       const skinTonePattern = /[\u{1F3FB}-\u{1F3FF}]/gu;
@@ -292,7 +295,7 @@ export const CircleEmojiPickerModal = {
     },
 
     isNoEmojiSelected() {
-      return this.currentEmoji === '';
+      return this.currentEmoji === '' || this.currentEmoji === null || this.currentEmoji === undefined;
     },
     
     setActiveTab(tabId) {
@@ -312,19 +315,13 @@ export const CircleEmojiPickerModal = {
     },
     
     selectCircleEmoji(emoji, name = '') {
-      this.$emit('selectCircleEmoji', {
-        emoji: emoji,
-        name: name,
-        key: Date.now().toString()
-      });
+      // Fix: Always emit just the emoji string, not an object
+      this.$emit('selectCircleEmoji', emoji);
     },
     
     selectNoEmoji() {
-      this.$emit('selectCircleEmoji', {
-        emoji: '',
-        name: 'No Emoji',
-        key: Date.now().toString()
-      });
+      // Fix: Emit empty string instead of object
+      this.$emit('selectCircleEmoji', '');
     },
     
     selectCategory(categoryData) {

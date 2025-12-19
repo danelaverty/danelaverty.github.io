@@ -1,5 +1,6 @@
 // CircleViewerDragResize.js - Drag/drop operations and resize functionality
 import { ref, computed } from './vue-composition-api.js';
+import { roilMotionSystem } from './RoilMotionCore.js'; 
 
 export function useCircleViewerDragResize(props, emit, viewerRef, viewerWidth, dataStore) {
     const isResizing = ref(false);
@@ -112,6 +113,9 @@ export function useCircleViewerDragResize(props, emit, viewerRef, viewerWidth, d
         
         // Update the viewer properties via the data store
         dataStore.updateCircleViewer(props.viewerId, { width: newWidth });
+
+        roilMotionSystem.updateViewerWidth(props.viewerId, newWidth);
+
         emit('resize', { viewerId: props.viewerId, width: newWidth });
     };
 

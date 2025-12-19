@@ -1,9 +1,29 @@
-// EntityControls.js - Unified controls component for both circles and squares (Updated to use SharedDropdown)
+// EntityControls.js - Updated to remove picker modals (moved to AppComponent)
 import { ref, computed } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
+import { useCharacteristicsBarBridge } from './useCharacteristicsBarBridge.js';
 import { injectComponentStyles } from './styleUtils.js';
+import { CONTROL_REGISTRY } from './controlRegistry.js';
+import { EmojiRenderer } from './EmojiRenderer.js';
+import { EmojiVariantService } from './EmojiVariantService.js';
+import { CBConnectionDirectionalityControl } from './CBConnectionDirectionalityControl.js';
+import { CBConnectionEnergyControl } from './CBConnectionEnergyControl.js';
+import { getPropertyConfig } from './CBCyclePropertyConfigs.js';
+import { CBSecondaryNameControl } from './CBSecondaryNameControl.js';
+import { CBStatesControl } from './CBStatesControl.js';
 
-// Inject component styles (simplified since dropdown styles moved to SharedDropdown)
+// Import styles - migrated from CircleCharacteristicsBar
+import { baseCharacteristicsStyles, colorStyles, typeStyles, energyStyles, activationStyles, emojiStyles } from './cbBaseStyles.js';
+
+// Import control components (but not picker modals)
+import { TypeControl } from './CBTypeControl.js';
+import { CircleEmojiControl } from './CBCircleEmojiControl.js';
+import { ColorControl } from './CBColorControl.js';
+import { EnergyControl } from './CBEnergyControl.js';
+import { CBCyclePropertyControl } from './CBCyclePropertyControl.js';
+import { CBJumpToReferenceControl } from './CBJumpToReferenceControl.js';
+import { BreakReferenceControl } from './CBBreakReferenceControl.js';
+
 const componentStyles = `
     .entity-controls {
         position: absolute;
@@ -12,46 +32,23 @@ const componentStyles = `
         display: flex;
         flex-direction: row;
         align-items: flex-start;
-        gap: 8px;
+        gap: 3px;
         z-index: 1000;
+        flex-wrap: nowrap; /* Prevent wrapping for now */
     }
 
-    .entity-control-button {
-        width: 25px;
-        height: 25px;
-        border-radius: 50%;
-        background-color: #333;
-        color: #999;
-        border: 2px solid #666;
-        font-size: 20px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-        transition: background-color 0.2s ease;
-    }
-
-    .entity-control-button:hover {
-        background-color: #555;
-    }
-
-    .entity-control-button:disabled {
-        background-color: #222;
-        border-color: #444;
-        color: #666;
-        cursor: not-allowed;
-    }
-
+    /* Add button specific styling */
     .entity-add-button {
         font-size: 20px;
+        font-weight: bold;
     }
 
+    /* Document label styling */
     .entity-document-label {
         background-color: rgba(42, 42, 42, 0.9);
         color: #999;
-        padding: 4px;
-        border-radius: 6px;
+        padding: 4px 8px;
+        border-radius: 4px;
         font-size: 12px;
         border: 1px solid #666;
         max-width: 200px;
@@ -61,12 +58,23 @@ const componentStyles = `
         cursor: pointer;
         transition: background-color 0.2s ease;
         align-self: flex-start;
+        height: 32px;
+        display: flex;
+        align-items: center;
     }
 
     .entity-document-label:hover {
         background-color: rgba(52, 52, 52, 0.9);
         border-color: #888;
     }
+
+    /* Include all characteristic bar styles */
+    ${baseCharacteristicsStyles}
+    ${colorStyles}
+    ${typeStyles}
+    ${energyStyles}
+    ${activationStyles}
+    ${emojiStyles}
 `;
 
 injectComponentStyles('entity-controls', componentStyles);
@@ -89,6 +97,9 @@ export const EntityControls = {
         const documentButtonRef = ref(null);
         const documentLabelRef = ref(null);
 
+        // Use characteristics bridge for circle controls
+        const characteristics = props.entityType === 'circle' ? useCharacteristicsBarBridge() : null;
+
         const shouldShowControls = computed(() => {
             return props.entityType === 'circle' || dataStore.getSelectedCircles().length === 1;
         });
@@ -104,6 +115,27 @@ export const EntityControls = {
 
         const hasDocument = computed(() => {
             return currentDocument.value !== null;
+        });
+
+        // Circle-specific control visibility
+        const shouldShowCircleControls = computed(() => {
+            if (props.entityType !== 'circle' || !characteristics) return false;
+            return characteristics.isVisible.value;
+        });
+
+        const shouldShowCircleCharacteristicControls = computed(() => {
+            if (!characteristics) return false;
+            return characteristics.shouldShowCircleCharacteristicControls.value;
+        });
+
+        const shouldShowEmojiControls = computed(() => {
+            if (!characteristics) return false;
+            return characteristics.shouldShowEmojiControls?.value || false;
+        });
+
+        const shouldShowExplicitConnectionControls = computed(() => {
+            if (!characteristics) return false;
+            return characteristics.shouldShowExplicitConnectionControls?.value || false;
         });
 
         // Button handlers
@@ -134,7 +166,6 @@ export const EntityControls = {
         };
 
         const handleDocumentClick = (event) => {
-            //const triggerElement = hasDocument.value ? documentLabelRef.value : documentButtonRef.value;
             const triggerElement = documentButtonRef.value;
             
             emit('show-dropdown', {
@@ -148,7 +179,6 @@ export const EntityControls = {
         const shouldShowRButton = computed(() => {
             const selectedCircleIds = dataStore.getSelectedCircles();
             if (selectedCircleIds.length !== 0) return false;
-
             return true;
         });
 
@@ -158,16 +188,13 @@ export const EntityControls = {
             const selectedCircleIds = dataStore.getSelectedCircles();
             if (selectedCircleIds.length !== 1) return false;
             
-            // Get the actual circle object using the ID
             const selectedCircle = dataStore.getCircle(selectedCircleIds[0]);
             if (!selectedCircle) return false;
             
             return selectedCircle.type === 'group' && selectedCircle.roilMode === 'on';
         });
 
-        // Add this handler
         const handleAddMemberClick = () => {
-            // Same document selection logic as other buttons
             if (props.entityType === 'circle' && props.viewerId) {
                 const documentId = dataStore.getCircleDocumentForViewer(props.viewerId);
                 if (!documentId) {
@@ -178,23 +205,19 @@ export const EntityControls = {
             emit('add-entity', { entityType: 'roilMember' });
         };
 
-        // Add visibility logic for "A" button (same as "M" button)
         const shouldShowAButton = computed(() => {
             if (props.entityType !== 'circle' || !props.viewerId) return false;
             
             const selectedCircleIds = dataStore.getSelectedCircles();
             if (selectedCircleIds.length !== 1) return false;
             
-            // Get the actual circle object using the ID
             const selectedCircle = dataStore.getCircle(selectedCircleIds[0]);
             if (!selectedCircle) return false;
             
             return selectedCircle.type === 'group' && selectedCircle.roilMode === 'on';
         });
 
-        // Add handler for "A" button
         const handleAddAngryMemberClick = () => {
-            // Same document selection logic as other buttons
             if (props.entityType === 'circle' && props.viewerId) {
                 const documentId = dataStore.getCircleDocumentForViewer(props.viewerId);
                 if (!documentId) {
@@ -205,14 +228,12 @@ export const EntityControls = {
             emit('add-entity', { entityType: 'angryMember' });
         };
 
-        // NEW: Check if any selected circles are glow-type roil members
         const shouldShowArrowButtons = computed(() => {
             if (props.entityType !== 'circle' || !props.viewerId) return false;
             
             const selectedCircleIds = dataStore.getSelectedCircles();
             if (selectedCircleIds.length === 0) return false;
             
-            // Check if any selected circle is a glow-type that belongs to a roil group
             return selectedCircleIds.some(circleId => {
                 const circle = dataStore.getCircle(circleId);
                 if (!circle || circle.type !== 'glow' || !circle.belongsToID) return false;
@@ -222,7 +243,6 @@ export const EntityControls = {
             });
         });
 
-        // NEW: Handler for making circles angry
         const handleMakeAngryClick = () => {
             const selectedCircleIds = dataStore.getSelectedCircles();
             
@@ -233,7 +253,6 @@ export const EntityControls = {
                 const parentGroup = dataStore.getCircle(circle.belongsToID);
                 if (!parentGroup || parentGroup.type !== 'group' || parentGroup.roilMode !== 'on') return;
                 
-                // Apply angry properties
                 dataStore.updateCircle(circleId, {
                     buoyancy: 'buoyant',
                     colors: ['hsl(0, 100%, 60%)'],
@@ -242,7 +261,6 @@ export const EntityControls = {
             });
         };
 
-        // NEW: Handler for making circles normal
         const handleMakeNormalClick = () => {
             const selectedCircleIds = dataStore.getSelectedCircles();
             
@@ -253,7 +271,6 @@ export const EntityControls = {
                 const parentGroup = dataStore.getCircle(circle.belongsToID);
                 if (!parentGroup || parentGroup.type !== 'group' || parentGroup.roilMode !== 'on') return;
                 
-                // Apply normal properties (remove buoyancy, set normal colors)
                 const updates = {
                     buoyancy: 'normal',
                     colors: ['hsl(0, 100%, 80%)'],
@@ -262,6 +279,13 @@ export const EntityControls = {
                 
                 dataStore.updateCircle(circleId, updates);
             });
+        };
+
+        // Helper function to assign refs properly
+        const assignDisplayRef = (controlName) => (el) => {
+            if (el && characteristics) {
+                characteristics.getDisplayRef(controlName).value = el.$el || el;
+            }
         };
 
         return {
@@ -281,45 +305,208 @@ export const EntityControls = {
             shouldShowArrowButtons,
             handleMakeAngryClick,
             handleMakeNormalClick,
+            
+            // Circle control functionality
+            shouldShowCircleControls,
+            shouldShowCircleCharacteristicControls,
+            shouldShowEmojiControls,
+            shouldShowExplicitConnectionControls,
+            assignDisplayRef,
+            
+            // Expose all characteristics functionality when available
+            ...(characteristics || {}),
+            
+            // Utilities
+            getPropertyConfig,
+            EmojiVariantService,
+            CONTROL_REGISTRY,
         };
     },
+    
+    components: {
+        EmojiRenderer,
+        TypeControl,
+        CircleEmojiControl,
+        ColorControl,
+        EnergyControl,
+        CBCyclePropertyControl,
+        CBJumpToReferenceControl,
+        BreakReferenceControl,
+        CBConnectionDirectionalityControl,
+        CBConnectionEnergyControl,
+        CBSecondaryNameControl,
+        CBStatesControl,
+    },
+    
     template: `
         <div 
             v-if="shouldShowControls"
             class="entity-controls"
         >
-            <!-- Add Button -->
-            <button 
-                class="entity-control-button entity-add-button"
-                @click="handleAddClick"
-            >+</button>
-            <!-- Add Roil Group Button -->
-            <button 
+            <!-- Basic Entity Creation Controls -->
+            <div 
                 v-if="shouldShowRButton"
-                class="entity-control-button entity-add-button"
+                class="characteristic-control entity-add-button"
+                @click="handleAddClick"
+                title="Add Circle"
+            >+</div>
+            
+            <div 
+                v-if="shouldShowRButton"
+                class="characteristic-control entity-add-button"
                 @click="handleAddRoilGroupClick"
-            >R</button>
-            <button 
+                title="Add Roil Group"
+            >R</div>
+            
+            <div 
                 v-if="shouldShowMButton"
-                class="entity-control-button entity-add-button"
+                class="characteristic-control entity-add-button"
                 @click="handleAddMemberClick"
-            >M</button>
-            <button 
+                title="Add Member"
+            >M</div>
+            
+            <div 
                 v-if="shouldShowAButton"
-                class="entity-control-button entity-add-button"
+                class="characteristic-control entity-add-button"
                 @click="handleAddAngryMemberClick"
-            >A</button>
-            <!-- NEW: Arrow buttons for making selected roil members angry/normal -->
-            <button 
+                title="Add Angry Member"
+            >A</div>
+            
+            <div 
                 v-if="shouldShowArrowButtons"
-                class="entity-control-button entity-add-button"
+                class="characteristic-control entity-add-button"
                 @click="handleMakeAngryClick"
-            >↑</button>
-            <button 
+                title="Make Selected Angry"
+            >&#x2191;</div>
+            
+            <div 
                 v-if="shouldShowArrowButtons"
-                class="entity-control-button entity-add-button"
+                class="characteristic-control entity-add-button"
                 @click="handleMakeNormalClick"
-            >↓</button>
+                title="Make Selected Normal"
+            >&#x2193;</div>
+
+            <!-- Circle Characteristic Controls -->
+            <template v-if="shouldShowCircleControls && shouldShowCircleCharacteristicControls">
+                <!-- Type Control -->
+                <TypeControl 
+                    :ref="assignDisplayRef('type')"
+                    :currentTypeInfo="currentTypeInfo"
+                    :isPickerOpen="isTypePickerOpen"
+                    @toggle="toggleTypePicker"
+                />
+
+                <!-- Circle Emoji Control -->
+                <CircleEmojiControl 
+                    v-if="isCircleEmojiPickerVisible"
+                    :ref="assignDisplayRef('circleEmoji')"
+                    :selectedCircle="selectedCircle"
+                    :hasMultipleCirclesSelected="hasMultipleCirclesSelected"
+                    :selectedCircles="getSelectedCircleObjects"
+                    :isPickerOpen="isCircleEmojiPickerOpen"
+                    :propertyName="'emoji'"
+                    @toggle="toggleCircleEmojiPicker"
+                />
+
+                <!-- Cause Emoji Control -->
+                <CircleEmojiControl 
+                    :ref="assignDisplayRef('causeEmoji')"
+                    :selectedCircle="selectedCircle"
+                    :hasMultipleCirclesSelected="hasMultipleCirclesSelected"
+                    :selectedCircles="getSelectedCircleObjects"
+                    :isPickerOpen="isCauseEmojiPickerOpen"
+                    :propertyName="'causeEmoji'"
+                    @toggle="toggleCauseEmojiPicker"
+                />
+
+                <!-- Demand Emoji Control -->
+                <CircleEmojiControl 
+                    :ref="assignDisplayRef('demandEmoji')"
+                    :selectedCircle="selectedCircle"
+                    :hasMultipleCirclesSelected="hasMultipleCirclesSelected"
+                    :selectedCircles="getSelectedCircleObjects"
+                    :isPickerOpen="isDemandEmojiPickerOpen"
+                    :propertyName="'demandEmoji'"
+                    @toggle="toggleDemandEmojiPicker"
+                />
+
+                <!-- Color Control -->
+                <ColorControl 
+                    :ref="assignDisplayRef('color')"
+                    :circleColors="circleColors"
+                    :isPickerOpen="isColorPickerOpen"
+                    @toggle="toggleColorPicker"
+                />
+
+                <ColorControl 
+                    :ref="assignDisplayRef('secondaryColor')"
+                    :circleColors="secondaryCircleColors"
+                    :isPickerOpen="isSecondaryColorPickerOpen"
+                    @toggle="toggleSecondaryColorPicker"
+                />
+
+                <CBSecondaryNameControl 
+                    :ref="assignDisplayRef('secondaryName')"
+                    :secondaryName="secondaryName"
+                    :isPickerOpen="isSecondaryNamePickerOpen"
+                    @toggle="toggleSecondaryNamePicker"
+                />
+
+                <!-- Energy Control -->
+                <EnergyControl 
+                    :ref="assignDisplayRef('energy')"
+                    :circleEnergyTypes="circleEnergyTypes"
+                    :isPickerOpen="isEnergyPickerOpen"
+                    :getEnergyTypeColor="getEnergyTypeColor"
+                    @toggle="toggleEnergyPicker"
+                />
+
+                <CBStatesControl 
+                    v-if="shouldShowStatesControl"
+                    :selectedCircle="selectedCircle"
+                    @toggle="toggleStatesPicker"
+                />
+
+                <!-- Dynamic Cycleable Property Controls -->
+                <CBCyclePropertyControl 
+                    v-for="propertyName in cycleableProperties"
+                    :key="propertyName"
+                    :property-name="propertyName"
+                    :property-value="getPropertyValue(propertyName)"
+                    @cycle="handlePropertyCycle(propertyName)"
+                />
+            </template>
+
+            <!-- Reference Controls -->
+            <CBJumpToReferenceControl 
+                v-if="shouldShowJumpToReferenceControl"
+                @jump-to-reference="handleJumpToReference"
+            />
+
+            <BreakReferenceControl 
+                v-if="shouldShowBreakReferenceControl"
+                @break-reference="handleBreakReference"
+            />
+
+            <!-- Explicit Connection Controls -->
+            <template v-if="shouldShowExplicitConnectionControls">
+                <!-- Visual separator -->
+                <div style="border-left: 1px solid #666; margin: 0 4px; height: 32px;"></div>
+                
+                <!-- Connection Directionality Control -->
+                <CBConnectionDirectionalityControl 
+                    :directionality="connectionDirectionality"
+                    @cycle="handleDirectionalityCycle"
+                />
+                
+                <!-- Connection Energy Control -->
+                <CBConnectionEnergyControl 
+                    :connectionEnergyTypes="connectionEnergyTypes"
+                    :isPickerOpen="isConnectionEnergyPickerOpen"
+                    :getEnergyTypeColor="getEnergyTypeColor"
+                    @toggle="toggleConnectionEnergyPicker"
+                />
+            </template>
         </div>
     `
 };

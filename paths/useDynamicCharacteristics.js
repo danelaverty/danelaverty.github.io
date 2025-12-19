@@ -1,10 +1,17 @@
-// useDynamicCharacteristics.js - Manages all controls dynamically
+// useDynamicCharacteristics.js - Fixed to work with global modals
 import { ref, computed, onMounted, onUnmounted, nextTick } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
 import { CONTROL_REGISTRY, getAvailableControls } from './controlRegistry.js';
 import { usePickerPositioning } from './pickerUtils.js';
 
+let singletonInstance = null;
+
 export function useDynamicCharacteristics() {
+// Return existing instance if it exists
+  if (singletonInstance) {
+    return singletonInstance;
+  }
+
   const dataStore = useDataStore();
 
   // Create reactive state for all controls dynamically
@@ -165,43 +172,24 @@ export function useDynamicCharacteristics() {
     });
   };
 
-  // Picker management
-  const { positionPicker } = usePickerPositioning();
-
+  // Picker management - simplified for global modals
   const closeAllPickers = () => {
     Object.keys(controlStates).forEach(name => {
       controlStates[name].value = false;
     });
   };
 
-  const togglePicker = async (controlName) => {
-    const config = CONTROL_REGISTRY[controlName];
-    if (!config) return;
+  // Simplified toggle that doesn't do positioning since modals are now global
+const togglePicker = async (controlName) => {
+  const config = CONTROL_REGISTRY[controlName];
+  if (!config) {
+    console.error(`No config found for control: ${controlName}`);
+    return;
+  }
 
-    closeAllPickers();
-    controlStates[controlName].value = true;
-
-    if (controlStates[controlName].value) {
-      await nextTick();
-      
-      // Get the DOM elements, handling Vue component refs properly
-      const pickerEl = controlRefs[controlName].value;
-      const displayEl = displayRefs[controlName].value;
-      
-      // Handle Vue component refs (.$el) vs direct DOM refs
-      const pickerDomEl = pickerEl?.$el || pickerEl;
-      const displayDomEl = displayEl?.$el || displayEl;
-      
-      if (pickerDomEl && displayDomEl && displayDomEl.getBoundingClientRect) {
-        positionPicker(
-          pickerDomEl,
-          displayDomEl,
-          config.pickerConfig.width,
-          config.pickerConfig.height
-        );
-      }
-    }
-  };
+  closeAllPickers();
+  controlStates[controlName].value = true;
+};
 
   const closePicker = (controlName) => {
     if (controlStates[controlName]) {
@@ -209,21 +197,18 @@ export function useDynamicCharacteristics() {
     }
   };
 
-  // Generic click-outside handler
+  // Generic click-outside handler - simplified since we don't need positioning checks
   const handleGlobalClick = (e) => {
+    // For global modals, we can still close on outside clicks
+    // but we don't need to check positioning
     requestAnimationFrame(() => {
       Object.keys(CONTROL_REGISTRY).forEach(controlName => {
-        if (controlStates[controlName].value && 
-            controlRefs[controlName].value && displayRefs[controlName].value) {
+        if (controlStates[controlName].value) {
+          // Check if click was on a modal with the app-global-picker-modal class
+          const clickedModal = e.target.closest('.app-global-picker-modal');
+          const clickedControl = e.target.closest('.characteristic-control');
           
-          // Get DOM elements, handling Vue component refs
-          const pickerDomEl = controlRefs[controlName].value.$el || controlRefs[controlName].value;
-          const displayDomEl = displayRefs[controlName].value.$el || displayRefs[controlName].value;
-          
-          // Check if click was outside both picker and display elements
-          if (pickerDomEl && displayDomEl &&
-              !pickerDomEl.contains(e.target) && 
-              !displayDomEl.contains(e.target)) {
+          if (!clickedModal && !clickedControl) {
             controlStates[controlName].value = false;
           }
         }
@@ -269,8 +254,9 @@ export function useDynamicCharacteristics() {
     getControlRef: (name) => controlRefs[name],
     getDisplayRef: (name) => displayRefs[name],
     
-    // State
+    // FIXED: State - expose the actual reactive refs
     isPickerOpen: (name) => controlStates[name]?.value || false,
+    getPickerState: (name) => controlStates[name], // NEW: Direct access to reactive ref
 
     // Legacy special handlers that the template still expects
     shouldShowJumpToReferenceControl: computed(() => {
@@ -377,5 +363,6 @@ export function useDynamicCharacteristics() {
     api[`is${camelName}Selected`] = (value) => isControlValueSelected(controlName, value);
   });
 
+singletonInstance = api;
   return api;
 }

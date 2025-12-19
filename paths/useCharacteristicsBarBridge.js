@@ -1,4 +1,4 @@
-// useCharacteristicsBarBridge.js - Complete bridge with all required data sources
+// useCharacteristicsBarBridge.js - Fixed with direct reactive access
 import { computed } from './vue-composition-api.js';
 import { useDynamicCharacteristics } from './useDynamicCharacteristics.js';
 import { useRecentEmojis } from './useRecentEmojis.js';
@@ -182,6 +182,15 @@ export function useCharacteristicsBarBridge() {
     hasMultipleCirclesSelected: computed(() => dynamic.selectedCircles.value.length > 1),
     getSelectedCircleObjects: computed(() => dynamic.selectedCircles.value),
     selectedCircle: computed(() => dynamic.selectedCircles.value[0] || null),
+
+shouldShowStatesControl: computed(() => {
+    const circles = dynamic.selectedCircles.value;
+    return circles.length === 1 && !circles[0]?.referenceID;
+}),
+
+isStatesPickerOpen: computed(() => dynamic.getPickerState('states')?.value || false),
+
+toggleStatesPicker: () => dynamic.togglePicker('states'),
     
     // Missing computed properties for template compatibility
     shouldShowCircleCharacteristicControls: computed(() => {
@@ -213,6 +222,16 @@ export function useCharacteristicsBarBridge() {
       return '';
     }),
     
+    getCurrentCauseEmoji: computed(() => {
+      const circles = dynamic.selectedCircles.value;
+      if (circles.length > 1) {
+        return circles[0]?.causeEmoji || '';
+      } else if (circles.length === 1) {
+        return circles[0].causeEmoji || '';
+      }
+      return '';
+    }),
+
     getCurrentDemandEmoji: computed(() => {
       const circles = dynamic.selectedCircles.value;
       if (circles.length > 1) {
@@ -278,16 +297,21 @@ export function useCharacteristicsBarBridge() {
     isEnergySelected: (value) => dynamic.isControlValueSelected('energy', value),
     isConnectionEnergySelected: (value) => dynamic.isControlValueSelected('connectionEnergy', value),
     
-    // Legacy picker state for existing template
-    isColorPickerOpen: computed(() => dynamic.isPickerOpen('color')),
-    isSecondaryColorPickerOpen: computed(() => dynamic.isPickerOpen('secondaryColor')),
-    isTypePickerOpen: computed(() => dynamic.isPickerOpen('type')),
-    isEnergyPickerOpen: computed(() => dynamic.isPickerOpen('energy')),
-    isEmojiPickerOpen: computed(() => dynamic.isPickerOpen('emoji')),
-    isCircleEmojiPickerOpen: computed(() => dynamic.isPickerOpen('circleEmoji')),
-    isDemandEmojiPickerOpen: computed(() => dynamic.isPickerOpen('demandEmoji')),
-    isConnectionEnergyPickerOpen: computed(() => dynamic.isPickerOpen('connectionEnergy')),
-    isSecondaryNamePickerOpen: computed(() => dynamic.isPickerOpen('secondaryName')),
+    // FIXED: Use direct access to reactive state refs
+isColorPickerOpen: computed(() => {
+  const state = dynamic.getPickerState('color');
+  const value = state?.value || false;
+  return value;
+}),
+    isSecondaryColorPickerOpen: computed(() => dynamic.getPickerState('secondaryColor')?.value || false),
+    isTypePickerOpen: computed(() => dynamic.getPickerState('type')?.value || false),
+    isEnergyPickerOpen: computed(() => dynamic.getPickerState('energy')?.value || false),
+    isEmojiPickerOpen: computed(() => dynamic.getPickerState('emoji')?.value || false),
+    isCircleEmojiPickerOpen: computed(() => dynamic.getPickerState('circleEmoji')?.value || false),
+    isCauseEmojiPickerOpen: computed(() => dynamic.getPickerState('causeEmoji')?.value || false),
+    isDemandEmojiPickerOpen: computed(() => dynamic.getPickerState('demandEmoji')?.value || false),
+    isConnectionEnergyPickerOpen: computed(() => dynamic.getPickerState('connectionEnergy')?.value || false),
+    isSecondaryNamePickerOpen: computed(() => dynamic.getPickerState('secondaryName')?.value || false),
     
     // Legacy picker toggles
     toggleColorPicker: () => dynamic.togglePicker('color'),
@@ -296,6 +320,7 @@ export function useCharacteristicsBarBridge() {
     toggleEnergyPicker: () => dynamic.togglePicker('energy'),
     toggleEmojiPicker: () => dynamic.togglePicker('emoji'),
     toggleCircleEmojiPicker: () => dynamic.togglePicker('circleEmoji'),
+    toggleCauseEmojiPicker: () => dynamic.togglePicker('causeEmoji'),
     toggleDemandEmojiPicker: () => dynamic.togglePicker('demandEmoji'),
     toggleConnectionEnergyPicker: () => dynamic.togglePicker('connectionEnergy'),
     toggleSecondaryNamePicker: () => dynamic.togglePicker('secondaryName'),
@@ -331,11 +356,16 @@ export function useCharacteristicsBarBridge() {
       dynamic.closePicker('circleEmoji');
     },
     
+    handleCauseEmojiSelect: (emoji) => {
+      // Extract just the emoji string from the object
+      const emojiValue = typeof emoji === 'string' ? emoji : emoji.emoji || emoji;
+      dynamic.updateControlValue('causeEmoji', emojiValue);
+      dynamic.closePicker('causeEmoji');
+    },
+    
     handleDemandEmojiSelect: (emoji) => {
       // Extract just the emoji string from the object
       const emojiValue = typeof emoji === 'string' ? emoji : emoji.emoji || emoji;
-      console.log('handleDemandEmojiSelect received:', emoji);
-      console.log('extracted emojiValue:', emojiValue);
       dynamic.updateControlValue('demandEmoji', emojiValue);
       dynamic.closePicker('demandEmoji');
     },
@@ -353,6 +383,7 @@ export function useCharacteristicsBarBridge() {
     // Template refs for legacy compatibility - these need to be reactive refs that can be assigned
     typeDisplayRefTemplate: dynamic.getDisplayRef('type'),
     circleEmojiDisplayRefTemplate: dynamic.getDisplayRef('circleEmoji'),
+    causeEmojiDisplayRefTemplate: dynamic.getDisplayRef('causeEmoji'),
     demandEmojiDisplayRefTemplate: dynamic.getDisplayRef('demandEmoji'),
     colorDisplayRefTemplate: dynamic.getDisplayRef('color'),
     energyDisplayRefTemplate: dynamic.getDisplayRef('energy'),
@@ -362,6 +393,7 @@ export function useCharacteristicsBarBridge() {
     
     typePickerRefTemplate: dynamic.getControlRef('type'),
     circleEmojiPickerRefTemplate: dynamic.getControlRef('circleEmoji'),
+    causeEmojiPickerRefTemplate: dynamic.getControlRef('causeEmoji'),
     demandEmojiPickerRefTemplate: dynamic.getControlRef('demandEmoji'),
     colorPickerRefTemplate: dynamic.getControlRef('color'),
     energyPickerRefTemplate: dynamic.getControlRef('energy'),
