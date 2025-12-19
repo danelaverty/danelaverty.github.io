@@ -83,6 +83,8 @@ watch(
         props.entity.color, 
         props.entity.colors, 
         props.entity.emoji,
+        props.entity.causeEmoji,
+        props.entity.demandEmoji,
         props.entity.energyTypes,
         props.entity.activation,
         props.entity.referenceID,

@@ -1,5 +1,6 @@
 // useCharacteristicsBarBridge.js - Fixed with direct reactive access
 import { computed } from './vue-composition-api.js';
+import { roilMotionSystem } from './RoilMotionCore.js';
 import { useDynamicCharacteristics } from './useDynamicCharacteristics.js';
 import { useRecentEmojis } from './useRecentEmojis.js';
 import { getEnergyTypeColor } from './energyTypes.js';
@@ -356,20 +357,54 @@ isColorPickerOpen: computed(() => {
       dynamic.closePicker('circleEmoji');
     },
     
-    handleCauseEmojiSelect: (emoji) => {
-      // Extract just the emoji string from the object
-      const emojiValue = typeof emoji === 'string' ? emoji : emoji.emoji || emoji;
-      dynamic.updateControlValue('causeEmoji', emojiValue);
-      dynamic.closePicker('causeEmoji');
-    },
+handleCauseEmojiSelect: (emoji) => {
+  const emojiValue = typeof emoji === 'string' ? emoji : emoji.emoji || emoji;
+  
+  // Update each selected circle directly
+  const selectedIds = dataStore.getSelectedCircles();
+  selectedIds.forEach(circleId => {
+    dataStore.updateCircle(circleId, { causeEmoji: emojiValue });
     
-    handleDemandEmojiSelect: (emoji) => {
-      // Extract just the emoji string from the object
-      const emojiValue = typeof emoji === 'string' ? emoji : emoji.emoji || emoji;
-      dynamic.updateControlValue('demandEmoji', emojiValue);
-      dynamic.closePicker('demandEmoji');
-    },
+    // NEW: Refresh roil event points if this is a roil member
+    const circle = dataStore.getCircle(circleId);
+    if (circle?.belongsToID) {
+      const group = dataStore.getCircle(circle.belongsToID);
+      if (group?.roilMode === 'on') {
+        // Import roilMotionSystem and refresh event points
+        if (typeof roilMotionSystem !== 'undefined') {
+          roilMotionSystem.refreshEventPointsForCircle(circleId);
+        }
+      }
+    }
+  });
+  
+  dynamic.closePicker('causeEmoji');
+},
+
+handleDemandEmojiSelect: (emoji) => {
+  const emojiValue = typeof emoji === 'string' ? emoji : emoji.emoji || emoji;
+  
+  // Update each selected circle directly
+  const selectedIds = dataStore.getSelectedCircles();
+  selectedIds.forEach(circleId => {
+    dataStore.updateCircle(circleId, { demandEmoji: emojiValue });
     
+    // NEW: Refresh roil event points if this is a roil member
+    const circle = dataStore.getCircle(circleId);
+    if (circle?.belongsToID) {
+      const group = dataStore.getCircle(circle.belongsToID);
+      if (group?.roilMode === 'on') {
+        // Import roilMotionSystem and refresh event points
+        if (typeof roilMotionSystem !== 'undefined') {
+          roilMotionSystem.refreshEventPointsForCircle(circleId);
+        }
+      }
+    }
+  });
+  
+  dynamic.closePicker('demandEmoji');
+},
+
     handleConnectionEnergySelect: (energyId, isCtrlClick) => {
       dynamic.updateControlValue('connectionEnergy', energyId, isCtrlClick);
       if (!isCtrlClick) dynamic.closePicker('connectionEnergy');

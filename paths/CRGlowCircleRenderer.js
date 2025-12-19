@@ -471,6 +471,28 @@ export const GlowCircleRenderer = {
                 existingLock.remove();
                 this.createDemandEmojiThoughtBalloon(element, circle.demandEmoji, true, circle);
                 this.autoInitializeListeners();
+            }  else if (circle.satisfactionLocked !== 'yes' && existingDemandThoughtBalloon) {
+                const existingEmoji = existingDemandThoughtBalloon.querySelector('span');
+                if (existingEmoji && existingEmoji.textContent !== circle.demandEmoji) {
+                    existingEmoji.textContent = circle.demandEmoji;
+                }
+            } else if (circle.satisfactionLocked === 'yes' && existingLock) {
+                const existingEmoji = existingLock.querySelector('span');
+                if (existingEmoji && existingEmoji.textContent !== circle.demandEmoji) {
+                    existingEmoji.textContent = circle.demandEmoji;
+                }
+            }  else if (circle.satisfactionLocked !== 'yes' && !existingDemandThoughtBalloon && !existingLock) {
+                this.createDemandEmojiThoughtBalloon(element, circle.demandEmoji, true, circle);
+                this.autoInitializeListeners();
+            } else if (circle.satisfactionLocked === 'yes' && !existingDemandThoughtBalloon && !existingLock) {
+                this.createDemandEmojiLock(element, circle.demandEmoji, circle);
+            }
+        }  else {
+            if (existingDemandThoughtBalloon) {
+                existingDemandThoughtBalloon.remove();
+            }
+            if (existingLock) {
+                existingLock.remove();
             }
         }
 
@@ -489,9 +511,10 @@ export const GlowCircleRenderer = {
                     existingEmoji.textContent = circle.causeEmoji;
                 }
             }
-        } else if (existingCauseThoughtBalloon) {
-            // Remove cause emoji thought balloon if causeEmoji is empty/null
-            existingCauseThoughtBalloon.remove();
+        }  else {
+            if (existingCauseThoughtBalloon) {
+                existingCauseThoughtBalloon.remove();
+            }
         }
     },
 

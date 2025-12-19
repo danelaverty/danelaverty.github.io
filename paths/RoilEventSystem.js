@@ -17,6 +17,14 @@ export class RoilEventSystem {
         this.dataStore = dataStore;
     }
 
+    refreshEventPoints(circleId) {
+        const eventData = this.eventPoints.get(circleId);
+        if (eventData) {
+            this.removeEventPoints(circleId);
+            this.setupEventPoints(circleId, eventData.element);
+        }
+    }
+
     checkInventoryForEmoji(targetEmoji, viewerId) {
         if (!this.dataStore) {
             return false;
@@ -98,29 +106,28 @@ export class RoilEventSystem {
             );
         }
 
-        // Set up color flip event points if circle has secondary colors
-        if (group?.secondaryColorDescent === 'shiftToSecondary' && 
-            circleData.secondaryColors && circleData.secondaryColors.length > 0) {
-            
-            points.push(
-                {
-                    angle: 0,
-                    action: { 
-                        type: 'flipToSecondary'
-                    },
-                    executeIf: shouldCheckInventory ? () => {
-                        const result = this.checkInventoryForEmoji(circleData.demandEmoji, viewerId);
-                        return result;
-                    } : undefined
-                },
-                {
-                    angle: 180,
-                    action: { 
-                        type: 'flipToPrimary'
-                    }
-                    // Note: flipToPrimary doesn't need inventory check - always allow return to primary
+        // NEW: Set up state transition event points based on triggerAngle
+        if (circleData.states) {
+            Object.values(circleData.states).forEach(state => {
+                // Check if triggerAngle is set (could be 0, so check for null specifically)
+                if (state.triggerAngle !== null && state.triggerAngle !== undefined) {
+                    points.push({
+                        angle: state.triggerAngle,
+                        action: {
+                            type: 'transitionToState',
+                            targetStateID: state.stateID
+                        },
+                        executeIf: shouldCheckInventory ? () => {
+                            // For inventory checking, use the current state's demandEmoji
+                            const currentState = circleData.states[circleData.currentStateID];
+                            if (currentState && currentState.demandEmoji) {
+                                return this.checkInventoryForEmoji(currentState.demandEmoji, viewerId);
+                            }
+                            return true; // No demandEmoji = no inventory requirement
+                        } : undefined
+                    });
                 }
-            );
+            });
         }
 
         if (points.length > 0) {
@@ -212,21 +219,26 @@ export class RoilEventSystem {
                 }
                 break;
 
-            case 'flipToSecondary':
-                element.setAttribute('data-use-secondary-colors', 'true');
-                this.triggerColorFlip(element, true);
-                element.dispatchEvent(new CustomEvent('roil-color-flip', {
-                    detail: { circleId, useSecondary: true }
-                }));
-                break;
-
-            case 'flipToPrimary':
-                element.removeAttribute('data-use-secondary-colors');
-                this.triggerColorFlip(element, false);
-                element.dispatchEvent(new CustomEvent('roil-color-flip', {
-                    detail: { circleId, useSecondary: false }
-                }));
-                break;
+case 'transitionToState':
+    if (this.dataStore && action.targetStateID !== undefined) {
+        // Only transition if we're not already in the target state
+        if (circleData.currentStateID !== action.targetStateID) {
+            const oldStateID = circleData.currentStateID;
+            
+            // Start flip animation immediately (before state changes)
+            element.dispatchEvent(new CustomEvent('start-flip-animation', {
+                detail: { circleId }
+            }));
+            
+            // Update the state after 300ms (animation midpoint)
+            setTimeout(() => {
+                this.dataStore.updateCircle(circleId, { 
+                    currentStateID: action.targetStateID 
+                });
+            }, 300);
+        }
+    }
+    break;
         }
 
         // Emit a single, meaningful event
@@ -288,59 +300,6 @@ export class RoilEventSystem {
                 popEmoji.parentNode.removeChild(popEmoji);
             }
         }, 850);
-    }
-
-    // Handle color flipping (consolidated from your existing logic)
-    triggerColorFlip(element, useSecondary) {
-        const glowContainer = element.querySelector('.circle-glow-container');
-        const glowElement = element.querySelector('.circle-glow');
-        
-        if (!glowContainer || !glowElement) return;
-
-        const circleId = element.dataset.entityId;
-        const circleData = this.dataStore?.getCircle(circleId);
-        if (!circleData) return;
-
-        const primaryColor = circleData.colors?.[0] || circleData.color;
-        const secondaryColor = circleData.secondaryColors?.[0];
-        
-        if (!primaryColor || !secondaryColor || primaryColor === secondaryColor) {
-            return;
-        }
-
-        // Add flip animation class
-        if (useSecondary) {
-            glowContainer.classList.add('roil-secondary-colors');
-        } else {
-            glowContainer.classList.remove('roil-secondary-colors');
-        }
-
-        // Switch color at animation midpoint
-        setTimeout(() => {
-            const targetColor = useSecondary ? secondaryColor : primaryColor;
-            glowElement.style.backgroundColor = targetColor;
-            element.style.setProperty('--circle-color', targetColor);
-        }, 300);
-
-        // Handle name switching if applicable
-        if (circleData.secondaryName?.trim()) {
-            const nameElement = element.querySelector('.entity-name.circle-name');
-            if (nameElement) {
-                setTimeout(() => {
-                    nameElement.textContent = useSecondary ? circleData.secondaryName : circleData.name;
-                    nameElement.classList.toggle('roil-secondary-name', useSecondary);
-                }, 300);
-            }
-        }
-
-        // Optional ripple effect for 'side' roilAngle
-        const group = circleData?.belongsToID ? this.dataStore.getCircle(circleData.belongsToID) : null;
-        if (group?.roilAngle === 'side') {
-            const ripple = document.createElement('div');
-            ripple.className = 'color-change-ripple';
-            element.appendChild(ripple);
-            setTimeout(() => ripple.remove(), 600);
-        }
     }
 
     removeEventPoints(circleId) {

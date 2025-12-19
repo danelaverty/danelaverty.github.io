@@ -1,7 +1,7 @@
 // CBCyclePropertyConfigs.js - Centralized configuration for all cycleable properties
 
 export const CYCLE_PROPERTY_CONFIGS = {
-  shinynessReceiveMode: {
+  /*shinynessReceiveMode: {
     values: {
       'or': { icon: '➕', label: 'Or Mode', description: 'Or Mode', default: true },
       'and': { icon: '✖️', label: 'And Mode', description: 'And Mode' },
@@ -13,7 +13,7 @@ export const CYCLE_PROPERTY_CONFIGS = {
       'none': { icon: '🫗', label: 'None', description: 'No activation triggers - Click to cycle to Members', default: true },
       'members': { icon: '🥛', label: 'Members', description: 'Members trigger activation - Click to cycle to None' }
     }
-  },
+  },*/
 
   activation: {
     values: {
@@ -31,13 +31,13 @@ export const CYCLE_PROPERTY_CONFIGS = {
     }
   },
 
-  sizeMode: {
+  /*sizeMode: {
     values: {
       'auto': { icon: '🔄', label: 'Auto Size', description: 'Auto size based on members - Click to cycle to Manual', default: true },
       'manual': { icon: '✋', label: 'Manual Size', description: 'Manual size - Click to cycle to Auto' }
     },
     displayIf: { type: 'group' }
-  },
+  },*/
 
   roilMode: {
     values: {
@@ -85,7 +85,7 @@ export const CYCLE_PROPERTY_CONFIGS = {
     displayIf: { type: 'group', roilMode: 'on' }
   },
 
-  roilAngle: {
+  /*roilAngle: {
     values: {
       'tilt': { icon: '▽', label: 'Tilt', description: '', default: true },
       'side': { icon: '◻', label: 'Side', description: '' },
@@ -99,7 +99,7 @@ export const CYCLE_PROPERTY_CONFIGS = {
       'show': { icon: '-', label: 'Show', description: '' },
     },
       displayIf: { type: 'group', roilMode: 'on', roilAngle: 'side' }
-  },
+  },*/
 
   showSeismograph: {
     values: {
@@ -109,7 +109,7 @@ export const CYCLE_PROPERTY_CONFIGS = {
       displayIf: { type: 'group', roilMode: 'on', }
   },
 
-  secondaryColorDescent: {
+  /*secondaryColorDescent: {
     values: {
       'stayPrimary': { icon: '1', label: 'No Shift', description: '', default: true },
       'shiftToSecondary': { icon: '2', label: 'Shift', description: '' },
@@ -131,7 +131,7 @@ export const CYCLE_PROPERTY_CONFIGS = {
       'yes': { icon: 'Y', label: 'yes', description: '' },
     },
     displayIf: { type: 'glow' }
-  },
+  },*/
 
   buoyancy: {
     values: {
@@ -142,13 +142,13 @@ export const CYCLE_PROPERTY_CONFIGS = {
     displayIf: { type: 'glow' }
   },
 
-  satisfactionLocked: {
+  /*satisfactionLocked: {
     values: {
       'no': { icon: '🔓', label: 'no', description: '', default: true },
       'yes': { icon: '🔒', label: 'yes', description: '' },
     },
       displayIf: { type: 'glow' }
-  },
+  },*/
 
   roilMemberDisplay: {
     values: {

@@ -112,6 +112,45 @@ export function createKeyboardHandler(dataStore, onShowIndicatorPicker = null, o
             handleIndicatorPicker(dataStore, onShowIndicatorPicker);
             return;
         }
+
+        if (e.key == 'Tab') {
+            const selectedCircles = dataStore.getSelectedCircles();
+            if (selectedCircles.length != 1) { return; }
+            const circleId = selectedCircles[0];
+            const circle = dataStore.getCircle(circleId);
+            const currentStateIDIndex = Object.keys(circle.states).indexOf("" + circle.currentStateID);
+            let nextStateIDIndex = currentStateIDIndex + 1;
+            if (nextStateIDIndex > Object.keys(circle.states).length - 1) {
+                nextStateIDIndex = 0;
+            }
+            const nextStateID = Object.keys(circle.states)[nextStateIDIndex];
+            const nextState = circle.states[nextStateID];
+
+            // Update both currentStateID and name explicitly to ensure reactivity
+            dataStore.updateCircle(circleId, {
+                currentStateID: nextStateID,
+                name: nextState.name  // Explicitly set the name from the new state
+            });
+        }
+
+        if (e.key == ' ') {
+            if (isTextEditingActive()) {
+                return;
+            }
+            const selectedViewerId = dataStore.data.selectedViewerId;
+            if (selectedViewerId) {
+                const circles = dataStore.getCirclesForViewer(selectedViewerId);
+                circles.forEach(circle => {
+                    if (circle.roilMode == 'on') {
+                        if (circle.roilAnimation == 'play') {
+                            dataStore.updateCircle(circle.id, { roilAnimation: 'pause' });
+                        } else {
+                            dataStore.updateCircle(circle.id, { roilAnimation: 'play' });
+                        }
+                    }
+                });
+            }
+        }
         
         // Handle CTRL+B for bold toggle on squares
         if (e.key === 'b' && (e.ctrlKey || e.metaKey)) {

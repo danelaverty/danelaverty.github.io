@@ -59,6 +59,10 @@ export class RoilMotionCore {
         return degrees;
     }
 
+    refreshEventPointsForCircle(circleId) {
+        this.eventSystem.refreshEventPoints(circleId);
+    }
+
     // Calculate top position for a given roilAngle
     calculateTopForAngle(circle, roilAngle) {
         if (roilAngle === 'tilt') {
