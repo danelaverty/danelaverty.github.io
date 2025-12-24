@@ -502,7 +502,7 @@ const potentialEnergyDebugInfo = computed(() => {
 
 const getEntityPosition = (entity, entityType) => {
     // Check if this entity is currently being dragged
-    const isDragging = props.entityDragState.isDragging;
+    /*const isDragging = props.entityDragState.isDragging;
     const draggedIds = props.entityDragState.draggedEntityIds || [];
     const isEntityBeingDragged = isDragging && draggedIds.includes(entity.id);
     
@@ -512,15 +512,13 @@ const getEntityPosition = (entity, entityType) => {
             x: entity.x + props.entityDragState.currentDeltas.deltaX,
             y: entity.y + props.entityDragState.currentDeltas.deltaY
         };
-    }
+    }*/
     
-    // NEW: During roil animation, read actual DOM position
     const entityElement = document.querySelector(`[data-entity-id="${entity.id}"]`);
     if (entityElement && entityElement.style.left && entityElement.style.top) {
         const domLeft = parseFloat(entityElement.style.left) || 0;
         const domTop = parseFloat(entityElement.style.top) || 0;
         
-        // Convert DOM position back to entity coordinate space
         const isCircleType = entityType === 'circle' || entityType.startsWith('circle-') || entityType.startsWith('explicit-circle');
         if (isCircleType && props.viewerWidth) {
             const centerX = props.viewerWidth / 2;
@@ -532,7 +530,6 @@ const getEntityPosition = (entity, entityType) => {
         return { x: domLeft, y: domTop };
     }
     
-    // Fallback to stored position
     return { x: entity.x, y: entity.y };
 };
 

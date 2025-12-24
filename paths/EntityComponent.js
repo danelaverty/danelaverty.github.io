@@ -15,6 +15,60 @@ const connectionManager = new ConnectionManager();
 // Component styles - updated to support bold squares, indicator emojis, reference circles, animation copies, group shape scaling, and collapsed group member count
 const componentStyles = `
 
+.presentation-hidden {
+    opacity: 0;
+}
+
+.sequence-number-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background-color: #2196F3;
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: bold;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.sequence-number-control {
+    position: relative;
+}
+
+.sequence-number-input {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 1px;
+    font-size: 12px;
+    width: 20px;
+    text-align: center;
+    color: #333;
+}
+
+.sequence-number-input:focus {
+    outline: none;
+    border-color: #2196F3;
+    background: white;
+}
+
+.characteristic-control .control-text {
+    font-size: 14px;
+    font-weight: bold;
+    color: white;
+}
+
+.characteristic-control.disabled {
+    opacity: 0.5;
+    cursor: not-allowed !important;
+}
+
 .emoji-type.inactive {
     filter: saturate(0.2) opacity(0.5);
 }
@@ -158,9 +212,9 @@ opacity: 0 !important;
         font-size: 18px;
         position: relative;
         border-radius: 6px;
-        width: 41px;
-        height: 41px;
-        transition: filter 0.2s ease;
+        width: 32px;
+        height: 32px;
+        transition: filter 0.2s ease, opacity 0.3s ease;
         border: 2px solid transparent;
     }
 
@@ -212,7 +266,7 @@ opacity: 0 !important;
 
     /* Bold square styling */
     .square-shape.bold {
-        filter: brightness(1.25);
+        filter: brightness(1.25) !important;
     }
 
     /* Legacy selection styles - kept for backward compatibility but will be phased out */
@@ -268,11 +322,16 @@ opacity: 0 !important;
         overflow-wrap: break-word;
         overflow: hidden;
         text-overflow: ellipsis;
+        top: 92%;
+        line-height: 12px;
+        color: #DDDDDD;
     }
 
     /* Bold square name styling */
     .square-name.bold {
         font-weight: bold;
+        font-size: 12px;
+        color: #FFFFFF;
     }
 
     /* Reference circle name styling - italic and yellow, non-editable */
@@ -817,6 +876,95 @@ watch(beaconColors, (newColors) => {
     injectBeaconKeyframes(newColors);
 }, { immediate: true });
 
+// Add this to the visibility logic
+const isVisibleInPresentation = computed(() => {
+    if (props.entityType !== 'square') return true;
+    return props.dataStore.isSquareVisibleInPresentation(props.entity);
+});
+
+// Add after the existing computed properties
+const prevVisibleState = ref(isVisibleInPresentation.value);
+
+// Watch for presentation visibility changes and trigger ripple effect
+watch(isVisibleInPresentation, (newVisible, oldVisible) => {
+    // Only trigger ripple when a square becomes visible (not when it becomes hidden)
+    if (props.entityType === 'square' && newVisible && !oldVisible) {
+        nextTick(() => {
+            triggerRevealRipple();
+        });
+    }
+}, { immediate: false });
+
+// Function to create and animate the ripple effect
+const triggerRevealRipple = () => {
+    const element = document.querySelector(`[data-entity-id="${props.entity.id}"]`);
+    if (!element) return;
+    
+    // Create first ripple element
+    const ripple1 = document.createElement('div');
+    ripple1.className = 'color-change-ripple';
+    element.appendChild(ripple1);
+    
+    // Create second ripple element after a short delay
+    setTimeout(() => {
+        const ripple2 = document.createElement('div');
+        ripple2.className = 'color-change-ripple';
+        element.appendChild(ripple2);
+        
+        // Remove second ripple after animation completes
+        setTimeout(() => {
+            if (ripple2.parentNode) {
+                ripple2.remove();
+            }
+        }, 600);
+    }, 200); // 200ms delay for second ripple
+    
+    // Remove first ripple after animation completes
+    setTimeout(() => {
+        if (ripple1.parentNode) {
+            ripple1.remove();
+        }
+    }, 600);
+};
+
+onMounted(() => {
+    // Find the actual DOM element
+    const element = document.querySelector(`[data-entity-id="${props.entity.id}"]`);
+    if (!element) return;
+    
+    // Create a MutationObserver to watch for class changes
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                const isDragging = element.classList.contains('dragging');
+                showRadiusIndicator.value = isDragging;
+                
+                // If dragging, we could estimate deltas by comparing current position to data position
+                if (isDragging && props.entityType === 'square') {
+                    const currentLeft = parseFloat(element.style.left) || 0;
+                    const currentTop = parseFloat(element.style.top) || 0;
+                    const expectedLeft = props.entity.x;
+                    const expectedTop = props.entity.y;
+                    
+                    dragDeltas.value = {
+                        deltaX: currentLeft - expectedLeft,
+                        deltaY: currentTop - expectedTop
+                    };
+                } else {
+                    dragDeltas.value = { deltaX: 0, deltaY: 0 };
+                }
+            }
+        });
+    });
+    
+    observer.observe(element, { attributes: true, attributeFilter: ['class'] });
+    
+    // Cleanup
+    onUnmounted(() => {
+        observer.disconnect();
+    });
+});
+
 onMounted(async () => {
     // Wait for the next tick to ensure DOM is ready
     await nextTick();
@@ -999,8 +1147,9 @@ const beaconAnimationStyles = computed(() => {
                    state.collapsedMemberCount.value > 0;
         });
 
-//const showRadiusIndicator = computed(() => { return props.isDragging && (props.dragDeltas.deltaX !== 0 || props.dragDeltas.deltaY !== 0); });
-const showRadiusIndicator = computed(() => { return false; });
+const showRadiusIndicator = ref(false);
+const dragDeltas = ref({ deltaX: 0, deltaY: 0 });
+const elementRef = ref(null);
 
 const radiusIndicatorStyles = computed(() => {
     let connectionDistance;
@@ -1110,6 +1259,17 @@ const groupCircleStyles = computed(() => {
     };
 });
 
+const showSequenceNumber = computed(() => {
+    return props.entityType === 'square' && 
+           props.dataStore.getShowSequenceNumbers() && 
+           props.entity.presentationSequenceNumber !== null &&
+           props.entity.presentationSequenceNumber !== undefined;
+});
+
+const sequenceNumber = computed(() => {
+    return props.entity.presentationSequenceNumber;
+});
+
 return {
         ...state,
         ...rendering,
@@ -1132,6 +1292,10 @@ return {
         displayMoodValue,
         displayGroupMoodValue,
         updateGroupMoodValue,
+        showSequenceNumber,
+        sequenceNumber,
+        isVisibleInPresentation,
+        triggerRevealRipple,
     };
     },
     //transform: (groupMemberScale !== 1 && !isRoilMember) ? 'translate(-50%, -50%) scale(' + groupMemberScale + ')' : undefined
@@ -1165,6 +1329,7 @@ return {
             'show-seismograph': entity.showSeismograph === 'yes',
             'hidden-for-solo': isHiddenForSolo,
             'has-buoyant-sibling': hasBuoyantSibling,
+            'presentation-hidden': !isVisibleInPresentation,
         }"
         :data-entity-id="entity.id"
         @click="handleClick"
@@ -1206,6 +1371,14 @@ return {
                 class="square-indicator-emoji"
             >
                 {{ entity.indicatorEmoji }}
+            </div>
+
+            <!-- Sequence Number Badge -->
+            <div 
+                v-if="showSequenceNumber"
+                class="sequence-number-badge"
+            >
+                {{ sequenceNumber }}
             </div>
 
             <!-- NEW: Member count display for collapsed groups -->

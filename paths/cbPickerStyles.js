@@ -300,8 +300,13 @@ export const pickerSpecificStyles = `
         overflow: hidden;
         display: flex;
         flex-direction: column;
-	width: 600px;
+        width: 600px;
     }
+
+ .circle-characteristics-bar .circle-emoji-picker-modal-enhanced {
+    position: absolute;
+    top: 42px;
+ }
 
     .circle-emoji-picker-header {
         color: white;

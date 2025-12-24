@@ -56,88 +56,63 @@ export class RoilEventSystem {
         }
     }
 
-    setupEventPoints(circleId, element) {
-        if (!this.dataStore) {
-            return;
-        }
-        
-        const circleData = this.dataStore.getCircle(circleId);
-        if (!circleData) {
-            return;
-        }
+setupEventPoints(circleId, element) {
+    if (!this.dataStore) {
+        return;
+    }
+    
+    const circleData = this.dataStore.getCircle(circleId);
+    if (!circleData) {
+        return;
+    }
 
-        // Skip event points entirely for satisfaction locked circles
-        if (circleData.satisfactionLocked === 'yes') {
-            return;
-        }
+    // Skip event points entirely for satisfaction locked circles
+    if (circleData.satisfactionLocked === 'yes') {
+        return;
+    }
 
-        const points = [];
-        
-        // Get the group that this circle belongs to (if any)
-        const group = circleData.belongsToID ? this.dataStore.getCircle(circleData.belongsToID) : null;
-        const shouldCheckInventory = group?.checkInventory === 'yes';
-        
-        // Get the viewerId from the active circles map
-        const activeCircle = this.motionCore?.activeCircles.get(circleId);
-        const viewerId = activeCircle?.viewerId;
-        
-        // Set up thought bubble event points if circle has demandEmoji
-        if (circleData.demandEmoji && circleData.demandEmoji.trim() !== '') {
-            points.push(
-                {
-                    angle: 270,
+    const points = [];
+    
+    // Get the group that this circle belongs to (if any)
+    const group = circleData.belongsToID ? this.dataStore.getCircle(circleData.belongsToID) : null;
+    const shouldCheckInventory = group?.checkInventory === 'yes';
+    
+    // Get the viewerId from the active circles map
+    const activeCircle = this.motionCore?.activeCircles.get(circleId);
+    const viewerId = activeCircle?.viewerId;
+
+    // Set up state transition event points based on triggerAngle
+    if (circleData.states) {
+        Object.values(circleData.states).forEach(state => {
+            // Check if triggerAngle is set (could be 0, so check for null specifically)
+            if (state.triggerAngle !== null && state.triggerAngle !== undefined) {
+                points.push({
+                    angle: state.triggerAngle,
                     action: {
-                        type: 'show',
-                        selector: '.demand-emoji-thought-balloon',
-                        opacity: '0.8'
-                    }
-                },
-                {
-                    angle: 0,
-                    action: {
-                        type: 'hide',
-                        selector: '.demand-emoji-thought-balloon'
+                        type: 'transitionToState',
+                        targetStateID: state.stateID
                     },
                     executeIf: shouldCheckInventory ? () => {
-                        const result = this.checkInventoryForEmoji(circleData.demandEmoji, viewerId);
-                        return result;
+                        // For inventory checking, use the current state's demandEmoji
+                        const currentState = circleData.states[circleData.currentStateID];
+                        if (currentState && currentState.demandEmoji) {
+                            return this.checkInventoryForEmoji(currentState.demandEmoji, viewerId);
+                        }
+                        return true; // No demandEmoji = no inventory requirement
                     } : undefined
-                }
-            );
-        }
-
-        // NEW: Set up state transition event points based on triggerAngle
-        if (circleData.states) {
-            Object.values(circleData.states).forEach(state => {
-                // Check if triggerAngle is set (could be 0, so check for null specifically)
-                if (state.triggerAngle !== null && state.triggerAngle !== undefined) {
-                    points.push({
-                        angle: state.triggerAngle,
-                        action: {
-                            type: 'transitionToState',
-                            targetStateID: state.stateID
-                        },
-                        executeIf: shouldCheckInventory ? () => {
-                            // For inventory checking, use the current state's demandEmoji
-                            const currentState = circleData.states[circleData.currentStateID];
-                            if (currentState && currentState.demandEmoji) {
-                                return this.checkInventoryForEmoji(currentState.demandEmoji, viewerId);
-                            }
-                            return true; // No demandEmoji = no inventory requirement
-                        } : undefined
-                    });
-                }
-            });
-        }
-
-        if (points.length > 0) {
-            this.eventPoints.set(circleId, {
-                element,
-                lastAngle: -1,
-                points
-            });
-        }
+                });
+            }
+        });
     }
+
+    if (points.length > 0) {
+        this.eventPoints.set(circleId, {
+            element,
+            lastAngle: -1,
+            points
+        });
+    }
+}
 
     checkEventPoints(circleId, circle) {
         const eventData = this.eventPoints.get(circleId);
@@ -180,127 +155,108 @@ export class RoilEventSystem {
         }
     }
 
-    executeEventAction(circleId, element, point, currentAngle) {
-        const action = point.action;
+executeEventAction(circleId, element, point, currentAngle) {
+    const action = point.action;
+    
+    // Double-check: Skip all event actions for satisfaction locked circles
+    const circleData = this.dataStore?.getCircle(circleId);
+    if (circleData?.satisfactionLocked === 'yes') {
+        return;
+    }
+    
+    // Check if point has an executeIf condition
+    if (point.executeIf && typeof point.executeIf === 'function') {
+        const shouldExecute = point.executeIf();
         
-        // Double-check: Skip all event actions for satisfaction locked circles
-        const circleData = this.dataStore?.getCircle(circleId);
-        if (circleData?.satisfactionLocked === 'yes') {
-            return;
+        if (!shouldExecute) {
+            return; // Don't execute the action
         }
-        
-        // Check if point has an executeIf condition
-        if (point.executeIf && typeof point.executeIf === 'function') {
-            const shouldExecute = point.executeIf();
-            
-            if (!shouldExecute) {
-                return; // Don't execute the action
-            }
-        }
+    }
 
-        // Execute the action based on type
-        switch (action.type) {
-            case 'show':
-                const showElement = element.querySelector(action.selector);
-                if (showElement) {
-                    showElement.style.opacity = action.opacity || '0.8';
-                }
-                break;
-
-            case 'hide':
-                if (circleData.buoyancy !== 'buoyant') {
-                    const hideElement = element.querySelector(action.selector);
-                    if (hideElement && action.selector === '.demand-emoji-thought-balloon') {
-                        this.createCoinPopEffect(element, hideElement);
-                        hideElement.style.opacity = '0';
-                    } else if (hideElement) {
-                        hideElement.style.opacity = '0';
+    // Execute the action based on type
+    switch (action.type) {
+        case 'transitionToState':
+            if (this.dataStore && action.targetStateID !== undefined) {
+                // Only transition if we're not already in the target state
+                if (circleData.currentStateID !== action.targetStateID) {
+                    const oldStateID = circleData.currentStateID;
+                    
+                    // Check if current state has demandEmoji - if so, create coin pop effect
+                    const currentState = circleData.states[oldStateID];
+                    if (currentState && currentState.demandEmoji && currentState.demandEmoji.trim() !== '') {
+                        this.createCoinPopEffectForTransition(element, currentState.demandEmoji);
                     }
+                    
+                    // Start flip animation immediately (before state changes)
+                    element.dispatchEvent(new CustomEvent('start-flip-animation', {
+                        detail: { circleId }
+                    }));
+                    
+                    // Update the state after 300ms (animation midpoint)
+                    setTimeout(() => {
+                        this.dataStore.updateCircle(circleId, { 
+                            currentStateID: action.targetStateID 
+                        });
+                    }, 300);
                 }
-                break;
-
-case 'transitionToState':
-    if (this.dataStore && action.targetStateID !== undefined) {
-        // Only transition if we're not already in the target state
-        if (circleData.currentStateID !== action.targetStateID) {
-            const oldStateID = circleData.currentStateID;
-            
-            // Start flip animation immediately (before state changes)
-            element.dispatchEvent(new CustomEvent('start-flip-animation', {
-                detail: { circleId }
-            }));
-            
-            // Update the state after 300ms (animation midpoint)
-            setTimeout(() => {
-                this.dataStore.updateCircle(circleId, { 
-                    currentStateID: action.targetStateID 
-                });
-            }, 300);
-        }
-    }
-    break;
-        }
-
-        // Emit a single, meaningful event
-        element.dispatchEvent(new CustomEvent('event-point-crossed', {
-            detail: { circleId, action, angle: currentAngle }
-        }));
-    }
-
-    createCoinPopEffect(circleElement, thoughtBalloonElement) {
-        const circleId = circleElement.dataset.entityId;
-        const circleData = this.dataStore?.getCircle(circleId);
-        
-        // Skip coin pop effect for satisfaction locked circles
-        if (circleData && circleData.satisfactionLocked === 'yes') {
-            return;
-        }
-        
-        // Extract the demand emoji from the thought balloon
-        const demandEmojiElement = thoughtBalloonElement.querySelector('span');
-        if (!demandEmojiElement) return;
-        
-        const demandEmoji = demandEmojiElement.textContent;
-        
-        // Create the popping emoji div
-        const popEmoji = document.createElement('div');
-        popEmoji.className = 'demand-emoji-pop';
-        popEmoji.textContent = demandEmoji;
-        
-        // Style the pop emoji
-        popEmoji.style.cssText = `
-            position: absolute;
-            top: -15px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 24px;
-            z-index: 15;
-            pointer-events: none;
-            opacity: 1;
-            transition: all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            text-shadow: 
-                0 0 3px rgba(255, 255, 255, 0.8),
-                0 0 6px rgba(255, 255, 255, 0.6),
-                0 0 9px rgba(255, 255, 255, 0.4);
-        `;
-        
-        // Add it to the circle element
-        circleElement.appendChild(popEmoji);
-
-        // Trigger the upward glide animation
-        requestAnimationFrame(() => {
-            popEmoji.style.top = '-45px';
-            popEmoji.style.opacity = '0';
-            popEmoji.style.transform = 'translateX(-50%) scale(1.2)';
-        });
-        
-        // Remove the element after animation completes
-        setTimeout(() => {
-            if (popEmoji.parentNode) {
-                popEmoji.parentNode.removeChild(popEmoji);
             }
-        }, 850);
+            break;
     }
+
+    // Emit a single, meaningful event
+    element.dispatchEvent(new CustomEvent('event-point-crossed', {
+        detail: { circleId, action, angle: currentAngle }
+    }));
+}
+
+createCoinPopEffectForTransition(circleElement, demandEmoji) {
+    const circleId = circleElement.dataset.entityId;
+    const circleData = this.dataStore?.getCircle(circleId);
+    
+    // Skip coin pop effect for satisfaction locked circles
+    if (circleData && circleData.satisfactionLocked === 'yes') {
+        return;
+    }
+    
+    // Create the popping emoji div
+    const popEmoji = document.createElement('div');
+    popEmoji.className = 'demand-emoji-pop';
+    popEmoji.textContent = demandEmoji;
+    
+    // Style the pop emoji (same styling as before)
+    popEmoji.style.cssText = `
+        position: absolute;
+        top: -15px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 24px;
+        z-index: 15;
+        pointer-events: none;
+        opacity: 1;
+        transition: all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        text-shadow: 
+            0 0 3px rgba(255, 255, 255, 0.8),
+            0 0 6px rgba(255, 255, 255, 0.6),
+            0 0 9px rgba(255, 255, 255, 0.4);
+    `;
+    
+    // Add it to the circle element
+    circleElement.appendChild(popEmoji);
+
+    // Trigger the upward glide animation
+    requestAnimationFrame(() => {
+        popEmoji.style.top = '-45px';
+        popEmoji.style.opacity = '0';
+        popEmoji.style.transform = 'translateX(-50%) scale(1.2)';
+    });
+    
+    // Remove the element after animation completes
+    setTimeout(() => {
+        if (popEmoji.parentNode) {
+            popEmoji.parentNode.removeChild(popEmoji);
+        }
+    }, 850);
+}
 
     removeEventPoints(circleId) {
         this.eventPoints.delete(circleId);

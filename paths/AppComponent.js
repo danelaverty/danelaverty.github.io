@@ -179,9 +179,23 @@ export const App = {
         });
 
         // Combine regular and explicit connections for squares
-        const allSquareConnections = computed(() => {
-            return [...squareConnections.value, ...squareExplicitConnections.value];
-        });
+const allSquareConnections = computed(() => {
+    const regularConnections = squareConnections.value;
+    const explicitConnections = squareExplicitConnections.value;
+    const allConnections = [...regularConnections, ...explicitConnections];
+    
+    // Filter connections based on presentation mode - both endpoints must be visible
+    return allConnections.filter(connection => {
+        const entity1 = dataStore.getSquare(connection.entity1Id);
+        const entity2 = dataStore.getSquare(connection.entity2Id);
+        
+        if (!entity1 || !entity2) return false;
+        
+        // Both squares must be visible in presentation mode for the connection to show
+        return dataStore.isSquareVisibleInPresentation(entity1) && 
+               dataStore.isSquareVisibleInPresentation(entity2);
+    });
+});
         
         // Calculate container dimensions for connections
         const connectionContainerDimensions = computed(() => {
@@ -575,6 +589,14 @@ export const App = {
         class="app-global-picker-modal"
         @selectCircleEmoji="statePickerBridge.handleCauseEmojiSelect"
         @close="() => statePickerBridge.closePickerAction('causeEmoji')"
+    />
+
+    <CircleEmojiPickerModal 
+        v-if="statePickerBridge.isTriggerEmojiPickerOpen"
+        :currentEmoji="statePickerBridge.getCurrentTriggerEmoji(statePickerBridge.currentEditingStateID)"
+        class="app-global-picker-modal"
+        @selectCircleEmoji="statePickerBridge.handleTriggerEmojiSelect"
+        @close="statePickerBridge.closeTriggerEmojiPicker"
     />
 </template>
 

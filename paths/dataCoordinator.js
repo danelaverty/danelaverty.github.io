@@ -136,8 +136,139 @@ const triggerConnectionUpdateIfActive = () => {
         };
     };
 
-const updateCircle = (id, updates) => {
+const checkCauseEmojiTransitions = (changedCircleId, documentId) => {
+    if (!documentId) return;
     
+    // Get all circles in the same document/viewer
+    const allCircles = entityStore.getCirclesForDocument(documentId);
+    
+    // Get all activated emoji-type circles with their emojis
+    const activatedEmojis = new Set();
+    allCircles.forEach(circle => {
+        if (circle.type === 'emoji' && 
+            circle.activation === 'activated' && 
+            circle.emoji) {
+            activatedEmojis.add(circle.emoji);
+        }
+    });
+    
+    // Check all circles with states for emoji-based transitions
+    allCircles.forEach(circle => {
+        if (!circle.states) return;
+        const currentStateID = circle.currentStateID;
+        const currentState = circle.states[currentStateID];
+        const defaultStateID = circle.defaultStateID || 0;
+        
+        // Check if current state has trigger conditions that are no longer met
+        let shouldRevertToDefault = false;
+        
+        // Check cause emoji conditions (existing logic)
+        if (currentState && currentState.causeEmoji) {
+            const emojiPresent = activatedEmojis.has(currentState.causeEmoji);
+            const conditionMet = currentState.causeEmojiAbsence ? !emojiPresent : emojiPresent;
+            
+            // If current state's trigger condition is NOT met, we should revert
+            if (!conditionMet) {
+                shouldRevertToDefault = true;
+            }
+        }
+        
+        // NEW: Check demand emoji conditions
+        // If current state has a demand emoji that is now satisfied, revert to default
+        if (currentState && currentState.demandEmoji) {
+            const demandEmojiPresent = activatedEmojis.has(currentState.demandEmoji);
+            const demandSatisfied = currentState.demandEmojiAbsence ? !demandEmojiPresent : demandEmojiPresent;
+            
+            // If demand is satisfied, revert to default state
+            if (demandSatisfied) {
+                shouldRevertToDefault = true;
+            }
+        }
+        
+        // If we need to revert to default, do that first
+        if (shouldRevertToDefault && currentStateID !== defaultStateID) {
+            // Start flip animation
+            const element = document.querySelector(`[data-entity-id="${circle.id}"]`);
+            if (element) {
+                element.dispatchEvent(new CustomEvent('start-flip-animation', {
+                    detail: { circleId: circle.id }
+                }));
+            }
+            
+            // Update to default state after 300ms
+            setTimeout(() => {
+                entityStore.updateCircle(circle.id, { 
+                    currentStateID: defaultStateID 
+                });
+            }, 300);
+            
+            return; // Don't check for other transitions this cycle
+        }
+        
+        // Only check for new cause emoji transitions if we're currently in the default state
+        // (or a state without trigger conditions AND without unsatisfied demands)
+        if (currentStateID !== defaultStateID) {
+            // Already in a non-default state
+            // Only allow transitions if current state has no active triggers or demands
+            const hasActiveTrigger = currentState && currentState.causeEmoji;
+            const hasUnsatisfiedDemand = currentState && currentState.demandEmoji && !shouldRevertToDefault;
+            
+            if (hasActiveTrigger || hasUnsatisfiedDemand) {
+                return; // Stay in current state
+            }
+        }
+        
+        // Find the highest priority triggered state (lowest stateID wins for ties)
+        // Only consider states that don't have unsatisfied demands
+        let triggeredState = null;
+        let triggeredStateID = null;
+        
+        Object.values(circle.states).forEach(state => {
+            if (!state.causeEmoji || state.stateID === currentStateID) return;
+            
+            // Check if cause emoji condition is met
+            const emojiPresent = activatedEmojis.has(state.causeEmoji);
+            const shouldTrigger = state.causeEmojiAbsence ? !emojiPresent : emojiPresent;
+            
+            if (!shouldTrigger) return;
+            
+            // NEW: Also check if this state's demand (if any) would prevent activation
+            if (state.demandEmoji) {
+                const demandEmojiPresent = activatedEmojis.has(state.demandEmoji);
+                const demandSatisfied = state.demandEmojiAbsence ? !demandEmojiPresent : demandEmojiPresent;
+                
+                // If demand is already satisfied, don't activate this state
+                if (demandSatisfied) return;
+            }
+            
+            // Use lowest stateID as tiebreaker for priority
+            if (!triggeredState || state.stateID < triggeredStateID) {
+                triggeredState = state;
+                triggeredStateID = state.stateID;
+            }
+        });
+        
+        // If we found a triggered state, transition to it
+        if (triggeredState && triggeredStateID !== currentStateID) {
+            // Start flip animation
+            const element = document.querySelector(`[data-entity-id="${circle.id}"]`);
+            if (element) {
+                element.dispatchEvent(new CustomEvent('start-flip-animation', {
+                    detail: { circleId: circle.id }
+                }));
+            }
+            
+            // Update the state after 300ms
+            setTimeout(() => {
+                entityStore.updateCircle(circle.id, { 
+                    currentStateID: triggeredStateID 
+                });
+            }, 300);
+        }
+    });
+};
+
+const updateCircle = (id, updates) => {
     const circle = entityStore.getCircle(id);
     if (!circle) {
         return null;
@@ -145,11 +276,13 @@ const updateCircle = (id, updates) => {
     
     // Track activation changes for energy type logic
     const oldActivation = circle.activation;
+    const oldType = circle.type;
+    const oldEmoji = circle.emoji;
     
     const result = entityStore.updateCircle(id, updates);
     
     if (result) {
-        // NEW: Handle exciter and dampener buoyancy updates
+        // Handle exciter and dampener buoyancy updates
         const newActivation = result.activation;
         const activationChanged = oldActivation !== newActivation;
         const isExciter = result.energyTypes && result.energyTypes.includes('exciter');
@@ -158,6 +291,21 @@ const updateCircle = (id, updates) => {
         if (activationChanged && (isExciter || isDampener)) {
             const energyType = isExciter ? 'exciter' : 'dampener';
             updateBuoyancyForConnectedCircles(id, newActivation, energyType);
+        }
+        
+        // NEW: Check for trigger emoji transitions if this is an emoji-type circle
+        // and either activation, type, or emoji changed
+        const typeChanged = updates.type !== undefined && updates.type !== oldType;
+        const emojiChanged = updates.emoji !== undefined && updates.emoji !== oldEmoji;
+        
+        if (
+            ((activationChanged || typeChanged || emojiChanged) && (result.type === 'emoji' || oldType === 'emoji'))
+            || updates.states !== undefined
+        ) {
+            // Use setTimeout to avoid potential recursion issues
+            setTimeout(() => {
+                checkCauseEmojiTransitions(id, result.documentId);
+            }, 0);
         }
         
         saveToStorage();
@@ -616,6 +764,20 @@ setMoodUpdateInterval: (intervalMs) => entityStore.moodSystem?.setUpdateInterval
 
 // NEW: Direct mood system reference for components that need it
 get moodSystem() { return entityStore.moodSystem; },
+
+toggleGlobalProperty: (propertyKey) => {
+            const result = uiStore.toggleGlobalProperty(propertyKey);
+            saveToStorage();
+            return result;
+        },
+        isPresentationMode: uiStore.isPresentationMode,
+        getCurrentPresentationStep: uiStore.getCurrentPresentationStep,
+        getShowSequenceNumbers: uiStore.getShowSequenceNumbers,
+        isSquareVisibleInPresentation: uiStore.isSquareVisibleInPresentation,
+        startPresentationMode: uiStore.startPresentationMode,
+        endPresentationMode: uiStore.endPresentationMode,
+        nextPresentationStep: uiStore.nextPresentationStep,
+        toggleSequenceNumbersVisibility: uiStore.toggleSequenceNumbersVisibility,
     };
 }
 
@@ -624,78 +786,4 @@ export function useDataStore() {
         dataCoordinatorInstance = createDataCoordinator();
     }
     return dataCoordinatorInstance;
-}
-
-// NEW: Enhanced debugging utilities that work with the mood system
-if (typeof window !== 'undefined') {
-    window.moodDebug = {
-        status: () => {
-            const dataStore = useDataStore();
-            return dataStore.getMoodSystemStatus();
-        },
-
-        validate: () => {
-            const dataStore = useDataStore();
-            const issues = dataStore.validateMoodValues();
-            if (issues.length > 0) {
-                console.table(issues);
-                console.warn(`Found ${issues.length} mood value inconsistencies`);
-            }
-            return issues;
-        },
-
-        recalculate: () => {
-            const dataStore = useDataStore();
-            const result = dataStore.forceMoodRecalculation();
-            return result;
-        },
-
-        showGroupMoods: () => {
-            const dataStore = useDataStore();
-            // Get current document (you might need to adapt this based on your UI state)
-            const viewers = dataStore.getVisibleCircleViewers();
-            if (viewers.length === 0) {
-                return [];
-            }
-            
-            const circles = dataStore.getCirclesForViewer(viewers[0].id);
-            const groups = circles.filter(c => c.type === 'group');
-            
-            const groupInfo = groups.map(group => {
-                const members = dataStore.getCirclesBelongingToGroup(group.id);
-                const memberMoods = members.map(m => ({
-                    name: m.name || '(unnamed)',
-                    mood: m.moodValue,
-                    colors: m.colors
-                }));
-                
-                return {
-                    groupName: group.name,
-                    groupMood: group.moodValue,
-                    memberCount: members.length,
-                    members: memberMoods,
-                    calculatedMood: dataStore.getMoodValueForCircle(group.id)
-                };
-            });
-            
-            console.table(groupInfo);
-            return groupInfo;
-        },
-
-        cleanup: () => {
-            // Clean up test circles (delete all circles with "Test" in the name)
-            const dataStore = useDataStore();
-            const viewers = dataStore.getVisibleCircleViewers();
-            if (viewers.length === 0) return;
-            
-            const circles = dataStore.getCirclesForViewer(viewers[0].id);
-            const testCircles = circles.filter(c => c.name.includes('Test'));
-            
-            testCircles.forEach(circle => {
-                dataStore.deleteCircle(circle.id);
-            });
-            
-            return testCircles.length;
-        }
-    };
 }

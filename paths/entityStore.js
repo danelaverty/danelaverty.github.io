@@ -1,4 +1,4 @@
-// entityStore.js - Enhanced with state-to-base property synchronization
+// entityStore.js - Enhanced with state-to-base property synchronization and defaultStateID
 import { reactive } from './vue-composition-api.js';
 import { getPropertyDefault, cycleProperty, validatePropertyValue, CYCLE_PROPERTY_CONFIGS } from './CBCyclePropertyConfigs.js';
 import { getMoodValueForColor } from './colorFamilies.js';
@@ -37,6 +37,7 @@ const BASE_CIRCLE_DEFAULTS = {
         }
     }),
     currentStateID: 0,
+    defaultStateID: 0, // NEW: Default state designation
     nextStateID: 1,
     flippedStateID: null,
 };
@@ -64,7 +65,8 @@ const SQUARE_DEFAULTS = {
     emojiCss: null,
     color: '#CCCCCC',
     bold: false,
-    indicatorEmoji: null
+    indicatorEmoji: null,
+    presentationSequenceNumber: null,
 };
 
 // Helper to get circle default (handles both values and functions)
@@ -91,7 +93,9 @@ const syncCurrentStateToBaseProperties = (circle) => {
     circle.color = currentState.color;
     circle.circleEmoji = currentState.circleEmoji;
     circle.demandEmoji = currentState.demandEmoji;
+    circle.demandEmojiAbsence = currentState.demandEmojiAbsence;
     circle.causeEmoji = currentState.causeEmoji;
+    circle.causeEmojiAbsence = currentState.causeEmojiAbsence;
     circle.buoyancy = currentState.buoyancy;
     
     // Also update colors array to maintain compatibility with color system
@@ -118,7 +122,9 @@ const syncBasePropertiesToCurrentState = (circle, updatedProperties) => {
         'colors': 'color', // colors[0] maps to state color
         'circleEmoji': 'circleEmoji',
         'demandEmoji': 'demandEmoji',
+        'demandEmojiAbsence': 'demandEmojiAbsence',
         'causeEmoji': 'causeEmoji',
+        'causeEmojiAbsence': 'causeEmojiAbsence',
         'buoyancy': 'buoyancy',
         'triggerAngle': 'triggerAngle',
     };
@@ -168,7 +174,8 @@ const ensureCircleDefaults = (circle, skipStateSync = false) => {
                 circleEmoji: null,
                 demandEmoji: null,
                 causeEmoji: null,
-                buoyancy: 'normal'
+                buoyancy: 'normal',
+                triggerAngle: null,
             }
         };
     }
@@ -177,6 +184,12 @@ const ensureCircleDefaults = (circle, skipStateSync = false) => {
     if (circle.currentStateID === undefined || !circle.states[circle.currentStateID]) {
         const availableStateIDs = Object.keys(circle.states).map(id => parseInt(id));
         circle.currentStateID = availableStateIDs.length > 0 ? Math.min(...availableStateIDs) : 0;
+    }
+
+    // NEW: Ensure defaultStateID exists and is valid
+    if (circle.defaultStateID === undefined || !circle.states[circle.defaultStateID]) {
+        const availableStateIDs = Object.keys(circle.states).map(id => parseInt(id));
+        circle.defaultStateID = availableStateIDs.length > 0 ? Math.min(...availableStateIDs) : 0;
     }
 
     // Ensure nextStateID exists
@@ -281,40 +294,29 @@ function createEntityStore() {
         };
     };
 
-    // NEW: Process queued activation checks with callback
-    const processQueuedActivationChecks = (updateCallback = null) => {
-        const circlesToCheck = Array.from(activationCheckQueue.keys());
-        activationCheckQueue.clear();
-        activationCheckTimeout = null;
+const processQueuedActivationChecks = (updateCallback = null) => {
+    const circlesToCheck = Array.from(activationCheckQueue.keys());
+    activationCheckQueue.clear();
+    activationCheckTimeout = null;
 
-        // Use provided callback or fallback to internal updateCircle
-        const updateFn = updateCallback || updateCircle;
+    // Use provided callback or fallback to internal updateCircle
+    const updateFn = updateCallback || updateCircle;
 
-        circlesToCheck.forEach(circleId => {
-            const circle = getCircle(circleId);
-            if (!circle || circle.activationTriggers !== 'members') return;
-            
-            if (circle.type === 'group') {
-                const memberCount = getCirclesBelongingToGroup(circleId).length;
-                const shouldBeActivated = memberCount > 0;
-                
-                if (shouldBeActivated && circle.activation === 'inactive') {
-                    updateFn(circleId, { activation: 'activated' });
-                } else if (!shouldBeActivated && circle.activation === 'activated') {
-                    updateFn(circleId, { activation: 'inactive' });
-                }
-            } else {
-                // Member activation logic (immediate, no delay)
-                const isGroupMember = circle.belongsToID !== null;
-                
-                if (isGroupMember && circle.activation === 'inactive') {
-                    updateFn(circleId, { activation: 'activated' });
-                } else if (!isGroupMember && circle.activation === 'activated') {
-                    updateFn(circleId, { activation: 'inactive' });
-                }
-            }
-        });
-    };
+    circlesToCheck.forEach(circleId => {
+        const circle = getCircle(circleId);
+        if (!circle || circle.activationTriggers !== 'members' || circle.type !== 'group') return;
+        
+        // Only handle group activation logic here
+        const memberCount = getCirclesBelongingToGroup(circleId).length;
+        const shouldBeActivated = memberCount > 0;
+        
+        if (shouldBeActivated && circle.activation === 'inactive') {
+            updateFn(circleId, { activation: 'activated' });
+        } else if (!shouldBeActivated && circle.activation === 'activated') {
+            updateFn(circleId, { activation: 'inactive' });
+        }
+    });
+};
 
     // NEW: Schedule activation check with debouncing
     const scheduleActivationCheck = (circleId, updateCallback = null) => {
@@ -329,19 +331,26 @@ function createEntityStore() {
         activationCheckTimeout = setTimeout(() => processQueuedActivationChecks(updateCallback), 500);
     };
 
-    const checkAndUpdateMemberActivation = (circleId, updateCallback = null) => {
-        const circle = getCircle(circleId);
-        if (!circle || circle.activationTriggers !== 'members') return;
-        
-        // For non-member activation triggers, execute immediately
-        if (circle.activationTriggers !== 'members') {
-            // Handle other activation trigger types immediately if needed
-            return;
-        }
-        
-        // For member-based activation, use debounced queue
+const checkAndUpdateMemberActivation = (circleId, updateCallback = null) => {
+    const circle = getCircle(circleId);
+    if (!circle) return;
+    
+    // Handle member activation logic (immediate, regardless of activationTriggers)
+    const isGroupMember = circle.belongsToID !== null;
+    
+    if (isGroupMember && circle.activation === 'inactive') {
+        const updateFn = updateCallback || updateCircle;
+        updateFn(circleId, { activation: 'activated' });
+    } else if (!isGroupMember && circle.activation === 'activated') {
+        const updateFn = updateCallback || updateCircle;
+        updateFn(circleId, { activation: 'inactive' });
+    }
+    
+    // Handle group activation logic (only if activationTriggers is 'members')
+    if (circle.activationTriggers === 'members' && circle.type === 'group') {
         scheduleActivationCheck(circleId, updateCallback);
-    };
+    }
+};
 
     // Generic entity operations
 const createEntity = (entityType, documentId, containerWidth, containerHeight, viewerWidths = [], documentStore = null) => {
@@ -598,6 +607,11 @@ const updateEntity = (entityType, id, updates) => {
                     if (updates.currentStateID !== undefined) {
                         refCircle.currentStateID = entity.currentStateID;
                         syncCurrentStateToBaseProperties(refCircle);
+                    }
+                    
+                    // NEW: Sync defaultStateID to referenced circles
+                    if (updates.defaultStateID !== undefined) {
+                        refCircle.defaultStateID = entity.defaultStateID;
                     }
                     
                     if (updates.states !== undefined) {

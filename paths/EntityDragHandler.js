@@ -358,10 +358,26 @@ findGroupMemberElements() {
         }
     }
 
-    getReactiveEntitiesWithCurrentPositions() {
-        const originalEntities = this.entityTypeHandler.getCurrentEntities();
-        return originalEntities;
+getReactiveEntitiesWithCurrentPositions() {
+    const entities = this.entityTypeHandler.getCurrentEntities();
+    
+    if (!this.currentDragState.isDragging) {
+        return entities;
     }
+    
+    const selectedIds = this.entityTypeHandler.getSelectedEntityIds();
+    
+    return entities.map(entity => {
+        if (selectedIds.includes(entity.id)) {
+            return {
+                ...entity,
+                x: entity.x + this.currentDragState.deltaX,
+                y: entity.y + this.currentDragState.deltaY
+            };
+        }
+        return entity;
+    });
+}
 
     bindMethods() {
         this.handleClick = this.handleClick.bind(this);
