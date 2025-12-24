@@ -1,5 +1,5 @@
 // useCharacteristicsBarBridge.js - Fixed with direct reactive access
-import { computed } from './vue-composition-api.js';
+import { computed, ref } from './vue-composition-api.js';
 import { roilMotionSystem } from './RoilMotionCore.js';
 import { useDynamicCharacteristics } from './useDynamicCharacteristics.js';
 import { useRecentEmojis } from './useRecentEmojis.js';
@@ -145,6 +145,76 @@ export function useCharacteristicsBarBridge() {
     
     return categorizedEmojis;
   });
+
+// Add these reactive properties to the existing setup:
+const isCustomEmojiPickerOpen = ref(false);
+
+// Add these methods to the existing methods object:
+const toggleCustomEmojiPicker = () => {
+  isCustomEmojiPickerOpen.value = !isCustomEmojiPickerOpen.value;
+};
+
+const closeCustomEmojiPicker = () => {
+  isCustomEmojiPickerOpen.value = false;
+};
+
+const handleCreateSquareWithEmoji = (selectedEmoji) => {
+  // First check if any squares are selected
+  const selectedSquareIds = dataStore.getSelectedSquares();
+  
+  if (selectedSquareIds.length > 0) {
+    // Update all selected squares with the chosen emoji
+    selectedSquareIds.forEach(squareId => {
+      dataStore.updateSquare(squareId, {
+        emoji: selectedEmoji,
+          color: '#CCCCCC',
+      });
+    });
+    
+    // Convert emoji string to attribute object format for recent emojis
+    const emojiAttribute = {
+      key: `custom_${selectedEmoji}`, // Generate a unique key
+      emoji: selectedEmoji,
+      defaultName: selectedEmoji, // Use the emoji as the default name
+      color: '#CCCCCC' // Default color for custom emojis
+    };
+    
+    // Add the emoji to recent emojis
+    recentEmojiHooks.addRecentEmoji(emojiAttribute);
+  } else {
+    // No squares selected, create a new square (original behavior)
+    const currentDoc = dataStore.getCurrentSquareDocument();
+    if (!currentDoc) {
+      console.warn('No current square document found');
+      return;
+    }
+
+    // Create a square with the selected emoji
+    const newSquare = dataStore.createSquare(currentDoc.id, [325]);
+    
+    if (newSquare && selectedEmoji) {
+      // Update the square with the selected emoji
+      dataStore.updateSquare(newSquare.id, {
+        emoji: selectedEmoji
+      });
+      
+      // Convert emoji string to attribute object format for recent emojis
+      const emojiAttribute = {
+        key: `custom_${selectedEmoji}`, // Generate a unique key
+        emoji: selectedEmoji,
+        defaultName: selectedEmoji, // Use the emoji as the default name
+        color: '#CCCCCC' // Default color for custom emojis
+      };
+      
+      // Add the emoji to recent emojis
+      recentEmojiHooks.addRecentEmoji(emojiAttribute);
+    }
+  }
+  
+  // Close the picker
+  closeCustomEmojiPicker();
+};
+
 
   // Merge everything together
   return {
@@ -435,5 +505,22 @@ handleDemandEmojiSelect: (emoji) => {
     emojiPickerRefTemplate: dynamic.getControlRef('emoji'),
     secondaryColorPickerRefTemplate: dynamic.getControlRef('secondaryColor'),
     secondaryNamePickerRefTemplate: dynamic.getControlRef('secondaryName'),
+
+    isCustomEmojiPickerOpen,
+    toggleCustomEmojiPicker,
+    closeCustomEmojiPicker,
+    handleCreateSquareWithEmoji,
+
+selectedSquares: computed(() => {
+    const squareIds = dataStore.getSelectedSquares();
+    return squareIds.map(id => dataStore.getSquare(id)).filter(Boolean);
+}),
+
+currentSquares: computed(() => {
+    const docId = dataStore.data.currentSquareDocumentId;
+    return docId ? dataStore.getSquaresForDocument(docId) : [];
+}),
+
+dataStore: dataStore,
   };
 }

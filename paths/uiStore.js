@@ -305,6 +305,62 @@ function createUIStore() {
         return data.globalProperties.demoMode === 'Demo';
     };
 
+// Presentation mode state (non-persistent)
+const presentationState = reactive({
+    isPresentationMode: false,
+    currentPresentationStep: 0,
+    showSequenceNumbers: false
+});
+
+// Presentation mode methods
+const startPresentationMode = () => {
+    presentationState.isPresentationMode = true;
+    presentationState.currentPresentationStep = 0;
+};
+
+const nextPresentationStep = (squares) => {
+    if (!presentationState.isPresentationMode) return;
+    
+    // Get all unique sequence numbers, sorted, excluding nulls
+    const sequenceNumbers = squares
+        .map(square => square.presentationSequenceNumber)
+        .filter(num => num !== null && num !== undefined)
+        .sort((a, b) => a - b);
+    
+    const uniqueNumbers = [...new Set(sequenceNumbers)];
+    
+    if (uniqueNumbers.length === 0) return;
+    
+    const currentIndex = uniqueNumbers.indexOf(presentationState.currentPresentationStep);
+    const nextIndex = currentIndex + 1;
+    
+    if (nextIndex < uniqueNumbers.length) {
+        presentationState.currentPresentationStep = uniqueNumbers[nextIndex];
+    }
+};
+
+const endPresentationMode = () => {
+    presentationState.isPresentationMode = false;
+    presentationState.currentPresentationStep = 0;
+};
+
+const toggleSequenceNumbersVisibility = () => {
+    presentationState.showSequenceNumbers = !presentationState.showSequenceNumbers;
+};
+
+const isPresentationMode = () => presentationState.isPresentationMode;
+const getCurrentPresentationStep = () => presentationState.currentPresentationStep;
+const getShowSequenceNumbers = () => presentationState.showSequenceNumbers;
+
+const isSquareVisibleInPresentation = (square) => {
+    if (!presentationState.isPresentationMode) return true;
+    
+    const sequenceNumber = square.presentationSequenceNumber;
+    if (sequenceNumber === null || sequenceNumber === undefined) return false;
+    
+    return sequenceNumber <= presentationState.currentPresentationStep;
+};
+
     const serialize = () => ({
         circleViewers: Array.from(data.circleViewers.entries()),
         viewerOrder: data.viewerOrder,
@@ -383,9 +439,17 @@ function createUIStore() {
         // Legacy demoMode compatibility
         toggleDemoMode,
         isDemoMode,
+startPresentationMode,
+nextPresentationStep,
+endPresentationMode,
+toggleSequenceNumbersVisibility,
+isPresentationMode,
+getCurrentPresentationStep,
+getShowSequenceNumbers,
+isSquareVisibleInPresentation,
         // Serialization
         serialize,
-        deserialize
+        deserialize,
     };
 }
 

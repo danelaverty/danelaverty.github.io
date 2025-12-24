@@ -9,10 +9,10 @@ export class ConnectionManager {
         });
         
         // Connection distances for different entity types
-        this.SQUARE_CONNECTION_DISTANCE = 130;
-        this.SQUARE_BOLD_CONNECTION_DISTANCE = 165;
-        this.CIRCLE_CONNECTION_DISTANCE = 150;
-        this.CIRCLE_BOLD_CONNECTION_DISTANCE = 130;
+        this.SQUARE_CONNECTION_DISTANCE = 100;
+        this.SQUARE_BOLD_CONNECTION_DISTANCE = 100;
+        this.CIRCLE_CONNECTION_DISTANCE = 100;
+        this.CIRCLE_BOLD_CONNECTION_DISTANCE = 100;
         
         // FIXED: Use a single cache structure for all entity types
         this.caches = new Map(); // Key: entityType, Value: cache object

@@ -4,6 +4,7 @@ import { getPropertyValues } from './CBCyclePropertyConfigs.js';
 import { colorFamilies } from './colorFamilies.js';
 import { injectComponentStyles } from './styleUtils.js';
 import { useStateCharacteristicsBarBridge } from './useStateCharacteristicsBarBridge.js';
+import { EmojiComponent } from './EmojiComponent.js'; // Add this import
 
 const statesModalStyles = `
 .characteristic-control.action-button.set-flipped {
@@ -20,6 +21,7 @@ const statesModalStyles = `
     background: #E91E63;
     border-color: #C2185B;
 }
+
 .states-modal {
     background: #2a2a2a;
     border: 1px solid #666;
@@ -91,6 +93,7 @@ const statesModalStyles = `
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-direction: column;
 }
 
 .state-name-input {
@@ -126,34 +129,25 @@ const statesModalStyles = `
     background: #555;
 }
 
+.emoji-absence-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 8px;
+    color: #ccc;
+}
+
+.emoji-absence-checkbox input[type="checkbox"] {
+    width: 12px;
+    height: 12px;
+    accent-color: #007acc;
+}
+
 /* Action button styling */
 .characteristic-control.action-button {
     width: 24px;
     height: 24px;
     font-size: 12px;
-}
-
-.characteristic-control.action-button.activate {
-    background: #007acc;
-    border-color: #0066aa;
-    color: white;
-}
-
-.characteristic-control.action-button.activate:hover {
-    background: #0088dd;
-}
-
-.characteristic-control.action-button.delete:hover {
-    background: #d32f2f;
-    border-color: #b71c1c;
-    color: white;
-}
-
-.characteristic-control.action-button:disabled {
-    background: #2a2a2a;
-    border-color: #666;
-    color: #666;
-    cursor: not-allowed;
 }
 
 /* Add button styling */
@@ -176,6 +170,16 @@ const statesModalStyles = `
     align-items: center;
     justify-content: center;
 }
+
+/* Emoji display styling for states modal */
+.emoji-display-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 16px;
+    min-height: 24px;
+}
 `;
 
 injectComponentStyles('states-modal', statesModalStyles);
@@ -190,6 +194,10 @@ export const CBStatesPickerModal = {
 
     emits: ['close', 'picker-state-change'],
 
+    components: {
+        EmojiComponent // Register the component
+    },
+
     setup(props, { emit }) {
         const dataStore = useDataStore();
 
@@ -202,7 +210,7 @@ export const CBStatesPickerModal = {
             { label: '12:00', value: 0 },
             { label: '3:00', value: 90 },
             { label: '6:00', value: 180 },
-            { label: '9:00', value: 270 }
+            { label: '9:00', value: 270 },
         ];
 
         // State update function to pass to the bridge
@@ -243,7 +251,7 @@ export const CBStatesPickerModal = {
         watch([
             statesBridge.isColorPickerOpen,
             statesBridge.isDemandEmojiPickerOpen,
-            statesBridge.isCauseEmojiPickerOpen
+            statesBridge.isCauseEmojiPickerOpen,
         ], () => {
             emitPickerState();
         }, { immediate: true });
@@ -258,6 +266,14 @@ export const CBStatesPickerModal = {
         const currentStateID = computed(() => {
             return props.selectedCircle?.currentStateID ?? 0;
         });
+
+        const defaultStateID = computed(() => {
+            return props.selectedCircle?.defaultStateID ?? 0;
+        });
+
+        const setDefaultState = (stateID) => {
+            dataStore.updateCircle(props.selectedCircle.id, { defaultStateID: stateID });
+        };
 
         const canDeleteStates = computed(() => {
             return sortedStates.value.length > 1;
@@ -283,9 +299,11 @@ export const CBStatesPickerModal = {
                 name: '???',
                 color: '#B3B3B3',
                 demandEmoji: null,
+                demandEmojiAbsence: false,
                 causeEmoji: null,
+                causeEmojiAbsence: false,
                 buoyancy: 'normal',
-                triggerAngle: null  // New states default to no trigger
+                triggerAngle: null,
             };
 
             dataStore.updateCircle(circle.id, {
@@ -336,6 +354,14 @@ export const CBStatesPickerModal = {
             return option ? option.label : '-';
         };
 
+        const updateDemandEmojiAbsence = (stateID, isAbsence) => {
+            updateStateProperty(stateID, 'demandEmojiAbsence', isAbsence);
+        };
+
+        const updateCauseEmojiAbsence = (stateID, isAbsence) => {
+            updateStateProperty(stateID, 'causeEmojiAbsence', isAbsence);
+        };
+
         return {
             sortedStates,
             currentStateID,
@@ -351,6 +377,10 @@ export const CBStatesPickerModal = {
             cycleBuoyancy,
             updateTriggerAngle,
             getTriggerAngleLabel,
+            updateCauseEmojiAbsence,
+            updateDemandEmojiAbsence,
+            defaultStateID,
+            setDefaultState,
 
             // Expose all the bridge functionality
             ...statesBridge
@@ -368,7 +398,7 @@ export const CBStatesPickerModal = {
                             <th>Cause</th>
                             <th>Demand</th>
                             <th>Buoyancy</th>
-                            <th>Trigger</th>
+                            <th>Trigger Angle</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -412,11 +442,30 @@ export const CBStatesPickerModal = {
                                     <div 
                                         class="characteristic-control"
                                         @click="openCauseEmojiPicker(state.stateID)"
-                                        :title="state.causeEmoji ? 'Cause Emoji: ' + state.causeEmoji : 'No cause emoji'"
+                                        :title="state.causeEmoji ? 'Cause Emoji: ' + state.causeEmoji + (state.causeEmojiAbsence ? ' (absence)' : '') : 'No cause emoji'"
                                     >
-                                        <div :class="['emoji-display', 'circle-emoji-display-control', { 'picker-open': false }]">
-                                            <div style="color: white;" class="circle-emoji-display">{{ state.causeEmoji || '-' }}</div>
+                                        <div class="emoji-display-container">
+                                            <EmojiComponent 
+                                                :emoji="state.causeEmoji" 
+                                                :absence="state.causeEmojiAbsence"
+                                            />
+                                            <span v-if="!state.causeEmoji" style="color: white;">-</span>
                                         </div>
+                                    </div>
+                                    <!-- Absence Checkbox -->
+                                    <div class="emoji-absence-checkbox" v-if="state.causeEmoji">
+                                        <input 
+                                            type="checkbox" 
+                                            :id="'cause-absence-' + state.stateID"
+                                            :checked="state.causeEmojiAbsence || false"
+                                            @change="updateCauseEmojiAbsence(state.stateID, $event.target.checked)"
+                                        />
+                                        <label 
+                                            :for="'cause-absence-' + state.stateID"
+                                            :title="state.causeEmojiAbsence ? 'Triggered by absence of emoji' : 'Triggered by presence of emoji'"
+                                        >
+                                            {{ state.causeEmojiAbsence ? 'absent' : 'present' }}
+                                        </label>
                                     </div>
                                 </div>
                             </td>
@@ -427,11 +476,30 @@ export const CBStatesPickerModal = {
                                     <div 
                                         class="characteristic-control"
                                         @click="openDemandEmojiPicker(state.stateID)"
-                                        :title="state.demandEmoji ? 'Demand Emoji: ' + state.demandEmoji : 'No demand emoji'"
+                                        :title="state.demandEmoji ? 'Demand Emoji: ' + state.demandEmoji + (state.demandEmojiAbsence ? ' (absence)' : '') : 'No demand emoji'"
                                     >
-                                        <div :class="['emoji-display', 'circle-emoji-display-control', { 'picker-open': false }]">
-                                            <div style="color: white;" class="circle-emoji-display">{{ state.demandEmoji || '-' }}</div>
+                                        <div class="emoji-display-container">
+                                            <EmojiComponent 
+                                                :emoji="state.demandEmoji" 
+                                                :absence="state.demandEmojiAbsence"
+                                            />
+                                            <span v-if="!state.demandEmoji" style="color: white;">-</span>
                                         </div>
+                                    </div>
+                                    <!-- Absence Checkbox -->
+                                    <div class="emoji-absence-checkbox" v-if="state.demandEmoji">
+                                        <input 
+                                            type="checkbox" 
+                                            :id="'demand-absence-' + state.stateID"
+                                            :checked="state.demandEmojiAbsence || false"
+                                            @change="updateDemandEmojiAbsence(state.stateID, $event.target.checked)"
+                                        />
+                                        <label 
+                                            :for="'demand-absence-' + state.stateID"
+                                            :title="state.demandEmojiAbsence ? 'Triggered by absence of emoji' : 'Triggered by presence of emoji'"
+                                        >
+                                            {{ state.demandEmojiAbsence ? 'absent' : 'present' }}
+                                        </label>
                                     </div>
                                 </div>
                             </td>
@@ -451,7 +519,7 @@ export const CBStatesPickerModal = {
                                 </div>
                             </td>
                             
-                            <!-- NEW: Trigger Angle -->
+                            <!-- Trigger Angle -->
                             <td>
                                 <div class="state-control">
                                     <select 
@@ -480,15 +548,28 @@ export const CBStatesPickerModal = {
                                         @click="activateState(state.stateID)"
                                         title="Activate this state"
                                     >
-                                        ●
+                                        A
                                     </button>
                                     <div 
                                         v-else 
                                         :class="['characteristic-control', 'action-button', 'activate']" 
                                         title="Current active state"
-                                        style="cursor: default;"
-                                    >●</div>
-                                    
+                                        style="cursor: default; background-color: #CCCC33;"
+                                    >A</div>
+                                    <button 
+                                        v-if="state.stateID !== defaultStateID"
+                                        :class="['characteristic-control', 'action-button', 'set-default']"
+                                        @click="setDefaultState(state.stateID)"
+                                        title="Set as default state"
+                                    >
+                                        d
+                                    </button>
+                                    <div 
+                                        v-else 
+                                        :class="['characteristic-control', 'action-button', 'set-default']" 
+                                        title="Current default state"
+                                        style="cursor: default; background-color: #CCCC33;"
+                                    >d</div>
                                     <button 
                                         :class="['characteristic-control', 'action-button', 'delete']"
                                         :disabled="!canDeleteStates"

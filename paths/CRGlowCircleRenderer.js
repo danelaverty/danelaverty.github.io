@@ -122,19 +122,22 @@ export const GlowCircleRenderer = {
             filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.5));
         `;
         
-        // Create the demand emoji (smaller, positioned inside)
-        const demandElement = document.createElement('span');
-        demandElement.textContent = demandEmoji;
-        demandElement.style.cssText = `
-            font-size: 18px;
+        // Create the demand emoji with EmojiComponent (smaller, positioned inside)
+        const demandContainer = document.createElement('div');
+        demandContainer.style.cssText = `
             position: absolute;
             top: 65%;
             left: 50%;
             transform: translate(-50%, -50%);
             z-index: 11;
+            font-size: 18px;
         `;
         
-        lockContainer.appendChild(demandElement);
+        // Use Vue EmojiComponent for the demand emoji
+        const emojiComponent = this.createEmojiComponentElement(demandEmoji, circle.demandEmojiAbsence || false);
+        demandContainer.appendChild(emojiComponent);
+        
+        lockContainer.appendChild(demandContainer);
         lockContainer.appendChild(lockElement);
         element.appendChild(lockContainer);
     },
@@ -161,7 +164,7 @@ export const GlowCircleRenderer = {
             opacity: 0.8;
         `;
         
-        this.createThoughtBubbleContent(thoughtBalloon, demandEmoji, 'right');
+        this.createThoughtBubbleContent(thoughtBalloon, demandEmoji, 'right', circle.demandEmojiAbsence || false);
         element.appendChild(thoughtBalloon);
     },
 
@@ -187,14 +190,80 @@ export const GlowCircleRenderer = {
             opacity: 0.8;
         `;
         
-        this.createThoughtBubbleContent(thoughtBalloon, causeEmoji, 'left');
+        this.createThoughtBubbleContent(thoughtBalloon, causeEmoji, 'left', circle.causeEmojiAbsence || false);
         element.appendChild(thoughtBalloon);
+    },
+
+    /**
+     * Create EmojiComponent-style element for use in DOM (matches Vue component structure)
+     */
+    createEmojiComponentElement(emoji, absence = false) {
+        const container = document.createElement('span');
+        container.className = 'emoji-component';
+        container.style.display = 'inline-block';
+        
+        if (emoji || absence) {
+            const wrapper = document.createElement('span');
+            wrapper.className = 'emoji-display-wrapper';
+            wrapper.style.cssText = `
+                position: relative;
+                display: inline-block;
+            `;
+            
+            if (emoji) {
+                const emojiMain = document.createElement('span');
+                emojiMain.className = 'emoji-main';
+                emojiMain.textContent = emoji;
+                emojiMain.style.cssText = 'display: inline-block;';
+                wrapper.appendChild(emojiMain);
+            }
+            
+            if (absence) {
+                const absenceIndicator = document.createElement('span');
+                absenceIndicator.className = 'emoji-absence-indicator';
+                absenceIndicator.textContent = '❌'; // Use the correct absence indicator
+                absenceIndicator.style.cssText = `
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    display: inline-block;
+                    pointer-events: none;
+                `;
+                wrapper.appendChild(absenceIndicator);
+            }
+            
+            container.appendChild(wrapper);
+        }
+        
+        return container;
+    },
+
+    /**
+     * Update an existing emoji element
+     */
+    updateEmojiComponentElement(container, emoji, absence = false) {
+        // Simple approach: replace the content
+        const parent = container.parentNode;
+        const newContainer = this.createEmojiComponentElement(emoji, absence);
+        if (parent) {
+            parent.replaceChild(newContainer, container);
+            return newContainer;
+        }
+        return container;
+    },
+
+    /**
+     * No cleanup needed for manual DOM creation
+     */
+    cleanupEmojiComponentElement(container) {
+        // No Vue instances to clean up in this approach
     },
 
     /**
      * Create the content for a thought bubble with appropriate tail direction
      */
-    createThoughtBubbleContent(thoughtBalloon, emoji, tailDirection = 'right') {
+    createThoughtBubbleContent(thoughtBalloon, emoji, tailDirection = 'right', absence = false) {
         // Create the thought balloon emoji (larger)
         const balloonElement = document.createElement('span');
         balloonElement.style.cssText = `
@@ -259,19 +328,22 @@ export const GlowCircleRenderer = {
         }
         balloonElement.appendChild(bubbleTail);
         
-        // Create the emoji (smaller, positioned inside)
-        const emojiElement = document.createElement('span');
-        emojiElement.textContent = emoji;
-        emojiElement.style.cssText = `
-            font-size: 20px;
+        // Create the emoji container with EmojiComponent (smaller, positioned inside)
+        const emojiContainer = document.createElement('div');
+        emojiContainer.style.cssText = `
             position: absolute;
             top: 45%;
             left: 50%;
             transform: translate(-50%, -50%);
             z-index: 11;
+            font-size: 20px;
         `;
         
-        thoughtBalloon.appendChild(emojiElement);
+        // Use Vue EmojiComponent for the emoji
+        const emojiComponent = this.createEmojiComponentElement(emoji, absence);
+        emojiContainer.appendChild(emojiComponent);
+        
+        thoughtBalloon.appendChild(emojiContainer);
         thoughtBalloon.appendChild(balloonElement);
     },
 
@@ -471,23 +543,19 @@ export const GlowCircleRenderer = {
                 existingLock.remove();
                 this.createDemandEmojiThoughtBalloon(element, circle.demandEmoji, true, circle);
                 this.autoInitializeListeners();
-            }  else if (circle.satisfactionLocked !== 'yes' && existingDemandThoughtBalloon) {
-                const existingEmoji = existingDemandThoughtBalloon.querySelector('span');
-                if (existingEmoji && existingEmoji.textContent !== circle.demandEmoji) {
-                    existingEmoji.textContent = circle.demandEmoji;
-                }
+            } else if (circle.satisfactionLocked !== 'yes' && existingDemandThoughtBalloon) {
+                // Update existing thought balloon emoji and absence state
+                this.updateThoughtBalloonEmoji(existingDemandThoughtBalloon, circle.demandEmoji, circle.demandEmojiAbsence || false);
             } else if (circle.satisfactionLocked === 'yes' && existingLock) {
-                const existingEmoji = existingLock.querySelector('span');
-                if (existingEmoji && existingEmoji.textContent !== circle.demandEmoji) {
-                    existingEmoji.textContent = circle.demandEmoji;
-                }
-            }  else if (circle.satisfactionLocked !== 'yes' && !existingDemandThoughtBalloon && !existingLock) {
+                // Update existing lock emoji and absence state
+                this.updateLockEmoji(existingLock, circle.demandEmoji, circle.demandEmojiAbsence || false);
+            } else if (circle.satisfactionLocked !== 'yes' && !existingDemandThoughtBalloon && !existingLock) {
                 this.createDemandEmojiThoughtBalloon(element, circle.demandEmoji, true, circle);
                 this.autoInitializeListeners();
             } else if (circle.satisfactionLocked === 'yes' && !existingDemandThoughtBalloon && !existingLock) {
                 this.createDemandEmojiLock(element, circle.demandEmoji, circle);
             }
-        }  else {
+        } else {
             if (existingDemandThoughtBalloon) {
                 existingDemandThoughtBalloon.remove();
             }
@@ -505,16 +573,39 @@ export const GlowCircleRenderer = {
                 this.createCauseEmojiThoughtBalloon(element, circle.causeEmoji, true, circle);
                 this.autoInitializeListeners();
             } else {
-                // Update existing cause emoji if it changed
-                const existingEmoji = existingCauseThoughtBalloon.querySelector('span');
-                if (existingEmoji && existingEmoji.textContent !== circle.causeEmoji) {
-                    existingEmoji.textContent = circle.causeEmoji;
-                }
+                // Update existing cause emoji and absence state
+                this.updateThoughtBalloonEmoji(existingCauseThoughtBalloon, circle.causeEmoji, circle.causeEmojiAbsence || false);
             }
-        }  else {
+        } else {
             if (existingCauseThoughtBalloon) {
                 existingCauseThoughtBalloon.remove();
             }
+        }
+    },
+
+    /**
+     * Update emoji in an existing thought balloon
+     */
+    updateThoughtBalloonEmoji(thoughtBalloon, emoji, absence) {
+        const emojiContainer = thoughtBalloon.querySelector('div[style*="position: absolute"]');
+        if (emojiContainer) {
+            // Clear existing content and create new emoji component
+            emojiContainer.innerHTML = '';
+            const emojiComponent = this.createEmojiComponentElement(emoji, absence);
+            emojiContainer.appendChild(emojiComponent);
+        }
+    },
+
+    /**
+     * Update emoji in an existing lock
+     */
+    updateLockEmoji(lock, emoji, absence) {
+        const emojiContainer = lock.querySelector('div[style*="position: absolute"]');
+        if (emojiContainer) {
+            // Clear existing content and create new emoji component
+            emojiContainer.innerHTML = '';
+            const emojiComponent = this.createEmojiComponentElement(emoji, absence);
+            emojiContainer.appendChild(emojiComponent);
         }
     },
 

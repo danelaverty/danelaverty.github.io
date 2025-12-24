@@ -51,7 +51,7 @@ const emojiRendererStyles = `
     /* Context-specific sizing only */
     .emoji-renderer--square .emoji-renderer__icon,
     .emoji-renderer--square .emoji-renderer__multi-container {
-        font-size: 30px;
+        font-size: 26px;
         position: absolute;
         top: 45%;
         left: 50%;
@@ -59,7 +59,7 @@ const emojiRendererStyles = `
     }
 
     .emoji-renderer--square .emoji-renderer__multi-emoji {
-        font-size: 30px;
+        font-size: 26px;
     }
 
     .emoji-renderer--recent .emoji-renderer__icon,
@@ -73,7 +73,7 @@ const emojiRendererStyles = `
 
     .emoji-renderer--picker .emoji-renderer__icon,
     .emoji-renderer--picker .emoji-renderer__multi-container {
-        font-size: 30px;
+        font-size: 26px;
         height: 28px;
 		position: relative;
 			  bottom: 5px;

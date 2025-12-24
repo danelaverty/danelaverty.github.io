@@ -1,4 +1,6 @@
-// controls/CircleEmojiControl.js - Updated to handle multiple circle selection and fix object display issue
+// controls/CircleEmojiControl.js - Updated to handle multiple circle selection and use EmojiComponent for absence indication
+import { EmojiComponent } from './EmojiComponent.js';
+
 export const CircleEmojiControl = {
   props: {
     selectedCircle: {
@@ -24,6 +26,10 @@ export const CircleEmojiControl = {
   },
   
   emits: ['toggle'],
+
+  components: {
+    EmojiComponent
+  },
   
   computed: {
     displayEmoji() {
@@ -45,28 +51,45 @@ export const CircleEmojiControl = {
             firstValue = firstValue.emoji || '';
           }
           
-          return firstValue || '-';
+          return firstValue || null;
         }
-        return '-';
+        return null;
       }
       
-      // Return the property value if it exists and is a string, otherwise default
+      // Return the property value if it exists and is a string, otherwise null
       if (propertyValue && typeof propertyValue === 'string') {
         return propertyValue;
       }
       
-      // If propertyValue is empty string, null, or undefined, show default
-      return '-';
+      // If propertyValue is empty string, null, or undefined, return null
+      return null;
+    },
+
+    displayAbsence() {
+      // Get the absence property name (e.g., 'causeEmojiAbsence' for 'causeEmoji')
+      const absencePropertyName = this.propertyName + 'Absence';
+      
+      if (this.hasMultipleCirclesSelected) {
+        if (this.selectedCircles.length > 0) {
+          const firstCircle = this.selectedCircles[0];
+          return firstCircle?.[absencePropertyName] || false;
+        }
+        return false;
+      }
+      
+      return this.selectedCircle?.[absencePropertyName] || false;
     },
     
     displayTitle() {
+      const emoji = this.displayEmoji || '-';
+      const absenceText = this.displayAbsence ? ' (absence)' : '';
+      
       if (this.hasMultipleCirclesSelected) {
-        return `Circle Emoji (${this.selectedCircles.length} circles): ${this.displayEmoji}`;
+        return `Circle Emoji (${this.selectedCircles.length} circles): ${emoji}${absenceText}`;
       }
       
       // Single selection title
-      const emoji = this.displayEmoji;
-      return `Circle Emoji: ${emoji}`;
+      return `Circle Emoji: ${emoji}${absenceText}`;
     }
   },
   
@@ -78,7 +101,13 @@ export const CircleEmojiControl = {
             :class="['emoji-display', 'circle-emoji-display-control', { 'picker-open': isPickerOpen }]"
             :title="displayTitle"
         >
-            <div style="color: white;" class="circle-emoji-display">{{ displayEmoji }}</div>
+            <div style="color: white;" class="circle-emoji-display">
+                <EmojiComponent 
+                    :emoji="displayEmoji" 
+                    :absence="displayAbsence"
+                />
+                <span v-if="!displayEmoji">-</span>
+            </div>
         </div>
     </div>
   `

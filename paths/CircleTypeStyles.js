@@ -772,7 +772,7 @@ export const circleTypeStyles = `
     left: 50%;
     width: 32px;
     height: 32px;
-    border: 1px solid white;
+    border: 8px solid white;
     border-radius: 50%;
     transform: translate(-50%, -50%);
     pointer-events: none;
@@ -780,10 +780,17 @@ export const circleTypeStyles = `
     animation: rippleExpand 0.6s ease-out forwards;
 }
 
+.square-shape .color-change-ripple {
+    width: 120px;
+    height: 120px;
+    border: 8px solid white;
+    animation: rippleExpand 1.6s ease-in forwards;
+}
+
 @keyframes rippleExpand {
     0% {
         transform: translate(-50%, -50%) scale(0.5);
-        opacity: 0.4;
+        opacity: 1;
     }
     100% {
         transform: translate(-50%, -50%) scale(2.0);

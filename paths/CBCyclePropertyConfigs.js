@@ -6,9 +6,9 @@ export const CYCLE_PROPERTY_CONFIGS = {
       'or': { icon: '➕', label: 'Or Mode', description: 'Or Mode', default: true },
       'and': { icon: '✖️', label: 'And Mode', description: 'And Mode' },
     }
-  },
+  },*/
   
-  activationTriggers: {
+  /*activationTriggers: {
     values: {
       'none': { icon: '🫗', label: 'None', description: 'No activation triggers - Click to cycle to Members', default: true },
       'members': { icon: '🥛', label: 'Members', description: 'Members trigger activation - Click to cycle to None' }
@@ -123,7 +123,7 @@ export const CYCLE_PROPERTY_CONFIGS = {
       'yes': { icon: '👍', label: 'yes', description: '' },
     },
       displayIf: { type: 'group', roilMode: 'on', }
-  },
+  },*/
 
   hideNameInRoil: {
     values: {
@@ -131,7 +131,7 @@ export const CYCLE_PROPERTY_CONFIGS = {
       'yes': { icon: 'Y', label: 'yes', description: '' },
     },
     displayIf: { type: 'glow' }
-  },*/
+  },
 
   buoyancy: {
     values: {
