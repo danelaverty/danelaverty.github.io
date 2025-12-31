@@ -1,4 +1,4 @@
-// EntityControls.js - Updated with Reel In functionality
+// EntityControls.js - Updated with config-driven roil member creation
 import { ref, computed, watch } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
 import { useCharacteristicsBarBridge } from './useCharacteristicsBarBridge.js';
@@ -25,6 +25,9 @@ import { CBCyclePropertyControl } from './CBCyclePropertyControl.js';
 import { CBJumpToReferenceControl } from './CBJumpToReferenceControl.js';
 import { BreakReferenceControl } from './CBBreakReferenceControl.js';
 
+// NEW: Import shared roil member configuration
+import { roilAddMemberControlsConfig, getBuoyancyIcon } from './roilMemberConfig.js';
+
 const componentStyles = `
     .entity-controls {
         position: absolute;
@@ -42,6 +45,19 @@ const componentStyles = `
     .entity-add-button {
         font-size: 20px;
         font-weight: bold;
+    }
+
+    .roil-member-state-swatch {
+        position: relative;
+        width: 12px;
+        height: 12px;
+        border-radius: 2px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        color: #444;
     }
 
     /* Unreel button specific styling */
@@ -139,7 +155,7 @@ export const EntityControls = {
         const documentLabelRef = ref(null);
         const reelInButtonRef = ref(null);
         const isReelInAnimating = ref(false);
-        const showUnreelButton = ref(false); // NEW: Track button state
+        const showUnreelButton = ref(false);
 
         // Initialize reel-in animation system
         const reelInSystem = new ReelInAnimationSystem();
@@ -147,13 +163,13 @@ export const EntityControls = {
         // Use characteristics bridge for circle controls
         const characteristics = props.entityType === 'circle' ? useCharacteristicsBarBridge() : null;
 
-        // FIXED: Get circles specific to this viewer
+        // Get circles specific to this viewer
         const viewerSpecificCircles = computed(() => {
             if (props.entityType !== 'circle' || !props.viewerId) return [];
             return dataStore.getCirclesForViewer(props.viewerId);
         });
 
-        // FIXED: Get selected circles that belong to this viewer
+        // Get selected circles that belong to this viewer
         const viewerSelectedCircles = computed(() => {
             if (props.entityType !== 'circle' || !props.viewerId) return [];
             
@@ -180,7 +196,7 @@ export const EntityControls = {
             return currentDocument.value !== null;
         });
 
-        // FIXED: Circle-specific control visibility based on viewer selection
+        // Circle-specific control visibility based on viewer selection
         const shouldShowCircleControls = computed(() => {
             if (props.entityType !== 'circle' || !characteristics || !props.viewerId) return false;
             return viewerSelectedCircles.value.length > 0;
@@ -203,13 +219,13 @@ export const EntityControls = {
                    characteristics.shouldShowExplicitConnectionControls?.value || false;
         });
 
-        // NEW: Reel in button visibility - only when exactly one circle is selected
+        // Reel in button visibility - only when exactly one circle is selected
         const shouldShowReelInButton = computed(() => {
             if (props.entityType !== 'circle' || !props.viewerId) return false;
             return viewerSelectedCircles.value.length === 1 && !showUnreelButton.value;
         });
 
-        // NEW: Unreel button visibility - only when unreel is available
+        // Unreel button visibility - only when unreel is available
         const shouldShowUnreelButton = computed(() => {
             if (props.entityType !== 'circle' || !props.viewerId) return false;
             if (viewerSelectedCircles.value.length !== 1) return false;
@@ -218,7 +234,7 @@ export const EntityControls = {
             return showUnreelButton.value && reelInSystem.canUnreel(selectedCircleId);
         });
 
-        // NEW: Check if the selected circle has any explicit connections
+        // Check if the selected circle has any explicit connections
         const hasConnectedCircles = computed(() => {
             if (!shouldShowReelInButton.value) return false;
             
@@ -233,7 +249,6 @@ export const EntityControls = {
         const getConnectionsForCircle = (circleId) => {
             const allConnections = [];
             
-            // Check all circles in the viewer for explicit connections to the selected circle
             viewerSpecificCircles.value.forEach(circle => {
                 if (circle.id !== circleId) {
                     const connection = dataStore.getExplicitConnectionBetweenEntities(
@@ -253,33 +268,28 @@ export const EntityControls = {
             // onPositionUpdate
             (circleId, x, y) => {
                 dataStore.updateCircle(circleId, { x, y });
-                // Trigger connection updates
                 dataStore.triggerConnectionUpdateIfActive();
             },
             // onAnimationComplete
             (circleId, groupId, isUnreeling = false) => {
                 if (isUnreeling) {
-                    // Restore original group membership (or clear if originally ungrouped)
                     dataStore.clearCircleBelongsTo(circleId);
-                    // Then set original group if there was one
                     if (groupId) {
                         dataStore.setCircleBelongsTo(circleId, groupId);
                     }
                 } else {
-                    // Join the target's group
                     if (groupId) {
                         dataStore.setCircleBelongsTo(circleId, groupId);
                     }
                 }
                 
-                // Check if all animations are complete
                 if (!reelInSystem.isAnimating()) {
                     isReelInAnimating.value = false;
                 }
             }
         );
 
-        // NEW: Handle reel in button click
+        // Handle reel in button click
         const handleReelInClick = () => {
             if (!shouldShowReelInButton.value || isReelInAnimating.value) return;
             
@@ -288,36 +298,31 @@ export const EntityControls = {
             
             if (!targetCircle) return;
             
-            // Get all connected circles
             const connections = getConnectionsForCircle(selectedCircleId);
             
             if (connections.length === 0) return;
             
-            // Get the actual circle objects to reel in
             const circlesToReel = connections
                 .map(({ targetCircleId }) => dataStore.getCircle(targetCircleId))
                 .filter(circle => circle !== null);
             
             if (circlesToReel.length === 0) return;
             
-            // Start animation and show unreel button
             isReelInAnimating.value = true;
             reelInSystem.reelInCircles(targetCircle, circlesToReel);
             
-            // Switch to unreel button after animation starts
             setTimeout(() => {
                 showUnreelButton.value = true;
-            }, 100); // Small delay to ensure animation has started
+            }, 100);
         };
 
-        // NEW: Handle unreel button click
+        // Handle unreel button click
         const handleUnreelClick = () => {
             if (!shouldShowUnreelButton.value || isReelInAnimating.value) return;
             
             const selectedCircleId = viewerSelectedCircles.value[0];
             if (!reelInSystem.canUnreel(selectedCircleId)) return;
             
-            // Get circles that can be unreeled
             const unreelableCircleIds = reelInSystem.getUnreelableCircles();
             const circlesToUnreel = unreelableCircleIds
                 .map(id => dataStore.getCircle(id))
@@ -325,11 +330,9 @@ export const EntityControls = {
             
             if (circlesToUnreel.length === 0) return;
             
-            // Start unreeling animation
             isReelInAnimating.value = true;
             reelInSystem.unreelCircles(circlesToUnreel);
             
-            // Switch back to reel-in button after animation starts
             setTimeout(() => {
                 showUnreelButton.value = false;
             }, 100);
@@ -337,11 +340,9 @@ export const EntityControls = {
 
         // Button handlers
         const handleAddClick = () => {
-            // For circle viewers, ensure a document is selected before adding
             if (props.entityType === 'circle' && props.viewerId) {
                 const documentId = dataStore.getCircleDocumentForViewer(props.viewerId);
                 if (!documentId) {
-                    // No document selected - create a new one first
                     const newDoc = dataStore.createCircleDocument();
                     dataStore.setCircleDocumentForViewer(props.viewerId, newDoc.id);
                 }
@@ -350,16 +351,26 @@ export const EntityControls = {
         };
 
         const handleAddRoilGroupClick = () => {
-            // For circle viewers, ensure a document is selected before adding
             if (props.entityType === 'circle' && props.viewerId) {
                 const documentId = dataStore.getCircleDocumentForViewer(props.viewerId);
                 if (!documentId) {
-                    // No document selected - create a new one first
                     const newDoc = dataStore.createCircleDocument();
                     dataStore.setCircleDocumentForViewer(props.viewerId, newDoc.id);
                 }
             }
             emit('add-entity', { entityType: 'roilGroup' });
+        };
+
+        // NEW: Generic roil member creation handler
+        const handleAddRoilMemberClick = (memberType) => {
+            if (props.entityType === 'circle' && props.viewerId) {
+                const documentId = dataStore.getCircleDocumentForViewer(props.viewerId);
+                if (!documentId) {
+                    const newDoc = dataStore.createCircleDocument();
+                    dataStore.setCircleDocumentForViewer(props.viewerId, newDoc.id);
+                }
+            }
+            emit('add-entity', { entityType: 'roilMember', memberType: memberType });
         };
 
         const handleDocumentClick = (event) => {
@@ -373,14 +384,14 @@ export const EntityControls = {
             });
         };
 
-        // FIXED: Check viewer-specific selection for R button - show when NO circles selected in this viewer
+        // Check viewer-specific selection for R button - show when NO circles selected in this viewer
         const shouldShowRButton = computed(() => {
             if (props.entityType !== 'circle' || !props.viewerId) return false;
             return viewerSelectedCircles.value.length === 0;
         });
 
-        // FIXED: Check viewer-specific selection for M button
-        const shouldShowMButton = computed(() => {
+        // NEW: Check if we should show roil member buttons
+        const shouldShowRoilMemberButtons = computed(() => {
             if (props.entityType !== 'circle' || !props.viewerId) return false;
             
             const selectedIds = viewerSelectedCircles.value;
@@ -392,42 +403,7 @@ export const EntityControls = {
             return selectedCircle.type === 'group' && selectedCircle.roilMode === 'on';
         });
 
-        const handleAddMemberClick = () => {
-            if (props.entityType === 'circle' && props.viewerId) {
-                const documentId = dataStore.getCircleDocumentForViewer(props.viewerId);
-                if (!documentId) {
-                    const newDoc = dataStore.createCircleDocument();
-                    dataStore.setCircleDocumentForViewer(props.viewerId, newDoc.id);
-                }
-            }
-            emit('add-entity', { entityType: 'roilMember' });
-        };
-
-        // FIXED: Check viewer-specific selection for A button
-        const shouldShowAButton = computed(() => {
-            if (props.entityType !== 'circle' || !props.viewerId) return false;
-            
-            const selectedIds = viewerSelectedCircles.value;
-            if (selectedIds.length !== 1) return false;
-            
-            const selectedCircle = dataStore.getCircle(selectedIds[0]);
-            if (!selectedCircle) return false;
-            
-            return selectedCircle.type === 'group' && selectedCircle.roilMode === 'on';
-        });
-
-        const handleAddAngryMemberClick = () => {
-            if (props.entityType === 'circle' && props.viewerId) {
-                const documentId = dataStore.getCircleDocumentForViewer(props.viewerId);
-                if (!documentId) {
-                    const newDoc = dataStore.createCircleDocument();
-                    dataStore.setCircleDocumentForViewer(props.viewerId, newDoc.id);
-                }
-            }
-            emit('add-entity', { entityType: 'angryMember' });
-        };
-
-        // FIXED: Check viewer-specific selection for arrow buttons
+        // Check viewer-specific selection for arrow buttons
         const shouldShowArrowButtons = computed(() => {
             if (props.entityType !== 'circle' || !props.viewerId) return false;
             
@@ -488,9 +464,8 @@ export const EntityControls = {
             }
         };
 
-        // NEW: Watch for selection changes to clear unreel data
+        // Watch for selection changes to clear unreel data
         watch(viewerSelectedCircles, (newSelection, oldSelection) => {
-            // If selection changed, clear unreel data and reset button state
             if (JSON.stringify(newSelection) !== JSON.stringify(oldSelection)) {
                 reelInSystem.clearUnreelData();
                 showUnreelButton.value = false;
@@ -509,15 +484,13 @@ export const EntityControls = {
             handleAddRoilGroupClick,
             handleDocumentClick,
             shouldShowRButton,
-            shouldShowMButton,
-            handleAddMemberClick,
-            shouldShowAButton,
-            handleAddAngryMemberClick,
+            shouldShowRoilMemberButtons,
+            handleAddRoilMemberClick,
             shouldShowArrowButtons,
             handleMakeAngryClick,
             handleMakeNormalClick,
             
-            // NEW: Reel in functionality
+            // Reel in functionality
             shouldShowReelInButton,
             shouldShowUnreelButton,
             hasConnectedCircles,
@@ -525,7 +498,7 @@ export const EntityControls = {
             handleUnreelClick,
             showUnreelButton,
             
-            // Circle control functionality - FIXED to use viewer-specific checks
+            // Circle control functionality
             shouldShowCircleControls,
             shouldShowCircleCharacteristicControls,
             shouldShowEmojiControls,
@@ -539,6 +512,10 @@ export const EntityControls = {
             getPropertyConfig,
             EmojiVariantService,
             CONTROL_REGISTRY,
+            
+            // NEW: Config and helper functions
+            roilAddMemberControlsConfig,
+            getBuoyancyIcon,
         };
     },
     
@@ -577,33 +554,38 @@ export const EntityControls = {
                 title="Add Roil Group"
             >R</div>
             
+            <!-- NEW: Dynamic Roil Member Buttons -->
             <div 
-                v-if="shouldShowMButton"
-                class="characteristic-control entity-add-button"
-                @click="handleAddMemberClick"
-                title="Add Member"
-            >M</div>
-            
-            <div 
-                v-if="shouldShowAButton"
-                class="characteristic-control entity-add-button"
-                @click="handleAddAngryMemberClick"
-                title="Add Angry Member"
-            >A</div>
+                v-if="shouldShowRoilMemberButtons"
+                v-for="(states, memberType) in roilAddMemberControlsConfig"
+                :key="memberType"
+                class="characteristic-control"
+                @click="handleAddRoilMemberClick(memberType)"
+                :title="'Add ' + memberType.charAt(0).toUpperCase() + memberType.slice(1) + ' Member'"
+            >
+                <div 
+                    v-for="(state, index) in states"
+                    :key="index"
+                    class="roil-member-state-swatch"
+                    :style="{ backgroundColor: state.color, top: (4 * index) + 'px', left: (-4 * index) + 'px', transform: 'translate(' + ((states.length - 1) * 2) + 'px, ' + ((states.length - 1) * -2) + 'px)' }"
+                >
+                    {{ getBuoyancyIcon(state.buoyancy) }}
+                </div>
+            </div>
             
             <div 
                 v-if="shouldShowArrowButtons"
                 class="characteristic-control entity-add-button"
                 @click="handleMakeAngryClick"
                 title="Make Selected Angry"
-            >&#x2191;</div>
+            >↑</div>
             
             <div 
                 v-if="shouldShowArrowButtons"
                 class="characteristic-control entity-add-button"
                 @click="handleMakeNormalClick"
                 title="Make Selected Normal"
-            >&#x2193;</div>
+            >↓</div>
 
             <!-- Circle Characteristic Controls -->
             <template v-if="shouldShowCircleControls && shouldShowCircleCharacteristicControls">
@@ -698,7 +680,7 @@ export const EntityControls = {
                     title="Unreel Circles to Original Positions"
                 >
                     <span class="unreel-emoji">
-                        🎣<span class="unreel-x">❌</span>
+                        🎣<span class="unreel-x">⌘</span>
                     </span>
                 </div>
 
