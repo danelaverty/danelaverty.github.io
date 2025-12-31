@@ -8,12 +8,14 @@ export const CYCLE_PROPERTY_CONFIGS = {
     }
   },*/
   
-  /*activationTriggers: {
+activationTriggers: {
     values: {
-      'none': { icon: '🫗', label: 'None', description: 'No activation triggers - Click to cycle to Members', default: true },
-      'members': { icon: '🥛', label: 'Members', description: 'Members trigger activation - Click to cycle to None' }
+      'none': { icon: '🫗', label: 'None', description: 'No activation triggers - Click to cycle to Has Members', default: true },
+      'hasMembers': { icon: '∋', label: 'Has Members', description: 'Activates when group has members - Click to cycle to Activates Its Members' },
+      'activatesItsMembers': { icon: '🔋', label: 'Activates Its Members', description: 'Activates members when they join the group - Click to cycle to Is A Member' },
+      'isAMember': { icon: '∈', label: 'Is A Member', description: 'Activates when circle becomes a member of a group - Click to cycle to None' }
     }
-  },*/
+  },
 
   activation: {
     values: {
@@ -30,6 +32,23 @@ export const CYCLE_PROPERTY_CONFIGS = {
       'refuses': { icon: '⚉', label: 'Refuses', description: 'Refuses connections - Click to cycle to Receives' }
     }
   },
+
+  /*immovable: {
+    values: {
+      'no': { 
+        icon: '🛑', 
+        label: 'Movable', 
+        description: 'Can be dragged - Click to cycle to Immovable', 
+        default: true,
+        cssStyle: 'opacity: 0.4; filter: saturate(0.2);'
+      },
+      'yes': { 
+        icon: '🛑', 
+        label: 'Immovable', 
+        description: 'Cannot be dragged - Click to cycle to Movable' 
+      }
+    }
+  },*/
 
   /*sizeMode: {
     values: {
@@ -60,7 +79,7 @@ export const CYCLE_PROPERTY_CONFIGS = {
   roilAnimation: {
     values: {
       'play': { icon: '▶️', label: 'Play', description: '', default: true },
-      'pause': { icon: '⏸️', label: 'Pause', description: '' },
+      'pause': { icon: '⏸', label: 'Pause', description: '' },
     },
     displayIf: { type: 'group', roilMode: 'on' }
   },
@@ -115,15 +134,23 @@ export const CYCLE_PROPERTY_CONFIGS = {
       'shiftToSecondary': { icon: '2', label: 'Shift', description: '' },
     },
       displayIf: { type: 'group', roilMode: 'on', }
+  },*/
+
+  fadeDescent: {
+    values: {
+      'no': { icon: '🌕', label: 'no', description: '' },
+      'yes': { icon: '🌒', label: 'yes', description: '', default: true },
+    },
+      displayIf: { type: 'group', roilMode: 'on', }
   },
 
   checkInventory: {
     values: {
-      'no': { icon: '👎', label: 'no', description: '', default: true },
-      'yes': { icon: '👍', label: 'yes', description: '' },
+      'no': { icon: '🎒', label: 'no', description: '', default: true, cssStyle: 'opacity: 0.4; filter: saturate(0.2);' },
+      'yes': { icon: '🎒', label: 'yes', description: '' },
     },
       displayIf: { type: 'group', roilMode: 'on', }
-  },*/
+  },
 
   hideNameInRoil: {
     values: {
@@ -156,6 +183,24 @@ export const CYCLE_PROPERTY_CONFIGS = {
       'solo': { icon: '⋅', label: 'Solo', description: '' },
     },
     displayIf: { type: 'glow' }
+  },
+
+  // NEW: Handle property
+  handle: {
+    values: {
+      'no': { 
+        icon: '🫳', 
+        label: 'No Handle', 
+        description: 'Normal behavior - Click to enable handle', 
+        default: true,
+        cssStyle: 'opacity: 0.4; filter: saturate(0.2);'
+      },
+      'yes': { 
+        icon: '🫳', 
+        label: 'Handle', 
+        description: 'Pulls connected circles - Click to disable handle' 
+      }
+    },
   },
 };
 

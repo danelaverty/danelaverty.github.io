@@ -772,7 +772,7 @@ export const circleTypeStyles = `
     left: 50%;
     width: 32px;
     height: 32px;
-    border: 8px solid white;
+    border: 1px solid white;
     border-radius: 50%;
     transform: translate(-50%, -50%);
     pointer-events: none;
@@ -783,7 +783,7 @@ export const circleTypeStyles = `
 .square-shape .color-change-ripple {
     width: 120px;
     height: 120px;
-    border: 8px solid white;
+    border: 1px solid white;
     animation: rippleExpand 1.6s ease-in forwards;
 }
 

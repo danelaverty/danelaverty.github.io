@@ -112,6 +112,14 @@ const groupShapeScale = computed(() => {
         return props.entityType === 'square' && props.entity.bold === true;
     });
 
+    const isImmovable = computed(() => {
+        return props.entity.immovable === 'yes';
+    });
+
+    const isHandle = computed(() => {
+        return props.entity.handle === 'yes';
+    });
+
     // Check if square has indicator emoji
     const hasIndicatorEmoji = computed(() => {
         return props.entityType === 'square' && props.entity.indicatorEmoji;
@@ -245,6 +253,8 @@ const positionStyles = computed(() => {
         isAnimationDimmed,
         hasEmoji,
         isBold,
+        isImmovable,
+        isHandle,
         hasIndicatorEmoji,
         circleEnergyTypes,
         getIndicatorClass,

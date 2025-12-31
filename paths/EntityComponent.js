@@ -14,6 +14,52 @@ const connectionManager = new ConnectionManager();
 
 // Component styles - updated to support bold squares, indicator emojis, reference circles, animation copies, group shape scaling, and collapsed group member count
 const componentStyles = `
+/*.entity-container-emoji .immovable.entity-name::after {
+    position: absolute;
+    content: "✋";
+}
+
+.entity-container-emoji .handle.entity-name::after {
+    position: absolute;
+    content: "🫳";
+}*/
+
+.entity-container.immovable-buzz {
+    animation: immovableBuzz 1s linear;
+}
+
+@keyframes immovableBuzz {
+    0%, 100% {
+        transform: translate(-50%, -50%);
+    }
+    10% {
+        transform: translate(-41%, -50%);
+    }
+    20% {
+        transform: translate(-59%, -50%);
+    }
+    30% {
+        transform: translate(-41%, -50%);
+    }
+    40% {
+        transform: translate(-59%, -50%);
+    }
+    50% {
+        transform: translate(-41%, -50%);
+    }
+    60% {
+        transform: translate(-59%, -50%);
+    }
+    70% {
+        transform: translate(-41%, -50%);
+    }
+    80% {
+        transform: translate(-59%, -50%);
+    }
+    90% {
+        transform: translate(-41%, -50%);
+    }
+}
 
 .presentation-hidden {
     opacity: 0;
@@ -307,7 +353,7 @@ opacity: 0 !important;
     }
 
     .entity-container-emoji .entity-name {
-        color: #CCC;
+        color: #DDD;
         font-size: 11px;
     }
 
@@ -1246,7 +1292,7 @@ const groupCircleStyles = computed(() => {
     }
     // Priority 3: Collapsed state uses normal size (finalSize stays at baseSize)
     
-    //finalSize *= 1.5;
+    finalSize *= 1.5;
     
     const color = props.entity.colors?.[0] || props.entity.color || '#4CAF50';
     

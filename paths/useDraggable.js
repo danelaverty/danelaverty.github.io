@@ -26,40 +26,44 @@ export function useDraggable(element, onDragEnd, containerGetter = null, options
         return { left: containerRect.left, top: containerRect.top };
     };
 
-    const handleMouseDown = (e) => {
-        // Don't start dragging on contenteditable elements
-        if (e.target.hasAttribute('contenteditable')) return;
+const handleMouseDown = (e) => {
+    // Don't start dragging on contenteditable elements
+    if (e.target.hasAttribute('contenteditable')) return;
 
-        isDragging = true;
-        hasActuallyMoved = false;
-        element.value.classList.add('dragging');
-
-        // Call onDragStart callback if provided
-        if (onDragStart) {
-            onDragStart();
+    // Call onDragStart callback if provided and check if drag should be prevented
+    if (onDragStart) {
+        const shouldContinue = onDragStart(e);
+        if (shouldContinue === false) {
+            // Drag was prevented (e.g., immovable entity)
+            return;
         }
+    }
 
-        const rect = element.value.getBoundingClientRect();
-        const containerOffset = getContainerOffset();
-        
-        // Calculate the offset from the mouse to the element's current position
-        offsetX = e.clientX - rect.left;
-        offsetY = e.clientY - rect.top;
+    isDragging = true;
+    hasActuallyMoved = false;
+    element.value.classList.add('dragging');
 
-        // Store original position for delta calculation
-        // Use the element's current computed position, not the mouse position
-        const currentLeft = parseInt(element.value.style.left) || 0;
-        const currentTop = parseInt(element.value.style.top) || 0;
-        
-        originalX = currentLeft;
-        originalY = currentTop;
+    const rect = element.value.getBoundingClientRect();
+    const containerOffset = getContainerOffset();
+    
+    // Calculate the offset from the mouse to the element's current position
+    offsetX = e.clientX - rect.left;
+    offsetY = e.clientY - rect.top;
 
-        // Store start mouse position
-        startX = e.clientX;
-        startY = e.clientY;
+    // Store original position for delta calculation
+    // Use the element's current computed position, not the mouse position
+    const currentLeft = parseInt(element.value.style.left) || 0;
+    const currentTop = parseInt(element.value.style.top) || 0;
+    
+    originalX = currentLeft;
+    originalY = currentTop;
 
-        e.preventDefault();
-    };
+    // Store start mouse position
+    startX = e.clientX;
+    startY = e.clientY;
+
+    e.preventDefault();
+};
 
     const handleMouseMove = (e) => {
         if (!isDragging) return;

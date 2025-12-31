@@ -1,4 +1,4 @@
-// EntityDragHandler.js - ENHANCED: Auto-create/delete explicit connections for roil groups + Fix roil position jump
+// EntityDragHandler.js - ENHANCED: Auto-create/delete explicit connections for roil groups + Fix roil position jump + Immovable circles support
 import { onMounted } from './vue-composition-api.js';
 import { useDraggable } from './useDraggable.js';
 import { useConnectionDragUpdater } from './useConnections.js';
@@ -85,6 +85,25 @@ export class EntityDragHandler {
         );
         
         this.updateConnectionsForDrag = updateConnectionsForDrag;
+    }
+
+    // NEW: Check if entity is immovable
+    isEntityImmovable() {
+        return this.props.entityType === 'circle' && this.props.entity.immovable === 'yes';
+    }
+
+    // NEW: Trigger buzzing animation for immovable entities
+    triggerImmovableBuzz() {
+        const element = this.elementRef.value;
+        if (!element) return;
+
+        // Add buzzing animation class
+        element.classList.add('immovable-buzz');
+        
+        // Remove the class after animation completes
+        setTimeout(() => {
+            element.classList.remove('immovable-buzz');
+        }, 500);
     }
 
     // NEW: Calculate roil position adjustment to prevent jump
@@ -405,6 +424,11 @@ onDragStart(e) {
     if (e && ((e.ctrlKey || e.metaKey) && e.shiftKey)) {
         return;
     }
+
+    if (this.isEntityImmovable()) {
+        this.triggerImmovableBuzz();
+        return false; // Prevent drag from starting
+    }
     
     this.hasActuallyDragged = false;
     this.currentDragState = { deltaX: 0, deltaY: 0, isDragging: true };
@@ -441,13 +465,13 @@ onDragStart(e) {
 
         if (!this.hasRemovedMembership && this.originalBelongsToID && (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2)) {
             // NEW: Check if we're removing from a roil group and create connection
-            if (this.props.entityType === 'circle' && !this.createdRoilConnection) {
+            /*if (this.props.entityType === 'circle' && !this.createdRoilConnection) {
                 const originalGroup = this.dataStore.getCircle(this.originalBelongsToID);
                 if (originalGroup && originalGroup.type === 'group' && originalGroup.roilMode === 'on') {
                     this.createRoilConnection(this.props.entity.id, this.originalBelongsToID);
                     this.createdRoilConnection = true;
                 }
-            }
+            }*/
             
             this.dataStore.clearCircleBelongsTo(this.props.entity.id);
             this.hasRemovedMembership = true;

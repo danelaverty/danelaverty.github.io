@@ -1,4 +1,4 @@
-// keyboardHandler.js - Centralized keyboard event handling
+// keyboardHandler.js - Centralized keyboard event handling with reel-in support
 import { 
     handleCopyOperation, 
     handleNormalPaste, 
@@ -51,6 +51,30 @@ export function createKeyboardHandler(dataStore, onShowIndicatorPicker = null, o
             
             e.preventDefault();
             handleActivationToggle(dataStore);
+            return;
+        }
+        
+        // Handle CTRL+Y for reel-in/unreel
+        if (e.key === 'y' && (e.ctrlKey || e.metaKey)) {
+            // Don't interfere with text editing
+            if (isTextEditingActive()) {
+                return;
+            }
+            
+            e.preventDefault();
+            
+            // Find and click the reel-in or unreel button
+            const reelInButton = document.querySelector('.entity-reel-button');
+            const unreelButton = document.querySelector('.entity-unreel-button');
+            
+            if (unreelButton && unreelButton.style.display !== 'none') {
+                // Unreel button is visible, click it
+                unreelButton.click();
+            } else if (reelInButton && reelInButton.style.display !== 'none') {
+                // Reel-in button is visible, click it
+                reelInButton.click();
+            }
+            
             return;
         }
         

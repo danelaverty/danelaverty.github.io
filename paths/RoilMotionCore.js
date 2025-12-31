@@ -251,7 +251,11 @@ export class RoilMotionCore {
         element.style.left = circle.x + 'px';
         element.style.top = this.calculateTopForAngle(circle, group.roilAngle) + 'px';
         element.style.transform = `translate(-50%, -50%) scale(${(scale - 0.3).toFixed(3)})`;
-        var elementOpacity = scale * 2.8 - 2.6;
+
+        var elementOpacity = 1;
+        if (group.fadeDescent == 'yes') {
+            elementOpacity = scale * 2.8 - 2.6;
+        }
         element.style.opacity = elementOpacity;
         
         circle.currentScale = scale;

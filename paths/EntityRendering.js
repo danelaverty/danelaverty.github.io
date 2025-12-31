@@ -41,6 +41,14 @@ const nameClasses = computed(() => {
         classes.push('bold');
     }
     
+    if (state.isImmovable.value) {
+        classes.push('immovable');
+    }
+    
+    if (state.isHandle.value) {
+        classes.push('handle');
+    }
+    
     // Add referenced class for referenced circles
     if (state.isReferencedCircle.value) {
         classes.push('referenced');
