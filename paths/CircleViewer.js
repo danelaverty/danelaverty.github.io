@@ -559,13 +559,21 @@ watch(
                 
                 groupMembers.forEach(member => {
                     const element = document.querySelector(`[data-entity-id="${member.id}"]`);
-                    if (element && roilMotionSystem.activeCircles.has(member.id)) {
+                    if (element && 
+                        roilMotionSystem && 
+                        roilMotionSystem.activeCircles && 
+                        roilMotionSystem.activeCircles.has(member.id)) {
                         
-                        // IMPORTANT: Clear existing event points first
-                        roilMotionSystem.eventPoints.delete(member.id);
+                        // SAFE: Clear existing event points first - check if eventPoints exists
+                        if (roilMotionSystem.eventPoints && 
+                            typeof roilMotionSystem.eventPoints.delete === 'function') {
+                            roilMotionSystem.eventPoints.delete(member.id);
+                        }
                         
-                        // Then re-setup with new properties
-                        roilMotionSystem.setupEventPoints(member.id, element);
+                        // Then re-setup with new properties - check if setupEventPoints exists
+                        if (typeof roilMotionSystem.setupEventPoints === 'function') {
+                            roilMotionSystem.setupEventPoints(member.id, element);
+                        }
                     }
                 });
             }

@@ -501,18 +501,8 @@ const potentialEnergyDebugInfo = computed(() => {
         };
 
 const getEntityPosition = (entity, entityType) => {
-    // Check if this entity is currently being dragged
-    /*const isDragging = props.entityDragState.isDragging;
-    const draggedIds = props.entityDragState.draggedEntityIds || [];
-    const isEntityBeingDragged = isDragging && draggedIds.includes(entity.id);
-    
-    if (isEntityBeingDragged) {
-        // Apply drag deltas to the entity's position
-        return {
-            x: entity.x + props.entityDragState.currentDeltas.deltaX,
-            y: entity.y + props.entityDragState.currentDeltas.deltaY
-        };
-    }*/
+    // Create reactive dependency on drag state to ensure connections update during drag
+    const isBeingDragged = props.entityDragState.draggedEntityIds?.includes(entity.id);
     
     const entityElement = document.querySelector(`[data-entity-id="${entity.id}"]`);
     if (entityElement && entityElement.style.left && entityElement.style.top) {

@@ -7,6 +7,7 @@ import { ExplicitConnectionService } from './ExplicitConnectionService.js';
 import { getRecentEmojisStoreInstance } from './useRecentEmojis.js';
 import { useClipboardStore } from './clipboardStore.js';
 import { cycleProperty, CYCLE_PROPERTY_CONFIGS } from './CBCyclePropertyConfigs.js';
+import { HandleAnimationSystem } from './HandleAnimationSystem.js';
 
 let dataCoordinatorInstance = null;
 
@@ -47,19 +48,39 @@ const triggerConnectionUpdateIfActive = () => {
     let saveToStorageRef = null;
     
     // 2. Create dataCoordinatorRef with a function that calls the reference
-    const dataCoordinatorRef = {
-        getCircle: (id) => entityStore.getCircle(id),
-        getSquare: (id) => entityStore.getSquare(id),
-        getCirclesForViewer: (viewerId) => {
-            const documentId = uiStore.getCircleDocumentForViewer(viewerId);
-            return documentId ? entityStore.getCirclesForDocument(documentId) : [];
-        },
-        saveToStorage: () => saveToStorageRef() // Call through reference
-    };
+const dataCoordinatorRef = {
+    getCircle: (id) => entityStore.getCircle(id),
+    getSquare: (id) => entityStore.getSquare(id),
+    getCirclesForViewer: (viewerId) => {
+        const documentId = uiStore.getCircleDocumentForViewer(viewerId);
+        return documentId ? entityStore.getCirclesForDocument(documentId) : [];
+    },
+    getCirclesForDocument: (documentId) => entityStore.getCirclesForDocument(documentId),
+    getExplicitConnectionBetweenEntities: (id1, type1, id2, type2) => explicitConnectionService.getConnectionBetweenEntities(id1, type1, id2, type2),
+    getVisibleCircleViewers: () => {
+        const viewers = uiStore.getVisibleCircleViewers();
+        return viewers.map(viewer => {
+            const properties = uiStore.getViewerProperties(viewer.id, documentStore);
+            return {
+                ...viewer,
+                width: properties.width,
+                showBackground: properties.showBackground
+            };
+        });
+    },
+    // Access to the reactive data
+    data: {
+        get circleViewers() { return uiStore.data.circleViewers; },
+        get viewerOrder() { return uiStore.data.viewerOrder; },
+    },
+    saveToStorage: () => saveToStorageRef() // Call through reference
+};
     
     // 3. Create services
     const explicitConnectionService = new ExplicitConnectionService(dataCoordinatorRef);
     const entityService = new EntityService(explicitConnectionService);
+
+const handleAnimationSystem = new HandleAnimationSystem();
     
     // 4. Now define the actual saveToStorage function
     const saveToStorage = () => {
@@ -119,6 +140,9 @@ const triggerConnectionUpdateIfActive = () => {
         if (!loaded) {
             saveToStorage();
         }
+
+        handleAnimationSystem.setDataStore(dataCoordinatorRef);
+        handleAnimationSystem.start();
     };
 
     // Initialize the app
@@ -307,6 +331,8 @@ const updateCircle = (id, updates) => {
                 checkCauseEmojiTransitions(id, result.documentId);
             }, 0);
         }
+
+        handleAnimationSystem.onCircleUpdated(id, updates);
         
         saveToStorage();
         triggerAutomatonIfActive();
@@ -691,11 +717,13 @@ const updateCircle = (id, updates) => {
 
         // Explicit connection operations (with persistence and automaton triggering)
         getExplicitConnectionBetweenEntities: explicitConnectionService.getConnectionBetweenEntities.bind(explicitConnectionService),
-        updateExplicitConnectionProperty: (connectionId, propertyName, value) => {
+updateExplicitConnectionProperty: (connectionId, propertyName, value) => {
             const result = explicitConnectionService.updateConnectionProperty(connectionId, propertyName, value);
             if (result) {
                 saveToStorage();
                 triggerAutomatonIfActive();
+                // NEW: Notify handle animation system that connections changed
+                handleAnimationSystem.onConnectionsChanged();
             }
             return result;
         },
@@ -778,6 +806,9 @@ toggleGlobalProperty: (propertyKey) => {
         endPresentationMode: uiStore.endPresentationMode,
         nextPresentationStep: uiStore.nextPresentationStep,
         toggleSequenceNumbersVisibility: uiStore.toggleSequenceNumbersVisibility,
+
+        startHandleAnimations: () => handleAnimationSystem.start(),
+        stopHandleAnimations: () => handleAnimationSystem.stop(),
     };
 }
 

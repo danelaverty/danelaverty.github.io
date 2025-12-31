@@ -304,7 +304,7 @@ const processQueuedActivationChecks = (updateCallback = null) => {
 
     circlesToCheck.forEach(circleId => {
         const circle = getCircle(circleId);
-        if (!circle || circle.activationTriggers !== 'members' || circle.type !== 'group') return;
+        if (!circle || circle.activationTriggers !== 'hasMembers' || circle.type !== 'group') return;
         
         // Only handle group activation logic here
         const memberCount = getCirclesBelongingToGroup(circleId).length;
@@ -335,20 +335,47 @@ const checkAndUpdateMemberActivation = (circleId, updateCallback = null) => {
     const circle = getCircle(circleId);
     if (!circle) return;
     
-    // Handle member activation logic (immediate, regardless of activationTriggers)
-    const isGroupMember = circle.belongsToID !== null;
-    
-    if (isGroupMember && circle.activation === 'inactive') {
-        const updateFn = updateCallback || updateCircle;
-        updateFn(circleId, { activation: 'activated' });
-    } else if (!isGroupMember && circle.activation === 'activated') {
-        const updateFn = updateCallback || updateCircle;
-        updateFn(circleId, { activation: 'inactive' });
+    // Handle member activation logic (for circles with isAMember trigger)
+    if (circle.activationTriggers === 'isAMember') {
+        const isGroupMember = circle.belongsToID !== null;
+        
+        if (isGroupMember && circle.activation === 'inactive') {
+            const updateFn = updateCallback || updateCircle;
+            updateFn(circleId, { activation: 'activated' });
+        } else if (!isGroupMember && circle.activation === 'activated') {
+            const updateFn = updateCallback || updateCircle;
+            updateFn(circleId, { activation: 'inactive' });
+        }
     }
     
-    // Handle group activation logic (only if activationTriggers is 'members')
-    if (circle.activationTriggers === 'members' && circle.type === 'group') {
+    // Handle group activation logic (for groups with hasMembers trigger)
+    if (circle.activationTriggers === 'hasMembers' && circle.type === 'group') {
         scheduleActivationCheck(circleId, updateCallback);
+    }
+    
+    // NEW: Handle group member activation (for groups with activatesItsMembers trigger)
+    if (circle.belongsToID !== null) {
+        const parentGroup = getCircle(circle.belongsToID);
+        if (parentGroup && parentGroup.activationTriggers === 'activatesItsMembers') {
+            // Member joined a group that activates its members - activate this member
+            if (circle.activation === 'inactive') {
+                const updateFn = updateCallback || updateCircle;
+                updateFn(circleId, { activation: 'activated' });
+            }
+        }
+    }
+};
+
+const handleMemberLeaving = (circleId, formerGroupId, updateCallback = null) => {
+    if (!formerGroupId) return;
+    
+    const formerGroup = getCircle(formerGroupId);
+    if (formerGroup && formerGroup.activationTriggers === 'activatesItsMembers') {
+        const circle = getCircle(circleId);
+        if (circle && circle.activation === 'activated') {
+            const updateFn = updateCallback || updateCircle;
+            updateFn(circleId, { activation: 'inactive' });
+        }
     }
 };
 
@@ -469,6 +496,8 @@ const clearCircleBelongsTo = (circleId, updateCallback = null) => {
         if (circle) {
             const formerGroupId = circle.belongsToID;
             circle.belongsToID = null;
+
+            handleMemberLeaving(circleId, formerGroupId, updateCallback);
             
             // Check member activation
             checkAndUpdateMemberActivation(circleId, updateCallback);
