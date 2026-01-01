@@ -214,22 +214,13 @@ export const GlowCircleRenderer = {
                 const emojiMain = document.createElement('span');
                 emojiMain.className = 'emoji-main';
                 emojiMain.textContent = emoji;
-                emojiMain.style.cssText = 'display: inline-block;';
                 wrapper.appendChild(emojiMain);
             }
             
             if (absence) {
                 const absenceIndicator = document.createElement('span');
                 absenceIndicator.className = 'emoji-absence-indicator';
-                absenceIndicator.textContent = '❌'; // Use the correct absence indicator
-                absenceIndicator.style.cssText = `
-                    position: absolute;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    display: inline-block;
-                    pointer-events: none;
-                `;
+                absenceIndicator.textContent = '✖️'; // Use the correct absence indicator
                 wrapper.appendChild(absenceIndicator);
             }
             

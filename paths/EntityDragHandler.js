@@ -465,13 +465,13 @@ onDragStart(e) {
 
         if (!this.hasRemovedMembership && this.originalBelongsToID && (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2)) {
             // NEW: Check if we're removing from a roil group and create connection
-            /*if (this.props.entityType === 'circle' && !this.createdRoilConnection) {
+            if (this.props.entityType === 'circle' && !this.createdRoilConnection) {
                 const originalGroup = this.dataStore.getCircle(this.originalBelongsToID);
-                if (originalGroup && originalGroup.type === 'group' && originalGroup.roilMode === 'on') {
+                if (originalGroup && originalGroup.type === 'group' && originalGroup.roilMode === 'on' && originalGroup.connectOnLeaving == 'yes') {
                     this.createRoilConnection(this.props.entity.id, this.originalBelongsToID);
                     this.createdRoilConnection = true;
                 }
-            }*/
+            }
             
             this.dataStore.clearCircleBelongsTo(this.props.entity.id);
             this.hasRemovedMembership = true;

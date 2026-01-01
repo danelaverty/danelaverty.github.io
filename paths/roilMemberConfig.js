@@ -2,7 +2,7 @@
 export const roilAddMemberControlsConfig = {
     normal: [
         { color: 'hsl(0, 100%, 80%)', buoyancy: 'normal', triggerAngle: 180 },
-        { color: 'hsl(48, 100%, 80%)', buoyancy: 'normal', triggerAngle: 0 },
+        { color: 'hsl(48, 100%, 80%)', buoyancy: 'normal', triggerAngle: 1 },
     ],
     normalConcerned: [
         { color: 'hsl(0, 100%, 80%)', buoyancy: 'normal' },
