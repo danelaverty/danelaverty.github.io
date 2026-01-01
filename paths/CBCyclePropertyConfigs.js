@@ -136,6 +136,14 @@ activationTriggers: {
       displayIf: { type: 'group', roilMode: 'on', }
   },*/
 
+  connectOnLeaving: {
+    values: {
+      'no': { icon: '⛓️‍💥', label: 'no', description: '' },
+      'yes': { icon: '🔗', label: 'yes', description: '', default: true },
+    },
+      displayIf: { type: 'group', roilMode: 'on', }
+  },
+
   fadeDescent: {
     values: {
       'no': { icon: '🌕', label: 'no', description: '' },

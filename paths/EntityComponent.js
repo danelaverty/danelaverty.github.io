@@ -142,7 +142,14 @@ opacity: 1;
 transition: opacity 4s ease;
 }
 
-.group-member.hide-name-in-roil .entity-name {
+.demand-emoji-thought-balloon,
+.cause-emoji-thought-balloon  {
+transition: opacity 4s ease !important;
+}
+
+.group-member.hide-name-in-roil .entity-name, 
+.group-member.hide-name-in-roil .demand-emoji-thought-balloon,
+.group-member.hide-name-in-roil .cause-emoji-thought-balloon  {
 opacity: 0 !important;
 }
 

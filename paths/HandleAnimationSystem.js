@@ -75,7 +75,6 @@ export class HandleAnimationSystem {
         const visibleCircles = this.getVisibleCircles();
         
         if (visibleCircles.length === 0) {
-            console.warn('No visible circles found');
             return [];
         }
         
@@ -109,13 +108,10 @@ export class HandleAnimationSystem {
             // Use the dataStore method if available
             viewers = this.dataStore.getVisibleCircleViewers();
         } else {
-            console.warn('No circle viewers found in dataStore. Available properties:', Object.keys(this.dataStore));
-            console.warn('dataStore.data properties:', this.dataStore.data ? Object.keys(this.dataStore.data) : 'no data property');
             return [];
         }
         
         if (!viewers || viewers.length === 0) {
-            console.warn('No viewers available');
             return [];
         }
         
