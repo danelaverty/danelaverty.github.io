@@ -29,7 +29,7 @@ export const colorTransformations = [
 
 // Special color families that don't follow the hue pattern
 export const specialColorFamilies = [
-    {
+    /*{
     name: "Warm Browns",
     colors: [
       'hsl(20, 70%, 75%)',
@@ -60,7 +60,7 @@ export const specialColorFamilies = [
       'hsl(0, 0%, 20%)',
       'hsl(0, 0%, 0%)'
     ]
-  },
+  },*/
   {
     name: "Great",
     colors: [
@@ -118,7 +118,8 @@ export const generateColorFamilies = () => {
     )
   }));
 
-  return [...generatedFamilies, ...specialColorFamilies];
+  //return [...generatedFamilies, ...specialColorFamilies];
+  return [...specialColorFamilies];
 };
 
 // Export the generated color families

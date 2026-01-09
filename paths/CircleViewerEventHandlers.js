@@ -204,13 +204,31 @@ export function useCircleViewerEventHandlers(props, emit, dataStore) {
     };
 
     // Factory functions that accept selection dependencies
-    const createHandleViewerClick = (hasRectangleSelected) => (e) => {
-        if (hasRectangleSelected()) return;
+const createHandleViewerClick = (hasRectangleSelected) => (e) => {
+    if (hasRectangleSelected()) return;
+    
+    if (e.target.classList.contains('viewer-content')) {
+        dataStore.selectCircle(null, props.viewerId, false);
         
-        if (e.target.classList.contains('viewer-content')) {
-            dataStore.selectCircle(null, props.viewerId, false);
-        }
-    };
+        // NEW: Auto-select single roil circle if it exists (with small delay)
+        setTimeout(() => {
+            if (dataStore.getSelectedCircles().length === 0) {
+                const doc = dataStore.getCircleDocumentForViewer(props.viewerId);
+                if (doc) {
+                    const documentId = doc.id;
+                    const circles = dataStore.getCirclesForDocument(documentId);
+                    const roilCircles = circles.filter(circle => 
+                        circle.type === 'group' && circle.roilMode === 'on'
+                    );
+                    
+                    if (roilCircles.length === 1) {
+                        dataStore.selectCircle(roilCircles[0].id, props.viewerId, false);
+                    }
+                }
+            }
+        }, 0);
+    }
+};
 
     const createHandleViewerContainerClick = (hasRectangleSelected) => (e) => {
         const shouldClearEntities = !hasRectangleSelected();

@@ -36,7 +36,6 @@ export const baseCharacteristicsStyles = `
     .characteristic-control:hover {
         background-color: rgba(60, 60, 60, 0.9);
         border-color: rgba(255, 255, 255, 0.25);
-        transform: translateY(-1px);
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     }
     

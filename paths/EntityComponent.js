@@ -153,7 +153,7 @@ transition: opacity 4s ease !important;
 opacity: 0 !important;
 }
 
-.has-buoyant-sibling.is-not-buoyant {
+.has-buoyant-sibling.is-not-buoyant:not(.parent-roil-is-splayed) {
     filter: opacity(.3) saturate(.2);
 }
 
@@ -752,7 +752,7 @@ const hasBuoyantSibling = computed(() => {
     if (props.entityType !== 'circle' || !props.entity.belongsToID) {
         return false;
     }
-    
+
     // Get all members of the group (including this entity)
     const groupMembers = props.dataStore?.getCirclesBelongingToGroup(props.entity.belongsToID) || [];
     
@@ -760,6 +760,22 @@ const hasBuoyantSibling = computed(() => {
     return groupMembers.some(member => member.buoyancy === 'buoyant');
 });
 
+const parentRoilIsSplayed = computed(() => {
+    // Only applies to group members
+    if (props.entityType !== 'circle' || !props.entity.belongsToID) {
+        return false;
+    }
+    
+    // Get the parent group
+    const parentGroup = props.dataStore?.getCircle(props.entity.belongsToID);
+    
+    // Check if parent is a roil group with splayed composure
+    return parentGroup && 
+           parentGroup.type === 'group' && 
+           parentGroup.roilMode === 'on' && 
+           parentGroup.roilComposure === 'splayed';
+});
+    
 const isRoilMember = computed(() => {
     return props.entityType === 'circle' && 
            props.entity.belongsToID && 
@@ -1341,6 +1357,7 @@ return {
         beaconAnimationStyles,
         isRoilMember,
         hasBuoyantSibling,
+        parentRoilIsSplayed,
         displayName,
         displayMoodValue,
         displayGroupMoodValue,
@@ -1382,6 +1399,7 @@ return {
             'show-seismograph': entity.showSeismograph === 'yes',
             'hidden-for-solo': isHiddenForSolo,
             'has-buoyant-sibling': hasBuoyantSibling,
+            'parent-roil-is-splayed': parentRoilIsSplayed,
             'presentation-hidden': !isVisibleInPresentation,
         }"
         :data-entity-id="entity.id"

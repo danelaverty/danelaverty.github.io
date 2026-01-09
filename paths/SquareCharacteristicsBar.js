@@ -89,11 +89,11 @@ export const SquareCharacteristicsBar = {
         />
 
         <!-- Presentation Controls -->
-        <PresentationControls
+        <!--PresentationControls
             :selectedSquares="selectedSquares"
             :dataStore="dataStore"
             :currentSquares="currentSquares"
-        />
+        /-->
     </div>
   `
 };
