@@ -1,11 +1,10 @@
-// EntityControls.js - Updated with config-driven roil member creation
+// EntityControls.js - Updated with consolidated popup menus
 import { ref, computed, watch } from './vue-composition-api.js';
 import { useDataStore } from './dataCoordinator.js';
 import { useCharacteristicsBarBridge } from './useCharacteristicsBarBridge.js';
 import { injectComponentStyles } from './styleUtils.js';
 import { CONTROL_REGISTRY } from './controlRegistry.js';
 import { EmojiRenderer } from './EmojiRenderer.js';
-import { EmojiVariantService } from './EmojiVariantService.js';
 import { CBConnectionDirectionalityControl } from './CBConnectionDirectionalityControl.js';
 import { CBConnectionEnergyControl } from './CBConnectionEnergyControl.js';
 import { getPropertyConfig } from './CBCyclePropertyConfigs.js';
@@ -47,6 +46,30 @@ const componentStyles = `
         font-weight: bold;
     }
 
+    .entity-menu-button.active {
+        background-color: rgba(100, 100, 100, 0.8);
+    }
+
+    /* Popup menu styling */
+    .entity-popup-menu {
+        position: absolute;
+        bottom: 100%;
+        left: 0;
+        background-color: rgba(42, 42, 42, 0.95);
+        border: 1px solid #666;
+        border-radius: 4px;
+        padding: 6px;
+        margin-bottom: 6px;
+        display: flex;
+        flex-direction: row;
+        gap: 3px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(8px);
+        z-index: 1001;
+        min-width: max-content;
+    }
+
+    /* Roil member state swatch styling */
     .roil-member-state-swatch {
         position: relative;
         width: 12px;
@@ -60,16 +83,16 @@ const componentStyles = `
         color: #444;
     }
 
+    .roil-member-control {
+        position: relative;
+    }
+
     /* Unreel button specific styling */
     .entity-unreel-button {
         font-size: 16px;
         position: relative;
         cursor: pointer;
         transition: transform 0.2s ease;
-    }
-
-    .entity-unreel-button:hover {
-        transform: scale(1.1);
     }
 
     .entity-unreel-button.animating {
@@ -157,11 +180,30 @@ export const EntityControls = {
         const isReelInAnimating = ref(false);
         const showUnreelButton = ref(false);
 
+        // Menu state management
+        const activeMenu = ref(null); // Track which menu is currently open
+        const membersMenuRef = ref(null);
+        const arrowMenuRef = ref(null);
+        const characteristicsMenuRef = ref(null);
+        const propertiesMenuRef = ref(null);
+
         // Initialize reel-in animation system
         const reelInSystem = new ReelInAnimationSystem();
 
         // Use characteristics bridge for circle controls
         const characteristics = props.entityType === 'circle' ? useCharacteristicsBarBridge() : null;
+
+const shouldShowRoilComposureControl = computed(() => {
+    if (props.entityType !== 'circle' || !props.viewerId) return false;
+    
+    const selectedIds = viewerSelectedCircles.value;
+    if (selectedIds.length !== 1) return false;
+    
+    const selectedCircle = dataStore.getCircle(selectedIds[0]);
+    if (!selectedCircle) return false;
+    
+    return selectedCircle.type === 'group' && selectedCircle.roilMode === 'on';
+});
 
         // Get circles specific to this viewer
         const viewerSpecificCircles = computed(() => {
@@ -289,6 +331,76 @@ export const EntityControls = {
             }
         );
 
+        // Menu visibility computeds
+        const shouldShowMembersMenu = computed(() => {
+            if (props.entityType !== 'circle' || !props.viewerId) return false;
+            
+            const selectedIds = viewerSelectedCircles.value;
+            if (selectedIds.length !== 1) return false;
+            
+            const selectedCircle = dataStore.getCircle(selectedIds[0]);
+            if (!selectedCircle) return false;
+            
+            return selectedCircle.type === 'group' && selectedCircle.roilMode === 'on';
+        });
+
+        const shouldShowArrowMenu = computed(() => {
+            if (props.entityType !== 'circle' || !props.viewerId) return false;
+            
+            const selectedIds = viewerSelectedCircles.value;
+            if (selectedIds.length === 0) return false;
+            
+            return selectedIds.some(circleId => {
+                const circle = dataStore.getCircle(circleId);
+                if (!circle || circle.type !== 'glow' || !circle.belongsToID) return false;
+                
+                const parentGroup = dataStore.getCircle(circle.belongsToID);
+                return parentGroup && parentGroup.type === 'group' && parentGroup.roilMode === 'on';
+            });
+        });
+
+        const shouldShowCharacteristicsMenu = computed(() => {
+            return shouldShowCircleControls.value && shouldShowCircleCharacteristicControls.value;
+        });
+
+        const shouldShowPropertiesMenu = computed(() => {
+            if (!characteristics || !props.viewerId) return false;
+            if (viewerSelectedCircles.value.length === 0) return false;
+            return characteristics.cycleableProperties?.value?.length > 0;
+        });
+
+        // Check viewer-specific selection for R button - show when NO circles selected in this viewer
+const shouldShowRButton = computed(() => {
+    if (props.entityType !== 'circle' || !props.viewerId) return false;
+    
+    // Don't show if any circles are selected
+    if (viewerSelectedCircles.value.length > 0) return false;
+    
+    // Don't show if any roil type circles already exist in this viewer
+    const hasRoilCircles = viewerSpecificCircles.value.some(circle => 
+        (circle.type === 'group' && circle.roilMode === 'on') || 
+        (circle.type === 'glow')
+    );
+    
+    return !hasRoilCircles;
+});
+
+        // Menu toggle functions
+        const toggleMenu = (menuName) => {
+            if (activeMenu.value === menuName) {
+                activeMenu.value = null; // Close if already open
+            } else {
+                activeMenu.value = menuName; // Open this menu, close others
+            }
+        };
+
+        // Menu item handlers that prevent menu closing
+        const handleMenuItemClick = (event, handler, ...args) => {
+            event.stopPropagation(); // Prevent event from bubbling up
+            event.preventDefault(); // Prevent any default behavior
+            handler(...args);
+        };
+
         // Handle reel in button click
         const handleReelInClick = () => {
             if (!shouldShowReelInButton.value || isReelInAnimating.value) return;
@@ -361,7 +473,7 @@ export const EntityControls = {
             emit('add-entity', { entityType: 'roilGroup' });
         };
 
-        // NEW: Generic roil member creation handler
+        // Generic roil member creation handler
         const handleAddRoilMemberClick = (memberType) => {
             if (props.entityType === 'circle' && props.viewerId) {
                 const documentId = dataStore.getCircleDocumentForViewer(props.viewerId);
@@ -383,41 +495,6 @@ export const EntityControls = {
                 onDocumentChange: (id) => emit('document-change', id)
             });
         };
-
-        // Check viewer-specific selection for R button - show when NO circles selected in this viewer
-        const shouldShowRButton = computed(() => {
-            if (props.entityType !== 'circle' || !props.viewerId) return false;
-            return viewerSelectedCircles.value.length === 0;
-        });
-
-        // NEW: Check if we should show roil member buttons
-        const shouldShowRoilMemberButtons = computed(() => {
-            if (props.entityType !== 'circle' || !props.viewerId) return false;
-            
-            const selectedIds = viewerSelectedCircles.value;
-            if (selectedIds.length !== 1) return false;
-            
-            const selectedCircle = dataStore.getCircle(selectedIds[0]);
-            if (!selectedCircle) return false;
-            
-            return selectedCircle.type === 'group' && selectedCircle.roilMode === 'on';
-        });
-
-        // Check viewer-specific selection for arrow buttons
-        const shouldShowArrowButtons = computed(() => {
-            if (props.entityType !== 'circle' || !props.viewerId) return false;
-            
-            const selectedIds = viewerSelectedCircles.value;
-            if (selectedIds.length === 0) return false;
-            
-            return selectedIds.some(circleId => {
-                const circle = dataStore.getCircle(circleId);
-                if (!circle || circle.type !== 'glow' || !circle.belongsToID) return false;
-                
-                const parentGroup = dataStore.getCircle(circle.belongsToID);
-                return parentGroup && parentGroup.type === 'group' && parentGroup.roilMode === 'on';
-            });
-        });
 
         const handleMakeAngryClick = () => {
             const selectedCircleIds = viewerSelectedCircles.value;
@@ -464,16 +541,18 @@ export const EntityControls = {
             }
         };
 
-        // Watch for selection changes to clear unreel data
+        // Watch for selection changes to clear unreel data and close menus
         watch(viewerSelectedCircles, (newSelection, oldSelection) => {
             if (JSON.stringify(newSelection) !== JSON.stringify(oldSelection)) {
                 reelInSystem.clearUnreelData();
                 showUnreelButton.value = false;
+                activeMenu.value = null; // Close any open menu when selection changes
             }
         });
 
         return {
             shouldShowControls,
+            shouldShowRoilComposureControl,
             hasDocument,
             currentDocument,
             documentButtonRef,
@@ -484,11 +563,21 @@ export const EntityControls = {
             handleAddRoilGroupClick,
             handleDocumentClick,
             shouldShowRButton,
-            shouldShowRoilMemberButtons,
             handleAddRoilMemberClick,
-            shouldShowArrowButtons,
             handleMakeAngryClick,
             handleMakeNormalClick,
+            
+            // Menu state
+            activeMenu,
+            membersMenuRef,
+            arrowMenuRef,
+            characteristicsMenuRef,
+            propertiesMenuRef,
+            toggleMenu,
+            shouldShowMembersMenu,
+            shouldShowArrowMenu,
+            shouldShowCharacteristicsMenu,
+            shouldShowPropertiesMenu,
             
             // Reel in functionality
             shouldShowReelInButton,
@@ -510,10 +599,10 @@ export const EntityControls = {
             
             // Utilities
             getPropertyConfig,
-            EmojiVariantService,
             CONTROL_REGISTRY,
             
-            // NEW: Config and helper functions
+            // Expose the new handler
+            handleMenuItemClick,
             roilAddMemberControlsConfig,
             getBuoyancyIcon,
         };
@@ -539,9 +628,8 @@ export const EntityControls = {
             v-if="shouldShowControls"
             class="entity-controls"
         >
-            <!-- Basic Entity Creation Controls -->
+            <!-- Basic Entity Creation Controls (Always Visible) -->
             <div 
-                v-if="shouldShowRButton"
                 class="characteristic-control entity-add-button"
                 @click="handleAddClick"
                 title="Add Circle"
@@ -553,140 +641,219 @@ export const EntityControls = {
                 @click="handleAddRoilGroupClick"
                 title="Add Roil Group"
             >R</div>
+
+            <!-- Consolidated Menu Buttons -->
             
-            <!-- NEW: Dynamic Roil Member Buttons -->
+            <!-- Members Menu (M) -->
             <div 
-                v-if="shouldShowRoilMemberButtons"
-                v-for="(states, memberType) in roilAddMemberControlsConfig"
-                :key="memberType"
-                class="characteristic-control"
-                @click="handleAddRoilMemberClick(memberType)"
-                :title="'Add ' + memberType.charAt(0).toUpperCase() + memberType.slice(1) + ' Member'"
+                v-if="shouldShowMembersMenu"
+                class="characteristic-control entity-menu-button"
+                :class="{ active: activeMenu === 'members' }"
+                @click="toggleMenu('members')"
+                ref="membersMenuRef"
+                title="Roil Member Controls"
             >
+                M
                 <div 
-                    v-for="(state, index) in states"
-                    :key="index"
-                    class="roil-member-state-swatch"
-                    :style="{ backgroundColor: state.color, top: (4 * index) + 'px', left: (-4 * index) + 'px', transform: 'translate(' + ((states.length - 1) * 2) + 'px, ' + ((states.length - 1) * -2) + 'px)' }"
+                    v-if="activeMenu === 'members'"
+                    class="entity-popup-menu"
+                    @click.stop
                 >
-                    {{ getBuoyancyIcon(state.buoyancy) }}
+                    <div 
+                        v-for="(states, memberType) in roilAddMemberControlsConfig"
+                        :key="memberType"
+                        class="characteristic-control roil-member-control"
+                        @click="(event) => handleMenuItemClick(event, handleAddRoilMemberClick, memberType)"
+                        :title="'Add ' + memberType.charAt(0).toUpperCase() + memberType.slice(1) + ' Member'"
+                    >
+                        <div 
+                            v-for="(state, index) in states"
+                            :key="index"
+                            class="roil-member-state-swatch"
+                            :style="{ 
+                                backgroundColor: state.color, 
+                                top: (4 * index) + 'px', 
+                                left: (-4 * index) + 'px', 
+                                transform: 'translate(' + ((states.length - 1) * 2) + 'px, ' + ((states.length - 1) * -2) + 'px)' 
+                            }"
+                        >
+                            {{ getBuoyancyIcon(state.buoyancy) }}
+                        </div>
+                    </div>
                 </div>
             </div>
-            
-            <div 
-                v-if="shouldShowArrowButtons"
-                class="characteristic-control entity-add-button"
-                @click="handleMakeAngryClick"
-                title="Make Selected Angry"
-            >↑</div>
-            
-            <div 
-                v-if="shouldShowArrowButtons"
-                class="characteristic-control entity-add-button"
-                @click="handleMakeNormalClick"
-                title="Make Selected Normal"
-            >↓</div>
 
-            <!-- Circle Characteristic Controls -->
-            <template v-if="shouldShowCircleControls && shouldShowCircleCharacteristicControls">
-                <!-- Type Control -->
-                <TypeControl 
-                    :ref="assignDisplayRef('type')"
-                    :currentTypeInfo="currentTypeInfo"
-                    :isPickerOpen="isTypePickerOpen"
-                    @toggle="toggleTypePicker"
-                />
-
-                <!-- Circle Emoji Control -->
-                <CircleEmojiControl 
-                    v-if="isCircleEmojiPickerVisible"
-                    :ref="assignDisplayRef('circleEmoji')"
-                    :selectedCircle="selectedCircle"
-                    :hasMultipleCirclesSelected="hasMultipleCirclesSelected"
-                    :selectedCircles="getSelectedCircleObjects"
-                    :isPickerOpen="isCircleEmojiPickerOpen"
-                    :propertyName="'emoji'"
-                    @toggle="toggleCircleEmojiPicker"
-                />
-
-                <!-- Cause Emoji Control -->
-                <CircleEmojiControl 
-                    :ref="assignDisplayRef('causeEmoji')"
-                    :selectedCircle="selectedCircle"
-                    :hasMultipleCirclesSelected="hasMultipleCirclesSelected"
-                    :selectedCircles="getSelectedCircleObjects"
-                    :isPickerOpen="isCauseEmojiPickerOpen"
-                    :propertyName="'causeEmoji'"
-                    @toggle="toggleCauseEmojiPicker"
-                />
-
-                <!-- Demand Emoji Control -->
-                <CircleEmojiControl 
-                    :ref="assignDisplayRef('demandEmoji')"
-                    :selectedCircle="selectedCircle"
-                    :hasMultipleCirclesSelected="hasMultipleCirclesSelected"
-                    :selectedCircles="getSelectedCircleObjects"
-                    :isPickerOpen="isDemandEmojiPickerOpen"
-                    :propertyName="'demandEmoji'"
-                    @toggle="toggleDemandEmojiPicker"
-                />
-
-                <!-- Color Control -->
-                <ColorControl 
-                    :ref="assignDisplayRef('color')"
-                    :circleColors="circleColors"
-                    :isPickerOpen="isColorPickerOpen"
-                    @toggle="toggleColorPicker"
-                />
-
-                <!-- Energy Control -->
-                <EnergyControl 
-                    :ref="assignDisplayRef('energy')"
-                    :circleEnergyTypes="circleEnergyTypes"
-                    :isPickerOpen="isEnergyPickerOpen"
-                    :getEnergyTypeColor="getEnergyTypeColor"
-                    @toggle="toggleEnergyPicker"
-                />
-
-                <CBStatesControl 
-                    v-if="shouldShowStatesControl"
-                    :selectedCircle="selectedCircle"
-                    @toggle="toggleStatesPicker"
-                />
-
-                <!-- Dynamic Cycleable Property Controls -->
-                <CBCyclePropertyControl 
-                    v-for="propertyName in cycleableProperties"
-                    :key="propertyName"
-                    :property-name="propertyName"
-                    :property-value="getPropertyValue(propertyName)"
-                    @cycle="handlePropertyCycle(propertyName)"
-                />
-
+            <!-- Arrow Actions Menu (A) -->
+            <!--div 
+                v-if="shouldShowArrowMenu"
+                class="characteristic-control entity-menu-button"
+                :class="{ active: activeMenu === 'arrows' }"
+                @click="toggleMenu('arrows')"
+                ref="arrowMenuRef"
+                title="Arrow Action Controls"
+            >
+                A
                 <div 
-                    v-if="shouldShowReelInButton && hasConnectedCircles"
-                    ref="reelInButtonRef"
-                    class="characteristic-control entity-reel-button"
-                    :class="{ animating: isReelInAnimating }"
-                    @click="handleReelInClick"
-                    title="Reel In Connected Circles"
-                >🎣</div>
-
-                <div 
-                    v-if="shouldShowUnreelButton"
-                    class="characteristic-control entity-unreel-button"
-                    :class="{ animating: isReelInAnimating }"
-                    @click="handleUnreelClick"
-                    title="Unreel Circles to Original Positions"
+                    v-if="activeMenu === 'arrows'"
+                    class="entity-popup-menu"
+                    @click.stop
                 >
-                    <span class="unreel-emoji">
-                        🎣<span class="unreel-x">⌘</span>
-                    </span>
+                    <div 
+                        class="characteristic-control entity-add-button"
+                        @click="(event) => handleMenuItemClick(event, handleMakeAngryClick)"
+                        title="Make Selected Angry"
+                    >↑</div>
+                    
+                    <div 
+                        class="characteristic-control entity-add-button"
+                        @click="(event) => handleMenuItemClick(event, handleMakeNormalClick)"
+                        title="Make Selected Normal"
+                    >↓</div>
                 </div>
+            </div-->
 
-            </template>
+            <!-- Circle Characteristics Menu (C) -->
+            <div 
+                v-if="shouldShowCharacteristicsMenu"
+                class="characteristic-control entity-menu-button"
+                :class="{ active: activeMenu === 'characteristics' }"
+                @click="toggleMenu('characteristics')"
+                ref="characteristicsMenuRef"
+                title="Circle Characteristics"
+            >
+                C
+                <div 
+                    v-if="activeMenu === 'characteristics'"
+                    class="entity-popup-menu"
+                    @click.stop
+                >
+                    <!-- Type Control -->
+                    <TypeControl 
+                        :ref="assignDisplayRef('type')"
+                        :currentTypeInfo="currentTypeInfo"
+                        :isPickerOpen="isTypePickerOpen"
+                        @toggle="toggleTypePicker"
+                    />
 
-            <!-- Reference Controls -->
+                    <!-- Circle Emoji Control -->
+                    <CircleEmojiControl 
+                        v-if="isCircleEmojiPickerVisible"
+                        :ref="assignDisplayRef('circleEmoji')"
+                        :selectedCircle="selectedCircle"
+                        :hasMultipleCirclesSelected="hasMultipleCirclesSelected"
+                        :selectedCircles="getSelectedCircleObjects"
+                        :isPickerOpen="isCircleEmojiPickerOpen"
+                        :propertyName="'emoji'"
+                        @toggle="toggleCircleEmojiPicker"
+                    />
+
+                    <!-- Cause Emoji Control -->
+                    <CircleEmojiControl 
+                        :ref="assignDisplayRef('causeEmoji')"
+                        :selectedCircle="selectedCircle"
+                        :hasMultipleCirclesSelected="hasMultipleCirclesSelected"
+                        :selectedCircles="getSelectedCircleObjects"
+                        :isPickerOpen="isCauseEmojiPickerOpen"
+                        :propertyName="'causeEmoji'"
+                        @toggle="toggleCauseEmojiPicker"
+                    />
+
+                    <!-- Demand Emoji Control -->
+                    <CircleEmojiControl 
+                        :ref="assignDisplayRef('demandEmoji')"
+                        :selectedCircle="selectedCircle"
+                        :hasMultipleCirclesSelected="hasMultipleCirclesSelected"
+                        :selectedCircles="getSelectedCircleObjects"
+                        :isPickerOpen="isDemandEmojiPickerOpen"
+                        :propertyName="'demandEmoji'"
+                        @toggle="toggleDemandEmojiPicker"
+                    />
+
+                    <!-- Color Control -->
+                    <ColorControl 
+                        :ref="assignDisplayRef('color')"
+                        :circleColors="circleColors"
+                        :isPickerOpen="isColorPickerOpen"
+                        @toggle="toggleColorPicker"
+                    />
+
+                    <!-- Energy Control -->
+                    <EnergyControl 
+                        :ref="assignDisplayRef('energy')"
+                        :circleEnergyTypes="circleEnergyTypes"
+                        :isPickerOpen="isEnergyPickerOpen"
+                        :getEnergyTypeColor="getEnergyTypeColor"
+                        @toggle="toggleEnergyPicker"
+                    />
+                </div>
+            </div>
+
+            <!-- Properties Menu (P) -->
+            <div 
+                v-if="shouldShowPropertiesMenu"
+                class="characteristic-control entity-menu-button"
+                :class="{ active: activeMenu === 'properties' }"
+                @click="toggleMenu('properties')"
+                ref="propertiesMenuRef"
+                title="Cycleable Properties"
+            >
+                P
+                <div 
+                    v-if="activeMenu === 'properties'"
+                    class="entity-popup-menu"
+                    @click.stop
+                >
+                    <!-- Dynamic Cycleable Property Controls -->
+                    <CBCyclePropertyControl 
+                        v-for="propertyName in cycleableProperties"
+                        :key="propertyName"
+                        :property-name="propertyName"
+                        :property-value="getPropertyValue(propertyName)"
+                        @cycle="handlePropertyCycle(propertyName)"
+                    />
+                </div>
+            </div>
+
+            <!-- Top-Level Controls (Always Visible When Applicable) -->
+
+            <!-- States Control -->
+            <CBStatesControl 
+                v-if="shouldShowStatesControl"
+                :selectedCircle="selectedCircle"
+                @toggle="toggleStatesPicker"
+            />
+
+            <!-- Roil Composure Control -->
+            <CBCyclePropertyControl 
+                v-if="shouldShowRoilComposureControl"
+                property-name="roilComposure"
+                :property-value="getPropertyValue('roilComposure')"
+                @cycle="handlePropertyCycle('roilComposure')"
+            />
+
+            <!-- Reel & Unreel Buttons -->
+            <div 
+                v-if="shouldShowReelInButton && hasConnectedCircles"
+                ref="reelInButtonRef"
+                class="characteristic-control entity-reel-button"
+                :class="{ animating: isReelInAnimating }"
+                @click="handleReelInClick"
+                title="Reel In Connected Circles"
+            >🎣</div>
+
+            <div 
+                v-if="shouldShowUnreelButton"
+                class="characteristic-control entity-unreel-button"
+                :class="{ animating: isReelInAnimating }"
+                @click="handleUnreelClick"
+                title="Unreel Circles to Original Positions"
+            >
+                <span class="unreel-emoji">
+                    🎣<span class="unreel-x">⌘</span>
+                </span>
+            </div>
+
+            <!-- Reference Controls (Keep as-is) -->
             <CBJumpToReferenceControl 
                 v-if="shouldShowJumpToReferenceControl"
                 @jump-to-reference="handleJumpToReference"
@@ -697,7 +864,7 @@ export const EntityControls = {
                 @break-reference="handleBreakReference"
             />
 
-            <!-- Explicit Connection Controls -->
+            <!-- Explicit Connection Controls (Keep as-is) -->
             <template v-if="shouldShowExplicitConnectionControls">
                 <!-- Visual separator -->
                 <div style="border-left: 1px solid #666; margin: 0 4px; height: 32px;"></div>

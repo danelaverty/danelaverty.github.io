@@ -68,7 +68,7 @@ export class RoilMotionCore {
         if (roilAngle === 'tilt') {
             return circle.y - (2 * circle.z);
         } else { // 'side'
-            return 290 - (8 * circle.z);
+            return 340 - (10 * circle.z);
         }
     }
 
@@ -299,20 +299,20 @@ setCircleBuoyancy(circleId, buoyancy) {
             
             switch(buoyancyType) {
                 case 'normal':
-                    circle.orbitRadius = 11;
-                    circle.zOrbitRadius = 12;
+                    circle.orbitRadius = 19;
+                    circle.zOrbitRadius = 17;
                     break;
                 case 'buoyant':
-                    circle.orbitRadius = -4;  // This seems odd - might want to use Math.abs?
-                    circle.zOrbitRadius = -2;
+                    circle.orbitRadius = -14;
+                    circle.zOrbitRadius = -4;
                     break;
                 case 'antibuoyant':
-                    circle.orbitRadius = -4;
-                    circle.zOrbitRadius = -2;
+                    circle.orbitRadius = -14;
+                    circle.zOrbitRadius = -4;
                     break;
                 default:
                     // Fallback to normal
-                    circle.orbitRadius = 11;
+                    circle.orbitRadius = 21;
                     circle.zOrbitRadius = 12;
             }
         }
@@ -341,8 +341,8 @@ updateViewerWidth(viewerId, newViewerWidth) {
         if (!dataStoreCircle) return;
 
         const buoyancyMap = {
-            'normal': 0.8,
-            'buoyant': 1.8,
+            'normal': 0.5,
+            'buoyant': 2.0,
             'antibuoyant': 0.2,
         };
 

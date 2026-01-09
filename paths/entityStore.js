@@ -379,6 +379,11 @@ const handleMemberLeaving = (circleId, formerGroupId, updateCallback = null) => 
     }
 };
 
+const resetRoilPropertiesOnLoad = (circle) => {
+    circle.roilAnimation = 'play';
+    circle.roilComposure = 'retracted';
+};
+
     // Generic entity operations
 const createEntity = (entityType, documentId, containerWidth, containerHeight, viewerWidths = [], documentStore = null) => {
         const id = `${entityType}_${entityType === 'circle' ? data.nextCircleId++ : data.nextSquareId++}`;
@@ -386,7 +391,7 @@ const createEntity = (entityType, documentId, containerWidth, containerHeight, v
         let position;
         if (entityType === 'square') {
             const dimensions = calculateSquareContainerDimensions(viewerWidths);
-            position = generateRandomPosition(dimensions.width, dimensions.height - 100, 100);
+            position = generateRandomPosition(400, 400, 50);
         } else {
             const actualHeight = containerHeight || (window.innerHeight - 120);
             position = generateRandomPosition(containerWidth - 40, actualHeight);
@@ -830,6 +835,7 @@ const deserialize = (savedData) => {
             // Ensure all circles have required properties with defaults
             data.circles.forEach((circle, id) => {
                 ensureCircleDefaults(circle);
+                resetRoilPropertiesOnLoad(circle);
             });
         }
         if (savedData.squares) {

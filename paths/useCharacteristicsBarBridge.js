@@ -256,7 +256,7 @@ const handleCreateSquareWithEmoji = (selectedEmoji) => {
 
 shouldShowStatesControl: computed(() => {
     const circles = dynamic.selectedCircles.value;
-    return circles.length === 1 && !circles[0]?.referenceID;
+    return circles.length === 1 && !circles[0]?.referenceID && circles[0].type === 'glow';
 }),
 
 isStatesPickerOpen: computed(() => dynamic.getPickerState('states')?.value || false),

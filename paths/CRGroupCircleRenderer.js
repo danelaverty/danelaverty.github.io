@@ -52,7 +52,7 @@ export const GroupCircleRenderer = {
         }
         
         // Add selection handle for roil mode groups
-        if (isRoilMode) {
+        /*if (isRoilMode) {
             const selectionHandle = document.createElement('div');
             selectionHandle.className = 'group-selection-handle';
             selectionHandle.style.cssText = `
@@ -71,7 +71,7 @@ export const GroupCircleRenderer = {
             // Store reference to handle for potential selection state updates
             element._selectionHandle = selectionHandle;
             element.appendChild(selectionHandle);
-        }
+        }*/
         
         element.appendChild(groupElement);
         element.appendChild(awarenessLine);

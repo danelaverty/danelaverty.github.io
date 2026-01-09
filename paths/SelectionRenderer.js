@@ -14,7 +14,8 @@ const selectionStyles = `
         visibility: visible !important; /* Force visibility */
     }
 
-    .app-demo-mode .entity-selection-indicator {
+    .app-demo-mode .entity-selection-indicator,
+    .is-roil .entity-selection-indicator {
         display: none !important;
         opacity: 0 !important;
         visibility: hidden !important;

@@ -58,7 +58,7 @@ activationTriggers: {
     displayIf: { type: 'group' }
   },*/
 
-  roilMode: {
+  /*roilMode: {
     values: {
       'off': { 
         icon: '🌀', 
@@ -74,7 +74,7 @@ activationTriggers: {
       }
     },
     displayIf: { type: 'group' }
-  },
+  },*/
 
   roilAnimation: {
     values: {
@@ -86,6 +86,7 @@ activationTriggers: {
 
   roilSpeed: {
     values: {
+      '0.5': { icon: '0.5x', label: '0.5x', description: '' },
       '1': { icon: '1x', label: '1x', description: '', default: true },
       '1.5': { icon: '1.5x', label: '1.5x', description: '' },
       '2': { icon: '2x', label: '2x', description: '' },
